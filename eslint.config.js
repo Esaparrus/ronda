@@ -21,5 +21,13 @@ export default tseslint.config(
       'no-console': 'error',
     },
   },
+  {
+    // El logger del servidor es la única salida de consola permitida en
+    // producción (definición de "terminado" §5.7: prohibido console.log).
+    files: ['apps/server/src/logger.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
   prettier,
 );
