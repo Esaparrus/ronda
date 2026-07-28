@@ -1,0 +1,38 @@
+# Ronda
+
+Web-app instalable (PWA) para jugar a juegos de cartas en grupo. El primer juego
+del MVP es el **Chinchón**. Cada móvil es la mano privada de un jugador; una tele
+o tablet opcional hace de tablero público.
+
+## Documentación del proyecto
+
+- `00-MASTER.md` — documento maestro (visión, arquitectura, alcance). **Manda.**
+- `01-CONTRATOS.md` — contratos congelados (tipos, red, reglas, BD, diseño).
+- `02-PAQUETES.md` — paquetes de tarea P0–P20 (prompts para la IA generadora).
+- `03-CONTEXTO-PEGABLE.md` — contexto que se pega al inicio de cada sesión.
+
+## Monorepo
+
+```
+apps/web        Next.js App Router + Tailwind + Zustand  (solo pinta vistas)
+apps/server     Node 22 + node:http + socket.io + pg     (autoridad total)
+packages/protocol   zod: mensajes, vistas, config, errores
+packages/engine     TypeScript puro y determinista       (reglas del juego)
+db/migrations       SQL plano
+```
+
+## Requisitos
+
+- Node >= 22 · pnpm >= 10
+- Copia `.env.example` a `.env` y rellena los valores.
+
+## Comandos
+
+```
+pnpm install
+pnpm dev          # levanta la web
+pnpm dev:server   # levanta el servidor
+pnpm typecheck && pnpm lint && pnpm test
+```
+
+Gestor: **pnpm** · TypeScript **strict** · ESM en todo.
