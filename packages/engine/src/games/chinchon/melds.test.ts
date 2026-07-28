@@ -263,6 +263,10 @@ describe('Rendimiento', () => {
       }
       hands.push(h);
     }
+    // Calentamiento del JIT: unas llamadas descartadas para que el bucle medido
+    // corra ya optimizado (evita falsos negativos cuando el test corre tras
+    // otros pesados, como las 200 partidas de P4).
+    for (let i = 0; i < 500; i++) solveHand(hands[i % hands.length] ?? [], CFG);
     const t0 = Date.now();
     for (const h of hands) solveHand(h, CFG);
     const dt = Date.now() - t0;

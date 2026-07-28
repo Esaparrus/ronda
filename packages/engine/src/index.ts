@@ -8,3 +8,7 @@ export * from './core/rng.ts';
 export * from './core/deck.ts';
 export * from './core/registry.ts';
 export * from './core/freeze.ts';
+
+// Registro del juego Chinchón (efecto lateral: lo añade a GAMES).
+import './games/chinchon/index.ts';
+export * from './games/chinchon/index.ts';

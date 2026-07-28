@@ -61,22 +61,6 @@ function indexHand(hand: CardId[], config: GameConfig): IndexedHand {
   return { cards, n, fullMask: n === 0 ? 0 : (1 << n) - 1 };
 }
 
-/** Puntos de las cartas seleccionadas por `mask` (todas como sueltas). Base. */
-function rawPoints(mask: number, cards: readonly Card[]): number {
-  let total = 0;
-  let m = mask;
-  let i = 0;
-  while (m) {
-    if (m & 1) {
-      const c = cards[i];
-      if (c) total += c.points;
-    }
-    m >>= 1;
-    i++;
-  }
-  return total;
-}
-
 /** Número de bits a 1 (cartas que ocupa una combinación). */
 function popcount(x: number): number {
   let c = 0;
@@ -204,10 +188,22 @@ export function solveHand(hand: CardId[], config: GameConfig): MeldSolution {
     if (cm !== undefined) meldPop[mi] = popcount(cm);
   }
 
-  // Memoización con arrays tipados planos (sin boxing). Un solo valor de
-  // desempate empaquetado como clave de orden: ordenamos por (deadwood asc,
-  // used desc, meldCount asc) → clave = deadwood * K1 - used * K2 + meldCount.
-  // Como deadwood <= ~250 y n <= 8, caben con holgura en enteros.
+  // Optimización "bit más bajo": para resolver best(mask), basta considerar las
+  // combinaciones que contienen el bit menos significativo puesto de `mask`
+  // (esa carta o forma parte de alguna combinación o queda suelta). Esto reduce
+  // el número de combinaciones exploradas por estado de M a las relevantes.
+  const meldsByLowestBit: number[][] = Array.from({ length: n }, () => []);
+  for (let mi = 0; mi < M; mi++) {
+    const cm = meldMasks[mi];
+    if (cm === undefined) continue;
+    // Índice del bit menos significativo (exacto para enteros de 32 bits).
+    const lowest = 31 - Math.clz32(cm & -cm);
+    if (lowest >= 0 && lowest < n) {
+      meldsByLowestBit[lowest]?.push(mi);
+    }
+  }
+
+  // Memoización con arrays tipados planos (sin boxing).
   const NSTATES = 1 << n;
   const memoDead = new Int32Array(NSTATES).fill(-1);
   const memoUsed = new Int32Array(NSTATES);
@@ -216,34 +212,62 @@ export function solveHand(hand: CardId[], config: GameConfig): MeldSolution {
 
   function best(mask: number): void {
     if (memoDead[mask] !== -1) return;
-    // Base: todos los bits como sueltos.
-    let bDead = rawPoints(mask, cards);
+
+    // El bit menos significativo puesto es la "carta clave". Dos opciones:
+    //   (a) queda suelta: sumar sus puntos + best(mask sin ese bit);
+    //   (b) forma parte de alguna combinación que lo incluye: best(mask \ meld).
+    // La base "todo suelto" queda cubierta por aplicar (a) recursivamente.
+    let bDead = Number.MAX_SAFE_INTEGER;
     let bUsed = 0;
     let bMeldCount = 0;
     let bestChoice = 0;
 
-    for (let mi = 0; mi < M; mi++) {
-      const cm = meldMasks[mi];
-      if (cm === undefined) continue;
-      if ((cm & mask) === cm) {
-        const rest = mask & ~cm;
+    if (mask === 0) {
+      // Caso base: sin cartas, 0 puntos.
+      bDead = 0;
+    } else {
+      const low = mask & -mask;
+      const lowestBit = 31 - Math.clz32(low);
+      const lowCard = cards[lowestBit];
+
+      // (a) Queda suelta.
+      if (lowestBit >= 0 && lowestBit < n && lowCard) {
+        const rest = mask & ~low;
         best(rest);
-        const cDead = memoDead[rest] ?? 0;
-        const cUsed = memoUsed[rest] ?? 0;
-        const cMeld = memoMeldCount[rest] ?? 0;
-        const candDead = cDead;
-        const candUsed = (meldPop[mi] ?? 0) + cUsed;
-        const candMeld = 1 + cMeld;
-        // Desempate: deadwood asc, used desc, meldCount asc.
-        if (
-          candDead < bDead ||
-          (candDead === bDead && candUsed > bUsed) ||
-          (candDead === bDead && candUsed === bUsed && candMeld < bMeldCount)
-        ) {
-          bDead = candDead;
-          bUsed = candUsed;
-          bMeldCount = candMeld;
-          bestChoice = cm;
+        const aDead = (memoDead[rest] ?? 0) + lowCard.points;
+        const aUsed = memoUsed[rest] ?? 0;
+        const aMeld = memoMeldCount[rest] ?? 0;
+        bDead = aDead;
+        bUsed = aUsed;
+        bMeldCount = aMeld;
+        // choice 0 = la carta baja queda suelta.
+      }
+
+      // (b) Forma parte de una combinación que la incluye.
+      const candidates = (lowestBit >= 0 && lowestBit < n ? meldsByLowestBit[lowestBit] : null) ?? [];
+      for (const mi of candidates) {
+        const cm = meldMasks[mi];
+        if (cm === undefined) continue;
+        if ((cm & mask) === cm) {
+          const rest = mask & ~cm;
+          best(rest);
+          const cDead = memoDead[rest] ?? 0;
+          const cUsed = memoUsed[rest] ?? 0;
+          const cMeld = memoMeldCount[rest] ?? 0;
+          const candDead = cDead;
+          const candUsed = (meldPop[mi] ?? 0) + cUsed;
+          const candMeld = 1 + cMeld;
+          // Desempate: deadwood asc, used desc, meldCount asc.
+          if (
+            candDead < bDead ||
+            (candDead === bDead && candUsed > bUsed) ||
+            (candDead === bDead && candUsed === bUsed && candMeld < bMeldCount)
+          ) {
+            bDead = candDead;
+            bUsed = candUsed;
+            bMeldCount = candMeld;
+            bestChoice = cm;
+          }
         }
       }
     }
@@ -256,12 +280,24 @@ export function solveHand(hand: CardId[], config: GameConfig): MeldSolution {
 
   best(fullMask);
 
-  // Reconstrucción.
+  // Reconstrucción: recorre las decisiones de best() desde la máscara completa.
+  // choice[mask] === 0 significa "el bit más bajo queda suelto" → lo mandamos a
+  // leftovers y seguimos con el resto. choice[mask] !== 0 es una combinación.
   const melds: CardId[][] = [];
+  const leftovers: CardId[] = [];
   let mask = fullMask;
   while (mask !== 0) {
     const cm = choice[mask];
-    if (cm === undefined || cm === 0) break;
+    if (cm === undefined) break;
+    if (cm === 0) {
+      // El bit más bajo queda suelto.
+      const low = mask & -mask;
+      const lowBit = 31 - Math.clz32(low);
+      const c = lowBit >= 0 && lowBit < n ? cards[lowBit] : undefined;
+      if (c) leftovers.push(c.id);
+      mask &= ~low;
+      continue;
+    }
     const idsInMeld: CardId[] = [];
     for (let i = 0; i < n; i++) {
       if (cm & (1 << i)) {
@@ -272,14 +308,6 @@ export function solveHand(hand: CardId[], config: GameConfig): MeldSolution {
     idsInMeld.sort();
     melds.push(idsInMeld);
     mask &= ~cm;
-  }
-
-  const leftovers: CardId[] = [];
-  for (let i = 0; i < n; i++) {
-    if (mask & (1 << i)) {
-      const c = cards[i];
-      if (c) leftovers.push(c.id);
-    }
   }
   leftovers.sort();
 
