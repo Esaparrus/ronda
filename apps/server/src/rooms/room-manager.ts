@@ -43,9 +43,21 @@ export class RoomManager {
   private rooms = new Map<string, Room>();
   /** Inyecta hooks a cada sala nueva. P8 los rellena. */
   private hooksFactory: () => RoomHooks;
+  /** io inyectado (P8) para que los hooks puedan difundir. Opcional. */
+  private io: unknown = null;
 
   constructor(hooksFactory: () => RoomHooks = () => ({})) {
     this.hooksFactory = hooksFactory;
+  }
+
+  /** Inyecta el servidor io (para que hooks difundan toasts/closed). P8. */
+  setIo(io: unknown): void {
+    this.io = io;
+  }
+
+  /** Devuelve el io inyectado (para hooks que necesiten difundir). */
+  getIo(): unknown {
+    return this.io;
   }
 
   /** Número de salas activas (para /health). */
@@ -160,6 +172,32 @@ export class RoomManager {
         p.disconnectedAt = null;
         room.touch(input.now);
         return ok({ roomCode: room.code, playerId: p.playerId, seat: p.seat });
+      }
+    }
+    return err('INVALID_TOKEN');
+  }
+
+  /**
+   * Resume por token sin roomCode: busca en todas las salas activas.
+   * Contrato §2.3: 'room:resume' { playerToken }.
+   * Devuelve la sala/jugador si el token corresponde a una sala activa.
+   */
+  resumeByTokenGlobal(input: { playerToken: string; now: number }): Result<{
+    roomCode: string;
+    playerId: PlayerId;
+    seat: number;
+  }> {
+    const hash = hashToken(input.playerToken);
+    for (const room of this.rooms.values()) {
+      if (room.status === 'closed') continue;
+      for (const p of room.players.values()) {
+        if (p.tokenHash === hash) {
+          p.connected = true;
+          p.lastSeenAt = input.now;
+          p.disconnectedAt = null;
+          room.touch(input.now);
+          return ok({ roomCode: room.code, playerId: p.playerId, seat: p.seat });
+        }
       }
     }
     return err('INVALID_TOKEN');
@@ -423,14 +461,14 @@ export class RoomManager {
 
   // --- screen --------------------------------------------------------------
 
-  attachScreen(input: { roomCode: string; socketId: string; now: number }): Result<null> {
+  attachScreen(input: { roomCode: string; socketId: string; now: number }): Result<{ roomCode: string }> {
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
     if (room.status === 'closed') return err('ROOM_CLOSED');
     room.screens.add(input.socketId);
     room.touch(input.now);
     room.hooks.onSnapshot?.(room);
-    return ok(null);
+    return ok({ roomCode: room.code });
   }
 
   detachScreen(socketId: string): void {

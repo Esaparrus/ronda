@@ -46,7 +46,7 @@ export interface ClientToServerEvents {
   ) => void;
   'room:resume': (
     payload: { playerToken: string },
-    ack: (res: Result<Omit<JoinAck, 'playerToken'>>) => void,
+    ack: (res: Result<{ roomCode: RoomCode; playerId: PlayerId; seat: number }>) => void,
   ) => void;
   'room:config': (
     payload: { patch: Partial<GameConfig> },
