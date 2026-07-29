@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "start": "node src/index.ts",
     "sim": "echo \"TODO(P9): simulador con bots\" && exit 1",
-    "db:migrate": "echo \"TODO(P7): aplicar migraciones\" && exit 1"
+    "db:migrate": "node src/db/migrate-cli.ts"
   },
   "dependencies": {
     "@ronda/engine": "workspace:*",
