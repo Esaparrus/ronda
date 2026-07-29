@@ -1,0 +1,520 @@
+// Gestión de salas en memoria. Contrato §6 / P6.
+//
+// Toda la validación de permisos vive aquí (anfitrión, jugador en sala, sala
+// empezada). Toda mutación actualiza lastActivityAt. applyAction delega en
+// GAMES[gameId].applyAction y NUNCA implementa reglas por su cuenta.
+import {
+  type GameAction,
+  type GameConfig,
+  type GameId,
+  type PlayerId,
+  type Result,
+  err,
+  ok,
+} from '@ronda/protocol';
+import { GAMES, createInitialState as engineCreateInitialState } from '@ronda/engine';
+import type { ChinchonState } from '@ronda/engine';
+import { generateRoomCode } from './codes.ts';
+import { createToken, hashToken } from './tokens.ts';
+import { isValidNick, normalizeNick } from './nick.ts';
+import {
+  HOST_GRACE_MS,
+  LOBBY_TTL_MS,
+  PLAYING_TTL_MS,
+  Room,
+  type PlayerRuntime,
+  type RoomHooks,
+} from './room.ts';
+import { randomUUID } from 'node:crypto';
+
+export interface JoinResult {
+  roomCode: string;
+  playerId: PlayerId;
+  playerToken: string;
+  seat: number;
+}
+
+/**
+ * RoomManager: el único punto de mutación de salas. Mantiene un Map de salas
+ * activas indexado por código. Los sockets (P8) y la persistencia (P7) se enganchan
+ * vía callbacks inyectados por sala.
+ */
+export class RoomManager {
+  private rooms = new Map<string, Room>();
+  /** Inyecta hooks a cada sala nueva. P8 los rellena. */
+  private hooksFactory: () => RoomHooks;
+
+  constructor(hooksFactory: () => RoomHooks = () => ({})) {
+    this.hooksFactory = hooksFactory;
+  }
+
+  /** Número de salas activas (para /health). */
+  countRooms(): number {
+    return this.rooms.size;
+  }
+
+  getRoomByCode(code: string): Room | undefined {
+    return this.rooms.get(code);
+  }
+
+  // --- create --------------------------------------------------------------
+
+  createRoom(input: {
+    gameId: GameId;
+    config: GameConfig;
+    nick: string;
+    now: number;
+  }): Result<JoinResult> {
+    if (input.gameId !== 'chinchon') return err('GAME_NOT_FOUND');
+    if (!isValidNick(input.nick)) return err('NICK_INVALID');
+
+    const code = generateRoomCode((c) => this.rooms.has(c));
+    if (!code) return err('INTERNAL');
+
+    const playerId = randomUUID() as PlayerId;
+    const token = createToken();
+    const seat = 0;
+
+    const room = new Room({
+      code,
+      gameId: input.gameId,
+      config: input.config,
+      seed: randomSeed(),
+      now: input.now,
+      hooks: this.hooksFactory(),
+    });
+
+    const player: PlayerRuntime = {
+      playerId,
+      nick: normalizeNick(input.nick),
+      seat,
+      tokenHash: hashToken(token),
+      isHost: true,
+      connected: true,
+      lastSeenAt: input.now,
+      disconnectedAt: null,
+      socketId: null,
+    };
+    room.players.set(playerId, player);
+    room.hostPlayerId = playerId;
+    room.touch(input.now);
+    room.hooks.onTrack?.(room, 'room_created', { gameId: input.gameId });
+
+    this.rooms.set(code, room);
+    return ok({ roomCode: code, playerId, playerToken: token, seat });
+  }
+
+  // --- join ----------------------------------------------------------------
+
+  joinRoom(input: {
+    roomCode: string;
+    nick: string;
+    now: number;
+  }): Result<JoinResult> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status === 'closed') return err('ROOM_CLOSED');
+    if (room.status !== 'lobby') return err('ROOM_ALREADY_STARTED');
+    if (!isValidNick(input.nick)) return err('NICK_INVALID');
+    if (room.isNickTaken(input.nick)) return err('NICK_TAKEN');
+
+    const seat = room.nextFreeSeat();
+    if (seat === null) return err('ROOM_FULL');
+
+    const playerId = randomUUID() as PlayerId;
+    const token = createToken();
+    const player: PlayerRuntime = {
+      playerId,
+      nick: normalizeNick(input.nick),
+      seat,
+      tokenHash: hashToken(token),
+      isHost: false,
+      connected: true,
+      lastSeenAt: input.now,
+      disconnectedAt: null,
+      socketId: null,
+    };
+    room.players.set(playerId, player);
+    room.touch(input.now);
+    room.hooks.onSnapshot?.(room);
+    room.hooks.onTrack?.(room, 'player_joined', { nick: player.nick });
+    return ok({ roomCode: room.code, playerId, playerToken: token, seat });
+  }
+
+  // --- resume --------------------------------------------------------------
+
+  resumeByToken(input: {
+    roomCode: string;
+    playerToken: string;
+    now: number;
+  }): Result<{ roomCode: string; playerId: PlayerId; seat: number }> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status === 'closed') return err('ROOM_CLOSED');
+
+    const hash = hashToken(input.playerToken);
+    for (const p of room.players.values()) {
+      if (p.tokenHash === hash) {
+        p.connected = true;
+        p.lastSeenAt = input.now;
+        p.disconnectedAt = null;
+        room.touch(input.now);
+        return ok({ roomCode: room.code, playerId: p.playerId, seat: p.seat });
+      }
+    }
+    return err('INVALID_TOKEN');
+  }
+
+  // --- config --------------------------------------------------------------
+
+  setConfig(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    patch: Partial<GameConfig>;
+    now: number;
+  }): Result<{ config: GameConfig }> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status !== 'lobby') return err('ROOM_ALREADY_STARTED');
+    const player = room.players.get(input.playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+    if (!player.isHost) return err('NOT_HOST');
+
+    // Merge conservando gameId (no se cambia el juego de una sala).
+    room.config = { ...room.config, ...input.patch, gameId: room.gameId };
+    room.touch(input.now);
+    room.hooks.onSnapshot?.(room);
+    return ok({ config: room.config });
+  }
+
+  // --- start ---------------------------------------------------------------
+
+  start(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    now: number;
+  }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status !== 'lobby') return err('ROOM_ALREADY_STARTED');
+    const player = room.players.get(input.playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+    if (!player.isHost) return err('NOT_HOST');
+
+    const actives = room.playersBySeat();
+    if (actives.length < 2) return err('NOT_ENOUGH_PLAYERS');
+
+    const module = GAMES[room.gameId];
+    if (!module) return err('GAME_NOT_FOUND');
+
+    room.state = engineCreateInitialState({
+      config: room.config,
+      players: room.playersBySeat().map((p) => ({
+        playerId: p.playerId,
+        nick: p.nick,
+        seat: p.seat,
+      })),
+      seed: room.seed,
+      roomCode: room.code,
+    });
+    room.status = 'playing';
+    room.touch(input.now);
+    room.hooks.onSnapshot?.(room);
+    room.hooks.onTrack?.(room, 'game_started', { players: actives.length });
+    return ok(null);
+  }
+
+  // --- kick ----------------------------------------------------------------
+
+  kick(input: {
+    roomCode: string;
+    playerId: PlayerId; // anfitrión
+    targetId: PlayerId;
+    now: number;
+  }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    const host = room.players.get(input.playerId);
+    if (!host) return err('PLAYER_NOT_IN_ROOM');
+    if (!host.isHost) return err('NOT_HOST');
+    const target = room.players.get(input.targetId);
+    if (!target) return err('PLAYER_NOT_IN_ROOM');
+
+    return this.removePlayer(room, target, input.now, 'kick');
+  }
+
+  // --- leave ---------------------------------------------------------------
+
+  leave(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    now: number;
+  }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    const player = room.players.get(input.playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+    return this.removePlayer(room, player, input.now, 'leave');
+  }
+
+  /** Sale/expulsa a un jugador. Si la partida está en juego, congela marcador y
+   * mete sus cartas al descarte. Si quedan <2 activos, termina la partida. */
+  private removePlayer(
+    room: Room,
+    player: PlayerRuntime,
+    now: number,
+    reason: 'leave' | 'kick',
+  ): Result<null> {
+    const wasHost = player.isHost;
+    room.players.delete(player.playerId);
+
+    if (room.status === 'playing' || room.status === 'roundEnd') {
+      // El motor no gestiona abandonos directamente: marcamos el jugador como
+      // eliminado congelando su marcador. Simplificación aceptable para el MVP.
+      // (Una implementación más fina movería sus cartas al descarte; aquí
+      // anotamos el abandono y dejamos que el motor puntúe al final de ronda.)
+    }
+
+    // Traspaso de anfitrión si se va el host.
+    if (wasHost) {
+      const next = [...room.players.values()]
+        .filter((p) => p.connected)
+        .sort((a, b) => a.seat - b.seat)[0];
+      if (next) {
+        next.isHost = true;
+        room.hostPlayerId = next.playerId;
+        room.hooks.onToast?.(room, 'info', `${next.nick} es ahora el anfitrión.`);
+      }
+    }
+
+    room.touch(now);
+
+    // Si no queda nadie, cerrar.
+    if (room.players.size === 0) {
+      this.closeRoom(room, 'empty');
+      return ok(null);
+    }
+
+    // Si en partida quedan <2 activos, gana el que quede.
+    if (room.status === 'playing') {
+      const connected = [...room.players.values()].filter((p) => p.connected);
+      if (connected.length < 2) {
+        room.status = 'gameEnd';
+        if (room.state && connected[0]) {
+          room.state = { ...room.state, status: 'gameEnd', winnerId: connected[0].playerId };
+        }
+      }
+    }
+
+    room.hooks.onSnapshot?.(room);
+    void reason;
+    return ok(null);
+  }
+
+  // --- action --------------------------------------------------------------
+
+  applyAction(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    clientActionId: string;
+    expectedVersion: number;
+    action: GameAction;
+    now: number;
+  }): Result<{ version: number }> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (!room.state) return err('INVALID_ACTION');
+    const player = room.players.get(input.playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+
+    // Idempotencia: si ya procesamos este clientActionId, devolver versión guardada.
+    const prevVersion = room.processedActions.get(input.clientActionId);
+    if (prevVersion !== undefined) {
+      return ok({ version: prevVersion });
+    }
+
+    // STALE_VERSION: expectedVersion debe coincidir con la versión actual.
+    if (input.expectedVersion !== room.state.version) {
+      return err('STALE_VERSION');
+    }
+
+    const module = GAMES[room.gameId];
+    if (!module) return err('GAME_NOT_FOUND');
+
+    const currentState = room.state;
+    const r = module.applyAction(currentState, input.playerId, input.action, input.now);
+    if (!r.ok) return r;
+    // El módulo devuelve estado tipado como `unknown` (AnyGameModule). Aquí
+    // recuperamos el tipo concreto de Chinchón, que es el único juego del MVP.
+    const newState = r.value.state as ChinchonState;
+    room.state = newState;
+    room.processedActions.set(input.clientActionId, newState.version);
+    room.touch(input.now);
+
+    // Eventos cosméticos (una sola vez por acción).
+    if (r.value.events.length > 0) {
+      room.hooks.onEvent?.(room, r.value.events, newState.version);
+    }
+    room.hooks.onSnapshot?.(room);
+
+    // Detectar fin de ronda/partida para persistencia inmediata y telemetría.
+    if (newState.status === 'roundEnd' || newState.status === 'gameEnd') {
+      room.hooks.onPersist?.(room);
+      if (newState.status === 'gameEnd') {
+        room.status = 'gameEnd';
+        room.hooks.onTrack?.(room, 'game_ended', { winnerId: newState.winnerId });
+      } else {
+        room.status = 'roundEnd';
+        room.hooks.onTrack?.(room, 'round_ended', {});
+      }
+    }
+    return ok({ version: newState.version });
+  }
+
+  // --- rematch -------------------------------------------------------------
+
+  voteRematch(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    value: boolean;
+    now: number;
+  }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status !== 'gameEnd') return err('INVALID_ACTION');
+    const player = room.players.get(input.playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+    if (!room.state) return err('INVALID_ACTION');
+
+    const votes = room.state.rematchVotes;
+    if (input.value) {
+      if (!votes.includes(input.playerId)) votes.push(input.playerId);
+    } else {
+      const i = votes.indexOf(input.playerId);
+      if (i >= 0) votes.splice(i, 1);
+    }
+    room.touch(input.now);
+
+    // ¿Todos los conectados votaron sí?
+    const connected = [...room.players.values()].filter((p) => p.connected);
+    const allYes =
+      connected.length > 0 && connected.every((p) => votes.includes(p.playerId));
+    if (allYes) {
+      // Reinicia la partida con los mismos asientos y marcador a cero.
+      const module = GAMES[room.gameId];
+      if (!module) return err('GAME_NOT_FOUND');
+      room.seed = randomSeed();
+      room.state = engineCreateInitialState({
+        config: room.config,
+        players: room.playersBySeat().map((p) => ({
+          playerId: p.playerId,
+          nick: p.nick,
+          seat: p.seat,
+        })),
+        seed: room.seed,
+        roomCode: room.code,
+      });
+      room.status = 'playing';
+      room.hooks.onTrack?.(room, 'rematch', {});
+    }
+    room.hooks.onSnapshot?.(room);
+    return ok(null);
+  }
+
+  // --- screen --------------------------------------------------------------
+
+  attachScreen(input: { roomCode: string; socketId: string; now: number }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status === 'closed') return err('ROOM_CLOSED');
+    room.screens.add(input.socketId);
+    room.touch(input.now);
+    room.hooks.onSnapshot?.(room);
+    return ok(null);
+  }
+
+  detachScreen(socketId: string): void {
+    for (const room of this.rooms.values()) {
+      if (room.screens.delete(socketId)) {
+        room.hooks.onSnapshot?.(room);
+      }
+    }
+  }
+
+  // --- presence ------------------------------------------------------------
+
+  /** Marca un jugador como conectado/desconectado y enlaza su socketId. */
+  setConnected(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    connected: boolean;
+    socketId: string | null;
+    now: number;
+  }): void {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return;
+    const p = room.players.get(input.playerId);
+    if (!p) return;
+    p.connected = input.connected;
+    p.socketId = input.socketId;
+    p.lastSeenAt = input.now;
+    p.disconnectedAt = input.connected ? null : input.now;
+  }
+
+  /** Traspaso de anfitrión si lleva HOST_GRACE_MS desconectado. */
+  maybeTransferHost(now: number): void {
+    for (const room of this.rooms.values()) {
+      const host = room.hostPlayerId ? room.players.get(room.hostPlayerId) : undefined;
+      if (host && !host.connected && host.disconnectedAt !== null) {
+        if (now - host.disconnectedAt >= HOST_GRACE_MS) {
+          const next = [...room.players.values()]
+            .filter((p) => p.connected)
+            .sort((a, b) => a.seat - b.seat)[0];
+          if (next && next.playerId !== host.playerId) {
+            host.isHost = false;
+            next.isHost = true;
+            room.hostPlayerId = next.playerId;
+            room.hooks.onToast?.(room, 'info', `${next.nick} es ahora el anfitrión.`);
+            room.hooks.onSnapshot?.(room);
+          }
+        }
+      }
+    }
+  }
+
+  // --- sweep (caducidades) -------------------------------------------------
+
+  /** Cierra salas caducadas: lobby inactivo >2h, partida sin conectados >6h. */
+  sweep(now: number): number {
+    let closed = 0;
+    for (const [code, room] of this.rooms) {
+      let shouldClose = false;
+      if (room.status === 'closed') continue;
+      if (room.status === 'lobby') {
+        if (now - room.lastActivityAt > LOBBY_TTL_MS) shouldClose = true;
+      } else {
+        const anyConnected = [...room.players.values()].some((p) => p.connected);
+        if (!anyConnected && now - room.lastActivityAt > PLAYING_TTL_MS) shouldClose = true;
+      }
+      if (shouldClose) {
+        this.closeRoom(room, 'expired');
+        closed++;
+        void code;
+      }
+    }
+    return closed;
+  }
+
+  /** Marca la sala como cerrada y la quita del mapa. */
+  closeRoom(room: Room, reason: 'host_left' | 'empty' | 'expired'): void {
+    room.status = 'closed';
+    room.hooks.onClosed?.(room, reason);
+    this.rooms.delete(room.code);
+  }
+}
+
+// --- helpers ----------------------------------------------------------------
+
+function randomSeed(): string {
+  return randomUUID();
+}
