@@ -82,7 +82,11 @@ interface FakeServer {
  * Servidor de Socket.IO de juguete: sabe responder room:create, room:resume
  * y game:action con el comportamiento que cada test necesita.
  */
-function startFakeServer(opts: { staleOnFirstAction: boolean }): Promise<FakeServer> {
+function startFakeServer(opts: {
+  staleOnFirstAction: boolean;
+  notHost?: boolean;
+  notEnoughPlayers?: boolean;
+}): Promise<FakeServer> {
   return new Promise((resolve) => {
     const httpServer = createServer();
     const io = new IoServer(httpServer, { cors: { origin: '*' } });
@@ -137,6 +141,36 @@ function startFakeServer(opts: { staleOnFirstAction: boolean }): Promise<FakeSer
           ack(ok({ version: actionCount + 1 }));
         },
       );
+
+      socket.on(
+        'room:config',
+        (
+          payload: { patch: Partial<typeof DEFAULT_CONFIG> },
+          ack: (res: Result<{ config: unknown }>) => void,
+        ) => {
+          if (opts.notHost) {
+            ack(err('NOT_HOST'));
+            return;
+          }
+          ack(ok({ config: { ...DEFAULT_CONFIG, ...payload.patch } }));
+        },
+      );
+
+      socket.on('room:start', (_payload: unknown, ack: (res: Result<null>) => void) => {
+        if (opts.notEnoughPlayers) {
+          ack(err('NOT_ENOUGH_PLAYERS'));
+          return;
+        }
+        ack(ok(null));
+      });
+
+      socket.on('room:kick', (_payload: { playerId: string }, ack: (res: Result<null>) => void) => {
+        if (opts.notHost) {
+          ack(err('NOT_HOST'));
+          return;
+        }
+        ack(ok(null));
+      });
     });
 
     httpServer.listen(0, () => {
@@ -270,4 +304,52 @@ describe('store.ts', () => {
     socket.disconnect();
     await stopFakeServer(server);
   }, 20000);
+
+  it('updateConfig/startRoom/kickPlayer: éxito limpia lastError', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+
+    const configOk = await useRondaStore.getState().updateConfig({ maxPlayers: 2 });
+    expect(configOk).toBe(true);
+    expect(useRondaStore.getState().lastError).toBeNull();
+
+    const startOk = await useRondaStore.getState().startRoom();
+    expect(startOk).toBe(true);
+
+    const kickOk = await useRondaStore.getState().kickPlayer('otro-jugador');
+    expect(kickOk).toBe(true);
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('updateConfig/startRoom/kickPlayer: error del servidor deja el texto traducido en lastError', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false, notHost: true });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+
+    const configOk = await useRondaStore.getState().updateConfig({ maxPlayers: 2 });
+    expect(configOk).toBe(false);
+    expect(useRondaStore.getState().lastError).toBe('Solo el anfitrión puede hacer eso.');
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('startRoom: NOT_ENOUGH_PLAYERS deja su texto en lastError', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false, notEnoughPlayers: true });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+
+    const startOk = await useRondaStore.getState().startRoom();
+    expect(startOk).toBe(false);
+    expect(useRondaStore.getState().lastError).toBe('Hacen falta al menos dos jugadores.');
+
+    await stopFakeServer(server);
+  }, 15000);
 });

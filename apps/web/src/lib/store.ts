@@ -38,6 +38,18 @@ export interface RondaState {
   resume: (roomCode: RoomCode) => Promise<boolean>;
   sendAction: (action: GameAction) => Promise<void>;
   leave: () => Promise<void>;
+
+  // Controles de anfitrión en el lobby (contrato P14: "cambiar variantes,
+  // expulsar, y Empezar"). No estaban en el alcance de P12 -solo pedía
+  // createRoom/joinRoom/resume/sendAction/leave-, pero P14 los necesita para
+  // el lobby y son del mismo tipo de acción (payload+ack sobre el socket
+  // único), así que se añaden aquí en vez de saltarse el store.
+  /** Solo anfitrión, solo en lobby. */
+  updateConfig: (patch: Partial<GameConfig>) => Promise<boolean>;
+  /** Solo anfitrión. */
+  startRoom: () => Promise<boolean>;
+  /** Solo anfitrión. */
+  kickPlayer: (playerId: PlayerId) => Promise<boolean>;
 }
 
 export const useRondaStore = create<RondaState>((set, get) => {
@@ -174,6 +186,36 @@ export const useRondaStore = create<RondaState>((set, get) => {
       await emitWithAck(socket, 'room:leave', {});
       if (code) clearToken(code);
       set({ view: null, version: 0, roomCode: null, playerId: null, events: [] });
+    },
+
+    async updateConfig(patch) {
+      const res = await emitWithAck(socket, 'room:config', { patch });
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      set({ lastError: null });
+      return true;
+    },
+
+    async startRoom() {
+      const res = await emitWithAck(socket, 'room:start', {});
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      set({ lastError: null });
+      return true;
+    },
+
+    async kickPlayer(playerId) {
+      const res = await emitWithAck(socket, 'room:kick', { playerId });
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      set({ lastError: null });
+      return true;
     },
   };
 });
