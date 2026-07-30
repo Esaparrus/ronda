@@ -114,6 +114,7 @@ function startFakeServer(opts: {
   notHost?: boolean;
   notEnoughPlayers?: boolean;
   attachFails?: boolean;
+  rematchInvalid?: boolean;
 }): Promise<FakeServer> {
   return new Promise((resolve) => {
     const httpServer = createServer();
@@ -209,6 +210,17 @@ function startFakeServer(opts: {
           }
           ack(ok({ roomCode: payload.roomCode }));
           setTimeout(() => socket.emit('state:view', { version: 1, view: makeTableView(1) }), 0);
+        },
+      );
+
+      socket.on(
+        'rematch:vote',
+        (_payload: { value: boolean }, ack: (res: Result<null>) => void) => {
+          if (opts.rematchInvalid) {
+            ack(err('INVALID_ACTION'));
+            return;
+          }
+          ack(ok(null));
         },
       );
     });
@@ -430,6 +442,38 @@ describe('store.ts', () => {
     const attached = await useRondaStore.getState().attachScreen('ZZZZ');
     expect(attached).toBe(false);
     expect(useRondaStore.getState().lastError).toBe('Esa sala no existe. Comprueba el código.');
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('voteRematch: éxito limpia lastError', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+
+    const voted = await useRondaStore.getState().voteRematch(true);
+    expect(voted).toBe(true);
+    expect(useRondaStore.getState().lastError).toBeNull();
+
+    // Cambiar de opinión (retirar el voto) es la misma llamada con `false`.
+    const unvoted = await useRondaStore.getState().voteRematch(false);
+    expect(unvoted).toBe(true);
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('voteRematch: error del servidor deja el texto traducido en lastError', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false, rematchInvalid: true });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+
+    const voted = await useRondaStore.getState().voteRematch(true);
+    expect(voted).toBe(false);
+    expect(useRondaStore.getState().lastError).toBe('Esa jugada no es válida.');
 
     await stopFakeServer(server);
   }, 15000);

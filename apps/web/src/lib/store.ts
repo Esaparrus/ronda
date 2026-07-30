@@ -61,6 +61,16 @@ export interface RondaState {
   startRoom: () => Promise<boolean>;
   /** Solo anfitrión. */
   kickPlayer: (playerId: PlayerId) => Promise<boolean>;
+
+  /**
+   * Voto de revancha en fin de partida (contrato P16 / §2.3). Evento propio
+   * `rematch:vote`, no una `GameAction` de `game:action`: el servidor lo
+   * gestiona fuera del reducer del motor (no consume ronda ni versión de
+   * juego), así que se modela como su propia función de store en vez de
+   * pasar por `sendAction`, igual que `updateConfig`/`startRoom`/`kickPlayer`
+   * en P14. `value: false` retira el voto (cambiar de opinión).
+   */
+  voteRematch: (value: boolean) => Promise<boolean>;
 }
 
 export const useRondaStore = create<RondaState>((set, get) => {
@@ -234,6 +244,16 @@ export const useRondaStore = create<RondaState>((set, get) => {
 
     async kickPlayer(playerId) {
       const res = await emitWithAck(socket, 'room:kick', { playerId });
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      set({ lastError: null });
+      return true;
+    },
+
+    async voteRematch(value) {
+      const res = await emitWithAck(socket, 'rematch:vote', { value });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
         return false;

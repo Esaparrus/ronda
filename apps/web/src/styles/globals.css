@@ -89,6 +89,22 @@ body {
   }
 }
 
+/* Revelado escalonado de combinaciones al final de ronda en /mesa (contrato
+ * §8.4: "escalonado, 80ms"). Cada fila de la tabla aplica esta animación
+ * con un `animation-delay` de `índice * 80ms` calculado en el componente
+ * (MesaRoundEndScreen/MesaGameEndScreen, P16): el keyframe en sí solo
+ * define el efecto (entra desde abajo, con opacidad), no el escalonado. */
+@keyframes stagger-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Animaciones: solo las permitidas por el contrato (§8.4), y respetando
  * prefers-reduced-motion en todas ellas (lo aplican los componentes que las
  * usan; esta regla es la red de seguridad global). */

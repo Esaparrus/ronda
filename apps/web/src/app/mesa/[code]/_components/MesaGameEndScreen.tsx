@@ -1,24 +1,78 @@
-// Fin de partida en /mesa: placeholder DELIBERADAMENTE MÍNIMO, mismo
-// motivo que MesaRoundEndScreen -- la clasificación final en grande y el
-// recuento de votos de revancha son P16. Vista siempre TableView: nunca
-// lee `me`.
+// Fin de partida en /mesa: misma información que /sala (GameEndScreen), en
+// grande, con la clasificación revelándose escalonada (contrato P16 /
+// §8.4). Vista siempre TableView: nunca lee `me`. Sin botones -- ni
+// «Revancha» ni «Salir» viven aquí, la pantalla central nunca acciona
+// nada; solo se informa de los votos ya emitidos.
 import type { TableView } from '@ronda/protocol';
+import { Avatar } from '@/components/ui/Avatar';
+import { Pill } from '@/components/ui/Pill';
+import { pendingConfirmations } from '@/lib/pending';
 
 export interface MesaGameEndScreenProps {
   view: TableView;
 }
 
+const STAGGER_MS = 80;
+
 export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
   const winner = view.players.find((p) => p.playerId === view.winnerId);
+  const rest = view.players
+    .filter((p) => p.playerId !== view.winnerId)
+    .sort((a, b) => a.score - b.score);
+  const standings = winner ? [winner, ...rest] : rest;
+  const waitingFor = pendingConfirmations(view.players, view.rematchVotes);
+  const votedNicks = view.players
+    .filter((p) => view.rematchVotes.includes(p.playerId))
+    .map((p) => p.nick);
 
   return (
-    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-4 px-10 text-center">
-      <h1 className="font-display text-[clamp(2.25rem,5vw,4rem)] leading-display text-hueso">
-        Partida terminada
-      </h1>
-      {winner ? (
-        <p className="text-[clamp(1.5rem,3vw,2.25rem)] text-hueso">Gana {winner.nick}</p>
-      ) : null}
+    <main className="flex min-h-dvh flex-1 flex-col items-center gap-8 px-10 py-10 text-center">
+      <header className="flex flex-col items-center gap-2">
+        <h1 className="font-display text-[clamp(2.25rem,5vw,4rem)] leading-display text-hueso">
+          Partida terminada
+        </h1>
+        {winner ? (
+          <p className="text-[clamp(1.5rem,3vw,2.25rem)] text-hueso">Gana {winner.nick}</p>
+        ) : null}
+        <p className="text-[clamp(0.9rem,1.5vw,1.15rem)] text-humo">
+          {view.round} {view.round === 1 ? 'ronda' : 'rondas'}
+        </p>
+      </header>
+
+      <ol className="flex w-full max-w-2xl flex-col gap-3">
+        {standings.map((p, i) => (
+          <li
+            key={p.playerId}
+            className="flex items-center gap-4 rounded-lg border border-linea bg-mesa px-5 py-3"
+            style={{
+              animation: `stagger-reveal 300ms ease-out both`,
+              animationDelay: `${i * STAGGER_MS}ms`,
+            }}
+          >
+            <span className="w-8 text-center font-mono text-[clamp(1rem,1.6vw,1.4rem)] text-humo">
+              {i + 1}
+            </span>
+            <Avatar name={p.nick} colorIndex={p.colorIndex} size={44} />
+            <span className="flex-1 text-left text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">
+              {p.nick}
+            </span>
+            {p.playerId === view.winnerId ? (
+              <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">Ganador</Pill>
+            ) : null}
+            {p.eliminated ? (
+              <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">Eliminado</Pill>
+            ) : null}
+            <span className="font-mono text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">{p.score}</span>
+          </li>
+        ))}
+      </ol>
+
+      <p className="mt-auto text-[clamp(0.9rem,1.5vw,1.15rem)] text-humo">
+        {votedNicks.length > 0
+          ? `Han votado revancha: ${votedNicks.join(', ')}.`
+          : 'Nadie ha votado revancha todavía.'}
+        {waitingFor.length > 0 ? ` Falta: ${waitingFor.map((p) => p.nick).join(', ')}.` : ''}
+      </p>
     </main>
   );
 }

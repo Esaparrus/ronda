@@ -328,8 +328,158 @@ describe('traspaso de anfitrión', () => {
 });
 
 // ---------------------------------------------------------------------------
-// sweep
+// revancha
 // ---------------------------------------------------------------------------
+
+describe('revancha', () => {
+  // Bot mínimo para llevar una partida hasta gameEnd sin calcular reglas por
+  // su cuenta: en su turno roba SIEMPRE del mazo (nunca del descarte, así
+  // `lockedCardId` nunca entra en juego) y prueba `close` con cada carta de
+  // la mano de 8, fiándose de si el propio RoomManager lo acepta o lo
+  // rechaza (CANNOT_CLOSE) -- igual que haría un cliente real probando
+  // suerte, no un oráculo de reglas. Si ninguna cierra, descarta la
+  // primera. `closeThreshold: 10` (máximo permitido) y `eliminationScore:
+  // 50` (mínimo permitido) se usan solo para que el bot llegue a gameEnd en
+  // un número acotado de rondas; no cambian ninguna regla, solo hacen más
+  // fácil cerrar y más rápida la eliminación.
+  // `clientActionId` tiene que ser único en TODA la vida de la sala, no solo
+  // dentro de una ronda: `room.processedActions` (idempotencia, contrato
+  // §2.4) no se limpia entre rondas. `crypto.randomUUID()` evita reintroducir
+  // ese bug (un contador que se reinicia por ronda colisionaría con ids ya
+  // usados en la ronda anterior y el servidor devolvería, por idempotencia,
+  // la respuesta CACHEADA de la ronda anterior en vez de aplicar la acción
+  // nueva -- exactamente el fallo que reprodujo esto la primera vez).
+  function playOneTurn(m: RoomManager, roomCode: string): void {
+    const st = stateOf(room(m, roomCode));
+    const turnPid = turnPlayerId(st);
+    const draw = m.applyAction({
+      roomCode,
+      playerId: turnPid,
+      clientActionId: crypto.randomUUID(),
+      expectedVersion: st.version,
+      action: { type: 'drawDeck' },
+      now: NOW,
+    });
+    if (!draw.ok) throw new Error(`robar falló: ${draw.code}`);
+
+    const st2 = stateOf(room(m, roomCode));
+    if (st2.status !== 'playing') return; // el robo agotó mazo+descarte y terminó la ronda sin cierre
+    const player = st2.players.find((p) => p.playerId === turnPid);
+    if (!player) throw new Error('jugador no encontrado tras robar');
+
+    for (const cardId of player.hand) {
+      const res = m.applyAction({
+        roomCode,
+        playerId: turnPid,
+        clientActionId: crypto.randomUUID(),
+        expectedVersion: stateOf(room(m, roomCode)).version,
+        action: { type: 'close', cardId },
+        now: NOW,
+      });
+      if (res.ok) return; // cerró: ronda terminada
+    }
+
+    const firstCard = player.hand[0];
+    if (firstCard === undefined) throw new Error('mano vacía tras robar');
+    const discardRes = m.applyAction({
+      roomCode,
+      playerId: turnPid,
+      clientActionId: crypto.randomUUID(),
+      expectedVersion: stateOf(room(m, roomCode)).version,
+      action: { type: 'discard', cardId: firstCard },
+      now: NOW,
+    });
+    if (!discardRes.ok) throw new Error(`descartar falló: ${discardRes.code}`);
+  }
+
+  function playUntilStatusChanges(m: RoomManager, roomCode: string, maxTurns = 400): void {
+    for (let i = 0; i < maxTurns; i++) {
+      if (stateOf(room(m, roomCode)).status !== 'playing') return;
+      playOneTurn(m, roomCode);
+    }
+    throw new Error(`no terminó la ronda/partida en ${maxTurns} turnos`);
+  }
+
+  it('con revancha aceptada por todos, empieza partida nueva con los mismos asientos y el marcador a cero', () => {
+    const m = mgr();
+    const config = {
+      ...DEFAULT_CONFIG,
+      closeThreshold: 10 as const,
+      eliminationScore: 50 as const,
+    };
+    const c = m.createRoom({ gameId: 'chinchon', config, nick: 'Ana', now: NOW });
+    if (!c.ok) throw new Error();
+    const j = m.joinRoom({ roomCode: c.value.roomCode, nick: 'Bruno', now: NOW });
+    if (!j.ok) throw new Error();
+    m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+
+    // Juega hasta gameEnd. Con eliminationScore bajo (50) y closeThreshold
+    // alto (10), un puñado de rondas bastan; se pone un tope por si acaso.
+    let guardRounds = 0;
+    while (stateOf(room(m, c.value.roomCode)).status !== 'gameEnd') {
+      guardRounds++;
+      if (guardRounds > 20) throw new Error('la partida no terminó en 20 rondas');
+      playUntilStatusChanges(m, c.value.roomCode);
+      const st = stateOf(room(m, c.value.roomCode));
+      if (st.status === 'roundEnd') {
+        // Ambos confirman la siguiente ronda (mismo evento que dispara
+        // «Siguiente ronda» en /sala, contrato P16).
+        const rA = m.applyAction({
+          roomCode: c.value.roomCode,
+          playerId: c.value.playerId,
+          clientActionId: crypto.randomUUID(),
+          expectedVersion: st.version,
+          action: { type: 'nextRound' },
+          now: NOW,
+        });
+        if (!rA.ok) throw new Error(`nextRound (Ana) falló: ${rA.code}`);
+        const rB = m.applyAction({
+          roomCode: c.value.roomCode,
+          playerId: j.value.playerId,
+          clientActionId: crypto.randomUUID(),
+          expectedVersion: stateOf(room(m, c.value.roomCode)).version,
+          action: { type: 'nextRound' },
+          now: NOW,
+        });
+        if (!rB.ok) throw new Error(`nextRound (Bruno) falló: ${rB.code}`);
+      }
+    }
+
+    const seatsBefore = stateOf(room(m, c.value.roomCode)).players.map((p) => ({
+      playerId: p.playerId,
+      seat: p.seat,
+    }));
+
+    // Revancha: Ana vota que sí -- todavía no basta (falta Bruno).
+    const v1 = m.voteRematch({
+      roomCode: c.value.roomCode,
+      playerId: c.value.playerId,
+      value: true,
+      now: NOW,
+    });
+    expect(v1.ok).toBe(true);
+    expect(stateOf(room(m, c.value.roomCode)).status).toBe('gameEnd');
+
+    // Bruno también vota que sí -- ahora sí, los dos conectados han votado.
+    const v2 = m.voteRematch({
+      roomCode: c.value.roomCode,
+      playerId: j.value.playerId,
+      value: true,
+      now: NOW,
+    });
+    expect(v2.ok).toBe(true);
+
+    const after = stateOf(room(m, c.value.roomCode));
+    expect(after.status).toBe('playing');
+    expect(after.rematchVotes).toEqual([]);
+    for (const p of after.players) {
+      expect(p.score).toBe(0);
+      expect(p.eliminated).toBe(false);
+    }
+    const seatsAfter = after.players.map((p) => ({ playerId: p.playerId, seat: p.seat }));
+    expect(seatsAfter).toEqual(seatsBefore);
+  });
+});
 
 describe('sweep', () => {
   it('cierra una sala en lobby con 2h+ de inactividad', () => {
