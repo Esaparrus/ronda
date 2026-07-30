@@ -17,8 +17,12 @@ import type {
 import { messageFor } from '@ronda/protocol';
 import { clearToken, getToken, saveToken } from './token.ts';
 import { connectIfNeeded, emitWithAck, getSocket } from './socket.ts';
+import { createServerDownWatcher } from './serverDown.ts';
 
 export type ConnectionStatus = 'online' | 'reconnecting' | 'offline';
+
+/** Motivo del cierre de sala, tal cual llega en `room:closed` (contrato §2.4). */
+export type ClosedReason = 'host_left' | 'empty' | 'expired';
 
 export interface RondaState {
   view: PlayerView | TableView | null;
@@ -31,6 +35,28 @@ export interface RondaState {
   events: GameEvent[];
   roomCode: RoomCode | null;
   playerId: PlayerId | null;
+
+  /**
+   * Contrato P17: "socket caído más de 30s -> pantalla de error con botón
+   * de reintento". `connection === 'reconnecting'` por sí solo no dice
+   * cuánto llevamos así (socket.io reintenta indefinido con backoff); este
+   * campo lo marca `true` solo cuando la caída lleva más del umbral
+   * (serverDown.ts). Se resetea a `false` en cuanto vuelve a estar online.
+   */
+  serverDown: boolean;
+  /**
+   * Contrato P17: "Anfitrión expulsándote -> mensaje claro y vuelta a la
+   * portada". El servidor no tiene un evento dedicado para esto (el
+   * contrato de `room:closed` solo admite host_left/empty/expired): en vez
+   * de tocar el protocolo congelado, el servidor cierra el socket del
+   * expulsado con un `disconnect(true)` normal de socket.io, que en el
+   * cliente llega como 'disconnect' con reason 'io server disconnect' --
+   * la ÚNICA vez que el servidor fuerza una desconexión hoy, así que es una
+   * señal inequívoca. Se resetea al empezar una sesión nueva.
+   */
+  kickedOut: boolean;
+  /** Motivo del último `room:closed` recibido, o null. Se resetea igual que `kickedOut`. */
+  closedReason: ClosedReason | null;
 
   createRoom: (gameId: GameId, config: GameConfig, nick: string) => Promise<boolean>;
   joinRoom: (roomCode: RoomCode, nick: string) => Promise<boolean>;
@@ -86,10 +112,17 @@ export const useRondaStore = create<RondaState>((set, get) => {
     set((s) => ({ events: [...s.events, ...payload.items] }));
   });
 
-  socket.on('room:closed', () => {
+  socket.on('room:closed', (payload) => {
     const code = get().roomCode;
     if (code) clearToken(code);
-    set({ view: null, version: 0, roomCode: null, playerId: null });
+    set({
+      view: null,
+      version: 0,
+      roomCode: null,
+      playerId: null,
+      closedReason: payload.reason,
+      lastError: messageFor('ROOM_CLOSED'),
+    });
   });
 
   // 'toast' no vive en este store: no es uno de los campos que pide el
@@ -99,18 +132,50 @@ export const useRondaStore = create<RondaState>((set, get) => {
 
   // --- ciclo de vida de la conexión -------------------------------------------
 
-  socket.on('connect', () => set({ connection: 'online' }));
+  const serverDownWatcher = createServerDownWatcher((down) => set({ serverDown: down }));
+
+  socket.on('connect', () => {
+    serverDownWatcher.reconnected();
+    set({ connection: 'online' });
+  });
 
   socket.on('disconnect', (reason) => {
+    if (reason === 'io server disconnect') {
+      // El servidor ha cerrado el socket a propósito: hoy, solo lo hace al
+      // expulsar a alguien (ver comentario de `kickedOut` en RondaState).
+      // socket.io NO reintenta solo tras este motivo -- hace falta llamar a
+      // connect() explícitamente para volver a intentarlo -- así que no se
+      // arranca el vigilante de caída ni se marca 'reconnecting': es una
+      // sesión terminada, no una red inestable.
+      const code = get().roomCode;
+      if (code) clearToken(code);
+      serverDownWatcher.reconnected(); // por si acaso: no debe quedar pendiente
+      set({
+        view: null,
+        version: 0,
+        roomCode: null,
+        playerId: null,
+        connection: 'offline',
+        kickedOut: true,
+      });
+      return;
+    }
     // 'io client disconnect' = lo cerramos nosotros (leave()): no reintenta.
-    // Cualquier otro motivo ('transport close', 'ping timeout', 'io server
-    // disconnect'...) sí dispara reconexión automática (reconnection: true).
-    set({ connection: reason === 'io client disconnect' ? 'offline' : 'reconnecting' });
+    // Cualquier otro motivo ('transport close', 'ping timeout'...) sí
+    // dispara reconexión automática (reconnection: true).
+    if (reason === 'io client disconnect') {
+      serverDownWatcher.reconnected();
+      set({ connection: 'offline' });
+      return;
+    }
+    serverDownWatcher.disconnected();
+    set({ connection: 'reconnecting' });
   });
 
   socket.io.on('reconnect_attempt', () => set({ connection: 'reconnecting' }));
   socket.io.on('reconnect_failed', () => set({ connection: 'offline' }));
   socket.io.on('reconnect', () => {
+    serverDownWatcher.reconnected();
     set({ connection: 'online' });
     // Reconexión (no la primera conexión): si hay token guardado para la
     // sala actual, retoma la sesión sola. Contrato P12.
@@ -130,6 +195,9 @@ export const useRondaStore = create<RondaState>((set, get) => {
     events: [],
     roomCode: null,
     playerId: null,
+    serverDown: false,
+    kickedOut: false,
+    closedReason: null,
 
     async createRoom(gameId, config, nick) {
       connectIfNeeded(socket);
@@ -139,7 +207,13 @@ export const useRondaStore = create<RondaState>((set, get) => {
         return false;
       }
       if (res.value.playerToken) saveToken(res.value.roomCode, res.value.playerToken);
-      set({ roomCode: res.value.roomCode, playerId: res.value.playerId, lastError: null });
+      set({
+        roomCode: res.value.roomCode,
+        playerId: res.value.playerId,
+        lastError: null,
+        kickedOut: false,
+        closedReason: null,
+      });
       return true;
     },
 
@@ -151,7 +225,13 @@ export const useRondaStore = create<RondaState>((set, get) => {
         return false;
       }
       if (res.value.playerToken) saveToken(res.value.roomCode, res.value.playerToken);
-      set({ roomCode: res.value.roomCode, playerId: res.value.playerId, lastError: null });
+      set({
+        roomCode: res.value.roomCode,
+        playerId: res.value.playerId,
+        lastError: null,
+        kickedOut: false,
+        closedReason: null,
+      });
       return true;
     },
 
@@ -167,13 +247,23 @@ export const useRondaStore = create<RondaState>((set, get) => {
         set({ lastError: messageFor(res.code) });
         return false;
       }
-      set({ roomCode: res.value.roomCode, playerId: res.value.playerId, lastError: null });
+      set({
+        roomCode: res.value.roomCode,
+        playerId: res.value.playerId,
+        lastError: null,
+        kickedOut: false,
+        closedReason: null,
+      });
       return true;
     },
 
     async sendAction(action) {
       // Nunca dos acciones a la vez: si ya hay una en vuelo, se ignora.
-      if (get().pendingAction) return;
+      // Contrato P17: "acciones bloqueadas" mientras no haya conexión sana
+      // -- igual de silencioso que el bloqueo por pendingAction: la señal
+      // visible ya la da el Banner (banda + cartel) y los botones
+      // deshabilitados, no hace falta un lastError adicional aquí.
+      if (get().pendingAction || get().connection !== 'online') return;
       set({ pendingAction: true, lastError: null });
 
       const attempt = () => {
@@ -211,7 +301,13 @@ export const useRondaStore = create<RondaState>((set, get) => {
       }
       // Sin playerId (una pantalla no es un jugador) y, deliberadamente,
       // sin guardar token: la pantalla central no tiene sesión que retomar.
-      set({ roomCode: res.value.roomCode, playerId: null, lastError: null });
+      set({
+        roomCode: res.value.roomCode,
+        playerId: null,
+        lastError: null,
+        kickedOut: false,
+        closedReason: null,
+      });
       return true;
     },
 
@@ -223,6 +319,8 @@ export const useRondaStore = create<RondaState>((set, get) => {
     },
 
     async updateConfig(patch) {
+      // Contrato P17: acciones bloqueadas mientras no haya conexión sana.
+      if (get().connection !== 'online') return false;
       const res = await emitWithAck(socket, 'room:config', { patch });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
@@ -233,6 +331,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
     },
 
     async startRoom() {
+      if (get().connection !== 'online') return false;
       const res = await emitWithAck(socket, 'room:start', {});
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
@@ -243,6 +342,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
     },
 
     async kickPlayer(playerId) {
+      if (get().connection !== 'online') return false;
       const res = await emitWithAck(socket, 'room:kick', { playerId });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
@@ -253,6 +353,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
     },
 
     async voteRematch(value) {
+      if (get().connection !== 'online') return false;
       const res = await emitWithAck(socket, 'rematch:vote', { value });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });

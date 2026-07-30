@@ -1,11 +1,20 @@
 // Punto de entrada cliente de /sala/[code]: retoma la sesión si hace falta
-// y despacha la pantalla según `view.status`. Contrato P14.
+// y despacha la pantalla según `view.status`. Contrato P14, ampliado en
+// P17 con los límites de conexión/sesión (§6, criterios de aceptación de
+// P17): recarga -> resume automático (ya existía, P14); sala cerrada o
+// caducada -> pantalla explicativa con "Crear una partida nueva" y token
+// borrado (el store ya lo borra solo); expulsión -> mensaje claro y vuelta
+// a la portada; servidor caído >30s -> pantalla de reintento; pestaña
+// duplicada -> pantalla de aviso, bloqueando el resto de la interfaz.
 'use client';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRondaStore } from '@/lib/store';
+import { useSingleTabGuard } from '@/lib/useSingleTabGuard';
 import { Banner } from '@/components/ui/Banner';
+import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
+import { InactiveTabScreen } from '@/components/ui/InactiveTabScreen';
 import { Lobby } from './Lobby';
 import { GameScreen } from './GameScreen';
 import { RoundEndScreen } from './RoundEndScreen';
@@ -20,8 +29,15 @@ export function SalaClient({ code }: SalaClientProps) {
   const roomCode = useRondaStore((s) => s.roomCode);
   const connection = useRondaStore((s) => s.connection);
   const lastError = useRondaStore((s) => s.lastError);
+  const serverDown = useRondaStore((s) => s.serverDown);
+  const kickedOut = useRondaStore((s) => s.kickedOut);
+  const closedReason = useRondaStore((s) => s.closedReason);
   const [resuming, setResuming] = useState(false);
   const [resumeAttempted, setResumeAttempted] = useState(false);
+
+  // Pestaña duplicada: se vigila siempre que sepamos en qué sala estamos,
+  // incluso mientras se está resumiendo -- no hace falta esperar a `view`.
+  const inactiveTab = useSingleTabGuard(code);
 
   useEffect(() => {
     // Si ya estamos en esta sala (venimos de /crear o /unirse, que ya
@@ -42,6 +58,51 @@ export function SalaClient({ code }: SalaClientProps) {
         setResumeAttempted(true);
       });
   }, [code]);
+
+  // Contrato P17: "socket caído más de 30s -> pantalla de error con botón
+  // de reintento". Se comprueba antes que nada más: si el servidor lleva
+  // caído tanto tiempo, ninguna otra pantalla (ni siquiera la de "entrando
+  // en la sala...") tiene sentido.
+  if (serverDown) {
+    return <ConnectionLostScreen />;
+  }
+
+  if (inactiveTab) {
+    return <InactiveTabScreen />;
+  }
+
+  if (kickedOut) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-16 text-hueso">El anfitrión te ha sacado de la sala.</p>
+        <Link
+          href="/"
+          className="flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
+        >
+          Volver a la portada
+        </Link>
+      </main>
+    );
+  }
+
+  if (closedReason) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-16 text-hueso">La sala {code} ya no está disponible.</p>
+        <p className="text-14 text-humo">
+          {closedReason === 'expired'
+            ? 'Llevaba demasiado tiempo sin actividad.'
+            : 'Se ha cerrado.'}
+        </p>
+        <Link
+          href="/crear"
+          className="flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
+        >
+          Crear una partida nueva
+        </Link>
+      </main>
+    );
+  }
 
   if (!view || roomCode !== code) {
     if (resuming || !resumeAttempted) {

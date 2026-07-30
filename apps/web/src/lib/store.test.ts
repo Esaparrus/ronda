@@ -103,6 +103,11 @@ interface FakeServer {
   io: IoServer;
   port: number;
   actionCount: () => number;
+  /** Cierra el socket del último cliente conectado con reason 'io server
+   * disconnect' (contrato P17: simula al servidor expulsando a alguien). */
+  disconnectClient: () => void;
+  /** Emite 'room:closed' al último cliente conectado (contrato P17). */
+  closeRoom: (reason: 'host_left' | 'empty' | 'expired') => void;
 }
 
 /**
@@ -122,8 +127,10 @@ function startFakeServer(opts: {
     let actionCount = 0;
     const tokensByRoom = new Map<string, string>();
     let nextToken = 1;
+    let lastSocket: ServerSocket | null = null;
 
     io.on('connection', (socket: ServerSocket) => {
+      lastSocket = socket;
       socket.on(
         'room:create',
         (
@@ -228,7 +235,14 @@ function startFakeServer(opts: {
     httpServer.listen(0, () => {
       const addr = httpServer.address();
       const port = typeof addr === 'object' && addr ? addr.port : 0;
-      resolve({ httpServer, io, port, actionCount: () => actionCount });
+      resolve({
+        httpServer,
+        io,
+        port,
+        actionCount: () => actionCount,
+        disconnectClient: () => lastSocket?.disconnect(true),
+        closeRoom: (reason) => lastSocket?.emit('room:closed', { reason }),
+      });
     });
   });
 }
@@ -352,6 +366,121 @@ describe('store.ts', () => {
       },
       { timeout: 5000, interval: 20 },
     );
+
+    socket.disconnect();
+    await stopFakeServer(server);
+  }, 20000);
+
+  it('disconnect con reason "io server disconnect" (expulsión): kickedOut, token borrado, no reintenta', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+
+    const created = await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+    expect(created).toBe(true);
+    expect(useRondaStore.getState().roomCode).toBe('ABCD');
+
+    // Simula al servidor expulsando a este cliente: disconnect(true) desde
+    // el lado del servidor llega al cliente como reason 'io server
+    // disconnect', el único caso que hoy usa el servidor real (room:kick).
+    server.disconnectClient();
+
+    await vi.waitFor(
+      () => {
+        if (!useRondaStore.getState().kickedOut) throw new Error('todavía no kickedOut');
+      },
+      { timeout: 3000, interval: 20 },
+    );
+
+    const state = useRondaStore.getState();
+    expect(state.connection).toBe('offline');
+    expect(state.roomCode).toBeNull();
+    expect(state.view).toBeNull();
+    expect(state.serverDown).toBe(false); // expulsión, no caída de red: no cuenta para el umbral de 30s
+
+    // El token se ha borrado: getToken ya no lo encuentra.
+    const { getToken } = await import('./token.ts');
+    expect(getToken('ABCD')).toBeNull();
+
+    // No reintenta solo (socket.io no reconecta tras 'io server
+    // disconnect'): sigue offline pasado un rato.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(useRondaStore.getState().connection).toBe('offline');
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('room:closed: guarda closedReason, lastError y borra el token', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+    expect(useRondaStore.getState().roomCode).toBe('ABCD');
+
+    // Espera a que llegue el 'state:view' inicial (el servidor de juguete lo
+    // manda con un setTimeout(0) tras el ack de room:create) ANTES de cerrar
+    // la sala: si no, la carrera entre ambos podría hacer que ese
+    // 'state:view' ya en vuelo llegara DESPUÉS de 'room:closed' y
+    // resucitara `view` -- algo que en el servidor real no pasaría (una
+    // sala cerrada no manda más vistas), pero que aquí depende del orden
+    // exacto de dos setTimeout(0) independientes.
+    await vi.waitFor(
+      () => {
+        if (useRondaStore.getState().view === null) throw new Error('todavía sin view inicial');
+      },
+      { timeout: 3000, interval: 20 },
+    );
+
+    server.closeRoom('expired');
+
+    await vi.waitFor(
+      () => {
+        if (useRondaStore.getState().closedReason === null)
+          throw new Error('todavía sin closedReason');
+      },
+      { timeout: 3000, interval: 20 },
+    );
+
+    const state = useRondaStore.getState();
+    expect(state.closedReason).toBe('expired');
+    expect(state.lastError).toBe('La sala se ha cerrado.');
+    expect(state.roomCode).toBeNull();
+    expect(state.view).toBeNull();
+
+    const { getToken } = await import('./token.ts');
+    expect(getToken('ABCD')).toBeNull();
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('sendAction no envía nada mientras connection !== "online"', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+    expect(useRondaStore.getState().connection).toBe('online');
+
+    // Corta el transporte de bajo nivel: cae a 'reconnecting'.
+    const { getSocket } = await import('./socket.ts');
+    const socket = getSocket();
+    (socket.io as unknown as { engine: { close: () => void } }).engine.close();
+
+    await vi.waitFor(
+      () => {
+        if (useRondaStore.getState().connection === 'online') throw new Error('todavía online');
+      },
+      { timeout: 2000, interval: 20 },
+    );
+
+    const before = server.actionCount();
+    await useRondaStore.getState().sendAction({ type: 'discard', cardId: 'oros-1' });
+    expect(server.actionCount()).toBe(before); // no se ha enviado nada
+    expect(useRondaStore.getState().pendingAction).toBe(false);
 
     socket.disconnect();
     await stopFakeServer(server);

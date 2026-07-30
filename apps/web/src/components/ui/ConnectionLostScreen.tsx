@@ -1,0 +1,24 @@
+// Pantalla de error a pantalla completa cuando el socket lleva caído más
+// del umbral (30s, serverDown.ts). Contrato P17: "pantalla de error con
+// botón de reintento, nunca un error de React sin capturar". "Reintentar"
+// recarga la página entera a propósito: es el reintento más simple y
+// fiable -- vuelve a montar el socket desde cero y, si hay token guardado,
+// SalaClient/MesaClient retoman la sesión solos (contrato P12), en vez de
+// intentar remendar un socket que ya lleva medio minuto sin responder.
+'use client';
+
+import { Button } from './Button';
+
+export function ConnectionLostScreen() {
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
+      <h1 className="font-display text-28 leading-display text-hueso">
+        Sin conexión con el servidor
+      </h1>
+      <p className="text-16 text-humo">
+        Llevamos un rato sin poder conectar. Comprueba tu conexión e inténtalo de nuevo.
+      </p>
+      <Button onClick={() => window.location.reload()}>Reintentar</Button>
+    </main>
+  );
+}

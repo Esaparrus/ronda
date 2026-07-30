@@ -122,13 +122,31 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     if (!guard(deps, sid, 'room:kick', payload, respond)) return;
     const st = requirePlayer(deps, sid, respond);
     if (!st) return;
+    // El socketId del expulsado se lee ANTES de `kick`: el manager borra al
+    // jugador de `room.players`, así que después ya no habría por dónde
+    // encontrarlo. Contrato P17: "Anfitrión expulsándote -> mensaje claro y
+    // vuelta a la portada". El protocolo (§2.4) no tiene un evento propio
+    // para esto (`room:closed` solo admite host_left/empty/expired), así
+    // que en vez de tocarlo se usa un mecanismo ya estándar de socket.io:
+    // cerrar el socket del expulsado con `disconnect(true)`. En el cliente
+    // esto llega como 'disconnect' con reason 'io server disconnect' --que
+    // socket.io nunca usa para una caída de red normal-- y store.ts lo
+    // interpreta como "me han echado", no como "he perdido la conexión".
+    const targetSocketId = deps.mgr
+      .getRoomByCode(st.roomCode)
+      ?.players.get(payload.playerId)?.socketId;
     const r = deps.mgr.kick({
       roomCode: st.roomCode,
       playerId: st.playerId,
       targetId: payload.playerId,
       now: deps.now(),
     });
-    if (r.ok) rebroadcast(deps, st.roomCode);
+    if (r.ok) {
+      rebroadcast(deps, st.roomCode);
+      if (targetSocketId) {
+        deps.io.sockets.sockets.get(targetSocketId)?.disconnect(true);
+      }
+    }
     ack(r);
   });
 

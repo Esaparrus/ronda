@@ -20,6 +20,7 @@ export interface GameScreenProps {
 export function GameScreen({ view }: GameScreenProps) {
   const [selected, setSelected] = useState<CardId | null>(null);
   const pendingAction = useRondaStore((s) => s.pendingAction);
+  const offline = useRondaStore((s) => s.connection !== 'online');
 
   const { me } = view;
   const myPlayer = view.players.find((p) => p.playerId === me.playerId);
@@ -92,6 +93,7 @@ export function GameScreen({ view }: GameScreenProps) {
           canClose={me.canClose}
           closableDiscards={me.closableDiscards}
           pendingAction={pendingAction}
+          offline={offline}
           onDrawDeck={handleDrawDeck}
           onDiscard={handleDiscard}
           onClose={handleClose}

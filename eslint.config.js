@@ -34,6 +34,14 @@ export default tseslint.config(
     },
   },
   {
+    // Equivalente de cliente del logger del servidor (contrato P17): única
+    // salida de consola permitida en apps/web, usada solo por error.tsx.
+    files: ['apps/web/src/lib/logger.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     // public/sw.js corre en el contexto global del Service Worker (ni Node
     // ni DOM de página): declara sus propios globales. Contrato P10.
     files: ['apps/web/public/sw.js'],

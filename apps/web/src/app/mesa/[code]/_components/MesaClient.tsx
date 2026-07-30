@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import type { TableView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { Banner } from '@/components/ui/Banner';
+import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
 import { CornerCode } from './CornerCode';
 import { MesaLobbyBoard } from './MesaLobbyBoard';
 import { MesaGameBoard } from './MesaGameBoard';
@@ -33,6 +34,8 @@ export function MesaClient({ code }: MesaClientProps) {
   const roomCode = useRondaStore((s) => s.roomCode);
   const connection = useRondaStore((s) => s.connection);
   const lastError = useRondaStore((s) => s.lastError);
+  const serverDown = useRondaStore((s) => s.serverDown);
+  const closedReason = useRondaStore((s) => s.closedReason);
   const [attaching, setAttaching] = useState(false);
   const [attachAttempted, setAttachAttempted] = useState(false);
 
@@ -52,11 +55,25 @@ export function MesaClient({ code }: MesaClientProps) {
       });
   }, [code]);
 
+  if (serverDown) {
+    return <ConnectionLostScreen />;
+  }
+
   if (!view || view.kind !== 'table' || roomCode !== code) {
     if (attaching || !attachAttempted) {
       return (
         <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
           <p className="text-16 text-humo">Conectando con la sala…</p>
+        </main>
+      );
+    }
+    if (closedReason) {
+      return (
+        <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+          <p className="text-16 text-hueso">La sala {code} ya no está disponible.</p>
+          <Link href="/mesa" className="text-14 text-brasa underline">
+            Probar con otro código
+          </Link>
         </main>
       );
     }

@@ -25,6 +25,8 @@ export interface ActionBarProps {
   canClose: boolean;
   closableDiscards: CardId[];
   pendingAction: boolean;
+  /** Contrato P17: acciones bloqueadas mientras no haya conexión sana. */
+  offline: boolean;
   onDrawDeck: () => void;
   onDiscard: (cardId: CardId) => void;
   onClose: (cardId: CardId) => void;
@@ -41,6 +43,7 @@ export function ActionBar({
   canClose,
   closableDiscards,
   pendingAction,
+  offline,
   onDrawDeck,
   onDiscard,
   onClose,
@@ -96,7 +99,7 @@ export function ActionBar({
       <div className="px-6 py-4">
         <Button
           onClick={onDrawDeck}
-          disabled={pendingAction || !availableActions.includes('drawDeck')}
+          disabled={pendingAction || offline || !availableActions.includes('drawDeck')}
         >
           Robar del mazo
         </Button>
@@ -115,7 +118,7 @@ export function ActionBar({
           if (willClose) onClose(selected);
           else onDiscard(selected);
         }}
-        disabled={pendingAction || !selected}
+        disabled={pendingAction || offline || !selected}
       >
         {willClose ? 'Cerrar' : 'Descartar'}
       </Button>
