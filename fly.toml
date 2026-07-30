@@ -1,0 +1,43 @@
+# Configuración de Fly.io para @ronda/server. Contrato P19.
+#
+# NO HAGAS (explícito en el contrato): sin escalado horizontal, sin varias
+# instancias. Las salas viven en memoria de un solo proceso Node
+# (00-MASTER.md §2) -- una segunda máquina tendría su propia memoria, sin
+# salas compartidas, y repartiría jugadores de la misma sala entre procesos
+# distintos que no se hablan. Por eso `min_machines_running = 1` Y
+# `auto_stop_machines = false`: tiene que haber SIEMPRE exactamente una
+# máquina viva, nunca cero (perdería todas las salas en memoria al dormirse)
+# ni dos o más (fragmentaría las salas). Tras el primer `fly deploy`,
+# confirmar con `fly scale count 1` y no tocarlo.
+app = "ronda-server"
+primary_region = "mad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # PORT tiene que coincidir con el EXPOSE del Dockerfile y con
+  # internal_port de abajo. DATABASE_URL y CORS_ORIGIN NO van aquí: se fijan
+  # con `fly secrets set` en el despliegue real (ver DEPLOY.md) -- el
+  # primero es un secreto de verdad, el segundo depende del dominio de
+  # Vercel que no existe todavía en este repo.
+  PORT = "8787"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

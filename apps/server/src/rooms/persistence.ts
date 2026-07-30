@@ -17,16 +17,30 @@ const DEBOUNCE_MS = 400;
  * RoomManager: se llama en cada mutación; él decide si escribir ya o esperar.
  */
 export class Persistence {
+  private config: DbConfig | null;
+  private logger: Logger;
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   /** matchId por roomCode (se asigna al crear la partida). */
   private matchIds = new Map<string, string>();
   /** roomId persistido por roomCode. */
   private roomIds = new Map<string, string>();
 
-  constructor(
-    private config: DbConfig | null,
-    private logger: Logger,
-  ) {}
+  // Nota P19: NO son "parameter properties" (constructor(private config...)) a
+  // propósito. Esa forma abreviada de TypeScript no es solo un tipo que se
+  // borra: genera código real (this.config = config), y el "type stripping"
+  // nativo de Node (que este proyecto usa para ejecutar .ts directamente sin
+  // paso de build, ver Dockerfile) solo soporta sintaxis puramente erasable.
+  // Con la forma abreviada, `node apps/server/src/index.ts` fallaba en el
+  // arranque con ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX -- se detectó al simular
+  // el arranque real de la imagen de Docker para este mismo paquete P19.
+  // tsc/vitest nunca lo detectaron porque ninguno de los dos ejecuta el
+  // archivo con el "strip-only mode" de Node: tsc solo type-checkea y vitest
+  // transpila con esbuild (que sí soporta parameter properties). Reescrito
+  // sin cambiar ningún comportamiento.
+  constructor(config: DbConfig | null, logger: Logger) {
+    this.config = config;
+    this.logger = logger;
+  }
 
   /** Marca una sala para snapshot debounced (la vía normal tras cada acción). */
   scheduleSnapshot(room: Room): void {

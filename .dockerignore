@@ -1,0 +1,30 @@
+# Contrato P19: el Dockerfile solo copia explícitamente lo que necesita
+# (apps/server, packages/protocol, packages/engine, db/migrations y los
+# manifests). Este .dockerignore reduce el contexto de build enviado al
+# daemon de Docker -- sobre todo node_modules/.git, que si no se excluyeran
+# se copiarían enteros al enviar el contexto aunque ningún COPY los use.
+node_modules/
+**/node_modules/
+.git/
+.pnpm-store/
+
+# apps/web se despliega en Vercel, no en esta imagen (ver Dockerfile).
+apps/web/
+
+# builds y caches locales
+.next/
+dist/
+build/
+out/
+coverage/
+next-env.d.ts
+
+# entorno y secretos: nunca deben entrar en una capa de imagen
+.env
+.env.local
+.env.*.local
+
+*.log
+.DS_Store
+.vscode/
+.idea/
