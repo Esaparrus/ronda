@@ -13,7 +13,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server as HttpServer } from 'node:http';
 import { Server as IoServer, type Socket as ServerSocket } from 'socket.io';
-import { DEFAULT_CONFIG, err, ok, type PlayerView, type Result } from '@ronda/protocol';
+import {
+  DEFAULT_CONFIG,
+  err,
+  ok,
+  type PlayerView,
+  type Result,
+  type TableView,
+} from '@ronda/protocol';
 
 class FakeStorage implements Storage {
   private store = new Map<string, string>();
@@ -37,6 +44,26 @@ class FakeStorage implements Storage {
   }
 }
 (globalThis as typeof globalThis & { localStorage: Storage }).localStorage = new FakeStorage();
+
+function makeTableView(round: number): TableView {
+  return {
+    kind: 'table',
+    roomCode: 'ABCD',
+    gameId: 'chinchon',
+    config: DEFAULT_CONFIG,
+    status: 'playing',
+    round,
+    players: [],
+    turnPlayerId: null,
+    turnPhase: null,
+    deckCount: 40,
+    discardTop: null,
+    discardCount: 0,
+    roundResult: null,
+    winnerId: null,
+    rematchVotes: [],
+  } satisfies TableView;
+}
 
 function makeView(round: number): PlayerView {
   return {
@@ -86,6 +113,7 @@ function startFakeServer(opts: {
   staleOnFirstAction: boolean;
   notHost?: boolean;
   notEnoughPlayers?: boolean;
+  attachFails?: boolean;
 }): Promise<FakeServer> {
   return new Promise((resolve) => {
     const httpServer = createServer();
@@ -171,6 +199,18 @@ function startFakeServer(opts: {
         }
         ack(ok(null));
       });
+
+      socket.on(
+        'screen:attach',
+        (payload: { roomCode: string }, ack: (res: Result<{ roomCode: string }>) => void) => {
+          if (opts.attachFails) {
+            ack(err('ROOM_NOT_FOUND'));
+            return;
+          }
+          ack(ok({ roomCode: payload.roomCode }));
+          setTimeout(() => socket.emit('state:view', { version: 1, view: makeTableView(1) }), 0);
+        },
+      );
     });
 
     httpServer.listen(0, () => {
@@ -349,6 +389,47 @@ describe('store.ts', () => {
     const startOk = await useRondaStore.getState().startRoom();
     expect(startOk).toBe(false);
     expect(useRondaStore.getState().lastError).toBe('Hacen falta al menos dos jugadores.');
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('attachScreen: se une con solo el código, sin guardar ningún token', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+    const { listSavedRooms } = await import('./token.ts');
+
+    const attached = await useRondaStore.getState().attachScreen('ABCD');
+    expect(attached).toBe(true);
+    expect(useRondaStore.getState().roomCode).toBe('ABCD');
+    expect(useRondaStore.getState().playerId).toBeNull();
+    expect(useRondaStore.getState().lastError).toBeNull();
+
+    // La pantalla central nunca guarda sesión: contrato §6 ("Pantalla
+    // central... Nunca puede enviar game:action ni room:*"), P15.
+    expect(listSavedRooms()).toEqual([]);
+
+    await vi.waitFor(
+      () => {
+        if (useRondaStore.getState().view?.kind !== 'table')
+          throw new Error('todavía sin TableView');
+      },
+      { timeout: 3000, interval: 20 },
+    );
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('attachScreen: error del servidor deja el texto traducido en lastError', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false, attachFails: true });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+
+    const attached = await useRondaStore.getState().attachScreen('ZZZZ');
+    expect(attached).toBe(false);
+    expect(useRondaStore.getState().lastError).toBe('Esa sala no existe. Comprueba el código.');
 
     await stopFakeServer(server);
   }, 15000);

@@ -72,6 +72,23 @@ body {
   outline-offset: 2px;
 }
 
+/* Lanzamiento de la carta al descarte (contrato §8.4: 180ms). La rotación
+ * determinista por CardId la aplica el propio componente (ver CenterTable,
+ * P15) con un `transform: rotate()` estático en un envoltorio; este
+ * keyframe solo anima la entrada (opacidad + escala) del envoltorio
+ * interior, remontado con `key={discardTop}` para que se dispare de nuevo
+ * cada vez que cambia la carta superior del descarte. */
+@keyframes discard-fling {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Animaciones: solo las permitidas por el contrato (§8.4), y respetando
  * prefers-reduced-motion en todas ellas (lo aplican los componentes que las
  * usan; esta regla es la red de seguridad global). */

@@ -38,6 +38,17 @@ export interface RondaState {
   resume: (roomCode: RoomCode) => Promise<boolean>;
   sendAction: (action: GameAction) => Promise<void>;
   leave: () => Promise<void>;
+  /**
+   * Pantalla central (`/mesa/[code]`, contrato P15 / §6 "Pantalla central").
+   * Se conecta solo con el código de sala, SIN token: nunca llama a
+   * saveToken. Recibe únicamente TableView (nunca game:action ni room:*).
+   * No comparte código con joinRoom/resume a propósito: aunque el payload
+   * final que via al socket es parecido, la ausencia de token es una
+   * garantía de seguridad del contrato, no un detalle de implementación,
+   * así que se mantiene como su propia función explícita en vez de una
+   * rama condicional dentro de joinRoom.
+   */
+  attachScreen: (roomCode: RoomCode) => Promise<boolean>;
 
   // Controles de anfitrión en el lobby (contrato P14: "cambiar variantes,
   // expulsar, y Empezar"). No estaban en el alcance de P12 -solo pedía
@@ -179,6 +190,19 @@ export const useRondaStore = create<RondaState>((set, get) => {
       }
 
       set({ pendingAction: false, lastError: messageFor(res.code) });
+    },
+
+    async attachScreen(roomCode) {
+      connectIfNeeded(socket);
+      const res = await emitWithAck(socket, 'screen:attach', { roomCode });
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      // Sin playerId (una pantalla no es un jugador) y, deliberadamente,
+      // sin guardar token: la pantalla central no tiene sesión que retomar.
+      set({ roomCode: res.value.roomCode, playerId: null, lastError: null });
+      return true;
     },
 
     async leave() {
