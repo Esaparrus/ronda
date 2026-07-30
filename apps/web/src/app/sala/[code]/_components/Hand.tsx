@@ -140,7 +140,10 @@ export function Hand({
     <div className="flex flex-col gap-2 border-t border-linea px-4 pb-4 pt-3">
       <div className="flex items-center justify-between">
         <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
-        <Button variant="ghost" onClick={handleAutoSort} className="min-h-0 px-4 py-2 text-14">
+        {/* Contrato §8.5.2 / P18: zona táctil mínima 56px -- se mantiene el
+         * min-h-14 por defecto del Button (sin min-h-0), solo se recorta el
+         * padding horizontal para que quepa junto al título "Tu mano". */}
+        <Button variant="ghost" onClick={handleAutoSort} className="px-4 text-14">
           Ordenar
         </Button>
       </div>

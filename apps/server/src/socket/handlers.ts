@@ -83,7 +83,14 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
       playerToken: payload.playerToken,
       now: deps.now(),
     });
-    if (r.ok) bindAndBroadcast(deps, sid, r.value.roomCode, r.value.playerId);
+    if (r.ok) {
+      bindAndBroadcast(deps, sid, r.value.roomCode, r.value.playerId);
+      // Telemetría P18: solo 'room:resume' cuenta como reconexión -- a
+      // diferencia de room:create/room:join, que también pasan por
+      // bindAndBroadcast pero son la primera conexión, no una recuperación.
+      const room = deps.mgr.getRoomByCode(r.value.roomCode);
+      room?.hooks.onTrack?.(room, 'reconnect', { playerId: r.value.playerId });
+    }
     ack(r);
   });
 

@@ -31,12 +31,17 @@ export default function JuegosPage() {
         </ul>
       </section>
 
-      <Link
-        href="/crear"
-        className="mt-auto flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
-      >
-        Crear partida
-      </Link>
+      <div className="mt-auto flex flex-col gap-3">
+        <Link
+          href="/crear"
+          className="flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
+        >
+          Crear partida
+        </Link>
+        <Link href="/reglas" className="text-center text-14 text-brasa underline">
+          Ver las reglas completas
+        </Link>
+      </div>
     </main>
   );
 }

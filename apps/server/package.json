@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "start": "node src/index.ts",
     "sim": "node src/sim/run.ts",
-    "db:migrate": "node src/db/migrate-cli.ts"
+    "db:migrate": "node src/db/migrate-cli.ts",
+    "report": "node src/scripts/report.ts"
   },
   "dependencies": {
     "@ronda/engine": "workspace:*",

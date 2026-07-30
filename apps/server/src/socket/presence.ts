@@ -38,6 +38,13 @@ export function unbindSocket(
     if (room) {
       broadcastConnection(io, room);
       broadcastRoom(io, room);
+      // Telemetría P18. Solo se llega aquí para desconexiones reales (caída
+      // de red, cierre de pestaña, o el disconnect(true) forzado de una
+      // expulsión, P17): un `room:leave` normal borra el binding ANTES de
+      // que este handler se ejecute (ver el handler de 'room:leave'), así
+      // que nunca cuenta como "desconexión" de cara a la métrica de
+      // reconexión de 00-MASTER.md §10.
+      room.hooks.onTrack?.(room, 'disconnect', { playerId: binding.playerId });
     }
   } else {
     // Podría ser una pantalla.

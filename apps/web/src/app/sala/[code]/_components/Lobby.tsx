@@ -128,11 +128,9 @@ export function Lobby({ view }: LobbyProps) {
               {p.isHost ? <Pill>Anfitrión</Pill> : null}
               <Pill>{p.connected ? 'Conectado' : 'Desconectado'}</Pill>
               {isHost && !p.isHost ? (
-                <Button
-                  variant="danger"
-                  onClick={() => handleKick(p.playerId)}
-                  className="min-h-0 px-3 py-2"
-                >
+                // Contrato §8.5.2 / P18: zona táctil mínima 56px -- se
+                // mantiene el min-h-14 por defecto del Button.
+                <Button variant="danger" onClick={() => handleKick(p.playerId)} className="px-3">
                   Expulsar
                 </Button>
               ) : null}

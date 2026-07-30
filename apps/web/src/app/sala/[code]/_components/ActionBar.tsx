@@ -74,6 +74,30 @@ export function ActionBar({
     return () => clearInterval(id);
   }, [isMyTurn, turnPlayerConnected]);
 
+  // Anuncio de cambio de turno para lectores de pantalla (contrato P18:
+  // "aria-live para el cambio de turno"). Región siempre presente y visible
+  // solo a tecnología de asistencia (sr-only): el texto visible de cada
+  // rama de abajo ya cumple "una sola acción principal visible" (§8.5.1) y
+  // "máximo 12 palabras" (§8.5.3), así que este anuncio no duplica esa
+  // interfaz, solo la hace audible en el momento exacto en que cambia el
+  // turno (aria-live="polite": espera a que el lector termine lo que esté
+  // diciendo, no interrumpe).
+  const announcement = !isMyTurn
+    ? turnPlayerNick
+      ? turnPlayerConnected
+        ? `Le toca a ${turnPlayerNick}.`
+        : `Esperando a ${turnPlayerNick}.`
+      : ''
+    : turnPhase === 'draw'
+      ? 'Te toca. Roba una carta.'
+      : 'Te toca. Descarta una carta.';
+
+  const liveRegion = (
+    <p className="sr-only" aria-live="polite" role="status">
+      {announcement}
+    </p>
+  );
+
   if (!isMyTurn) {
     if (!turnPlayerId || !turnPlayerNick) return <div className="px-6 py-4" />;
     if (!turnPlayerConnected) {
@@ -81,6 +105,7 @@ export function ActionBar({
       const seconds = Math.max(0, Math.floor((Date.now() - since) / 1000));
       return (
         <div className="px-6 py-4 text-center">
+          {liveRegion}
           <p className="text-16 text-hueso">
             Esperando a {turnPlayerNick}, {seconds} s
           </p>
@@ -89,6 +114,7 @@ export function ActionBar({
     }
     return (
       <div className="px-6 py-4 text-center">
+        {liveRegion}
         <p className="text-16 text-hueso">Le toca a {turnPlayerNick}</p>
       </div>
     );
@@ -97,6 +123,7 @@ export function ActionBar({
   if (turnPhase === 'draw') {
     return (
       <div className="px-6 py-4">
+        {liveRegion}
         <Button
           onClick={onDrawDeck}
           disabled={pendingAction || offline || !availableActions.includes('drawDeck')}
@@ -112,6 +139,7 @@ export function ActionBar({
 
   return (
     <div className="px-6 py-4">
+      {liveRegion}
       <Button
         onClick={() => {
           if (!selected) return;

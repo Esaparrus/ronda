@@ -7,6 +7,7 @@
 // Los tokens de palo (oro/azul/verde/brasa) se reservan para elementos NO
 // textuales -- el símbolo y la línea interior -- donde el contrato exige
 // solo 3:1 de contraste no-textual/gráfico, que si cumplen.
+import { memo } from 'react';
 import { parseCardId, type CardId } from '@ronda/protocol';
 import { CardBack } from './CardBack';
 import { SuitSymbol } from './suits';
@@ -57,8 +58,17 @@ export interface PlayingCardProps {
 /**
  * Carta jugable, puramente presentacional: sin estado propio, sin efectos.
  * Toda variación visual (tamaño, selección, atenuado) llega por props.
+ *
+ * Memoizada (contrato P18: "sin re-render de toda la mano al cambiar el
+ * turno"). Todas las props son primitivas (string/number/boolean), así que
+ * la comparación superficial por defecto de `memo` ya evita volver a
+ * renderizar cada `<PlayingCard>` de la mano cuando cambia el turno y solo
+ * varían props ajenas a esa carta en concreto (p.ej. `turnPlayerId` en
+ * PlayerStrip, o `selected` de UNA carta en Hand) -- sin ella, cada cambio
+ * de turno re-renderizaba las 7-8 cartas de la mano aunque ninguna hubiera
+ * cambiado.
  */
-export function PlayingCard({
+function PlayingCardComponent({
   cardId,
   size = 'md',
   faceDown = false,
@@ -187,6 +197,9 @@ export function PlayingCard({
     </svg>
   );
 }
+
+export const PlayingCard = memo(PlayingCardComponent);
+PlayingCard.displayName = 'PlayingCard';
 
 const JOKER_CORNERS: Array<{
   x: number;

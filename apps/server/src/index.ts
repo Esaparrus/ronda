@@ -10,6 +10,7 @@ import { loadConfig, type ServerConfig } from './config.ts';
 import { RoomManager } from './rooms/room-manager.ts';
 import { Persistence } from './rooms/persistence.ts';
 import { broadcastRoom } from './socket/broadcast.ts';
+import { track } from './db/playtest-repo.ts';
 import '@ronda/engine'; // registra los módulos de juego en GAMES (side effect).
 
 export type SnapshotHook = () => Promise<void>;
@@ -60,8 +61,11 @@ export async function startServer(opts: {
     onPersist: (room) => {
       void persistence.flushNow(room);
     },
-    onTrack: (_room, _kind, _payload) => {
-      // Telemetría: P18 la engancha a playtest-repo.
+    onTrack: (room, kind, payload) => {
+      // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
+      // no puede tumbar una partida. `void` porque el llamador (room-
+      // manager.ts) tampoco espera esta promesa.
+      void track(dbConfig, kind, payload, room.code);
     },
   }));
 
@@ -93,6 +97,22 @@ export async function startServer(opts: {
 
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
+
+  // Telemetría P18 ('error', el único de los 9 kinds del contrato que no
+  // sale de una acción concreta de sala): registra la excepción y, EXACTO
+  // igual que el comportamiento por defecto de Node sin este handler,
+  // termina el proceso -- esto no ablanda un fallo real, solo deja
+  // constancia en playtest_events antes de salir. Sin roomCode: una
+  // excepción a este nivel no está necesariamente ligada a una sala.
+  process.on('uncaughtException', (e) => {
+    logger.error('excepción no capturada', { detail: e.message, stack: e.stack });
+    void track(dbConfig, 'error', { message: e.message }).finally(() => process.exit(1));
+  });
+  process.on('unhandledRejection', (reason) => {
+    const detail = reason instanceof Error ? reason.message : String(reason);
+    logger.error('promesa rechazada sin capturar', { detail });
+    void track(dbConfig, 'error', { message: detail }).finally(() => process.exit(1));
+  });
 
   return {
     close: async () => {
