@@ -11,6 +11,7 @@ o tablet opcional hace de tablero público.
 - `02-PAQUETES.md` — paquetes de tarea P0–P20 (prompts para la IA generadora).
 - `03-CONTEXTO-PEGABLE.md` — contexto que se pega al inicio de cada sesión.
 - `DEPLOY.md` — cómo desplegar: base de datos, servidor (Fly.io) y web (Vercel).
+- `PLAYTEST.md` — guion de las tres sesiones de playtest con grupos reales.
 
 ## Monorepo
 
