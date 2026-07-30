@@ -8,6 +8,7 @@ build/
 .next/
 out/
 coverage/
+next-env.d.ts
 
 # entorno y secretos
 .env

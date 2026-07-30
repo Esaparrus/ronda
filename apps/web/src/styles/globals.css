@@ -1,0 +1,87 @@
+/*
+ * Tokens de diseño de Ronda. Contrato §8 completo. FUENTE ÚNICA de color y
+ * tipografía: ningún fichero de src/app o src/components escribe un literal
+ * #rrggbb (lo prohíbe una regla de ESLint) — todo pasa por los tokens de aquí,
+ * mapeados a utilidades de Tailwind con @theme (bg-mesa, text-hueso,
+ * border-linea, text-brasa...).
+ *
+ * Concepto (§8): no es un casino. Es una mesa de bar con una baraja bien
+ * impresa: tinta densa, papel hueso, colores planos, geometría. Nada de verde
+ * tapete ni dorado de casino.
+ */
+@import 'tailwindcss';
+
+@theme {
+  /* --- Colores (contrato §8.1) ------------------------------------------- */
+  --color-tinta: #14161f; /* fondo general */
+  --color-mesa: #1e2130; /* superficies, tarjetas de interfaz */
+  --color-linea: #2e3346; /* bordes */
+  --color-hueso: #ede6d8; /* texto principal y cara de las cartas */
+  --color-humo: #9aa0b5; /* texto secundario */
+  --color-brasa: #d4462f; /* acción principal y palo de copas */
+  --color-oro: #c79a3b; /* palo de oros */
+  --color-azul: #3e6ea8; /* palo de espadas */
+  --color-verde: #2f6f5e; /* palo de bastos */
+
+  /* --- Tipografías (contrato §8.2), vía next/font/google en layout.tsx --- */
+  --font-display: var(--font-familjen-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* --- Escala tipográfica (contrato §8.2): 12/14/16/20/28/40/64 ---------- */
+  --text-12: 12px;
+  --text-14: 14px;
+  --text-16: 16px;
+  --text-20: 20px;
+  --text-28: 28px;
+  --text-40: 40px;
+  --text-64: 64px;
+
+  /* Interlineado (contrato §8.2): 1.2 en display, 1.5 en cuerpo. */
+  --leading-display: 1.2;
+  --leading-body: 1.5;
+}
+
+/* Colores de asiento (colorIndex 0..3), contrato §8.1: brasa, azul, verde, oro. */
+:root {
+  --seat-0: var(--color-brasa);
+  --seat-1: var(--color-azul);
+  --seat-2: var(--color-verde);
+  --seat-3: var(--color-oro);
+
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-tinta);
+  color: var(--color-hueso);
+  font-family: var(--font-sans);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Foco de teclado siempre visible (contrato §8.5.6). */
+:focus-visible {
+  outline: 2px solid var(--color-brasa);
+  outline-offset: 2px;
+}
+
+/* Animaciones: solo las permitidas por el contrato (§8.4), y respetando
+ * prefers-reduced-motion en todas ellas (lo aplican los componentes que las
+ * usan; esta regla es la red de seguridad global). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
