@@ -540,3 +540,377 @@ Otras animaciones permitidas, y solo estas: reparto en cascada (40 ms por carta)
 5. El estado de conexión es una banda de 4 px arriba: verde translúcido conectado, `--oro` reconectando, `--brasa` sin conexión.
 6. Foco de teclado siempre visible. Contraste mínimo AA sobre `--tinta`.
 7. Textos: frase corta, verbo activo, sin exclamaciones. «Roba una carta», no «¡Es tu turno, roba una carta!».
+
+---
+
+## 9. REGLAS DE POCHA — versión congelada (P21)
+
+Segundo juego (`02-PAQUETES.md`, "Después del MVP" #1). Ruleset confirmado por Unai
+para este paquete. Igual que §5: **esta es la única fuente de verdad. Si algo no
+está aquí, no existe.**
+
+Dos puntos de esta sección están marcados **[DECISIÓN P21, A CONFIRMAR]**: son
+detalles mecánicos necesarios para que el juego funcione que Unai no especificó
+en su mensaje de confirmación. Se ha elegido un valor razonable y consistente
+con el resto del proyecto para que el contrato quede completo y no bloquee la
+redacción, pero **no deben tratarse como definitivos hasta que se confirmen
+explícitamente** — exactamente el mismo criterio que este proyecto aplica a
+cualquier otra ambigüedad (`00-MASTER.md` punto 9: "es el punto donde una IA
+barata inventa").
+
+### 9.1 Materiales
+
+- **Por defecto:** baraja española, **40 cartas**: rangos 1–7, 10, 11, 12 (sin 8
+  ni 9) en oros, copas, espadas y bastos. Reutiliza el tipo `Rank` existente de
+  `packages/protocol` sin cambios — es un subconjunto de `1|2|...|12`, no hace
+  falta ampliar el tipo, solo que el constructor de baraja de Pocha no genere
+  8 ni 9.
+- **Variante configurable:** baraja francesa. `config.deck: 'espanola40' |
+'francesa48'`.
+  **[DECISIÓN P21, A CONFIRMAR]** Unai pidió "francesa 48" sin especificar de
+  qué 48 cartas se trata (una baraja francesa estándar tiene 52). Para esta
+  redacción se ha elegido: baraja francesa de 52 **menos los cuatro doses**,
+  quedando 3,4,5,6,7,8,9,10,J,Q,K,A (12 rangos) en picas, corazones, diamantes
+  y tréboles (48 cartas) — un paralelismo deliberado con la baraja española de
+  Chinchón (4 palos × 12 rangos = 48). **Esta variante NO es un simple cambio
+  de config**: introduce palos nuevos que no existen hoy en el contrato (§10.7
+  explica el coste real). Se puede dejar escrita aquí y aun así posponer su
+  implementación a un paquete posterior sin romper nada, si Unai prefiere
+  empezar solo con la baraja española.
+
+### 9.2 Jugadores y estructura de rondas (pirámide)
+
+- **Jugadores:** de 3 a 6, fijado por `config.maxPlayers` al crear la sala
+  (igual que Chinchón usa `config.maxPlayers` como tope elegido por el
+  anfitrión). Mínimo de partida: **3** (fijo, no configurable).
+- Sea `D` el nº de cartas de la baraja elegida (40 u 48) y `n` el nº de
+  jugadores. El tamaño máximo de mano de la ronda es:
+
+  ```
+  M = floor((D - 1) / n)
+  ```
+
+  (el "−1" reserva siempre al menos una carta para revelar el triunfo, §9.3).
+
+- La partida se juega en rondas de tamaño **1, 2, …, M−1, M, M−1, …, 2, 1**
+  (sube hasta M y baja, sin repetir el pico) — de ahí "pirámide". Total de
+  rondas: `2M − 1`.
+- Valores exactos de `M` y nº de rondas para cada combinación:
+
+  | Jugadores | Española (40) → M / rondas | Francesa (48) → M / rondas |
+  | --------- | -------------------------- | -------------------------- |
+  | 3         | 13 / 25                    | 15 / 29                    |
+  | 4         | 9 / 17                     | 11 / 21                    |
+  | 5         | 7 / 13                     | 9 / 17                     |
+  | 6         | 6 / 11                     | 7 / 13                     |
+
+- El repartidor de la ronda 1 es el asiento 0; rota al siguiente asiento en
+  cada ronda (sin saltar a nadie: a diferencia de Chinchón, en Pocha no hay
+  eliminación durante la partida, §9.8).
+
+### 9.3 Reparto y triunfo
+
+1. Se baraja con el RNG sembrado.
+2. Se reparten `roundSize` cartas a cada jugador, una a una, empezando por el
+   jugador a la izquierda del repartidor.
+3. Se revela **1 carta** de la baraja restante (la primera carta no repartida):
+   su palo es el **triunfo** de la ronda, si `config.trump` es `true`. Esa
+   carta no entra en ninguna mano ni se juega.
+4. Si `config.trump` es `false`, no hay revelado ni triunfo: gana la baza
+   siempre la carta más alta del palo que salió.
+5. Cualquier carta de la baraja que sobre tras el reparto y el revelado (puede
+   pasar: `M` es un `floor`, así que a veces sobra más de 1 carta) se queda
+   fuera de juego esa ronda — no se reparte ni se usa.
+
+### 9.4 Cantes (apuestas de bazas)
+
+- Tras ver su mano (y el triunfo, si lo hay), cada jugador **canta** cuántas
+  bazas cree que va a ganar esa ronda, un número entero entre `0` y
+  `roundSize`. Se canta en el mismo orden de turno que se juega (empezando por
+  el jugador a la izquierda del repartidor), así que **el repartidor siempre
+  canta el último**.
+- **Regla del enganche:** sea `S` la suma de los cantes ya hechos por el resto
+  de jugadores antes de que le toque al repartidor. El repartidor **no puede**
+  cantar el valor `roundSize − S` (el único que dejaría la suma total de
+  cantes exactamente igual al número de bazas disponibles). Si ese valor no
+  está entre `0` y `roundSize` de todas formas, la regla no restringe nada
+  (el repartidor puede cantar con total libertad). Ningún otro jugador tiene
+  esta restricción: pueden cantar cualquier valor válido, aunque deje
+  imposible o ya garantizado el resultado para los que faltan por cantar.
+- Cantar un valor fuera de `[0, roundSize]`, o el valor prohibido por el
+  enganche siendo el repartidor, es `INVALID_BID` / `BID_HOOKED` (§10.5).
+
+### 9.5 Juego de bazas
+
+- Lleva la primera baza el jugador a la izquierda del repartidor. Cada
+  jugador, en orden de turno, juega una carta de su mano.
+- **Obligación de asistir:** si el jugador tiene alguna carta del palo que
+  salió, debe jugar una de ese palo. Si no tiene ninguna, puede jugar
+  cualquier carta (incluido triunfo). Jugar fuera de palo teniendo cartas de
+  ese palo es `MUST_FOLLOW_SUIT`.
+- Ganada la baza (§9.6), quien la gana lleva la siguiente. Se repite hasta
+  jugar las `roundSize` cartas de la mano.
+
+### 9.6 Ganador de una baza (algoritmo obligatorio)
+
+```
+entrada: cartas jugadas en la baza, en orden, con quién jugó cada una;
+         palo que salió (el de la primera carta jugada); palo de triunfo o null.
+1. Si hay triunfo Y alguna carta jugada es de ese palo:
+     gana quien jugó la carta de triunfo de rango más alto.
+2. Si no:
+     gana quien jugó la carta de más rango del palo que salió
+     (las cartas de otros palos, jugadas por no poder asistir, no cuentan).
+```
+
+**[DECISIÓN P21, A CONFIRMAR]** "Rango más alto" usa el orden numérico natural
+ya existente en `Rank` (12 es el más alto, 1 el más bajo) — el mismo orden que
+ya usa Chinchón para escaleras, sin tabla de valores especial. Esto es
+deliberado por simplicidad y consistencia con el resto del código, pero varios
+juegos de baza españoles tradicionales (brisca, tute) usan un orden de fuerza
+distinto (As > Tres > Rey > Caballo > Sota > 7 > 6 > 5 > 4 > 2). Si Unai quiere
+ese orden tradicional en vez del numérico, es un cambio acotado a esta única
+función.
+
+### 9.7 Puntuación de la ronda
+
+Para cada jugador, al final de la ronda (todas las bazas jugadas):
+
+| Condición              | Puntos de la ronda   |
+| ---------------------- | -------------------- |
+| Bazas ganadas == cante | `10 + bazas ganadas` |
+| Bazas ganadas != cante | `0`                  |
+
+Los puntos se **acumulan** entre rondas (no hay resta, no hay eliminación
+intermedia — a diferencia de Chinchón, aquí nadie queda eliminado a mitad de
+partida, ver §9.8).
+
+### 9.8 Fin de la partida y desempate
+
+- La partida termina al completar la ronda de tamaño 1 final (la última de la
+  pirámide, `2M − 1` rondas jugadas en total). No hay condición de fin
+  anticipado: se juegan todas las rondas.
+- Gana quien tenga el total más alto acumulado.
+- **[DECISIÓN P21, A CONFIRMAR]** Desempate, en cascada (no especificado por
+  Unai, propuesto aquí siguiendo el mismo estilo de cascada que Chinchón
+  §5.8.5): (1) quien haya acertado el cante más veces en toda la partida: (2)
+  quien haya ganado más bazas en total; (3) el asiento más bajo entre los
+  empatados.
+
+### 9.9 Abandono o desconexión a mitad de ronda
+
+**[DECISIÓN P21, A CONFIRMAR]** Pocha no tiene un mecanismo natural de
+"abandonar y seguir" como Chinchón (§6: las cartas de quien se va pasan al
+descarte y la partida sigue sin él): en una ronda de bazas, quitar a un
+jugador a mitad deja cantes y bazas ya jugadas sin sentido para el resto. Se
+propone: si un jugador se desconecta y no vuelve dentro del margen normal de
+reconexión, la ronda **en curso se anula sin puntuar para nadie** y la
+partida continúa en la siguiente ronda de la pirámide sin ese jugador (su
+cante y sus bazas de la ronda anulada no cuentan). Si en algún momento quedan
+menos de 3 jugadores conectados, la partida termina y gana quien tenga el
+total más alto acumulado hasta ese punto (mismo criterio de desempate de
+§9.8). Esto es una propuesta razonable, no una petición explícita de Unai —
+confirmar antes de que P22 la implemente.
+
+### 9.10 Configuración (`PochaConfig`)
+
+```ts
+interface PochaConfig {
+  gameId: 'pocha';
+  deck: 'espanola40' | 'francesa48'; // por defecto 'espanola40'
+  trump: boolean; // por defecto true
+  maxPlayers: 3 | 4 | 5 | 6; // por defecto 4 (no especificado por Unai; rango confirmado 3-6)
+  soundEnabled: boolean; // por defecto true, igual que Chinchón
+}
+```
+
+`minPlayers` no es configurable: siempre 3, análogo a como `MIN_PLAYERS` de
+Chinchón tampoco se expone en la interfaz. Solo el anfitrión y solo antes de
+empezar, igual que `ChinchonConfig` (§2.7).
+
+### 9.11 Tests dorados (escribir con estos casos exactos)
+
+Con `config` por defecto (española 40, triunfo activo, 4 jugadores):
+
+1. **Pirámide:** `M = floor(39/4) = 9`. La secuencia de tamaños de ronda debe
+   ser exactamente `[1,2,3,4,5,6,7,8,9,8,7,6,5,4,3,2,1]` (17 rondas).
+2. **Enganche activa:** ronda de 4 bazas, 4 jugadores. Cantan en orden 1, 1, 1
+   (suma 3). Al repartidor (4º en cantar) se le prohíbe cantar `4 - 3 = 1`
+   (dejaría la suma en 4, igual a las bazas disponibles); cualquier otro valor
+   de `0..4` menos el 1 es válido.
+3. **Enganche no aplica:** mismos cantes 1, 1, 1 (suma 3) pero ronda de 5
+   bazas: el valor prohibido sería `5 - 3 = 2`, que sigue estando disponible
+   como única restricción — pero si la suma ya fuera, por ejemplo, 6 (cantes
+   2,2,2 en una ronda de 4), el valor prohibido `4-6=-2` cae fuera de `[0,4]`
+   y el repartidor puede cantar lo que quiera.
+4. **Triunfo decide la baza:** salen bastos, triunfo oros. Se juegan
+   bastos-10, bastos-12, oros-2, bastos-7. Gana quien jugó `oros-2` (único
+   triunfo), aunque `bastos-12` sea la carta más alta del palo que salió.
+5. **Sin triunfo en la baza:** salen copas, sin triunfo jugado. Se juegan
+   copas-3, copas-11, oros-7 (no pudo asistir), copas-6. Gana quien jugó
+   `copas-11` (la carta de copas más alta); la `oros-7` no cuenta al no ser
+   del palo que salió ni triunfo.
+6. **Puntuación:** jugador cantó 3, ganó 3 bazas → `10 + 3 = 13` puntos.
+   Jugador cantó 2, ganó 1 baza → `0` puntos.
+
+Además, escribir un test de propiedad: para cualquier ronda válida (bazas y
+cantes generados aleatoriamente con semilla fija), la suma de bazas
+efectivamente ganadas por todos los jugadores debe ser exactamente
+`roundSize`.
+
+---
+
+## 10. Cambios de contrato para admitir un segundo juego (decisiones de P21)
+
+Esta sección amplía `§2` y `§3` para que quepa Pocha. Son cambios de contrato
+de verdad (no solo de Pocha): tocan tipos que hoy solo conoce Chinchón. Cada
+punto dice explícitamente si Chinchón cambia de forma (aunque no de
+comportamiento) o si solo se añade algo nuevo al lado.
+
+### 10.1 `GameId`
+
+```ts
+export type GameId = 'chinchon' | 'pocha';
+```
+
+Único cambio de `§2.1`. Se ensancha el literal; nada más de esa sección
+cambia.
+
+### 10.2 `GameConfig`
+
+Pasa de ser una interfaz única (hoy, en la práctica, `ChinchonConfig` con
+otro nombre) a una unión discriminada por `gameId`, tal y como ya anticipaba
+el comentario de `packages/protocol/src/config.ts` escrito en P1:
+
+```ts
+interface CommonGameConfig {
+  soundEnabled: boolean; // preferencia local, no afecta al motor (igual que hoy)
+}
+
+interface ChinchonConfig extends CommonGameConfig {
+  gameId: 'chinchon';
+  maxPlayers: 2 | 3 | 4;
+  handSize: 7;
+  jokers: 0 | 2;
+  closeThreshold: 0 | 3 | 5 | 10;
+  dryCloseBonus: -10 | 0;
+  eliminationScore: 50 | 100 | 150;
+  chinchonEndsGame: boolean;
+  jokerPoints: 20 | 25;
+  maxJokersPerMeld: 1;
+  forbidDiscardDrawnCard: boolean;
+}
+
+interface PochaConfig extends CommonGameConfig {
+  // campos en §9.10
+}
+
+export type GameConfig = ChinchonConfig | PochaConfig;
+```
+
+**Esto SÍ toca la forma congelada de `ChinchonConfig` (§2.7):** gana un campo
+`gameId: 'chinchon'` que hoy no tiene (necesario para que TypeScript pueda
+distinguir el miembro de la unión) y pasa a heredar `soundEnabled` de
+`CommonGameConfig` en vez de declararlo suelto. Ningún valor ni comportamiento
+de Chinchón cambia — es solo la forma del tipo. Aun así, es un cambio real a
+un contrato congelado y se lista aquí explícitamente en vez de darlo por
+hecho.
+
+### 10.3 `GameEvent` (nuevos, además de los 10 existentes de §2.4)
+
+```ts
+type GameEvent =
+  // ... los 10 de §2.4, sin cambios ...
+  | { t: 'trumpRevealed'; cardId: CardId }
+  | { t: 'bid'; playerId: PlayerId; amount: number }
+  | { t: 'cardPlayed'; playerId: PlayerId; cardId: CardId }
+  | { t: 'trickWon'; playerId: PlayerId; cards: CardId[] };
+```
+
+`roundScored` y `gameOver` (ya existentes) se reutilizan tal cual para Pocha.
+
+### 10.4 `GameAction` (nuevos, además de los 6 existentes de §2.6)
+
+```ts
+type GameAction =
+  // ... los 6 de §2.6 (algunos no aplican a Pocha, ver nota) ...
+  { type: 'bid'; amount: number } | { type: 'playCard'; cardId: CardId };
+```
+
+De las 6 acciones de Chinchón, solo `nextRound` se reutiliza en Pocha
+(confirmar ronda en la pantalla de fin de ronda). `drawDeck`, `drawDiscard`,
+`discard`, `close` y `sortHand` no tienen sentido en Pocha (no hay mazo ni
+descarte individual) y su `GameModule.applyAction` simplemente no los acepta.
+
+### 10.5 `ERROR_CODES` (nuevos, además de los 22 existentes de §2.2)
+
+```ts
+export const ERROR_CODES = [
+  // ... los 22 de §2.2 ...
+  'INVALID_BID', // cante fuera de 0..roundSize
+  'BID_HOOKED', // repartidor intentando el cante prohibido por el enganche (§9.4)
+  'MUST_FOLLOW_SUIT', // jugó fuera de palo teniendo cartas del palo que salió (§9.5)
+  'NOT_YOUR_TRICK', // jugó carta fuera de su turno de baza
+] as const;
+```
+
+Reutilizables sin cambio: `ROOM_NOT_FOUND`, `ROOM_FULL`, `NOT_YOUR_TURN`,
+`CARD_NOT_IN_HAND`, `STALE_VERSION`, `RATE_LIMITED`, `INTERNAL`, etc. — todo
+lo que no es específico de robar/descartar/cerrar.
+
+### 10.6 `MAX_PLAYERS` / `MIN_PLAYERS`
+
+Hoy son constantes globales únicas (`MAX_PLAYERS = 4`, `MIN_PLAYERS = 2`,
+§2.1) usadas como el único límite de sala. Con dos juegos de rango distinto
+(Chinchón 2-4, Pocha 3-6), pasan a ser el **límite absoluto de la sala**
+(unión de ambos rangos), no el límite de un juego concreto:
+
+```ts
+export const MAX_PLAYERS = 6; // antes 4
+export const MIN_PLAYERS = 2; // sin cambio — Chinchón lo sigue necesitando
+```
+
+El límite real de cada partida lo sigue poniendo el `maxPlayers` del
+`GameConfig` de ese juego (§2.7 para Chinchón, §9.10 para Pocha) — estas dos
+constantes solo acotan cosas que no dependen del juego, como el tamaño de
+array de `players` antes de saber qué se va a jugar en esa sala.
+
+### 10.7 `colorIndex` y colores de asiento — hallazgo real, no anticipado
+
+Al revisar `§2.5` para escribir esta sección se ha encontrado una dependencia
+concreta que Pocha rompe de verdad, más allá de los tipos: `PublicPlayer.colorIndex`
+está congelado como `0|1|2|3` (§2.5) y `§8.1` solo define **4** colores de
+asiento (`--brasa`, `--azul`, `--verde`, `--oro`) — que además son los mismos
+4 tokens que ya representan los 4 palos de la baraja española. Con hasta 6
+jugadores en Pocha, esto no llega:
+
+- `colorIndex` necesita ensancharse a `0|1|2|3|4|5`.
+- Hacen falta **2 colores de asiento nuevos** en `§8.1` — y no pueden ser
+  simplemente "más tonos", porque los 4 existentes ya significan un palo cada
+  uno en el contexto de las cartas; reutilizarlos para asiento 5 y 6 sería
+  visualmente confuso en la misma pantalla. Esto es una decisión de diseño
+  real (qué color, y que siga la identidad "papel hueso, tinta densa" de
+  `§8`), no solo una ampliación de tipo — pendiente de que Unai la apruebe
+  cuando se aborde la interfaz de Pocha (P24 en el plan propuesto).
+- La geometría de `SeatRing` (`/mesa`, P15) y de la banda de jugadores de
+  `/sala` (`PlayerStrip`, P14) se construyó asumiendo como máximo 4 asientos;
+  layout para 5-6 es trabajo de interfaz nuevo, no una reutilización directa.
+
+Se deja constancia aquí porque es exactamente el tipo de cosa que
+`00-MASTER.md` (punto 8, y la nota "no generalices antes de tenerlo" de
+`02-PAQUETES.md`) predijo que Pocha forzaría a descubrir — y es más grande de
+lo que un cambio de tipo sugiere a primera vista.
+
+### 10.8 Lo que NO cambia
+
+- `GameModule<S, A>` (§3) y el registro `GAMES` — el motivo de que este
+  ejercicio sea manejable es que esa interfaz ya era genérica de verdad.
+- `Card`, `Suit`, `Rank`, `CardId` (§3.1) — sin cambios para la baraja
+  española de Pocha (subconjunto de rangos ya representable). Solo la
+  variante "francesa 48" (§9.1) tocaría `Suit`, y solo si se implementa esa
+  variante en concreto.
+- El sobre de red (`§2.3`, `§2.4`: `game:action`, `room:*`, `state:view`,
+  idempotencia por `clientActionId`, `expectedVersion`) — Pocha es un
+  `GameModule` más, no un protocolo de transporte nuevo.
+- La base de datos (`§4`): `rooms.game_id` ya es `text`, no un enum de
+  Postgres — no hace falta migración para añadir `'pocha'` como valor.

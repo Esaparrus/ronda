@@ -450,11 +450,28 @@ Antes de que escriba código, exige: *«Lista los ficheros que vas a crear y esp
 
 ---
 
+## P21 · Contrato de Pocha (segundo juego) ⚠️ SOLO DOCUMENTACIÓN
+
+**Contexto:** `01-CONTRATOS.md` §2, §3 completo (para saber qué se está ampliando), §5 (para el nivel de detalle a igualar), §9 y §10 (nuevos, este mismo paquete).
+
+**PROMPT**
+> Escribe el contrato congelado de las reglas de Pocha en `01-CONTRATOS.md`, con el mismo nivel de detalle que §5 (Chinchón): materiales, estructura de rondas, reparto y triunfo, cantes y regla del enganche, juego de bazas y algoritmo de ganador de baza, puntuación, fin de partida y desempate, manejo de abandono a mitad de ronda, configuración (`PochaConfig`) con sus valores por defecto, y tests dorados con casos numéricos concretos.
+>
+> Además, documenta explícitamente los cambios de contrato que hacen falta para admitir un segundo juego: `GameId` como unión, `GameConfig` como unión discriminada por `gameId` (con `ChinchonConfig`/`PochaConfig` y un posible `CommonGameConfig` compartido), qué entradas nuevas hacen falta en `GameEvent`, `GameAction` y `ERROR_CODES`, y cómo deben funcionar `MAX_PLAYERS`/`MIN_PLAYERS` cuando cada juego tiene su propio rango de jugadores. Revisa también si hay algo más en `§2`-`§3` (tipos de vista, colores de asiento, etc.) que asuma implícitamente que solo existe Chinchón, y decláralo.
+>
+> Cualquier detalle mecánico necesario que no esté explícitamente decidido debe quedar marcado en el propio documento como una decisión de este paquete pendiente de confirmar — nunca inventado en silencio.
+>
+> **Criterios de aceptación:** el contrato de Pocha no contradice ninguna sección congelada de Chinchón que no dependa de ampliarse a propósito (§10.2, §10.6, §10.7 de este mismo paquete son las únicas ampliaciones conscientes). Revisión de consistencia interna antes de dar el paquete por cerrado.
+>
+> **NO HAGAS:** no escribas código de motor, servidor ni interfaz en este paquete. No implementes la variante de baraja francesa más allá de dejarla documentada como configurable. No toques el registro `GAMES` ni ningún fichero de `packages/engine`, `apps/server` o `apps/web`.
+
+---
+
 ## Después del MVP (no antes)
 
 En este orden, y solo cuando los 4 hitos de `00-MASTER.md` §7 estén cumplidos:
 
-1. **Segundo juego: Pocha.** Es el que más pone a prueba la generalidad del motor (apuestas, bazas, rondas de tamaño variable) sin ser tan complejo como el Mus. Al implementarlo se descubre qué hay que sacar a `core/`. **No generalices antes de tenerlo.**
+1. **Segundo juego: Pocha.** Es el que más pone a prueba la generalidad del motor (apuestas, bazas, rondas de tamaño variable) sin ser tan complejo como el Mus. Al implementarlo se descubre qué hay que sacar a `core/`. **No generalices antes de tenerlo.** Contrato de reglas: `P21` (`01-CONTRATOS.md` §9-§10). Motor, servidor e interfaz son paquetes futuros (propuesta: P22 motor, P23 servidor, P24 interfaz), pendientes de confirmación antes de empezar cada uno.
 2. Reacciones rápidas (4 emojis, sin chat libre).
 3. Estadísticas del grupo, guardadas por sala.
 4. Mus (necesita parejas, señas y una capa social muy distinta: es un proyecto en sí mismo).
