@@ -549,45 +549,39 @@ Segundo juego (`02-PAQUETES.md`, "Después del MVP" #1). Ruleset confirmado por 
 para este paquete. Igual que §5: **esta es la única fuente de verdad. Si algo no
 está aquí, no existe.**
 
-Dos puntos de esta sección están marcados **[DECISIÓN P21, A CONFIRMAR]**: son
-detalles mecánicos necesarios para que el juego funcione que Unai no especificó
-en su mensaje de confirmación. Se ha elegido un valor razonable y consistente
-con el resto del proyecto para que el contrato quede completo y no bloquee la
-redacción, pero **no deben tratarse como definitivos hasta que se confirmen
-explícitamente** — exactamente el mismo criterio que este proyecto aplica a
-cualquier otra ambigüedad (`00-MASTER.md` punto 9: "es el punto donde una IA
-barata inventa").
+**Actualización tras confirmación de Unai (segunda ronda de P21):** de las
+cuatro notas marcadas **[DECISIÓN P21, A CONFIRMAR]** en la redacción
+original de esta sección, dos quedan resueltas aquí:
+
+- La baraja francesa **se descarta por completo** (§9.1) — Pocha solo se
+  juega con la española de 40 cartas, sin variante de baraja configurable.
+- El orden de rango para ganar bazas **pasa a ser configurable** (§9.6,
+  `config.rankOrder`), con ambos órdenes especificados con precisión.
+
+Las otras dos notas (desempate de fin de partida, §9.8; abandono a mitad de
+ronda, §9.9) **siguen siendo propuestas pendientes de confirmar**, sin
+cambios en esta actualización — se mantiene el mismo criterio: son
+razonables para que el contrato quede completo, pero no definitivas hasta
+que Unai las confirme explícitamente (`00-MASTER.md` punto 9).
 
 ### 9.1 Materiales
 
-- **Por defecto:** baraja española, **40 cartas**: rangos 1–7, 10, 11, 12 (sin 8
-  ni 9) en oros, copas, espadas y bastos. Reutiliza el tipo `Rank` existente de
-  `packages/protocol` sin cambios — es un subconjunto de `1|2|...|12`, no hace
-  falta ampliar el tipo, solo que el constructor de baraja de Pocha no genere
-  8 ni 9.
-- **Variante configurable:** baraja francesa. `config.deck: 'espanola40' |
-'francesa48'`.
-  **[DECISIÓN P21, A CONFIRMAR]** Unai pidió "francesa 48" sin especificar de
-  qué 48 cartas se trata (una baraja francesa estándar tiene 52). Para esta
-  redacción se ha elegido: baraja francesa de 52 **menos los cuatro doses**,
-  quedando 3,4,5,6,7,8,9,10,J,Q,K,A (12 rangos) en picas, corazones, diamantes
-  y tréboles (48 cartas) — un paralelismo deliberado con la baraja española de
-  Chinchón (4 palos × 12 rangos = 48). **Esta variante NO es un simple cambio
-  de config**: introduce palos nuevos que no existen hoy en el contrato (§10.7
-  explica el coste real). Se puede dejar escrita aquí y aun así posponer su
-  implementación a un paquete posterior sin romper nada, si Unai prefiere
-  empezar solo con la baraja española.
+Baraja española, **40 cartas**: rangos 1–7, 10, 11, 12 (sin 8 ni 9) en oros,
+copas, espadas y bastos. Única baraja soportada — sin variante configurable.
+Reutiliza el tipo `Rank` existente de `packages/protocol` sin cambios: es un
+subconjunto de `1|2|...|12`, no hace falta ampliar el tipo, solo que el
+constructor de baraja de Pocha no genere 8 ni 9.
 
 ### 9.2 Jugadores y estructura de rondas (pirámide)
 
 - **Jugadores:** de 3 a 6, fijado por `config.maxPlayers` al crear la sala
   (igual que Chinchón usa `config.maxPlayers` como tope elegido por el
   anfitrión). Mínimo de partida: **3** (fijo, no configurable).
-- Sea `D` el nº de cartas de la baraja elegida (40 u 48) y `n` el nº de
-  jugadores. El tamaño máximo de mano de la ronda es:
+- Sea `D = 40` (nº de cartas de la baraja española) y `n` el nº de jugadores.
+  El tamaño máximo de mano de la ronda es:
 
   ```
-  M = floor((D - 1) / n)
+  M = floor((D - 1) / n) = floor(39 / n)
   ```
 
   (el "−1" reserva siempre al menos una carta para revelar el triunfo, §9.3).
@@ -595,14 +589,14 @@ barata inventa").
 - La partida se juega en rondas de tamaño **1, 2, …, M−1, M, M−1, …, 2, 1**
   (sube hasta M y baja, sin repetir el pico) — de ahí "pirámide". Total de
   rondas: `2M − 1`.
-- Valores exactos de `M` y nº de rondas para cada combinación:
+- Valores exactos de `M` y nº de rondas por nº de jugadores:
 
-  | Jugadores | Española (40) → M / rondas | Francesa (48) → M / rondas |
-  | --------- | -------------------------- | -------------------------- |
-  | 3         | 13 / 25                    | 15 / 29                    |
-  | 4         | 9 / 17                     | 11 / 21                    |
-  | 5         | 7 / 13                     | 9 / 17                     |
-  | 6         | 6 / 11                     | 7 / 13                     |
+  | Jugadores | M   | Rondas |
+  | --------- | --- | ------ |
+  | 3         | 13  | 25     |
+  | 4         | 9   | 17     |
+  | 5         | 7   | 13     |
+  | 6         | 6   | 11     |
 
 - El repartidor de la ronda 1 es el asiento 0; rota al siguiente asiento en
   cada ronda (sin saltar a nadie: a diferencia de Chinchón, en Pocha no hay
@@ -617,7 +611,8 @@ barata inventa").
    su palo es el **triunfo** de la ronda, si `config.trump` es `true`. Esa
    carta no entra en ninguna mano ni se juega.
 4. Si `config.trump` es `false`, no hay revelado ni triunfo: gana la baza
-   siempre la carta más alta del palo que salió.
+   siempre la carta de más fuerza del palo que salió, según `config.rankOrder`
+   (§9.6) — el mismo criterio de fuerza aplica con o sin triunfo.
 5. Cualquier carta de la baraja que sobre tras el reparto y el revelado (puede
    pasar: `M` es un `floor`, así que a veces sobra más de 1 carta) se queda
    fuera de juego esa ronda — no se reparte ni se usa.
@@ -653,24 +648,56 @@ barata inventa").
 
 ### 9.6 Ganador de una baza (algoritmo obligatorio)
 
+La "fuerza" de una carta para decidir bazas depende de `config.rankOrder`
+(confirmado por Unai como variante configurable, elegida al crear la sala,
+igual que `trump`/`maxPlayers`). Dos tablas de fuerza posibles, ambas
+sobre el mismo conjunto de 10 rangos de la baraja española de Pocha
+(1,2,3,4,5,6,7,10,11,12 — §9.1):
+
+| Rango        | `numerico` (fuerza) | `brisca` (fuerza)      |
+| ------------ | ------------------- | ---------------------- |
+| 1 (As)       | 1                   | **10** (la más fuerte) |
+| 2            | 2                   | 1 (la más débil)       |
+| 3 (Tres)     | 3                   | 9                      |
+| 4            | 4                   | 2                      |
+| 5            | 5                   | 3                      |
+| 6            | 6                   | 4                      |
+| 7            | 7                   | 5                      |
+| 10 (Sota)    | 10                  | 6                      |
+| 11 (Caballo) | 11                  | 7                      |
+| 12 (Rey)     | 12                  | 8                      |
+
+(La columna `numerico` es, a propósito, idéntica al propio `rank` — no hace
+falta ninguna tabla de verdad para ese modo, se lista aquí solo para
+comparar los dos órdenes lado a lado en la misma tabla. La columna `brisca`
+sí es una tabla de verdad: es un orden de fuerza arbitrario que no coincide
+con ningún valor existente.)
+
+- **`numerico`** (por defecto): la fuerza es el propio valor de `rank` — el
+  mismo orden que ya usa Chinchón para escaleras (12 el más alto, 1 el más
+  bajo), sin tabla especial. Elegido como valor por defecto por dos motivos:
+  es el más simple de los dos (no hace falta tabla de fuerza en el motor,
+  basta comparar `rank`), y es consistente con el resto del código, que ya
+  usa el orden numérico natural de `Rank` en todas partes (Chinchón no tiene
+  ningún concepto de "fuerza" especial de carta).
+- **`brisca`**: el orden de fuerza tradicional de los juegos de baza
+  españoles (brisca, tute) — As y Tres por encima de las figuras, que es la
+  parte contraintuitiva que hay que tener tabulada explícitamente en vez de
+  improvisarla. Configurable para quien prefiera esta convención, más
+  familiar para bastante gente en España que ha jugado a brisca o tute.
+
 ```
 entrada: cartas jugadas en la baza, en orden, con quién jugó cada una;
-         palo que salió (el de la primera carta jugada); palo de triunfo o null.
+         palo que salió (el de la primera carta jugada); palo de triunfo o null;
+         config.rankOrder ('numerico' | 'brisca').
+fuerza(carta) = tabla de arriba según config.rankOrder, indexada por rank.
+
 1. Si hay triunfo Y alguna carta jugada es de ese palo:
-     gana quien jugó la carta de triunfo de rango más alto.
+     gana quien jugó la carta de triunfo con mayor fuerza(carta).
 2. Si no:
-     gana quien jugó la carta de más rango del palo que salió
+     gana quien jugó la carta del palo que salió con mayor fuerza(carta)
      (las cartas de otros palos, jugadas por no poder asistir, no cuentan).
 ```
-
-**[DECISIÓN P21, A CONFIRMAR]** "Rango más alto" usa el orden numérico natural
-ya existente en `Rank` (12 es el más alto, 1 el más bajo) — el mismo orden que
-ya usa Chinchón para escaleras, sin tabla de valores especial. Esto es
-deliberado por simplicidad y consistencia con el resto del código, pero varios
-juegos de baza españoles tradicionales (brisca, tute) usan un orden de fuerza
-distinto (As > Tres > Rey > Caballo > Sota > 7 > 6 > 5 > 4 > 2). Si Unai quiere
-ese orden tradicional en vez del numérico, es un cambio acotado a esta única
-función.
 
 ### 9.7 Puntuación de la ronda
 
@@ -717,12 +744,15 @@ confirmar antes de que P22 la implemente.
 ```ts
 interface PochaConfig {
   gameId: 'pocha';
-  deck: 'espanola40' | 'francesa48'; // por defecto 'espanola40'
   trump: boolean; // por defecto true
+  rankOrder: 'numerico' | 'brisca'; // por defecto 'numerico' — ver §9.6
   maxPlayers: 3 | 4 | 5 | 6; // por defecto 4 (no especificado por Unai; rango confirmado 3-6)
   soundEnabled: boolean; // por defecto true, igual que Chinchón
 }
 ```
+
+No lleva campo `deck`: la baraja española de 40 cartas es la única soportada
+(§9.1), no una variante configurable.
 
 `minPlayers` no es configurable: siempre 3, análogo a como `MIN_PLAYERS` de
 Chinchón tampoco se expone en la interfaz. Solo el anfitrión y solo antes de
@@ -743,13 +773,21 @@ Con `config` por defecto (española 40, triunfo activo, 4 jugadores):
    como única restricción — pero si la suma ya fuera, por ejemplo, 6 (cantes
    2,2,2 en una ronda de 4), el valor prohibido `4-6=-2` cae fuera de `[0,4]`
    y el repartidor puede cantar lo que quiera.
-4. **Triunfo decide la baza:** salen bastos, triunfo oros. Se juegan
-   bastos-10, bastos-12, oros-2, bastos-7. Gana quien jugó `oros-2` (único
-   triunfo), aunque `bastos-12` sea la carta más alta del palo que salió.
-5. **Sin triunfo en la baza:** salen copas, sin triunfo jugado. Se juegan
-   copas-3, copas-11, oros-7 (no pudo asistir), copas-6. Gana quien jugó
-   `copas-11` (la carta de copas más alta); la `oros-7` no cuenta al no ser
-   del palo que salió ni triunfo.
+4. **Triunfo decide la baza (independiente de `rankOrder`):** salen bastos,
+   triunfo oros. Se juegan bastos-10, bastos-12, oros-2, bastos-7. Gana quien
+   jugó `oros-2` (único triunfo en la baza), sea cual sea `config.rankOrder`
+   — con un solo triunfo en la baza no hace falta comparar fuerzas.
+5. **Sin triunfo en la baza, orden `numerico` (por defecto):** salen copas,
+   sin triunfo jugado. Se juegan copas-3, copas-11, oros-7 (no pudo asistir),
+   copas-6. Gana quien jugó `copas-11` (fuerza numérica 11, la más alta de
+   las de copas); la `oros-7` no cuenta al no ser del palo que salió ni
+   triunfo.
+   5b. **Mismas cartas, orden `brisca`:** exactamente la misma baza que el caso
+   5 (copas-3, copas-11, oros-7, copas-6), pero con `config.rankOrder =
+'brisca'`. Gana `copas-3` en vez de `copas-11` — bajo la tabla de fuerza
+   de §9.6, el Tres tiene fuerza 9 y el Caballo (11) solo fuerza 7. Este caso
+   existe específicamente para que el test de `rankOrder` distinga los dos
+   modos con una única baza, no solo con la tabla de fuerza aislada.
 6. **Puntuación:** jugador cantó 3, ganó 3 bazas → `10 + 3 = 13` puntos.
    Jugador cantó 2, ganó 1 baza → `0` puntos.
 
@@ -905,10 +943,11 @@ lo que un cambio de tipo sugiere a primera vista.
 
 - `GameModule<S, A>` (§3) y el registro `GAMES` — el motivo de que este
   ejercicio sea manejable es que esa interfaz ya era genérica de verdad.
-- `Card`, `Suit`, `Rank`, `CardId` (§3.1) — sin cambios para la baraja
-  española de Pocha (subconjunto de rangos ya representable). Solo la
-  variante "francesa 48" (§9.1) tocaría `Suit`, y solo si se implementa esa
-  variante en concreto.
+- `Card`, `Suit`, `Rank`, `CardId` (§3.1) — sin ningún cambio: Pocha usa la
+  misma baraja española que Chinchón (subconjunto de rangos ya representable
+  en `Rank`, mismos 4 palos). La variante de baraja francesa que se
+  planteó en la primera redacción de este paquete se ha descartado por
+  completo (§9.1) — no hay ninguna ampliación de `Suit` pendiente.
 - El sobre de red (`§2.3`, `§2.4`: `game:action`, `room:*`, `state:view`,
   idempotencia por `clientActionId`, `expectedVersion`) — Pocha es un
   `GameModule` más, no un protocolo de transporte nuevo.

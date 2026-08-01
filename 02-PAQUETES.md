@@ -463,7 +463,9 @@ Antes de que escriba código, exige: *«Lista los ficheros que vas a crear y esp
 >
 > **Criterios de aceptación:** el contrato de Pocha no contradice ninguna sección congelada de Chinchón que no dependa de ampliarse a propósito (§10.2, §10.6, §10.7 de este mismo paquete son las únicas ampliaciones conscientes). Revisión de consistencia interna antes de dar el paquete por cerrado.
 >
-> **NO HAGAS:** no escribas código de motor, servidor ni interfaz en este paquete. No implementes la variante de baraja francesa más allá de dejarla documentada como configurable. No toques el registro `GAMES` ni ningún fichero de `packages/engine`, `apps/server` o `apps/web`.
+> **NO HAGAS:** no escribas código de motor, servidor ni interfaz en este paquete. No toques el registro `GAMES` ni ningún fichero de `packages/engine`, `apps/server` o `apps/web`.
+>
+> **Actualización (segunda ronda de P21):** la baraja francesa se descarta por completo (solo baraja española de 40 cartas, sin variante de mazo). El orden de fuerza para ganar bazas pasa a ser configurable (`config.rankOrder`: `'numerico'` por defecto o `'brisca'`), con ambos algoritmos especificados con precisión en §9.6, incluida una tabla de fuerza para cada uno y un caso dorado que los distingue con la misma baza.
 
 ---
 
