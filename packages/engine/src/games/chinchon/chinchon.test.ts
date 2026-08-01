@@ -9,16 +9,16 @@ import { deepFreeze } from '../../core/freeze.ts';
 import {
   DEFAULT_CONFIG,
   type CardId,
+  type ChinchonConfig,
   type GameAction,
-  type GameConfig,
   type PlayerId,
 } from '@ronda/protocol';
 import type { ChinchonState } from './state.ts';
 
-const CFG: GameConfig = DEFAULT_CONFIG;
+const CFG: ChinchonConfig = DEFAULT_CONFIG;
 
 /** Crea una partida estándar de 4 jugadores con semilla dada. */
-function newGame(seed = 'test-1', config: GameConfig = CFG): ChinchonState {
+function newGame(seed = 'test-1', config: ChinchonConfig = CFG): ChinchonState {
   return createInitialState({
     config,
     seed,

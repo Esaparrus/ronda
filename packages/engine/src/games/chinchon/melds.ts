@@ -19,7 +19,7 @@ import {
   SUITS,
   type Card,
   type CardId,
-  type GameConfig,
+  type ChinchonConfig,
 } from '@ronda/protocol';
 
 // ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ interface IndexedHand {
 }
 
 /** Indexa la mano: cartas únicas con points calculados según config. */
-function indexHand(hand: CardId[], config: GameConfig): IndexedHand {
+function indexHand(hand: CardId[], config: ChinchonConfig): IndexedHand {
   const seen = new Set<CardId>();
   const cards: Card[] = [];
   for (const id of hand) {
@@ -160,7 +160,7 @@ function enumerateMeldsIndexed(idx: IndexedHand): number[] {
  * Enumera TODAS las combinaciones válidas de la mano como máscaras de bits.
  * API pública del contrato §5.9 paso 2. Sin duplicados.
  */
-export function enumerateMelds(hand: CardId[], config: GameConfig): number[] {
+export function enumerateMelds(hand: CardId[], config: ChinchonConfig): number[] {
   return enumerateMeldsIndexed(indexHand(hand, config));
 }
 
@@ -174,7 +174,7 @@ export function enumerateMelds(hand: CardId[], config: GameConfig): number[] {
  * Desempate: deadwood mínimo → MÁS cartas en combinaciones → MENOS
  * combinaciones (preferir largas) → orden estable por CardId (al reconstruir).
  */
-export function solveHand(hand: CardId[], config: GameConfig): MeldSolution {
+export function solveHand(hand: CardId[], config: ChinchonConfig): MeldSolution {
   const idx = indexHand(hand, config);
   const { cards, n, fullMask } = idx;
   if (n === 0) return { melds: [], leftovers: [], deadwood: 0 };
@@ -356,7 +356,7 @@ export function isChinchon(hand: CardId[]): boolean {
  * Cierra si, tras retirar discardId de la mano de 8, el deadwood es
  * <= config.closeThreshold. Devuelve false si la carta no está en la mano.
  */
-export function canCloseWith(hand: CardId[], discardId: CardId, config: GameConfig): boolean {
+export function canCloseWith(hand: CardId[], discardId: CardId, config: ChinchonConfig): boolean {
   if (hand.length !== 8) return false;
   if (!hand.includes(discardId)) return false;
   const remaining = hand.filter((id) => id !== discardId);
@@ -368,7 +368,7 @@ export function canCloseWith(hand: CardId[], discardId: CardId, config: GameConf
  * Cartas cuyo descarte permite cerrar. PlayerView.me.closableDiscards.
  * Para una mano de 8, devuelve las cartas que puedes tirar para quedar <= umbral.
  */
-export function closableDiscards(hand: CardId[], config: GameConfig): CardId[] {
+export function closableDiscards(hand: CardId[], config: ChinchonConfig): CardId[] {
   if (hand.length !== 8) return [];
   const out: CardId[] = [];
   for (const id of hand) {

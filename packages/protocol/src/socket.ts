@@ -2,7 +2,7 @@
 // entrada (los que el servidor valida ANTES de tocar nada). Contrato §2.3, §2.4.
 import { z } from 'zod';
 import { GameActionSchema } from './actions.ts';
-import { GameConfigSchema } from './config.ts';
+import { ChinchonConfigSchema, GameConfigSchema, PochaConfigSchema } from './config.ts';
 import type { GameEvent } from './events.ts';
 import type { GameId, PlayerId, RoomCode } from './ids.ts';
 import type { PlayerView, TableView } from './views.ts';
@@ -116,7 +116,13 @@ export interface ServerToClientEvents {
 // El servidor hace: schemas[eventName]?.parse(payload) antes de tocar nada.
 
 const roomCreateSchema = z.object({
-  gameId: z.literal('chinchon'),
+  // Contrato §10.1 (P21/P22): GameId se ensanchó a 'chinchon' | 'pocha'. El
+  // cliente de hoy (apps/web) todavía solo sabe crear salas de Chinchón
+  // (P24, interfaz de Pocha, sigue sin empezar): esta línea acepta ambos
+  // valores a nivel de protocolo -- room-manager.ts (apps/server) sigue
+  // rechazando explícitamente cualquier gameId que no sea 'chinchon' con
+  // GAME_NOT_FOUND hasta que P23 lo cablee de verdad.
+  gameId: z.union([z.literal('chinchon'), z.literal('pocha')]),
   config: GameConfigSchema,
   nick: z.string(),
 });
@@ -132,7 +138,12 @@ const roomResumeSchema = z.object({
 
 const roomConfigSchema = z.object({
   // Partial del esquema de config: solo campos presentes, sin defaults.
-  patch: GameConfigSchema.partial(),
+  // GameConfigSchema es una unión discriminada (§10.2, P22) y
+  // ZodDiscriminatedUnion no expone `.partial()` directamente (a diferencia
+  // de ZodObject): se valida como la unión de los parciales de cada miembro
+  // en su lugar. room-manager.ts sigue siendo quien decide, en runtime, qué
+  // campos tienen sentido para el `gameId` real de la sala.
+  patch: z.union([ChinchonConfigSchema.partial(), PochaConfigSchema.partial()]),
 });
 
 const emptySchema = z.object({}).strict();

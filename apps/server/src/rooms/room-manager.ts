@@ -4,6 +4,7 @@
 // empezada). Toda mutación actualiza lastActivityAt. applyAction delega en
 // GAMES[gameId].applyAction y NUNCA implementa reglas por su cuenta.
 import {
+  type ChinchonConfig,
   type GameAction,
   type GameConfig,
   type GameId,
@@ -218,8 +219,13 @@ export class RoomManager {
     if (!player) return err('PLAYER_NOT_IN_ROOM');
     if (!player.isHost) return err('NOT_HOST');
 
-    // Merge conservando gameId (no se cambia el juego de una sala).
-    room.config = { ...room.config, ...input.patch, gameId: room.gameId };
+    // Merge conservando gameId (no se cambia el juego de una sala). El cast
+    // es necesario porque GameConfig es una unión discriminada (§10.2, P22):
+    // `gameId: room.gameId` (tipado como el GameId ancho) hace que TS ya no
+    // pueda inferir a qué miembro concreto de la unión pertenece el objeto
+    // resultante, aunque en runtime siga siendo exactamente la misma config
+    // del mismo juego de siempre (el merge nunca cambia `gameId`).
+    room.config = { ...room.config, ...input.patch, gameId: room.gameId } as GameConfig;
     room.touch(input.now);
     room.hooks.onSnapshot?.(room);
     return ok({ config: room.config });
@@ -246,7 +252,16 @@ export class RoomManager {
     if (!module) return err('GAME_NOT_FOUND');
 
     room.state = engineCreateInitialState({
-      config: room.config,
+      // `engineCreateInitialState` es, hoy, específicamente el
+      // `createInitialState` de Chinchón (importado con alias de
+      // `@ronda/engine`): el registro `GAMES` se consulta arriba solo para
+      // comprobar que el juego existe, pero el propio reparto todavía NO se
+      // despacha por `module.createInitialState` de verdad -- ese cableado
+      // genérico es trabajo de P23 (servidor), no de este paquete (P22,
+      // packages/engine). Hoy `room.config` siempre es un `ChinchonConfig`
+      // en runtime (createRoom ya rechaza cualquier gameId != 'chinchon'),
+      // así que el cast es fiel al comportamiento actual, no una mentira.
+      config: room.config as ChinchonConfig,
       players: room.playersBySeat().map((p) => ({
         playerId: p.playerId,
         nick: p.nick,
@@ -443,7 +458,12 @@ export class RoomManager {
       if (!module) return err('GAME_NOT_FOUND');
       room.seed = randomSeed();
       room.state = engineCreateInitialState({
-        config: room.config,
+        // Ver comentario homólogo en `start()` más arriba: `engineCreateInitialState`
+        // es hoy siempre el de Chinchón (no despacha por `GAMES[room.gameId]`,
+        // gap pre-existente documentado, fuera de alcance de P22). `room.config`
+        // es en la práctica siempre `ChinchonConfig` porque `createRoom` solo
+        // permite `gameId: 'chinchon'` hoy.
+        config: room.config as ChinchonConfig,
         players: room.playersBySeat().map((p) => ({
           playerId: p.playerId,
           nick: p.nick,

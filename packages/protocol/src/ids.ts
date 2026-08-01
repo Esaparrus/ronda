@@ -6,8 +6,8 @@ export type RoomCode = string;
 /** Identificador de jugador: uuid v4. */
 export type PlayerId = string;
 
-/** Identificador de partida/juego. Por ahora solo Chinchón. */
-export type GameId = 'chinchon';
+/** Identificador de partida/juego. Contrato §10.1 (P21/P22): ensanchado para Pocha. */
+export type GameId = 'chinchon' | 'pocha';
 
 /**
  * Identificador de carta. Formato:
@@ -24,5 +24,10 @@ export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 export const ROOM_CODE_LENGTH = 4;
 
-export const MAX_PLAYERS = 4;
-export const MIN_PLAYERS = 2;
+/**
+ * Límite ABSOLUTO de sala (unión de los rangos de todos los juegos), no el
+ * límite de un juego concreto. Contrato §10.6 (P21/P22). El límite real de
+ * cada partida lo pone `config.maxPlayers` del `GameConfig` de ese juego.
+ */
+export const MAX_PLAYERS = 6; // antes 4 (límite de Chinchón únicamente)
+export const MIN_PLAYERS = 2; // sin cambio -- Chinchón lo sigue necesitando

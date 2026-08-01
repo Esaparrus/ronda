@@ -12,17 +12,30 @@ import type { Server as IoServerType } from 'socket.io';
 import type { TypedIoServer } from '../io.ts';
 import type { Room } from '../rooms/room.ts';
 import { GAMES } from '@ronda/engine';
-import type { CommonView, GameEvent, PlayerView, TableView } from '@ronda/protocol';
+import type {
+  ChinchonCommonView,
+  ChinchonPlayerView,
+  ChinchonTableView,
+  GameEvent,
+} from '@ronda/protocol';
 
 /** Versión del lobby (0). El motor arranca en versión 0. */
 const LOBBY_VERSION = 0;
 
-/** Construye la parte común de la vista (jugadores públicos, config, etc.). */
-function buildCommon(room: Room): CommonView {
+/**
+ * Construye la parte común de la vista de lobby (jugadores públicos, config,
+ * etc.). Tipada como `ChinchonCommonView` en vez del `CommonView` genérico
+ * (unión discriminada desde P22): esta vista mínima de lobby es
+ * deliberadamente Chinchón-shaped (turnPhase/deckCount/discardTop/
+ * discardCount son vocabulario suyo) porque hoy solo se pueden crear salas
+ * de Chinchón (`room-manager.ts` rechaza cualquier otro gameId al crear la
+ * sala) -- una vista de lobby de Pocha de verdad es trabajo de P23/P24.
+ */
+function buildCommon(room: Room): ChinchonCommonView {
   return {
     roomCode: room.code,
-    gameId: room.gameId,
-    config: room.config,
+    gameId: room.gameId as 'chinchon',
+    config: room.config as ChinchonCommonView['config'],
     status: room.status === 'closed' ? 'gameEnd' : room.status,
     round: 0,
     players: room.playersBySeat().map((p) => ({
@@ -48,7 +61,7 @@ function buildCommon(room: Room): CommonView {
 }
 
 /** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
-function lobbyPlayerView(room: Room, playerId: string): PlayerView {
+function lobbyPlayerView(room: Room, playerId: string): ChinchonPlayerView {
   return {
     kind: 'player',
     ...buildCommon(room),
@@ -65,7 +78,7 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
   };
 }
 
-function lobbyTableView(room: Room): TableView {
+function lobbyTableView(room: Room): ChinchonTableView {
   return { kind: 'table', ...buildCommon(room) };
 }
 

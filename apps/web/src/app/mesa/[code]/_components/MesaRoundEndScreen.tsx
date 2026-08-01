@@ -3,19 +3,21 @@
 // Vista siempre TableView: nunca lee `me`, ni permite ninguna acción --
 // solo información, «quién falta por confirmar» incluido (no hay botón,
 // eso vive en /sala).
-import type { PlayerId, TableView } from '@ronda/protocol';
+import type { ChinchonTableView, PlayerId } from '@ronda/protocol';
 import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
 import { RevealedHand } from '@/components/cards/RevealedHand';
 import { pendingConfirmations } from '@/lib/pending';
 
+// Vocabulario de Chinchón (melds/leftovers, jokerPoints, chinchonBy...): el
+// dispatcher (MesaClient.tsx) ya estrecha `TableView` antes de llegar aquí.
 export interface MesaRoundEndScreenProps {
-  view: TableView;
+  view: ChinchonTableView;
 }
 
 const STAGGER_MS = 80;
 
-function nickFor(view: TableView, playerId: PlayerId | null): string | null {
+function nickFor(view: ChinchonTableView, playerId: PlayerId | null): string | null {
   if (!playerId) return null;
   return view.players.find((p) => p.playerId === playerId)?.nick ?? null;
 }

@@ -1,16 +1,25 @@
-// Configuración de partida. Contrato §2.7.
+// Configuración de partida. Contrato §2.7, ensanchado en §10.2 (P21/P22)
+// para admitir Pocha como segundo juego.
 //
-// La config concreta de Chinchón vive en ChinchonConfig. Por ahora solo existe
-// ese juego, así que GameConfig es un alias de ChinchonConfig. Cuando llegue el
-// segundo juego (post-MVP), GameConfig pasará a ser una unión discriminada por
-// `gameId`:
-//   export type GameConfig = ChinchonConfig | PochaConfig | ...
-// El cambio se hace en este único fichero, no por todo el código.
+// GameConfig es ahora una unión discriminada por `gameId`, tal y como
+// anticipaba el comentario original de este fichero (P1). ChinchonConfig
+// gana un campo `gameId: 'chinchon'` que antes no tenía (necesario para que
+// TypeScript distinga el miembro de la unión) y pasa a heredar
+// `soundEnabled` de `CommonGameConfig` en vez de declararlo suelto -- ningún
+// valor ni comportamiento de Chinchón cambia, es solo la forma del tipo
+// (§10.2, cambio real a un contrato congelado, documentado explícitamente).
 import { z } from 'zod';
 import type { GameId } from './ids.ts';
 
-/** Nº máximo de jugadores (sala). */
-const MAX_PLAYERS = z.union([z.literal(2), z.literal(3), z.literal(4)]);
+/** Preferencia común a cualquier juego: no afecta al motor. Contrato §10.2. */
+export const CommonGameConfigSchema = z.object({
+  soundEnabled: z.boolean().default(true),
+});
+
+// --- Chinchón (§2.7, sin cambio de comportamiento) --------------------------
+
+/** Nº máximo de jugadores (sala) de Chinchón. */
+const CHINCHON_MAX_PLAYERS = z.union([z.literal(2), z.literal(3), z.literal(4)]);
 /** Cartas en la mano (CONGELADO en 7 para el MVP). */
 const HAND_SIZE = z.literal(7);
 /** Nº de comodines en la baraja. */
@@ -26,9 +35,9 @@ const JOKER_POINTS = z.union([z.literal(20), z.literal(25)]);
 /** Máximo comodines por combinación (CONGELADO en 1). */
 const MAX_JOKERS_PER_MELD = z.literal(1);
 
-export const ChinchonConfigSchema = z.object({
+export const ChinchonConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('chinchon' satisfies GameId).default('chinchon'),
-  maxPlayers: MAX_PLAYERS.default(4),
+  maxPlayers: CHINCHON_MAX_PLAYERS.default(4),
   handSize: HAND_SIZE.default(7),
   jokers: JOKERS.default(2),
   closeThreshold: CLOSE_THRESHOLD.default(5),
@@ -38,19 +47,45 @@ export const ChinchonConfigSchema = z.object({
   jokerPoints: JOKER_POINTS.default(25),
   maxJokersPerMeld: MAX_JOKERS_PER_MELD.default(1),
   forbidDiscardDrawnCard: z.boolean().default(true),
-  soundEnabled: z.boolean().default(true),
 });
 
 export type ChinchonConfig = z.infer<typeof ChinchonConfigSchema>;
 
+// --- Pocha (§9.10, §10.2) ----------------------------------------------------
+
+/** Nº de jugadores de Pocha: 3 a 6 (mínimo de partida 3, fijo, no configurable). */
+const POCHA_MAX_PLAYERS = z.union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)]);
+/** Orden de fuerza para ganar bazas. Contrato §9.6. */
+const RANK_ORDER = z.union([z.literal('numerico'), z.literal('brisca')]);
+
+export const PochaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('pocha' satisfies GameId).default('pocha'),
+  trump: z.boolean().default(true),
+  rankOrder: RANK_ORDER.default('numerico'),
+  maxPlayers: POCHA_MAX_PLAYERS.default(4),
+});
+
+export type PochaConfig = z.infer<typeof PochaConfigSchema>;
+
+// --- Unión discriminada ------------------------------------------------------
+
 /**
- * Config válida para cualquier juego. Por ahora, solo Chinchón.
- * El `gameId` está dentro de la config para que la unión discriminada futura
- * funcione sin tocar las firmas que reciben `GameConfig`.
+ * Config válida para cualquier juego. Unión discriminada por `gameId`
+ * (§10.2). Antes de P22 era, en la práctica, un alias de `ChinchonConfig`.
  */
-export type GameConfig = ChinchonConfig;
+export type GameConfig = ChinchonConfig | PochaConfig;
 
-export const GameConfigSchema = ChinchonConfigSchema;
+export const GameConfigSchema = z.discriminatedUnion('gameId', [
+  ChinchonConfigSchema,
+  PochaConfigSchema,
+]);
 
-/** Config por defecto (la que devuelve `GameConfigSchema.parse({})`). */
-export const DEFAULT_CONFIG: GameConfig = ChinchonConfigSchema.parse({});
+/**
+ * Config de Chinchón por defecto (la que devuelve `ChinchonConfigSchema.parse({})`).
+ * Tipada como `ChinchonConfig` (no como el `GameConfig` ensanchado) a
+ * propósito: es más precisa -- sigue siendo asignable a `GameConfig`
+ * en cualquier sitio que lo pida -- y evita que el ensanche de tipo de P22
+ * rompa el tipado de quien ya la usaba asumiendo los campos de Chinchón
+ * (p.ej. `core/deck.ts`).
+ */
+export const DEFAULT_CONFIG: ChinchonConfig = ChinchonConfigSchema.parse({});

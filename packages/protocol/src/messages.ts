@@ -26,6 +26,10 @@ const MESSAGES: Readonly<Record<ErrorCode, string>> = {
   GAME_NOT_FOUND: 'Ese juego no existe.',
   RATE_LIMITED: 'Demasiadas acciones seguidas. Espera un momento.',
   INTERNAL: 'Algo ha fallado. Vuelve a intentarlo.',
+  INVALID_BID: 'Ese cante no es válido para esta ronda.',
+  BID_HOOKED: 'Ese cante dejaría la suma exacta. Elige otro número.',
+  MUST_FOLLOW_SUIT: 'Tienes que jugar una carta del palo que ha salido.',
+  NOT_YOUR_TRICK: 'Todavía no te toca jugar en esta baza.',
 };
 
 /**

@@ -8,7 +8,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { PlayerId, PlayerView } from '@ronda/protocol';
+import type { ChinchonPlayerView, PlayerId } from '@ronda/protocol';
 import { messageFor } from '@ronda/protocol';
 import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
@@ -17,11 +17,13 @@ import { RevealedHand } from '@/components/cards/RevealedHand';
 import { useRondaStore } from '@/lib/store';
 import { pendingConfirmations } from '@/lib/pending';
 
+// Vocabulario de Chinchón (melds/leftovers, jokerPoints, chinchonBy...): el
+// dispatcher (SalaClient.tsx) ya estrecha `PlayerView` antes de llegar aquí.
 export interface RoundEndScreenProps {
-  view: PlayerView;
+  view: ChinchonPlayerView;
 }
 
-function nickFor(view: PlayerView, playerId: PlayerId | null): string | null {
+function nickFor(view: ChinchonPlayerView, playerId: PlayerId | null): string | null {
   if (!playerId) return null;
   return view.players.find((p) => p.playerId === playerId)?.nick ?? null;
 }

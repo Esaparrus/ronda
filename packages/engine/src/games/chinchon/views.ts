@@ -7,12 +7,14 @@
 import {
   type AvailableAction,
   type CardId,
-  type CommonView,
+  type ChinchonCommonView,
+  type ChinchonPlayerView,
+  type ChinchonPlayerViewMe,
+  type ChinchonTableView,
   type ConnectionPlayer,
   type PlayerId,
   type PlayerView,
   type PublicPlayer,
-  type TableView,
 } from '@ronda/protocol';
 import { solveHand, closableDiscards } from './melds.ts';
 import type { ChinchonState } from './state.ts';
@@ -40,7 +42,7 @@ function buildPublicPlayers(state: ChinchonState): PublicPlayer[] {
 }
 
 /** Parte común a ambas vistas. */
-function buildCommon(state: ChinchonState): CommonView {
+function buildCommon(state: ChinchonState): ChinchonCommonView {
   const turnSeat = state.turnSeat;
   const turnPlayerId =
     turnSeat !== null ? (state.players[turnSeat]?.playerId ?? null) : null;
@@ -67,7 +69,7 @@ function buildCommon(state: ChinchonState): CommonView {
  * Vista del jugador: incluye `me` con la mano propia y sugerencias.
  * Contrato §2.5 PlayerView. Las manos ajenas NUNCA aparecen.
  */
-export function getPlayerView(state: ChinchonState, playerId: PlayerId): PlayerView {
+export function getPlayerView(state: ChinchonState, playerId: PlayerId): ChinchonPlayerView {
   const common = buildCommon(state);
   const me = buildMe(state, playerId);
   return { kind: 'player', ...common, me };
@@ -77,12 +79,12 @@ export function getPlayerView(state: ChinchonState, playerId: PlayerId): PlayerV
  * Vista de la pantalla central: SOLO CommonView. Sin `me`, jamás.
  * Contrato §2.5 TableView.
  */
-export function getTableView(state: ChinchonState): TableView {
+export function getTableView(state: ChinchonState): ChinchonTableView {
   return { kind: 'table', ...buildCommon(state) };
 }
 
 /** Construye el bloque `me` privado del jugador. */
-function buildMe(state: ChinchonState, playerId: PlayerId): PlayerView['me'] {
+function buildMe(state: ChinchonState, playerId: PlayerId): ChinchonPlayerViewMe {
   const player = state.players.find((p) => p.playerId === playerId);
 
   // Si el jugador no está o está eliminado/abandonado: vista mínima sin mano.

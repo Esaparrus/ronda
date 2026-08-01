@@ -133,6 +133,21 @@ export function SalaClient({ code }: SalaClientProps) {
     );
   }
 
+  // PlayerView es una unión discriminada por `gameId` desde P22 (motor de
+  // Pocha). Las cuatro pantallas de abajo (Lobby/GameScreen/RoundEndScreen/
+  // GameEndScreen) son, hoy, específicamente de Chinchón -- este es el único
+  // sitio donde se estrecha el tipo, para no repetir el guard en cada una.
+  // Hoy no se pueden crear salas de Pocha (room-manager.createRoom lo
+  // rechaza), así que esta rama nunca se alcanza en la práctica; pantallas
+  // de Pocha de verdad son trabajo de P24.
+  if (view.gameId !== 'chinchon') {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+        <p className="text-16 text-hueso">Este juego todavía no tiene pantalla.</p>
+      </main>
+    );
+  }
+
   return (
     <div className="flex min-h-dvh flex-col">
       <Banner status={connection} />

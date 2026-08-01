@@ -6,15 +6,17 @@
 'use client';
 
 import { useState } from 'react';
-import type { CardId, PlayerView } from '@ronda/protocol';
+import type { CardId, ChinchonPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { PlayerStrip } from './PlayerStrip';
 import { CommonArea } from './CommonArea';
 import { Hand } from './Hand';
 import { ActionBar } from './ActionBar';
 
+// Vocabulario de Chinchón (mazo/descarte, comodines, bestMelds...): el
+// dispatcher (SalaClient.tsx) ya estrecha `PlayerView` antes de llegar aquí.
 export interface GameScreenProps {
-  view: PlayerView;
+  view: ChinchonPlayerView;
 }
 
 export function GameScreen({ view }: GameScreenProps) {

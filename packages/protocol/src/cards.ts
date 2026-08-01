@@ -1,6 +1,6 @@
 // Cartas de la baraja española + comodines. Contrato §2.1, §3.1.
 import type { CardId } from './ids.ts';
-import type { GameConfig } from './config.ts';
+import type { ChinchonConfig } from './config.ts';
 
 export type Suit = 'oros' | 'copas' | 'espadas' | 'bastos';
 
@@ -26,9 +26,11 @@ const SUIT_SET: ReadonlySet<string> = new Set(SUITS);
  *   - comodín → config.jokerPoints
  *
  * La firma recibe `config` para que el comodín respete la configuración.
- * Las cartas no comodín ignoran la config.
+ * Las cartas no comodín ignoran la config. Tipada como `ChinchonConfig` (no
+ * el `GameConfig` ensanchado de P22): el comodín y sus puntos son un
+ * concepto exclusivo de Chinchón -- Pocha no tiene comodines (§9.1).
  */
-export function cardPoints(card: Card, config: GameConfig): number {
+export function cardPoints(card: Card, config: ChinchonConfig): number {
   if (card.isJoker) return config.jokerPoints;
   if (card.rank === null) return 0;
   return card.rank <= 9 ? card.rank : 10;

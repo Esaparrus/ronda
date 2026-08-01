@@ -1,23 +1,46 @@
-// Vistas que el servidor envía al cliente (siempre censuradas). Contrato §2.5.
+// Vistas que el servidor envía al cliente (siempre censuradas). Contrato §2.5,
+// ensanchado en P22 (motor de Pocha) para admitir un segundo juego.
+//
+// Gap encontrado durante P22 (no cubierto por §10, P21): §10 amplió GameId,
+// GameConfig, GameEvent, GameAction y ERROR_CODES para Pocha, pero nunca
+// diseñó la forma de su PlayerView/TableView -- CommonView (de antes de P22)
+// asumía campos de Chinchón (turnPhase, deckCount, discardTop/Count) como
+// obligatorios al nivel superior. Se resuelve aquí siguiendo el mismo patrón
+// ya usado para GameConfig (§10.2): unión discriminada por `gameId`. La forma
+// de Chinchón (ChinchonCommonView/ChinchonPlayerView/ChinchonTableView/
+// RoundResult) es EXACTAMENTE la misma que ya existía -- solo cambia de
+// nombre al pasar a ser un miembro de la unión, ningún campo ni
+// comportamiento cambia. Pocha añade su propia forma al lado.
 //
 // Invariante de seguridad (verificable con un test, §2.5 final):
 //   serializar una TableView o una PlayerView y comprobar que no aparece ningún
 //   CardId de la mano de otro jugador, salvo dentro de roundResult cuando
 //   status !== 'playing'.
 import { z } from 'zod';
-import type { CardId, GameId, PlayerId, RoomCode } from './ids.ts';
-import type { GameConfig } from './config.ts';
+import type { CardId, PlayerId, RoomCode } from './ids.ts';
+import type { Suit } from './cards.ts';
+import type { ChinchonConfig, PochaConfig } from './config.ts';
 
 export type ViewStatus = 'lobby' | 'playing' | 'roundEnd' | 'gameEnd';
 export type TurnPhase = 'draw' | 'discard' | null;
 
-/** Acción de juego disponible para el jugador en este momento. */
+/** Acción de juego disponible para el jugador en este momento (Chinchón). */
 export type AvailableAction = 'drawDeck' | 'drawDiscard' | 'discard' | 'close';
 
+/** Acción de juego disponible para el jugador en este momento (Pocha). */
+export type PochaAvailableAction = 'bid' | 'playCard' | 'nextRound';
+
+/**
+ * Jugador público (sin mano). Compartido por ambos juegos: los campos son
+ * genéricos de verdad. `colorIndex` sigue congelado en `0|1|2|3` (§10.7):
+ * ensancharlo a 0-5 para el caso de hasta 6 jugadores de Pocha es un punto de
+ * diseño real (2 colores de asiento nuevos) explícitamente diferido a P24
+ * (interfaz de Pocha) -- no se toca aquí.
+ */
 export interface PublicPlayer {
   playerId: PlayerId;
   nick: string;
-  seat: number; // 0..3
+  seat: number; // 0..3 en Chinchón; 0..5 en Pocha (§10.7: colorIndex no sigue aún)
   colorIndex: 0 | 1 | 2 | 3; // color de asiento, asignado por asiento
   score: number; // acumulado de la partida
   handCount: number; // nº de cartas, nunca cuáles
@@ -26,24 +49,30 @@ export interface PublicPlayer {
   eliminated: boolean;
 }
 
-export interface CommonView {
+/** Campos comunes a cualquier vista, de cualquier juego. */
+interface CommonViewBase {
   roomCode: RoomCode;
-  gameId: GameId;
-  config: GameConfig;
   status: ViewStatus;
   round: number;
   players: PublicPlayer[];
   turnPlayerId: PlayerId | null;
+  winnerId: PlayerId | null;
+  rematchVotes: PlayerId[];
+}
+
+// --- Chinchón (forma idéntica a la que existía antes de P22) ----------------
+
+export interface ChinchonCommonView extends CommonViewBase {
+  gameId: 'chinchon';
+  config: ChinchonConfig;
   turnPhase: TurnPhase;
   deckCount: number;
   discardTop: CardId | null;
   discardCount: number;
   roundResult: RoundResult | null; // solo en status 'roundEnd' | 'gameEnd'
-  winnerId: PlayerId | null;
-  rematchVotes: PlayerId[];
 }
 
-export interface PlayerViewMe {
+export interface ChinchonPlayerViewMe {
   playerId: PlayerId;
   hand: CardId[]; // orden tal y como lo dejó el jugador
   bestMelds: CardId[][]; // sugerencia calculada por el servidor
@@ -54,12 +83,12 @@ export interface PlayerViewMe {
   availableActions: AvailableAction[];
 }
 
-export interface PlayerView extends CommonView {
+export interface ChinchonPlayerView extends ChinchonCommonView {
   kind: 'player';
-  me: PlayerViewMe;
+  me: ChinchonPlayerViewMe;
 }
 
-export interface TableView extends CommonView {
+export interface ChinchonTableView extends ChinchonCommonView {
   kind: 'table'; // sin campo 'me'. Jamás.
 }
 
@@ -78,12 +107,74 @@ export interface RoundResult {
   rows: RoundResultRow[];
 }
 
+// --- Pocha (nuevo en P22; resuelve el gap de vista que §10 no cubrió) -------
+
+export interface PochaCommonView extends CommonViewBase {
+  gameId: 'pocha';
+  config: PochaConfig;
+  /** Palo de triunfo de la ronda, o null si config.trump === false. */
+  trumpSuit: Suit | null;
+  /** Carta revelada para fijar el triunfo (§9.3), o null si no hay triunfo. */
+  trumpCardId: CardId | null;
+  /** Tamaño de la ronda en curso (nº de cartas repartidas, §9.2). */
+  roundSize: number;
+  dealerSeat: number;
+  /** Cante de cada jugador, indexado por asiento. null = no ha cantado todavía. */
+  bids: (number | null)[];
+  /** Bazas ganadas por cada jugador en la ronda en curso, indexado por asiento. */
+  tricksWon: number[];
+  /** Cartas jugadas en la baza en curso, en el orden en que se jugaron. */
+  currentTrick: { playerId: PlayerId; cardId: CardId }[];
+  /** Palo que salió en la baza en curso, o null si todavía no se ha jugado ninguna carta. */
+  leadSuit: Suit | null;
+  roundResult: PochaRoundResult | null; // solo en status 'roundEnd' | 'gameEnd'
+}
+
+export interface PochaPlayerViewMe {
+  playerId: PlayerId;
+  hand: CardId[];
+  /** Cartas jugables ahora mismo respetando la obligación de asistir (§9.5). Vacío si no es mi turno de baza. */
+  legalCardIds: CardId[];
+  availableActions: PochaAvailableAction[];
+}
+
+export interface PochaPlayerView extends PochaCommonView {
+  kind: 'player';
+  me: PochaPlayerViewMe;
+}
+
+export interface PochaTableView extends PochaCommonView {
+  kind: 'table'; // sin campo 'me'. Jamás.
+}
+
+export interface PochaRoundResultRow {
+  playerId: PlayerId;
+  bid: number;
+  tricksWon: number;
+  delta: number; // 10+tricksWon si acertó, 0 si no (§9.7)
+  total: number;
+}
+
+export interface PochaRoundResult {
+  rows: PochaRoundResultRow[];
+}
+
+// --- Uniones públicas (§2.5, ensanchadas en P22) -----------------------------
+
+export type CommonView = ChinchonCommonView | PochaCommonView;
+export type PlayerView = ChinchonPlayerView | PochaPlayerView;
+export type TableView = ChinchonTableView | PochaTableView;
+
 // --- Esquemas zod (tipo derivado por z.infer donde coincide) -----------------
+// Nota: no había (ni hay) un PlayerViewSchema/TableViewSchema en zod -- las
+// vistas no se validan en el borde de red con zod (solo GameConfig y las
+// acciones/eventos, que sí cruzan el borde en ambas direcciones). Solo
+// PublicPlayer y RoundResult (de Chinchón) tenían esquema, y lo conservan.
 
 export const PublicPlayerSchema = z.object({
   playerId: z.string(),
   nick: z.string(),
-  seat: z.number().int().min(0).max(3),
+  seat: z.number().int().min(0).max(5),
   colorIndex: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   score: z.number().int(),
   handCount: z.number().int().min(0),

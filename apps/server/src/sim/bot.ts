@@ -92,6 +92,12 @@ export function emitGameAction(
 export async function botPlay(bot: BotHandle): Promise<Result<{ version: number }> | null> {
   const view = bot.lastView;
   if (!view || view.status !== 'playing') return null;
+  // El simulador (P9) es un bot de Chinchón: la política de abajo (robar,
+  // cerrar, descartar) es vocabulario de ese juego. PlayerView es una unión
+  // discriminada por gameId desde P22 (motor de Pocha) -- este guard
+  // estrecha el tipo para el resto de la función, sin cambiar ningún
+  // comportamiento (el simulador no crea salas de Pocha).
+  if (view.gameId !== 'chinchon') return null;
   const me = view.me;
   if (!me) return null;
   // Solo actúa si es su turno.
@@ -140,6 +146,7 @@ function cardScore(id: CardId): number {
 export function checkNoLeak(bot: BotHandle): CardId[] {
   const view = bot.lastView;
   if (!view || view.status !== 'playing' || !view.me) return [];
+  if (view.gameId !== 'chinchon') return []; // ver nota de botPlay más arriba
   const allowed = view.discardTop ? [view.discardTop] : [];
   const leaks = leakedCards(view, view.me.hand, allowed);
   if (leaks.length > 0) bot.violations.push(...leaks);

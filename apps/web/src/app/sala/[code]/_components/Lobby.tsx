@@ -4,7 +4,7 @@
 
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
-import type { GameConfig, PlayerView } from '@ronda/protocol';
+import type { ChinchonConfig, ChinchonPlayerView } from '@ronda/protocol';
 import { messageFor } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { RoomCode } from '@/components/ui/RoomCode';
@@ -13,14 +13,19 @@ import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 
+// Este lobby renderiza variantes de Chinchón (comodines, umbral de cierre,
+// etc.), así que su prop es deliberadamente `ChinchonPlayerView`, no el
+// `PlayerView` genérico (unión discriminada desde P22). El dispatcher
+// (SalaClient.tsx) es quien estrecha el tipo antes de renderizar este
+// componente. Un lobby de Pocha de verdad es trabajo de P24.
 export interface LobbyProps {
-  view: PlayerView;
+  view: ChinchonPlayerView;
 }
 
-function updateLocal<K extends keyof GameConfig>(
-  setConfig: (fn: (prev: GameConfig) => GameConfig) => void,
+function updateLocal<K extends keyof ChinchonConfig>(
+  setConfig: (fn: (prev: ChinchonConfig) => ChinchonConfig) => void,
   key: K,
-  value: GameConfig[K],
+  value: ChinchonConfig[K],
 ) {
   setConfig((prev) => ({ ...prev, [key]: value }));
 }
@@ -73,9 +78,9 @@ export function Lobby({ view }: LobbyProps) {
     }
   }
 
-  function setField<K extends keyof GameConfig>(key: K, value: GameConfig[K]) {
+  function setField<K extends keyof ChinchonConfig>(key: K, value: ChinchonConfig[K]) {
     updateLocal(setConfig, key, value);
-    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<GameConfig>);
+    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<ChinchonConfig>);
   }
 
   async function handleStart() {

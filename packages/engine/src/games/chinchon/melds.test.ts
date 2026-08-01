@@ -7,15 +7,10 @@ import {
   enumerateMelds,
   type MeldSolution,
 } from './melds.ts';
-import {
-  DEFAULT_CONFIG,
-  parseCardId,
-  type CardId,
-  type GameConfig,
-} from '@ronda/protocol';
+import { DEFAULT_CONFIG, parseCardId, type CardId, type ChinchonConfig } from '@ronda/protocol';
 import { mulberry32, hashSeed } from '../../core/rng.ts';
 
-const CFG: GameConfig = DEFAULT_CONFIG;
+const CFG: ChinchonConfig = DEFAULT_CONFIG;
 
 /** Construye todas las CardId de la baraja para muestreo. */
 const ALL_CARD_IDS: CardId[] = (() => {

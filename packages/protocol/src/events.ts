@@ -24,6 +24,12 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('roundScored'), scores: z.array(roundScoredRow) }),
   z.object({ t: z.literal('eliminated'), playerId: z.string() }),
   z.object({ t: z.literal('gameOver'), winnerId: z.string() }),
+  // --- Pocha (§10.3, P21/P22). `roundScored` y `gameOver` (arriba) se
+  // reutilizan tal cual para Pocha; estos cuatro son exclusivos suyos. ---
+  z.object({ t: z.literal('trumpRevealed'), cardId: z.string() }),
+  z.object({ t: z.literal('bid'), playerId: z.string(), amount: z.number().int() }),
+  z.object({ t: z.literal('cardPlayed'), playerId: z.string(), cardId: z.string() }),
+  z.object({ t: z.literal('trickWon'), playerId: z.string(), cards: z.array(z.string()) }),
 ]);
 
 export type GameEvent = z.infer<typeof GameEventSchema>;

@@ -91,6 +91,19 @@ export function MesaClient({ code }: MesaClientProps) {
   // A partir de aquí `view` está estrechada a TableView (kind === 'table').
   const tableView: TableView = view;
 
+  // TableView es, desde P22, unión discriminada por `gameId` (motor de
+  // Pocha). Las cuatro pantallas de mesa de abajo son, hoy, específicamente
+  // de Chinchón -- mismo motivo y mismo patrón que en SalaClient.tsx. Hoy no
+  // se pueden crear salas de Pocha, así que esta rama nunca se alcanza en la
+  // práctica; una mesa de Pocha de verdad es trabajo de P24.
+  if (tableView.gameId !== 'chinchon') {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-16 text-hueso">Este juego todavía no tiene pantalla de mesa.</p>
+      </main>
+    );
+  }
+
   return (
     <div className="relative flex min-h-dvh flex-col bg-tinta">
       <Banner status={connection} />

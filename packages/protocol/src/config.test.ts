@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GameConfigSchema, DEFAULT_CONFIG } from './config.ts';
+import { ChinchonConfigSchema, GameConfigSchema, DEFAULT_CONFIG } from './config.ts';
 
 describe('GameConfigSchema', () => {
   it('parse({ gameId }) devuelve exactamente DEFAULT_CONFIG', () => {
@@ -7,10 +7,19 @@ describe('GameConfigSchema', () => {
     expect(parsed).toEqual(DEFAULT_CONFIG);
   });
 
-  it('parse({}) también aplica todos los defaults (gameId incluido)', () => {
-    const parsed = GameConfigSchema.parse({});
+  it('ChinchonConfigSchema.parse({}) aplica todos los defaults (gameId incluido)', () => {
+    // GameConfigSchema es ahora una unión discriminada (§10.2, P22): zod
+    // necesita conocer `gameId` para saber qué miembro aplicar, así que ya
+    // no puede rellenar el propio discriminante por defecto a partir de un
+    // objeto vacío -- eso solo tiene sentido en el esquema concreto de cada
+    // juego, que es justo lo que este test comprueba ahora.
+    const parsed = ChinchonConfigSchema.parse({});
     expect(parsed).toEqual(DEFAULT_CONFIG);
     expect(parsed.gameId).toBe('chinchon');
+  });
+
+  it('GameConfigSchema.parse({}) (sin gameId) falla: no puede elegir el miembro de la unión', () => {
+    expect(() => GameConfigSchema.parse({})).toThrow();
   });
 
   it('respeta los valores por defecto del contrato §2.7', () => {
@@ -35,13 +44,14 @@ describe('GameConfigSchema', () => {
   });
 
   it('rechaza closeThreshold fuera del conjunto cerrado', () => {
-    expect(() =>
-      GameConfigSchema.parse({ gameId: 'chinchon', closeThreshold: 7 }),
-    ).toThrow();
+    expect(() => GameConfigSchema.parse({ gameId: 'chinchon', closeThreshold: 7 })).toThrow();
   });
 
   it('acepta una config personalizada válida', () => {
-    const custom = GameConfigSchema.parse({
+    // ChinchonConfigSchema (no el GameConfigSchema ensanchado, P22): el test
+    // comprueba campos exclusivos de Chinchón, así que se tipa directamente
+    // con el esquema del juego en vez de forzar un narrowing de la unión.
+    const custom = ChinchonConfigSchema.parse({
       gameId: 'chinchon',
       maxPlayers: 2,
       jokers: 0,

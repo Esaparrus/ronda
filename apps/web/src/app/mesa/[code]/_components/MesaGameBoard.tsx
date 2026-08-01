@@ -1,12 +1,14 @@
 // Composición de la "Partida" en /mesa: anillo de asientos alrededor de un
 // centro con mazo y descarte. Contrato P15. Vista siempre TableView: nunca
 // lee `me`.
-import type { TableView } from '@ronda/protocol';
+import type { ChinchonTableView } from '@ronda/protocol';
 import { SeatRing } from './SeatRing';
 import { CenterTable } from './CenterTable';
 
+// Vocabulario de Chinchón (mazo/descarte): el dispatcher (MesaClient.tsx) ya
+// estrecha `TableView` antes de llegar aquí.
 export interface MesaGameBoardProps {
-  view: TableView;
+  view: ChinchonTableView;
 }
 
 export function MesaGameBoard({ view }: MesaGameBoardProps) {

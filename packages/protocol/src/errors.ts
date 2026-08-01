@@ -23,6 +23,11 @@ export const ERROR_CODES = [
   'GAME_NOT_FOUND',
   'RATE_LIMITED',
   'INTERNAL',
+  // --- Pocha (§10.5, P21/P22) ---
+  'INVALID_BID', // cante fuera de 0..roundSize
+  'BID_HOOKED', // repartidor intentando el cante prohibido por el enganche (§9.4)
+  'MUST_FOLLOW_SUIT', // jugó fuera de palo teniendo cartas del palo que salió (§9.5)
+  'NOT_YOUR_TRICK', // jugó carta fuera de su turno de baza
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

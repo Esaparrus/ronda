@@ -5,17 +5,21 @@
 
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
-import { DEFAULT_CONFIG, messageFor, type GameConfig } from '@ronda/protocol';
+import { DEFAULT_CONFIG, messageFor, type ChinchonConfig } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { isValidNick, normalizeNick } from '@/lib/nick';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
 
-function updateConfig<K extends keyof GameConfig>(
-  setConfig: (fn: (prev: GameConfig) => GameConfig) => void,
+// Esta pantalla solo crea salas de Chinchón (única opción hoy en el catálogo
+// /juegos), así que su formulario y su `config` son deliberadamente
+// `ChinchonConfig`, no el `GameConfig` genérico (unión discriminada desde
+// P22). Una pantalla de creación de Pocha es trabajo de P24.
+function updateConfig<K extends keyof ChinchonConfig>(
+  setConfig: (fn: (prev: ChinchonConfig) => ChinchonConfig) => void,
   key: K,
-  value: GameConfig[K],
+  value: ChinchonConfig[K],
 ) {
   setConfig((prev) => ({ ...prev, [key]: value }));
 }
@@ -26,10 +30,10 @@ export default function CrearPage() {
 
   const [nick, setNick] = useState('');
   const [nickError, setNickError] = useState<string | null>(null);
-  const [config, setConfig] = useState<GameConfig>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<ChinchonConfig>(DEFAULT_CONFIG);
   const [submitting, setSubmitting] = useState(false);
 
-  const set = <K extends keyof GameConfig>(key: K, value: GameConfig[K]) =>
+  const set = <K extends keyof ChinchonConfig>(key: K, value: ChinchonConfig[K]) =>
     updateConfig(setConfig, key, value);
 
   async function handleSubmit(e: FormEvent) {

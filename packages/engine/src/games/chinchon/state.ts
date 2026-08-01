@@ -4,8 +4,8 @@
 //   - JSON-serializable puro: nada de Map, Set, Date ni clases.
 //   - Inmutable: applyAction devuelve un estado nuevo.
 //   - Determinista: el RNG va con semilla y contador DENTRO del estado.
-import type { CardId, GameConfig, GameId, PlayerId, RoomCode } from '@ronda/protocol';
-import type { RoundResult } from '@ronda/protocol';
+import type { CardId, PlayerId, RoomCode } from '@ronda/protocol';
+import type { ChinchonConfig, RoundResult } from '@ronda/protocol';
 
 /** Fase del turno del jugador activo. null si la partida no está en juego. */
 export type TurnPhase = 'draw' | 'discard' | null;
@@ -38,8 +38,8 @@ export interface RngState {
 export interface ChinchonState {
   version: number; // sube en cada acción que muta estado público
   status: GameStatus;
-  config: GameConfig;
-  gameId: GameId;
+  config: ChinchonConfig;
+  gameId: 'chinchon';
 
   // Identidad de la sala (la vista lo expone).
   roomCode: RoomCode;
