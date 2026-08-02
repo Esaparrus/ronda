@@ -107,6 +107,7 @@ export class RoomManager {
       lastSeenAt: input.now,
       disconnectedAt: null,
       socketId: null,
+      isBot: false,
     };
     room.players.set(playerId, player);
     room.hostPlayerId = playerId;
@@ -146,11 +147,53 @@ export class RoomManager {
       lastSeenAt: input.now,
       disconnectedAt: null,
       socketId: null,
+      isBot: false,
     };
     room.players.set(playerId, player);
     room.touch(input.now);
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'player_joined', { nick: player.nick });
+    return ok({ roomCode: room.code, playerId, playerToken: token, seat });
+  }
+
+  // --- addBot ----------------------------------------------------------------
+
+  /**
+   * Añade un jugador robot a la sala (modo "contra la máquina"): mismo
+   * camino que joinRoom, pero solo el anfitrión puede llamarlo, solo en
+   * lobby, y el jugador queda marcado `isBot`. bot-driver.ts es quien lo
+   * mueve después; nunca tiene socket propio.
+   */
+  addBot(input: { roomCode: string; playerId: PlayerId; now: number }): Result<JoinResult> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status !== 'lobby') return err('ROOM_ALREADY_STARTED');
+    const host = room.players.get(input.playerId);
+    if (!host) return err('PLAYER_NOT_IN_ROOM');
+    if (!host.isHost) return err('NOT_HOST');
+
+    const seat = room.nextFreeSeat();
+    if (seat === null) return err('ROOM_FULL');
+
+    const nick = nextBotNick(room);
+    const playerId = randomUUID() as PlayerId;
+    const token = createToken();
+    const player: PlayerRuntime = {
+      playerId,
+      nick,
+      seat,
+      tokenHash: hashToken(token),
+      isHost: false,
+      connected: true,
+      lastSeenAt: input.now,
+      disconnectedAt: null,
+      socketId: null,
+      isBot: true,
+    };
+    room.players.set(playerId, player);
+    room.touch(input.now);
+    room.hooks.onSnapshot?.(room);
+    room.hooks.onTrack?.(room, 'player_joined', { nick, isBot: true });
     return ok({ roomCode: room.code, playerId, playerToken: token, seat });
   }
 
@@ -361,6 +404,19 @@ export class RoomManager {
 
     room.hooks.onSnapshot?.(room);
     void reason;
+    return ok(null);
+  }
+
+  // --- close (anfitrión) ----------------------------------------------------
+
+  /** Solo el anfitrión: cierra la sala para todos, en cualquier estado (lobby o en juego). */
+  closeByHost(input: { roomCode: string; playerId: PlayerId; now: number }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    const player = room.players.get(input.playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+    if (!player.isHost) return err('NOT_HOST');
+    this.closeRoom(room, 'host_left');
     return ok(null);
   }
 
@@ -575,4 +631,15 @@ export class RoomManager {
 
 function randomSeed(): string {
   return randomUUID();
+}
+
+/** Primer apodo "Robot N" libre en la sala (único, como exige isNickTaken). */
+function nextBotNick(room: Room): string {
+  for (let n = 1; n <= room.config.maxPlayers; n++) {
+    const candidate = `Robot ${n}`;
+    if (!room.isNickTaken(candidate)) return candidate;
+  }
+  // No debería alcanzarse (nextFreeSeat ya garantiza hueco antes de llamar
+  // aquí), pero deja un apodo válido en vez de romper el charset de nick.ts.
+  return `Robot ${randomUUID().slice(0, 4)}`;
 }

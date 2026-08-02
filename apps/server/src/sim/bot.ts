@@ -6,6 +6,7 @@
 import { io as ioc, type Socket as ClientSocket } from 'socket.io-client';
 import type { CardId, GameAction, PlayerView, Result } from '@ronda/protocol';
 import { solveHand, canCloseWith, leakedCards } from '@ronda/engine';
+import { decideChinchonAction } from '../rooms/bot-policy.ts';
 
 /** Última acción real enviada por el bot (para el caos de duplicateAction). */
 export interface SentAction {
@@ -103,39 +104,9 @@ export async function botPlay(bot: BotHandle): Promise<Result<{ version: number 
   // Solo actúa si es su turno.
   if (view.turnPlayerId !== bot.playerId) return null;
 
-  const actions = new Set(me.availableActions);
-  let action: GameAction | null = null;
-
-  // Fase draw.
-  if (actions.has('drawDiscard') && view.discardTop) {
-    action = { type: 'drawDiscard' };
-  } else if (actions.has('drawDeck')) {
-    action = { type: 'drawDeck' };
-  } else if (actions.has('close') && me.closableDiscards.length > 0) {
-    // Fase discard: si puede cerrar, cierra.
-    const card = me.closableDiscards[0];
-    if (card) action = { type: 'close', cardId: card };
-  } else if (actions.has('discard')) {
-    // Descarta la carta suelta de más puntos (no en bestMelds).
-    const inMeld = new Set<CardId>(me.bestMelds.flat());
-    const candidates = me.hand.filter((c) => !inMeld.has(c) && c !== me.lockedCardId);
-    const pick =
-      candidates.length > 0
-        ? candidates.reduce((a, b) => (cardScore(a) > cardScore(b) ? a : b))
-        : (me.hand.find((c) => c !== me.lockedCardId) ?? me.hand[0]);
-    if (pick) action = { type: 'discard', cardId: pick };
-  }
-
+  const action = decideChinchonAction(view);
   if (!action) return null;
   return emitGameAction(bot, action, bot.lastVersion);
-}
-
-/** Heurística de "peligrosidad" de una carta suelta: sus puntos. */
-function cardScore(id: CardId): number {
-  if (id.startsWith('joker')) return 25;
-  const dash = id.lastIndexOf('-');
-  const rank = Number(id.slice(dash + 1));
-  return rank >= 10 ? 10 : rank;
 }
 
 /**

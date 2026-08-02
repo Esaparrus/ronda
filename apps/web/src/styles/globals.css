@@ -23,6 +23,22 @@
   --color-azul: #3e6ea8; /* palo de espadas */
   --color-verde: #2f6f5e; /* palo de bastos */
 
+  /* --- Colores de la carta (recreación RondaCard, claude.ai/design) ------
+   * Paleta propia de la CARA de la carta: más saturada que la de la interfaz
+   * de arriba (que sigue gobernando asientos/avatares/turno sin cambios) a
+   * propósito, para que la carta impresa se lea como un objeto aparte de la
+   * interfaz que la rodea. */
+  --card-ink: #1b1d2a; /* trazo/tinta de la carta (distinto del fondo --color-tinta) */
+  --card-face: #fbf1da; /* papel de la cara de la carta */
+  --card-oros: #e3a93b;
+  --card-copas: #e14b3b;
+  --card-espadas: #3e7bc4;
+  --card-bastos: #3c9068;
+  --card-joker: #b9c0d6; /* adornos de esquina del comodín */
+  --card-back-gold: #f2c25a; /* borde y acentos del dorso */
+  --card-back-a: #2b2140; /* trama diagonal del dorso, tono 1 */
+  --card-back-b: #372a52; /* trama diagonal del dorso, tono 2 */
+
   /* --- Tipografías (contrato §8.2), vía next/font/google en layout.tsx --- */
   --font-display: var(--font-familjen-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;

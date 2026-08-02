@@ -13,6 +13,8 @@ import { useEffect, useState } from 'react';
 import { useRondaStore } from '@/lib/store';
 import { useSingleTabGuard } from '@/lib/useSingleTabGuard';
 import { Banner } from '@/components/ui/Banner';
+import { Button } from '@/components/ui/Button';
+import { Sheet } from '@/components/ui/Sheet';
 import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
 import { InactiveTabScreen } from '@/components/ui/InactiveTabScreen';
 import { Lobby } from './Lobby';
@@ -34,6 +36,8 @@ export function SalaClient({ code }: SalaClientProps) {
   const closedReason = useRondaStore((s) => s.closedReason);
   const [resuming, setResuming] = useState(false);
   const [resumeAttempted, setResumeAttempted] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [closingRoom, setClosingRoom] = useState(false);
 
   // Pestaña duplicada: se vigila siempre que sepamos en qué sala estamos,
   // incluso mientras se está resumiendo -- no hace falta esperar a `view`.
@@ -148,13 +152,49 @@ export function SalaClient({ code }: SalaClientProps) {
     );
   }
 
+  const isHost = view.players.find((p) => p.playerId === view.me.playerId)?.isHost ?? false;
+
+  async function handleCloseRoom() {
+    setClosingRoom(true);
+    await useRondaStore.getState().closeRoom();
+    setClosingRoom(false);
+    setConfirmClose(false);
+  }
+
   return (
     <div className="flex min-h-dvh flex-col">
       <Banner status={connection} />
+      {isHost ? (
+        <div className="flex justify-end px-4 py-1">
+          <button
+            type="button"
+            onClick={() => setConfirmClose(true)}
+            className="text-12 text-humo underline"
+          >
+            Cerrar sala
+          </button>
+        </div>
+      ) : null}
       {view.status === 'lobby' ? <Lobby view={view} /> : null}
       {view.status === 'playing' ? <GameScreen view={view} /> : null}
       {view.status === 'roundEnd' ? <RoundEndScreen view={view} /> : null}
       {view.status === 'gameEnd' ? <GameEndScreen view={view} /> : null}
+      <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
+        <div className="flex flex-col gap-4">
+          <p className="text-16 text-hueso">¿Cerrar la sala para todos?</p>
+          <p className="text-14 text-humo">
+            Termina la partida ahora mismo para el resto de jugadores. No se puede deshacer.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setConfirmClose(false)} className="flex-1">
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleCloseRoom} loading={closingRoom} className="flex-1">
+              Cerrar sala
+            </Button>
+          </div>
+        </div>
+      </Sheet>
     </div>
   );
 }

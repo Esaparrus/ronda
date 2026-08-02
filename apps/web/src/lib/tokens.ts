@@ -23,3 +23,19 @@ export const COLOR_TOKENS = {
 } as const;
 
 export type ColorToken = keyof typeof COLOR_TOKENS;
+
+/** Paleta propia de la cara/dorso de la carta (RondaCard). Ver globals.css. */
+export const CARD_COLOR_TOKENS = {
+  ink: '#1B1D2A',
+  face: '#FBF1DA',
+  oros: '#E3A93B',
+  copas: '#E14B3B',
+  espadas: '#3E7BC4',
+  bastos: '#3C9068',
+  joker: '#B9C0D6',
+  backGold: '#F2C25A',
+  backA: '#2B2140',
+  backB: '#372A52',
+} as const;
+
+export type CardColorToken = keyof typeof CARD_COLOR_TOKENS;

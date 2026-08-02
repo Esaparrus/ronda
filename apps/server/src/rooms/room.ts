@@ -26,6 +26,8 @@ export interface PlayerRuntime {
   /** ms epoch en que se desconectó (para el grace de traspaso de anfitrión). */
   disconnectedAt: number | null;
   socketId: string | null;
+  /** Jugador robot (modo "contra la máquina"): lo mueve bot-driver.ts, nunca un socket. */
+  isBot: boolean;
 }
 
 export type RoomStatus = 'lobby' | 'playing' | 'roundEnd' | 'gameEnd' | 'closed';

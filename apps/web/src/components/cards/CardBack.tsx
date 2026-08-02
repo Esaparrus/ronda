@@ -1,6 +1,8 @@
-// Dorso de carta: tinta + trama diagonal en linea + punto brasa central.
-// Mismo viewBox lógico que PlayingCard (72x108) para que dorso y cara midan
-// exactamente igual y encajen en el mismo hueco de layout. Contrato P11.
+// Dorso de carta: recreación del diseño "RondaCard" importado de
+// claude.ai/design — trama diagonal en dos tonos violeta, borde y filete
+// dorados, y un emblema de rombos anidados en el centro. Mismo viewBox
+// lógico que PlayingCard (72x108) para que dorso y cara midan exactamente
+// igual y encajen en el mismo hueco de layout. Contrato P11.
 import { useId } from 'react';
 
 const VIEWBOX_WIDTH = 72;
@@ -46,36 +48,49 @@ export function CardBack({
       }}
     >
       <defs>
-        {/* Retícula diagonal a 45°, dibujada como línea de esquina a esquina de
-            una baldosa de 8x8 en vez de con patternTransform: algunos
-            renderizadores SVG (p.ej. rsvg, usado por herramientas de
-            comprobación offline) no aplican bien la rotación de un patrón,
-            así que se dibuja la diagonal directamente para que el resultado
-            sea el mismo en cualquier motor de render. */}
-        <pattern id={patternId} width={8} height={8} patternUnits="userSpaceOnUse">
-          <line x1={0} y1={8} x2={8} y2={0} stroke="var(--color-linea)" strokeWidth={1.5} />
+        {/* Diagonal a 45° dibujada como dos triángulos (en vez de
+            patternTransform="rotate(45)"): algunos renderizadores SVG
+            (p.ej. rsvg, usado por herramientas de comprobación offline) no
+            aplican bien la rotación de un patrón, así que la diagonal se
+            consigue con la geometría del propio mosaico, portable a
+            cualquier motor de render (mismo criterio que el dorso anterior). */}
+        <pattern id={patternId} width={10} height={10} patternUnits="userSpaceOnUse">
+          <rect width={10} height={10} fill="var(--card-back-a)" />
+          <polygon points="10,0 10,10 0,10" fill="var(--card-back-b)" />
         </pattern>
       </defs>
 
       <rect
-        x={0.75}
-        y={0.75}
+        x={1.75}
+        y={1.75}
         width={VIEWBOX_WIDTH - 1.5}
         height={VIEWBOX_HEIGHT - 1.5}
-        rx={8}
-        fill="var(--color-tinta)"
-        stroke={selected ? 'var(--color-brasa)' : 'var(--color-linea)'}
-        strokeWidth={selected ? 2 : 1}
+        rx={9}
+        fill={`url(#${patternId})`}
+        stroke={selected ? 'var(--color-brasa)' : 'var(--card-back-gold)'}
+        strokeWidth={selected ? 3.5 : 3}
       />
       <rect
-        x={0.75}
-        y={0.75}
-        width={VIEWBOX_WIDTH - 1.5}
-        height={VIEWBOX_HEIGHT - 1.5}
-        rx={8}
-        fill={`url(#${patternId})`}
+        x={6}
+        y={6}
+        width={VIEWBOX_WIDTH - 12}
+        height={VIEWBOX_HEIGHT - 12}
+        rx={6}
+        fill="none"
+        stroke="var(--card-back-gold)"
+        strokeWidth={1.25}
+        opacity={0.7}
       />
-      <circle cx={VIEWBOX_WIDTH / 2} cy={VIEWBOX_HEIGHT / 2} r={6} fill="var(--color-brasa)" />
+
+      <g transform={`translate(${VIEWBOX_WIDTH / 2} ${VIEWBOX_HEIGHT / 2})`}>
+        <polygon
+          points="0,-19 15,0 0,19 -15,0"
+          fill="var(--card-back-gold)"
+          stroke="var(--card-ink)"
+          strokeWidth={2.5}
+        />
+        <polygon points="0,-9 7,0 0,9 -7,0" fill="var(--color-brasa)" stroke="var(--card-ink)" strokeWidth={1.75} />
+      </g>
     </svg>
   );
 }

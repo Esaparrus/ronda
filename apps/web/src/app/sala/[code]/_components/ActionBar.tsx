@@ -1,18 +1,13 @@
-// Barra de acción inferior: una sola acción principal, nunca dos a la vez
-// (contrato P14, criterio de aceptación explícito).
-//
-// Interpretación de una aparente tensión del contrato: la fase de descarte
-// dice "«Descartar» o «Cerrar» si me.canClose y la carta seleccionada está
-// en me.closableDiscards" — se lee como DOS ESTADOS MUTUAMENTE EXCLUYENTES
-// de un único botón (mismo hueco, mismo tamaño, cambia label+acción según
-// si la carta seleccionada cierra o no), no como dos botones simultáneos.
-// Así se respeta "nunca dos botones principales a la vez" sin renunciar a
-// ofrecer el cierre en cuanto sea posible.
+// Barra de estado inferior. Contrato P14, ampliado a petición de Unai: ya no
+// lleva botones de robar/descartar/cerrar (esa acción ahora se hace tocando
+// el mazo/descarte y con doble toque o arrastre en la mano, ver Hand.tsx y
+// GameScreen.tsx) -- se queda solo con el texto de estado ("te toca",
+// "esperando a X") y el anuncio para lectores de pantalla, que siguen
+// siendo útiles independientemente de cómo se juegue la carta.
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { AvailableAction, CardId, PlayerId, TurnPhase } from '@ronda/protocol';
-import { Button } from '@/components/ui/Button';
+import type { PlayerId, TurnPhase } from '@ronda/protocol';
 
 export interface ActionBarProps {
   isMyTurn: boolean;
@@ -20,16 +15,6 @@ export interface ActionBarProps {
   turnPlayerId: PlayerId | null;
   turnPlayerNick: string | null;
   turnPlayerConnected: boolean;
-  availableActions: AvailableAction[];
-  selected: CardId | null;
-  canClose: boolean;
-  closableDiscards: CardId[];
-  pendingAction: boolean;
-  /** Contrato P17: acciones bloqueadas mientras no haya conexión sana. */
-  offline: boolean;
-  onDrawDeck: () => void;
-  onDiscard: (cardId: CardId) => void;
-  onClose: (cardId: CardId) => void;
 }
 
 export function ActionBar({
@@ -38,15 +23,6 @@ export function ActionBar({
   turnPlayerId,
   turnPlayerNick,
   turnPlayerConnected,
-  availableActions,
-  selected,
-  canClose,
-  closableDiscards,
-  pendingAction,
-  offline,
-  onDrawDeck,
-  onDiscard,
-  onClose,
 }: ActionBarProps) {
   // "Esperando a {nick}, N s": el protocolo no manda una marca de tiempo de
   // desconexión (PublicPlayer solo trae `connected: boolean`), así que los
@@ -74,23 +50,23 @@ export function ActionBar({
     return () => clearInterval(id);
   }, [isMyTurn, turnPlayerConnected]);
 
+  const myTurnHint =
+    turnPhase === 'draw' ? 'Toca el mazo o el descarte para robar.' : 'Toca dos veces una carta, o arrástrala arriba, para descartar.';
+
   // Anuncio de cambio de turno para lectores de pantalla (contrato P18:
   // "aria-live para el cambio de turno"). Región siempre presente y visible
   // solo a tecnología de asistencia (sr-only): el texto visible de cada
-  // rama de abajo ya cumple "una sola acción principal visible" (§8.5.1) y
-  // "máximo 12 palabras" (§8.5.3), así que este anuncio no duplica esa
-  // interfaz, solo la hace audible en el momento exacto en que cambia el
-  // turno (aria-live="polite": espera a que el lector termine lo que esté
-  // diciendo, no interrumpe).
+  // rama de abajo ya cumple "máximo 12 palabras" (§8.5.3), así que este
+  // anuncio no duplica esa interfaz, solo la hace audible en el momento
+  // exacto en que cambia el turno (aria-live="polite": espera a que el
+  // lector termine lo que esté diciendo, no interrumpe).
   const announcement = !isMyTurn
     ? turnPlayerNick
       ? turnPlayerConnected
         ? `Le toca a ${turnPlayerNick}.`
         : `Esperando a ${turnPlayerNick}.`
       : ''
-    : turnPhase === 'draw'
-      ? 'Te toca. Roba una carta.'
-      : 'Te toca. Descarta una carta.';
+    : `Te toca. ${myTurnHint}`;
 
   const liveRegion = (
     <p className="sr-only" aria-live="polite" role="status">
@@ -120,36 +96,10 @@ export function ActionBar({
     );
   }
 
-  if (turnPhase === 'draw') {
-    return (
-      <div className="px-6 py-4">
-        {liveRegion}
-        <Button
-          onClick={onDrawDeck}
-          disabled={pendingAction || offline || !availableActions.includes('drawDeck')}
-        >
-          Robar del mazo
-        </Button>
-      </div>
-    );
-  }
-
-  // turnPhase === 'discard'
-  const willClose = selected !== null && canClose && closableDiscards.includes(selected);
-
   return (
-    <div className="px-6 py-4">
+    <div className="px-6 py-4 text-center">
       {liveRegion}
-      <Button
-        onClick={() => {
-          if (!selected) return;
-          if (willClose) onClose(selected);
-          else onDiscard(selected);
-        }}
-        disabled={pendingAction || offline || !selected}
-      >
-        {willClose ? 'Cerrar' : 'Descartar'}
-      </Button>
+      <p className="text-16 text-hueso">{myTurnHint}</p>
     </div>
   );
 }

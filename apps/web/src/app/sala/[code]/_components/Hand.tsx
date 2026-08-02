@@ -1,26 +1,30 @@
-// Mano del jugador: tercio inferior de la pantalla de partida. Contrato P14.
-//
-// - Abanico ligero con solape (margin negativo) para que quepan 8 cartas
-//   (mano de 7 + una recién robada) sin scroll a 375px de ancho; el scroll
-//   horizontal se deja puesto como red de seguridad, tal cual pide el
-//   contrato literalmente ("scroll horizontal si no caben"), pero con el
-//   solape no debería activarse nunca en el ancho mínimo soportado.
-// - Toque para seleccionar. Arrastrar para reordenar: arrastre a mano con
-//   eventos de puntero (Pointer Events), sin librerías de drag-and-drop
-//   (prohibido explícitamente por el contrato P14).
-// - "Ordenar" agrupa por `me.bestMelds` (sugerencia del servidor) + deja las
-//   cartas sueltas al final, y llama a `sendAction({type:'sortHand', ...})`.
-//   `sortHand` no consume turno (contrato §2.6): se puede llamar en
-//   cualquier momento, no solo en el propio turno.
-// - Ninguna regla de juego se calcula aquí: solo se reordena localmente lo
-//   que ya llegó en `hand`/`bestMelds`/`deadwood` del servidor, y se
-//   reenvía la intención. La "carta bloqueada" (`lockedCardId`, la robada
-//   del descarte que no se puede volver a descartar) se marca solo como
-//   información -no impide seleccionarla-, para no meter lógica de reglas
-//   en el cliente: si el jugador insiste, el servidor la rechazará.
+// Mano del jugador: tercio inferior de la pantalla de partida. Contrato P14,
+// ampliado a petición de Unai con una interacción más directa que la barra
+// de botones original:
+// - El tamaño de carta es CONTINUO, no un paso fijo ('sm'/'md'/'lg'): ocupa
+//   siempre el ancho disponible completo (vía ResizeObserver sobre el
+//   contenedor), repartido entre las cartas de la mano con un solape fijo.
+//   Con pocas cartas, cada una sale más grande; con muchas, más pequeña --
+//   pero siempre llenando el ancho, nunca dejando hueco vacío ni necesitando
+//   scroll. Se consigue igual que CenterTable.tsx (P15) escala mazo/descarte
+//   en /mesa: envolviendo <PlayingCard> en un contenedor de ancho en px y
+//   forzando el <svg> interior a llenarlo (`[&_svg]:h-full [&_svg]:w-full`),
+//   apoyándose en que su `viewBox` mantiene la proporción 2:3 al escalar.
+// - Toque para seleccionar; toque otra vez la MISMA carta ya seleccionada
+//   para descartarla (o cerrar, si es una carta que cierra) -- ya no hace
+//   falta un botón de confirmación aparte.
+// - Arrastrar para reordenar (igual que antes): arrastre a mano con eventos
+//   de puntero, sin librerías de drag-and-drop.
+// - Arrastrar una carta HACIA ARRIBA (hacia la mesa) más allá de un umbral,
+//   en vez de reordenarla, la descarta/cierra al soltar -- "lanzarla a la
+//   mesa", como haría alguien con cartas físicas en la mano. Las cartas usan
+//   `touch-action: none` (no `pan-y`, que tenían antes): con `pan-y` el
+//   propio navegador se queda el gesto vertical como scroll nativo de la
+//   página y JS nunca llega a ver el arrastre hacia arriba -- por eso no
+//   funcionaba en el móvil.
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { CardId } from '@ronda/protocol';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { Button } from '@/components/ui/Button';
@@ -33,14 +37,33 @@ export interface HandProps {
   bestMelds: CardId[][];
   lockedCardId: CardId | null;
   selected: CardId | null;
+  /** Primer toque sobre una carta no seleccionada: la selecciona. */
   onSelect: (cardId: CardId) => void;
+  /** Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la mesa: descarta (o cierra). */
+  onCommit: (cardId: CardId) => void;
   myColorIndex: 0 | 1 | 2 | 3;
   jokerPoints: number;
 }
 
-const CARD_WIDTH = 48;
-const SLOT_WIDTH = 32; // solape: 48 - 16px de margen negativo entre cartas
+// Fracción de cada carta que tapa la siguiente (0.35 = se ve un 65% de
+// cada una salvo la primera). El ancho de carta se despeja de esa fracción
+// y del ancho disponible: cardWidth = W / (1 + (N-1) * (1 - OVERLAP)).
+const OVERLAP_FRACTION = 0.35;
+const MIN_CARD_WIDTH = 48;
+const MAX_CARD_WIDTH = 112;
+const CARD_ASPECT = 108 / 72; // alto/ancho del viewBox de PlayingCard (2:3)
 const TAP_THRESHOLD_PX = 6;
+const DISCARD_DRAG_THRESHOLD_PX = 56;
+
+interface DragState {
+  cardId: CardId;
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startIndex: number;
+  moved: boolean;
+  discarding: boolean;
+}
 
 function meldedSet(bestMelds: CardId[][]): Set<CardId> {
   return new Set(bestMelds.flat());
@@ -52,17 +75,16 @@ export function Hand({
   lockedCardId,
   selected,
   onSelect,
+  onCommit,
   myColorIndex,
   jokerPoints,
 }: HandProps) {
   const [order, setOrder] = useState<CardId[]>(hand);
-  const dragState = useRef<{
-    cardId: CardId;
-    pointerId: number;
-    startClientX: number;
-    startIndex: number;
-    moved: boolean;
-  } | null>(null);
+  const [containerWidth, setContainerWidth] = useState(360);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef<DragState | null>(null);
+  const [draggingCardId, setDraggingCardId] = useState<CardId | null>(null);
+  const [dragLift, setDragLift] = useState(0);
 
   // La mano solo la resincronizamos cuando cambia el *contenido* real que
   // manda el servidor (nueva carta robada, descartada...), no en cada
@@ -70,36 +92,69 @@ export function Hand({
   const handKey = hand.join('|');
   useEffect(() => {
     setOrder(hand);
-    // Dependencia deliberada en `handKey` (derivada de `hand`) y no en
-    // `hand` misma: así solo se resincroniza cuando el *contenido* cambia,
-    // no en cada render con una nueva identidad de array pero mismo
-    // contenido.
   }, [handKey]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setContainerWidth(width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const melded = meldedSet(bestMelds);
 
-  function handlePointerDown(cardId: CardId, index: number, e: React.PointerEvent<HTMLDivElement>) {
+  // Ancho de carta continuo: llena SIEMPRE el ancho disponible entre
+  // MIN_CARD_WIDTH y MAX_CARD_WIDTH, repartido entre las cartas de la mano
+  // con el solape fijo de arriba. Menos cartas -> cada una más grande.
+  const n = Math.max(order.length, 1);
+  const rawWidth = containerWidth / (1 + (n - 1) * (1 - OVERLAP_FRACTION));
+  const cardWidth = Math.min(MAX_CARD_WIDTH, Math.max(MIN_CARD_WIDTH, rawWidth));
+  const slot = cardWidth * (1 - OVERLAP_FRACTION);
+
+  function handlePointerDown(cardId: CardId, index: number, e: ReactPointerEvent<HTMLDivElement>) {
+    // preventDefault además de `touch-action: none` (más abajo): algunos
+    // navegadores móviles, si el dedo se para un instante antes de arrastrar
+    // (gesto natural de "coger la carta"), intentan abrir su menú nativo de
+    // pulsación larga sobre la imagen/SVG y cancelan el puntero a medio
+    // gesto -- esto lo corta de raíz antes de que llegue a pasar.
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     dragState.current = {
       cardId,
       pointerId: e.pointerId,
       startClientX: e.clientX,
+      startClientY: e.clientY,
       startIndex: index,
       moved: false,
+      discarding: false,
     };
   }
 
-  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragState.current;
     if (!drag || e.pointerId !== drag.pointerId) return;
+    e.preventDefault();
 
     const deltaX = e.clientX - drag.startClientX;
-    if (Math.abs(deltaX) > TAP_THRESHOLD_PX) drag.moved = true;
+    const deltaY = e.clientY - drag.startClientY;
+    if (Math.abs(deltaX) > TAP_THRESHOLD_PX || Math.abs(deltaY) > TAP_THRESHOLD_PX) drag.moved = true;
+
+    // Arrastre hacia arriba, hacia la mesa: "lanza" la carta al descarte.
+    // Prevalece sobre el reordenamiento horizontal en cuanto cruza el umbral.
+    drag.discarding = deltaY < -DISCARD_DRAG_THRESHOLD_PX;
+    setDraggingCardId(drag.cardId);
+    setDragLift(drag.discarding ? deltaY : Math.min(0, deltaY / 3));
+
+    if (drag.discarding) return;
 
     const currentIndex = order.indexOf(drag.cardId);
     if (currentIndex === -1) return;
 
-    const shift = Math.round(deltaX / SLOT_WIDTH);
+    const shift = Math.round(deltaX / slot);
     const targetIndex = Math.min(Math.max(drag.startIndex + shift, 0), order.length - 1);
     if (targetIndex === currentIndex) return;
 
@@ -114,15 +169,26 @@ export function Hand({
     drag.startClientX = e.clientX;
   }
 
-  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+  function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragState.current;
     dragState.current = null;
+    setDraggingCardId(null);
+    setDragLift(0);
     if (!drag || e.pointerId !== drag.pointerId) return;
 
     if (!drag.moved) {
-      onSelect(drag.cardId);
+      // Toque simple: la primera vez selecciona; si ya estaba seleccionada,
+      // la segunda vez descarta (o cierra).
+      if (drag.cardId === selected) onCommit(drag.cardId);
+      else onSelect(drag.cardId);
       return;
     }
+
+    if (drag.discarding) {
+      onCommit(drag.cardId);
+      return;
+    }
+
     // El arrastre ya reordenó `order` en vivo; ahora se confirma al
     // servidor. `sortHand` no consume turno (contrato §2.6).
     void useRondaStore.getState().sendAction({ type: 'sortHand', order });
@@ -148,10 +214,11 @@ export function Hand({
         </Button>
       </div>
 
-      <div className="flex touch-pan-y items-end overflow-x-auto">
+      <div ref={containerRef} className="flex touch-pan-y items-end overflow-x-auto">
         {order.map((cardId, i) => {
           const isMelded = melded.has(cardId);
           const isLocked = cardId === lockedCardId;
+          const isDragging = cardId === draggingCardId;
           return (
             <div
               key={cardId}
@@ -159,23 +226,41 @@ export function Hand({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
+              onContextMenu={(e) => e.preventDefault()}
               style={{
-                marginLeft: i === 0 ? 0 : -(CARD_WIDTH - SLOT_WIDTH),
-                touchAction: 'pan-y',
+                marginLeft: i === 0 ? 0 : -(cardWidth - slot),
+                // 'none', no 'pan-y': el arrastre hacia arriba tiene que
+                // llegar a nuestro handlePointerMove, no consumirlo el
+                // navegador como scroll vertical nativo de la página.
+                touchAction: 'none',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                transform: isDragging ? `translateY(${dragLift}px)` : undefined,
+                transition: isDragging ? 'none' : 'transform 150ms ease',
+                // La carta seleccionada (o la que se está arrastrando) se
+                // eleva por encima de sus vecinas: si no, al levantarse con
+                // el translateY de PlayingCard, las cartas siguientes (que
+                // se pintan después, más "arriba" en el z-order natural) le
+                // tapan la parte de arriba.
+                zIndex: isDragging || cardId === selected ? 10 : undefined,
               }}
               className="relative flex flex-shrink-0 flex-col items-center gap-1"
             >
-              <PlayingCard
-                cardId={cardId}
-                size="sm"
-                selected={cardId === selected}
-                dimmed={!isMelded}
-                meldColor={isMelded ? myColorIndex : undefined}
-              />
+              <div
+                className="[&_svg]:h-full [&_svg]:w-full"
+                style={{ width: cardWidth, height: cardWidth * CARD_ASPECT }}
+              >
+                <PlayingCard
+                  cardId={cardId}
+                  size="md"
+                  selected={cardId === selected}
+                  dimmed={!isMelded}
+                  meldColor={isMelded ? myColorIndex : undefined}
+                />
+              </div>
               {!isMelded ? (
-                <span className="font-mono text-12 text-humo">
-                  {pointsFor(cardId, jokerPoints)}
-                </span>
+                <span className="font-mono text-12 text-humo">{pointsFor(cardId, jokerPoints)}</span>
               ) : null}
               {isLocked ? <Pill className="text-12">Bloqueada</Pill> : null}
             </div>

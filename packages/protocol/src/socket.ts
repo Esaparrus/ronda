@@ -53,8 +53,16 @@ export interface ClientToServerEvents {
     ack: (res: Result<ConfigAck>) => void,
   ) => void;
   'room:start': (payload: Record<string, never>, ack: (res: Result<null>) => void) => void;
+  /**
+   * Añade un jugador robot a la sala (modo "contra la máquina", fuera del
+   * MVP original pero pedido explícitamente para poder probar sin una
+   * segunda persona). Solo el anfitrión, solo en lobby, solo con hueco.
+   */
+  'room:addBot': (payload: Record<string, never>, ack: (res: Result<JoinAck>) => void) => void;
   'room:kick': (payload: { playerId: PlayerId }, ack: (res: Result<null>) => void) => void;
   'room:leave': (payload: Record<string, never>, ack: (res: Result<null>) => void) => void;
+  /** Solo el anfitrión: cierra la sala para todos (contrato §2.4 `room:closed`, razón `host_left`). */
+  'room:close': (payload: Record<string, never>, ack: (res: Result<null>) => void) => void;
   'screen:attach': (
     payload: { roomCode: RoomCode },
     ack: (res: Result<{ roomCode: RoomCode }>) => void,
@@ -172,8 +180,10 @@ export const clientPayloadSchemas = {
   'room:resume': roomResumeSchema,
   'room:config': roomConfigSchema,
   'room:start': emptySchema,
+  'room:addBot': emptySchema,
   'room:kick': roomKickSchema,
   'room:leave': emptySchema,
+  'room:close': emptySchema,
   'screen:attach': screenAttachSchema,
   'game:action': gameActionSchema,
   'rematch:vote': rematchVoteSchema,

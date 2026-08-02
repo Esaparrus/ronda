@@ -35,6 +35,7 @@ export function Lobby({ view }: LobbyProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [addingBot, setAddingBot] = useState(false);
   const [config, setConfig] = useState(view.config);
 
   const me = view.players.find((p) => p.playerId === view.me.playerId);
@@ -93,7 +94,14 @@ export function Lobby({ view }: LobbyProps) {
     await useRondaStore.getState().kickPlayer(playerId);
   }
 
+  async function handleAddBot() {
+    setAddingBot(true);
+    await useRondaStore.getState().addBot();
+    setAddingBot(false);
+  }
+
   const canStart = view.players.length >= 2;
+  const hasFreeSeat = view.players.length < config.maxPlayers;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-6 py-8">
@@ -142,6 +150,11 @@ export function Lobby({ view }: LobbyProps) {
             </li>
           ))}
         </ul>
+        {isHost && hasFreeSeat ? (
+          <Button variant="ghost" onClick={handleAddBot} loading={addingBot}>
+            Añadir jugador IA
+          </Button>
+        ) : null}
       </section>
 
       {isHost ? (

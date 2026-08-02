@@ -21,8 +21,6 @@ export interface GameScreenProps {
 
 export function GameScreen({ view }: GameScreenProps) {
   const [selected, setSelected] = useState<CardId | null>(null);
-  const pendingAction = useRondaStore((s) => s.pendingAction);
-  const offline = useRondaStore((s) => s.connection !== 'online');
 
   const { me } = view;
   const myPlayer = view.players.find((p) => p.playerId === me.playerId);
@@ -33,8 +31,7 @@ export function GameScreen({ view }: GameScreenProps) {
     : null;
 
   function handleSelect(cardId: CardId) {
-    // Alterna: tocar la carta ya seleccionada la deselecciona.
-    setSelected((prev) => (prev === cardId ? null : cardId));
+    setSelected(cardId);
   }
 
   function handleDrawDeck() {
@@ -45,16 +42,20 @@ export function GameScreen({ view }: GameScreenProps) {
     void useRondaStore.getState().sendAction({ type: 'drawDiscard' });
   }
 
-  function handleDiscard(cardId: CardId) {
+  // Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la
+  // mesa (Hand.tsx): descarta, o cierra si es una de las cartas que cierran
+  // la ronda. Sin botón de confirmación aparte -- la decisión discard/close
+  // es la misma que antes tomaba el label del botón único de la barra.
+  function handleCommit(cardId: CardId) {
     setSelected(null);
-    void useRondaStore.getState().sendAction({ type: 'discard', cardId });
+    if (!isMyTurn || view.turnPhase !== 'discard') return;
+    const willClose = me.canClose && me.closableDiscards.includes(cardId);
+    if (willClose) void useRondaStore.getState().sendAction({ type: 'close', cardId });
+    else void useRondaStore.getState().sendAction({ type: 'discard', cardId });
   }
 
-  function handleClose(cardId: CardId) {
-    setSelected(null);
-    void useRondaStore.getState().sendAction({ type: 'close', cardId });
-  }
-
+  const canDrawDeck =
+    isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDeck');
   const canDrawDiscard =
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDiscard');
 
@@ -70,6 +71,7 @@ export function GameScreen({ view }: GameScreenProps) {
         deckCount={view.deckCount}
         discardTop={view.discardTop}
         discardCount={view.discardCount}
+        onDrawDeck={canDrawDeck ? handleDrawDeck : undefined}
         onDrawDiscard={canDrawDiscard ? handleDrawDiscard : undefined}
       />
 
@@ -80,6 +82,7 @@ export function GameScreen({ view }: GameScreenProps) {
           lockedCardId={me.lockedCardId}
           selected={selected}
           onSelect={handleSelect}
+          onCommit={handleCommit}
           myColorIndex={myColorIndex}
           jokerPoints={view.config.jokerPoints}
         />
@@ -90,15 +93,6 @@ export function GameScreen({ view }: GameScreenProps) {
           turnPlayerId={view.turnPlayerId}
           turnPlayerNick={turnPlayer?.nick ?? null}
           turnPlayerConnected={turnPlayer?.connected ?? true}
-          availableActions={me.availableActions}
-          selected={selected}
-          canClose={me.canClose}
-          closableDiscards={me.closableDiscards}
-          pendingAction={pendingAction}
-          offline={offline}
-          onDrawDeck={handleDrawDeck}
-          onDiscard={handleDiscard}
-          onClose={handleClose}
         />
       </div>
     </div>

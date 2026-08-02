@@ -64,6 +64,8 @@ export interface RondaState {
   resume: (roomCode: RoomCode) => Promise<boolean>;
   sendAction: (action: GameAction) => Promise<void>;
   leave: () => Promise<void>;
+  /** Solo anfitrión: cierra la sala para todos, en lobby o en partida. */
+  closeRoom: () => Promise<boolean>;
   /**
    * Pantalla central (`/mesa/[code]`, contrato P15 / §6 "Pantalla central").
    * Se conecta solo con el código de sala, SIN token: nunca llama a
@@ -87,6 +89,12 @@ export interface RondaState {
   startRoom: () => Promise<boolean>;
   /** Solo anfitrión. */
   kickPlayer: (playerId: PlayerId) => Promise<boolean>;
+  /**
+   * Añade un jugador robot a la sala (modo "contra la máquina"): fuera del
+   * MVP original, pedido explícitamente para poder probar sin una segunda
+   * persona. Solo anfitrión, solo en lobby.
+   */
+  addBot: () => Promise<boolean>;
 
   /**
    * Voto de revancha en fin de partida (contrato P16 / §2.3). Evento propio
@@ -318,6 +326,18 @@ export const useRondaStore = create<RondaState>((set, get) => {
       set({ view: null, version: 0, roomCode: null, playerId: null, events: [] });
     },
 
+    async closeRoom() {
+      const res = await emitWithAck(socket, 'room:close', {});
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      // La limpieza del estado local la hace el propio handler de
+      // 'room:closed' de arriba: el servidor difunde ese evento a todos los
+      // miembros de la sala, incluido el anfitrión que la acaba de cerrar.
+      return true;
+    },
+
     async updateConfig(patch) {
       // Contrato P17: acciones bloqueadas mientras no haya conexión sana.
       if (get().connection !== 'online') return false;
@@ -333,6 +353,17 @@ export const useRondaStore = create<RondaState>((set, get) => {
     async startRoom() {
       if (get().connection !== 'online') return false;
       const res = await emitWithAck(socket, 'room:start', {});
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      set({ lastError: null });
+      return true;
+    },
+
+    async addBot() {
+      if (get().connection !== 'online') return false;
+      const res = await emitWithAck(socket, 'room:addBot', {});
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
         return false;

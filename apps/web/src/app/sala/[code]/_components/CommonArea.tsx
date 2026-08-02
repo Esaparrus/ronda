@@ -17,16 +17,25 @@ export interface CommonAreaProps {
   deckCount: number;
   discardTop: CardId | null;
   discardCount: number;
+  /** Presente solo si tocar el mazo es una jugada válida ahora mismo. */
+  onDrawDeck?: () => void;
   /** Presente solo si tocar el descarte es una jugada válida ahora mismo. */
   onDrawDiscard?: () => void;
 }
 
 const MAX_VISUAL_DECK_STACK = 5;
 
+// Cartas de la mesa (mazo/descarte) a tamaño 'lg': se leen mejor desde la
+// mano en el móvil. El hueco del descarte vacío usa las mismas medidas para
+// que el layout no salte cuando aparece la primera carta.
+const EMPTY_DISCARD_WIDTH = 120;
+const EMPTY_DISCARD_HEIGHT = 180;
+
 export function CommonArea({
   deckCount,
   discardTop,
   discardCount,
+  onDrawDeck,
   onDrawDiscard,
 }: CommonAreaProps) {
   const deckPlaceholders: CardId[] = Array.from(
@@ -37,7 +46,15 @@ export function CommonArea({
   return (
     <div className="flex flex-1 items-center justify-center gap-10 py-4">
       <div className="flex flex-col items-center gap-2">
-        <Pile cards={deckPlaceholders} faceDown size="sm" />
+        <button
+          type="button"
+          onClick={onDrawDeck}
+          disabled={!onDrawDeck}
+          aria-label={onDrawDeck ? 'Robar del mazo' : 'Mazo'}
+          className="rounded-lg p-1 disabled:cursor-default"
+        >
+          <Pile cards={deckPlaceholders} faceDown size="lg" />
+        </button>
         <Pill>{deckCount} en el mazo</Pill>
       </div>
 
@@ -50,11 +67,12 @@ export function CommonArea({
           className="rounded-lg p-1 disabled:cursor-default"
         >
           {discardTop ? (
-            <PlayingCard cardId={discardTop} size="sm" />
+            <PlayingCard cardId={discardTop} size="lg" />
           ) : (
             <div
               aria-hidden="true"
-              className="h-[72px] w-[48px] rounded-lg border border-dashed border-linea"
+              style={{ width: EMPTY_DISCARD_WIDTH, height: EMPTY_DISCARD_HEIGHT }}
+              className="rounded-lg border border-dashed border-linea"
             />
           )}
         </button>

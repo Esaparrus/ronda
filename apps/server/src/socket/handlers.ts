@@ -18,6 +18,7 @@ import {
   type GameConfig,
 } from '@ronda/protocol';
 import { broadcastRoom, broadcastClosed, broadcastToast } from './broadcast.ts';
+import { scheduleBotTurn } from '../rooms/bot-driver.ts';
 
 /** Estado por socket: a qué sala/jugador está ligado. */
 export interface SocketState {
@@ -123,6 +124,17 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     ack(r);
   });
 
+  // --- room:addBot ---
+  socket.on('room:addBot', (payload, ack) => {
+    const respond: Respond = (e) => ack(e);
+    if (!guard(deps, sid, 'room:addBot', payload, respond)) return;
+    const st = requirePlayer(deps, sid, respond);
+    if (!st) return;
+    const r = deps.mgr.addBot({ roomCode: st.roomCode, playerId: st.playerId, now: deps.now() });
+    if (r.ok) rebroadcast(deps, st.roomCode);
+    ack(r);
+  });
+
   // --- room:kick ---
   socket.on('room:kick', (payload, ack) => {
     const respond: Respond = (e) => ack(e);
@@ -166,6 +178,20 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     const r = deps.mgr.leave({ roomCode: st.roomCode, playerId: st.playerId, now: deps.now() });
     ack(r);
     deps.states.delete(sid);
+  });
+
+  // --- room:close (anfitrión, en cualquier estado) ---
+  socket.on('room:close', (payload, ack) => {
+    const respond: Respond = (e) => ack(e);
+    if (!guard(deps, sid, 'room:close', payload, respond)) return;
+    const st = requirePlayer(deps, sid, respond);
+    if (!st) return;
+    // La sala se lee ANTES de cerrarla: closeByHost la borra de RoomManager,
+    // así que después ya no habría por dónde difundir a sus miembros.
+    const room = deps.mgr.getRoomByCode(st.roomCode);
+    const r = deps.mgr.closeByHost({ roomCode: st.roomCode, playerId: st.playerId, now: deps.now() });
+    if (r.ok && room) broadcastClosed(deps.io, room, 'host_left');
+    ack(r);
   });
 
   // --- screen:attach ---
@@ -260,6 +286,9 @@ function rebroadcast(deps: HandlerDeps, roomCode: string): void {
     try {
       const room = deps.mgr.getRoomByCode(roomCode);
       if (room) broadcastRoom(deps.io, room);
+      // Tras cada difusión, si le toca mover a un bot (turno de juego,
+      // confirmar ronda o votar revancha), se programa su jugada.
+      scheduleBotTurn(deps, roomCode);
     } catch {
       // La difusión nunca debe romper el flujo del handler.
     }
