@@ -4,11 +4,15 @@
 // empezada). Toda mutación actualiza lastActivityAt. applyAction delega en
 // GAMES[gameId].applyAction y NUNCA implementa reglas por su cuenta.
 import {
+  REACTION_COOLDOWN_MS,
   type GameAction,
   type GameConfig,
   type GameId,
   type PlayerId,
+  type ReactionId,
+  type ReactionPayload,
   type Result,
+  type RoomStats,
   err,
   ok,
 } from '@ronda/protocol';
@@ -394,6 +398,9 @@ export class RoomManager {
         room.status = 'gameEnd';
         if (room.state && connected[0]) {
           room.state = { ...room.state, status: 'gameEnd', winnerId: connected[0].playerId };
+          // Una partida que acaba por abandono cuenta igual en las
+          // estadísticas de la sala: se jugó y tiene ganador.
+          if (room.recordMatchEnd()) room.hooks.onStats?.(room);
         }
       }
     }
@@ -464,11 +471,15 @@ export class RoomManager {
 
     // Detectar fin de ronda/partida para persistencia inmediata y telemetría.
     if (newState.status === 'roundEnd' || newState.status === 'gameEnd') {
-      room.hooks.onPersist?.(room);
       if (newState.status === 'gameEnd') {
         room.status = 'gameEnd';
+        // Antes de onPersist: así el snapshot de esta partida ya sale con
+        // las estadísticas actualizadas.
+        if (room.recordMatchEnd()) room.hooks.onStats?.(room);
+        room.hooks.onPersist?.(room);
         room.hooks.onTrack?.(room, 'game_ended', { winnerId: newState.winnerId });
       } else {
+        room.hooks.onPersist?.(room);
         room.status = 'roundEnd';
         room.hooks.onTrack?.(room, 'round_ended', {});
       }
@@ -515,6 +526,52 @@ export class RoomManager {
     }
     room.hooks.onSnapshot?.(room);
     return ok(null);
+  }
+
+  // --- reacciones -----------------------------------------------------------
+
+  /**
+   * Reacción rápida de un jugador (roadmap "Después del MVP" §2). No toca el
+   * motor ni la versión de la partida: solo valida quién reacciona y su
+   * enfriamiento, y devuelve el payload ya listo para difundir.
+   *
+   * Vale en cualquier estado de la sala (lobby incluido) y para cualquier
+   * jugador, eliminado o no: es una reacción social, no una jugada.
+   */
+  sendReaction(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    reaction: ReactionId;
+    now: number;
+  }): Result<ReactionPayload> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status === 'closed') return err('ROOM_CLOSED');
+    const player = room.players.get(input.playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+
+    const last = room.lastReactionAt.get(input.playerId);
+    if (last !== undefined && input.now - last < REACTION_COOLDOWN_MS) {
+      return err('RATE_LIMITED');
+    }
+    room.lastReactionAt.set(input.playerId, input.now);
+    // A propósito NO llama a room.touch(): una sala en la que solo se manda
+    // emojis no debe librarse de la caducidad por inactividad (§6).
+    return ok({
+      playerId: input.playerId,
+      seat: player.seat,
+      reaction: input.reaction,
+      at: input.now,
+    });
+  }
+
+  // --- estadísticas ---------------------------------------------------------
+
+  /** Estadísticas acumuladas de la sala. Solo datos públicos (§stats.ts). */
+  getStats(input: { roomCode: string }): Result<RoomStats> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    return ok(room.getStats());
   }
 
   // --- screen --------------------------------------------------------------

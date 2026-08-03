@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
 import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
 import { InactiveTabScreen } from '@/components/ui/InactiveTabScreen';
+import { ReactionBar } from '@/components/ui/ReactionBar';
+import { ReactionOverlay } from '@/components/ui/ReactionOverlay';
 import { Lobby } from './Lobby';
 import { GameScreen } from './GameScreen';
 import { RoundEndScreen } from './RoundEndScreen';
@@ -151,17 +153,24 @@ export function SalaClient({ code }: SalaClientProps) {
   return (
     <div className="flex min-h-dvh flex-col">
       <Banner status={connection} />
-      {isHost ? (
-        <div className="flex justify-end px-4 py-1">
+      {/* Barra superior: reacciones rápidas a la izquierda (roadmap
+          "Después del MVP" §2) y el cierre de sala del anfitrión a la
+          derecha. Las reacciones van AQUÍ, y no flotando sobre la mesa,
+          para no competir con la regla de "en tu turno solo hay una acción
+          principal visible" (00-MASTER.md §8). */}
+      <div className="flex items-center justify-between gap-2 px-4 py-1">
+        <ReactionBar />
+        {isHost ? (
           <button
             type="button"
             onClick={() => setConfirmClose(true)}
-            className="text-12 text-humo underline"
+            className="shrink-0 text-12 text-humo underline"
           >
             Cerrar sala
           </button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
+      <ReactionOverlay />
       {view.status === 'lobby' ? <Lobby view={view} /> : null}
       {view.status === 'playing' && view.gameId === 'chinchon' ? <GameScreen view={view} /> : null}
       {view.status === 'playing' && view.gameId === 'pocha' ? <PochaGameScreen view={view} /> : null}

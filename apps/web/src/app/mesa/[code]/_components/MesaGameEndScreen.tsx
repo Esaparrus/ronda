@@ -6,6 +6,7 @@
 import type { TableView } from '@ronda/protocol';
 import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
+import { StatsPanel } from '@/components/ui/StatsPanel';
 import { pendingConfirmations } from '@/lib/pending';
 
 export interface MesaGameEndScreenProps {
@@ -66,6 +67,15 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
           </li>
         ))}
       </ol>
+
+      {/* Estadísticas del grupo (roadmap "Después del MVP" §3): la pantalla
+          central las pide igual que un jugador -- `room:stats` solo devuelve
+          información pública, así que no rompe la regla de que aquí nunca
+          llega nada privado. */}
+      <section className="flex w-full max-w-2xl flex-col gap-2">
+        <h2 className="text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">Estadísticas del grupo</h2>
+        <StatsPanel refreshKey={`${view.roomCode}-${view.round}`} />
+      </section>
 
       <p className="mt-auto text-[clamp(0.9rem,1.5vw,1.15rem)] text-humo">
         {votedNicks.length > 0

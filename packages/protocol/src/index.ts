@@ -13,4 +13,6 @@ export * from './cards.ts';
 export * from './views.ts';
 export * from './actions.ts';
 export * from './events.ts';
+export * from './reactions.ts';
+export * from './stats.ts';
 export * from './socket.ts';

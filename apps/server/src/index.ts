@@ -11,6 +11,7 @@ import { RoomManager } from './rooms/room-manager.ts';
 import { Persistence } from './rooms/persistence.ts';
 import { broadcastRoom } from './socket/broadcast.ts';
 import { track } from './db/playtest-repo.ts';
+import { saveRoomStats } from './db/stats-repo.ts';
 import '@ronda/engine'; // registra los módulos de juego en GAMES (side effect).
 
 export type SnapshotHook = () => Promise<void>;
@@ -60,6 +61,11 @@ export async function startServer(opts: {
     },
     onPersist: (room) => {
       void persistence.flushNow(room);
+    },
+    onStats: (room) => {
+      // saveRoomStats() nunca lanza (ver stats-repo.ts): la copia viva de
+      // las estadísticas está en memoria, esto es solo el histórico.
+      void saveRoomStats(dbConfig, room.code, room.getStats().rows);
     },
     onTrack: (room, kind, payload) => {
       // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría

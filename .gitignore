@@ -9,6 +9,7 @@ build/
 out/
 coverage/
 next-env.d.ts
+*.tsbuildinfo
 
 # entorno y secretos
 .env

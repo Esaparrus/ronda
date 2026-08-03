@@ -13,6 +13,7 @@ import type { PlayerView } from '@ronda/protocol';
 import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
+import { StatsPanel } from '@/components/ui/StatsPanel';
 import { useRondaStore } from '@/lib/store';
 import { pendingConfirmations } from '@/lib/pending';
 
@@ -68,6 +69,15 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
           </li>
         ))}
       </ol>
+
+      {/* Estadísticas del grupo (roadmap "Después del MVP" §3): aquí van
+          desplegadas y no tras un botón, porque este es justo el momento en
+          que interesan ("van 3-1"). `refreshKey` con la ronda de esta
+          partida fuerza a recargarlas al llegar a esta pantalla. */}
+      <section className="flex flex-col gap-2">
+        <h2 className="text-20 font-semibold text-hueso">Estadísticas del grupo</h2>
+        <StatsPanel refreshKey={`${view.roomCode}-${view.round}`} />
+      </section>
 
       <div className="mt-auto flex flex-col gap-3">
         <Button

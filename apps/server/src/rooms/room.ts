@@ -10,6 +10,8 @@ import type {
   GameId,
   PlayerId,
   RoomCode,
+  RoomStats,
+  RoomStatsRow,
 } from '@ronda/protocol';
 import type { ChinchonState, PochaState } from '@ronda/engine';
 
@@ -49,6 +51,8 @@ export interface RoomHooks {
   onClosed?: (room: Room, reason: 'host_left' | 'empty' | 'expired') => void;
   /** Snapshot de persistencia (P7). */
   onPersist?: (room: Room) => void;
+  /** Estadísticas de la sala actualizadas (una partida acaba de terminar). */
+  onStats?: (room: Room) => void;
   /** Evento de telemetría (P18). */
   onTrack?: (room: Room, kind: string, payload?: Record<string, unknown>) => void;
 }
@@ -75,6 +79,25 @@ export class Room {
   seed: string;
   createdAt: number;
   hooks: RoomHooks;
+  /**
+   * Estadísticas del grupo acumuladas en esta sala (roadmap "Después del
+   * MVP" §3), por jugador. Se actualizan al terminar cada partida y
+   * sobreviven a las revanchas, que es justo lo que las hace interesantes:
+   * "llevamos 4 partidas y Ana ha ganado 3".
+   */
+  stats: Map<PlayerId, RoomStatsRow> = new Map();
+  /** Partidas TERMINADAS en esta sala. */
+  matchesPlayed = 0;
+  /**
+   * Semilla de la última partida ya contada en `stats`. Cada partida tiene
+   * su propia semilla (el rematch genera una nueva), así que basta para no
+   * contar dos veces la misma: `applyAction` puede volver a pasar por el
+   * estado 'gameEnd' (una acción idempotente reenviada, un abandono que
+   * termina una partida ya terminada) y no debe duplicar nada.
+   */
+  private statsSeed: string | null = null;
+  /** ms epoch de la última reacción de cada jugador (enfriamiento, §reacciones). */
+  lastReactionAt: Map<PlayerId, number> = new Map();
 
   constructor(init: {
     code: RoomCode;
@@ -126,6 +149,79 @@ export class Room {
   snapshot(): { state: EngineState; seed: string } {
     if (!this.state) throw new Error('snapshot: sala sin estado de motor');
     return { state: this.state, seed: this.seed };
+  }
+
+  /**
+   * Anota una partida terminada en las estadísticas de la sala. Idempotente
+   * por semilla de partida (ver `statsSeed`). Devuelve true si esta llamada
+   * es la que la contó (útil para persistir solo entonces).
+   *
+   * Lee del estado del motor, no de `players`: quien abandonó a mitad sigue
+   * en `state.players` con su marcador congelado, y jugó esa partida.
+   */
+  recordMatchEnd(): boolean {
+    const state = this.state;
+    if (!state) return false;
+    if (state.status !== 'gameEnd') return false;
+    if (this.statsSeed === this.seed) return false;
+    this.statsSeed = this.seed;
+    this.matchesPlayed += 1;
+
+    for (const p of state.players) {
+      const row = this.stats.get(p.playerId) ?? {
+        playerId: p.playerId,
+        nick: p.nick,
+        seat: p.seat,
+        matches: 0,
+        wins: 0,
+        rounds: 0,
+        totalScore: 0,
+        bestScore: null,
+        worstScore: null,
+      };
+      row.nick = p.nick; // el apodo de la última partida manda
+      row.seat = p.seat;
+      row.matches += 1;
+      if (state.winnerId === p.playerId) row.wins += 1;
+      row.rounds += state.round;
+      row.totalScore += p.score;
+      row.bestScore = row.bestScore === null ? p.score : this.pickBest(row.bestScore, p.score);
+      row.worstScore = row.worstScore === null ? p.score : this.pickWorst(row.worstScore, p.score);
+      this.stats.set(p.playerId, row);
+    }
+    return true;
+  }
+
+  /** Estadísticas de la sala, ya ordenadas para pintar. */
+  getStats(): RoomStats {
+    const rows = [...this.stats.values()]
+      .map((r) => ({ ...r }))
+      .sort(
+        (a, b) =>
+          b.wins - a.wins ||
+          b.matches - a.matches ||
+          (this.lowerIsBetter() ? a.totalScore - b.totalScore : b.totalScore - a.totalScore) ||
+          a.seat - b.seat,
+      );
+    return { roomCode: this.code, gameId: this.gameId, matches: this.matchesPlayed, rows };
+  }
+
+  /**
+   * En Chinchón gana quien MENOS puntos suma (§5: se elimina al pasar del
+   * umbral); en Pocha, quien MÁS (§9.7). "Mejor puntuación" no significa lo
+   * mismo en los dos juegos, así que el criterio vive aquí, donde se conoce
+   * el `gameId`, y no en la interfaz.
+   */
+  private lowerIsBetter(): boolean {
+    return this.gameId === 'chinchon';
+  }
+
+  private pickBest(a: number, b: number): number {
+    return this.lowerIsBetter() ? Math.min(a, b) : Math.max(a, b);
+  }
+
+  private pickWorst(a: number, b: number): number {
+    return this.lowerIsBetter() ? Math.max(a, b) : Math.min(a, b);
   }
 }
 

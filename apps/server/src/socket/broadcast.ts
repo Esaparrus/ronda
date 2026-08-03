@@ -22,6 +22,7 @@ import type {
   PochaPlayerView,
   PochaTableView,
   PublicPlayer,
+  ReactionPayload,
   TableView,
 } from '@ronda/protocol';
 
@@ -193,6 +194,24 @@ export function broadcastToast(
   }
   for (const socketId of room.screens) {
     io.to(socketId).emit('toast', payload);
+  }
+}
+
+/**
+ * Difunde una reacción a todos los miembros, incluida la pantalla central
+ * (que es donde más gracia tiene) y el propio autor: así todos ven lo mismo
+ * en el mismo momento y el emisor no tiene que pintar nada por su cuenta.
+ */
+export function broadcastReaction(
+  io: TypedIoServer,
+  room: Room,
+  payload: ReactionPayload,
+): void {
+  for (const p of room.players.values()) {
+    if (p.socketId) io.to(p.socketId).emit('reaction', payload);
+  }
+  for (const socketId of room.screens) {
+    io.to(socketId).emit('reaction', payload);
   }
 }
 

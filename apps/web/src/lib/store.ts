@@ -11,15 +11,33 @@ import type {
   GameId,
   PlayerId,
   PlayerView,
+  ReactionId,
+  ReactionPayload,
   RoomCode,
+  RoomStats,
   TableView,
 } from '@ronda/protocol';
-import { messageFor } from '@ronda/protocol';
+import { messageFor, REACTION_TTL_MS } from '@ronda/protocol';
 import { clearToken, getToken, saveToken } from './token.ts';
 import { connectIfNeeded, emitWithAck, getSocket } from './socket.ts';
 import { createServerDownWatcher } from './serverDown.ts';
 
 export type ConnectionStatus = 'online' | 'reconnecting' | 'offline';
+
+/**
+ * Reacción recibida, con lo que hace falta para pintarla y caducarla.
+ * `receivedAt` es hora del CLIENTE a propósito: `payload.at` es hora del
+ * servidor y los relojes no tienen por qué coincidir -- para un temporizador
+ * de 2,5 segundos en pantalla, la única hora fiable es la de aquí.
+ */
+export interface LiveReaction extends ReactionPayload {
+  /** Clave estable para React (playerId + hora de llegada). */
+  key: string;
+  receivedAt: number;
+}
+
+/** Máximo de reacciones vivas a la vez: por encima, las viejas caen. */
+const MAX_LIVE_REACTIONS = 12;
 
 /** Motivo del cierre de sala, tal cual llega en `room:closed` (contrato §2.4). */
 export type ClosedReason = 'host_left' | 'empty' | 'expired';
@@ -35,6 +53,12 @@ export interface RondaState {
   events: GameEvent[];
   roomCode: RoomCode | null;
   playerId: PlayerId | null;
+  /**
+   * Reacciones rápidas vivas ahora mismo (roadmap "Después del MVP" §2).
+   * A diferencia de `events`, esta lista NO crece: se poda por caducidad
+   * (`REACTION_TTL_MS`) y por tamaño. Es puramente cosmética.
+   */
+  reactions: LiveReaction[];
 
   /**
    * Contrato P17: "socket caído más de 30s -> pantalla de error con botón
@@ -105,6 +129,18 @@ export interface RondaState {
    * en P14. `value: false` retira el voto (cambiar de opinión).
    */
   voteRematch: (value: boolean) => Promise<boolean>;
+
+  /**
+   * Manda una reacción rápida (roadmap "Después del MVP" §2). No espera a
+   * nada: el servidor la difunde a todos, incluido quien la manda, así que
+   * la pinta el mismo camino que la de los demás. Devuelve false si el
+   * servidor la rechazó (enfriamiento) o si no hay conexión.
+   */
+  sendReaction: (reaction: ReactionId) => Promise<boolean>;
+  /** Quita de `reactions` las que ya han caducado. La llama el overlay. */
+  pruneReactions: () => void;
+  /** Pide las estadísticas de la sala. null si fallan o no hay conexión. */
+  fetchStats: () => Promise<RoomStats | null>;
 }
 
 export const useRondaStore = create<RondaState>((set, get) => {
@@ -120,6 +156,16 @@ export const useRondaStore = create<RondaState>((set, get) => {
     set((s) => ({ events: [...s.events, ...payload.items] }));
   });
 
+  socket.on('reaction', (payload) => {
+    const receivedAt = Date.now();
+    set((s) => ({
+      reactions: [
+        ...s.reactions.filter((r) => receivedAt - r.receivedAt < REACTION_TTL_MS),
+        { ...payload, receivedAt, key: `${payload.playerId}-${receivedAt}-${payload.at}` },
+      ].slice(-MAX_LIVE_REACTIONS),
+    }));
+  });
+
   socket.on('room:closed', (payload) => {
     const code = get().roomCode;
     if (code) clearToken(code);
@@ -128,6 +174,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
       version: 0,
       roomCode: null,
       playerId: null,
+      reactions: [],
       closedReason: payload.reason,
       lastError: messageFor('ROOM_CLOSED'),
     });
@@ -203,6 +250,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
     events: [],
     roomCode: null,
     playerId: null,
+    reactions: [],
     serverDown: false,
     kickedOut: false,
     closedReason: null,
@@ -323,7 +371,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
       const code = get().roomCode;
       await emitWithAck(socket, 'room:leave', {});
       if (code) clearToken(code);
-      set({ view: null, version: 0, roomCode: null, playerId: null, events: [] });
+      set({ view: null, version: 0, roomCode: null, playerId: null, events: [], reactions: [] });
     },
 
     async closeRoom() {
@@ -392,6 +440,32 @@ export const useRondaStore = create<RondaState>((set, get) => {
       }
       set({ lastError: null });
       return true;
+    },
+
+    async sendReaction(reaction) {
+      if (get().connection !== 'online') return false;
+      const res = await emitWithAck(socket, 'reaction:send', { reaction });
+      // Un rechazo por enfriamiento NO escribe en `lastError`: es una
+      // pulsación de más en un botón cosmético, no un fallo que merezca
+      // ocupar la única línea de error de la pantalla. El botón ya se
+      // deshabilita solo mientras dura el enfriamiento.
+      return res.ok;
+    },
+
+    pruneReactions() {
+      const now = Date.now();
+      const live = get().reactions.filter((r) => now - r.receivedAt < REACTION_TTL_MS);
+      if (live.length !== get().reactions.length) set({ reactions: live });
+    },
+
+    async fetchStats() {
+      if (get().connection !== 'online') return null;
+      const res = await emitWithAck(socket, 'room:stats', {});
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return null;
+      }
+      return res.value;
     },
   };
 });

@@ -953,3 +953,306 @@ lo que un cambio de tipo sugiere a primera vista.
   `GameModule` más, no un protocolo de transporte nuevo.
 - La base de datos (`§4`): `rooms.game_id` ya es `text`, no un enum de
   Postgres — no hace falta migración para añadir `'pocha'` como valor.
+
+---
+
+## 11. EXTRAS SOCIALES POST-MVP (P25 · P26) — implementado
+
+Los dos primeros puntos del roadmap "Después del MVP" de `02-PAQUETES.md`
+posteriores a Pocha. Ninguno toca el motor: son ampliaciones del sobre de red
+(§2.3, §2.4) y del servidor, no reglas de juego.
+
+### 11.1 Reacciones rápidas (§2 del roadmap) — P25
+
+Cuatro emojis, lista cerrada, **sin chat libre en ninguna parte de la app**.
+Lo que impide que esto degenere en un chat es el contrato, no la interfaz: el
+payload solo admite uno de cuatro identificadores.
+
+- `REACTION_IDS = ['aplauso', 'risa', 'asombro', 'pensar']`
+  (`packages/protocol/src/reactions.ts`). El **emoji no viaja**: el protocolo
+  transporta el identificador y la cara la pone
+  `apps/web/src/lib/reactions.ts`.
+- Evento cliente→servidor `reaction:send` `{ reaction: ReactionId }`, ack
+  `Result<null>`. Evento servidor→cliente `reaction`
+  `{ playerId, seat, reaction, at }`, difundido a **todos** los miembros —
+  incluidos el propio autor y la pantalla central (`/mesa`).
+- No es una `GameAction`: no pasa por el reducer, no consume versión y no
+  aparece en `events`.
+- **Enfriamiento propio por jugador**: `REACTION_COOLDOWN_MS = 1500`. Al
+  superarlo, el ack responde `RATE_LIMITED` (no hizo falta código de error
+  nuevo). Es independiente del límite global de sockets de §6.
+- Vale en cualquier estado de sala (lobby incluido) y para cualquier jugador,
+  eliminado o no. **No cuenta como actividad**: no llama a `room.touch()`, así
+  que una sala en la que solo se mandan emojis sigue caducando por §6.
+- En pantalla vive `REACTION_TTL_MS = 2500`. La animación `reaction-float` es
+  la única añadida a la lista cerrada de §8.4, y respeta
+  `prefers-reduced-motion` como el resto.
+
+### 11.2 Estadísticas del grupo, por sala (§3 del roadmap) — P26
+
+- Son **de la sala**, no de un jugador: sin cuentas ni identidad persistente
+  (`00-MASTER.md` §1, cambio 12), estas cifras viven mientras viva la sala y
+  se acumulan entre partidas sucesivas de esa misma sala (revanchas).
+- `RoomStats { roomCode, gameId, matches, rows: RoomStatsRow[] }` con
+  `RoomStatsRow { playerId, nick, seat, matches, wins, rounds, totalScore,
+  bestScore, worstScore }` (`packages/protocol/src/stats.ts`).
+- Evento cliente→servidor `room:stats` (sin payload), ack `Result<RoomStats>`.
+  **A demanda, no en cada snapshot**: meterlas en `state:view` habría
+  engordado el mensaje más frecuente del protocolo para un dato que solo se
+  mira al abrir el panel o al terminar una partida. Solo devuelve información
+  pública, así que también la puede pedir una pantalla central.
+- Se anotan al llegar una partida a `gameEnd`, **una sola vez por partida**
+  (idempotencia por semilla: cada partida tiene la suya y la revancha genera
+  una nueva). Una partida que acaba por abandono cuenta igual: se jugó y tiene
+  ganador.
+- **`bestScore` depende del juego**: en Chinchón es la puntuación MÁS BAJA
+  (§5, se elimina quien pasa del umbral) y en Pocha la MÁS ALTA (§9.7). El
+  criterio lo aplica el servidor, que conoce el `gameId`; la interfaz solo
+  rotula ("Mejor (mín.)" / "Mejor (máx.)").
+- Persistencia: tabla `room_stats` (`db/migrations/0002_room_stats.sql`),
+  escrita al terminar cada partida. La **fuente de verdad en caliente es la
+  memoria** (`Room.stats`): la tabla es el histórico para `pnpm report` y el
+  análisis de playtest. Como `playtest_events`, su repositorio nunca lanza.
+
+---
+
+## 12. REGLAS DE MUS — versión congelada (P27)
+
+Tercer juego del roadmap (`02-PAQUETES.md`, "Después del MVP" §4). **Este
+paquete es solo documentación**: no hay motor, ni servidor, ni interfaz de
+Mus. Mismo criterio que P21 con Pocha — todo detalle mecánico que no estaba
+decidido queda marcado como **[DECISIÓN P27, A CONFIRMAR]** en lugar de
+inventarse en silencio.
+
+Aviso de tamaño, para que nadie lo empiece a la ligera: `00-MASTER.md` §4 y
+`02-PAQUETES.md` ya avisan de que el Mus "es un proyecto en sí mismo". §12.12
+explica por qué: es el primer juego **por parejas**, y eso rompe supuestos que
+Chinchón y Pocha compartían.
+
+### 12.1 Materiales
+
+- Baraja española de **40 cartas**, exactamente la misma que Pocha (§9.1):
+  rangos 1-7, 10, 11 y 12 en oros, copas, espadas y bastos. Sin comodines.
+- Variante **"ocho reyes"**: los Treses valen como Rey y los Doses como As.
+  `config.ochoReyes`, por defecto `true` (es lo más extendido). Con ella hay 8
+  cartas de máxima y 8 de mínima.
+- La baraja no se agota en la práctica; si se agotara al descartar (§12.5) se
+  barajan los descartes y se sigue.
+
+### 12.2 Jugadores y parejas
+
+- **Exactamente 4 jugadores**, ni uno más ni uno menos. No es un rango: no hay
+  Mus a 2 ni a 3 en esta versión.
+- **2 parejas fijas** durante toda la partida. Los compañeros se sientan
+  enfrentados: asientos **0 y 2** contra **1 y 3**.
+- **[DECISIÓN P27, A CONFIRMAR]**: las parejas las asigna el anfitrión en el
+  lobby moviendo asientos; no hay sorteo automático.
+
+### 12.3 Estructura de la partida
+
+```
+partida  =  1 o más juegos (config.juegos: 1 | 2 | 3, por defecto 1)
+juego    =  40 piedras  =  8 amarrakos   (1 amarrako = 5 piedras)
+juego    =  varias manos
+mano     =  reparto -> fase de mus -> 4 lances -> recuento
+```
+
+- Gana el **juego** la pareja que llega a 40 piedras. Con `config.juegos > 1`,
+  gana la **partida** quien primero gane esa cantidad de juegos ("vaca").
+- El tanteo se lleva **por pareja**, nunca por jugador (§12.12).
+
+### 12.4 Mano, postre y reparto
+
+- El **mano** habla primero en todo; el **postre** es el jugador a su derecha
+  y es quien reparte.
+- La mano rota un asiento a la izquierda al terminar cada mano.
+- Se reparten **4 cartas** a cada jugador, de una en una, empezando por el
+  mano.
+- En caso de empate en cualquier lance, **gana quien esté más cerca del mano**,
+  contando desde él en el orden de asientos (§12.9).
+
+### 12.5 Fase de mus y descarte
+
+1. Empezando por el mano y por orden, cada jugador dice **"mus"** o **"no hay
+   mus"** (corta).
+2. Si los cuatro dicen mus, hay **descarte**: cada jugador descarta de 1 a 4
+   cartas (nunca 0) y roba las mismas. Vuelve a empezar el punto 1.
+3. En cuanto uno corta, se acabó el mus para esa mano y se juegan los lances
+   con las cartas que cada uno tenga.
+4. **[DECISIÓN P27, A CONFIRMAR]**: sin límite de rondas de mus. Si faltan
+   cartas para servir un descarte, se barajan los descartes.
+
+### 12.6 Los cuatro lances, en orden
+
+**1) Grande** — gana la mano más alta. Se comparan las 4 cartas ordenadas de
+mayor a menor, una a una, hasta que una difiera.
+
+**2) Chica** — gana la mano más baja, comparando de menor a mayor.
+
+Orden de fuerza (con `ochoReyes = true`):
+
+| Fuerza | Cartas |
+|--------|--------|
+| máxima | Rey (12) y Tres (3) |
+| | Caballo (11) |
+| | Sota (10) |
+| | Siete (7) |
+| | Seis (6) |
+| | Cinco (5) |
+| | Cuatro (4) |
+| mínima | As (1) y Dos (2) |
+
+Con `ochoReyes = false`, el Tres va entre la Sota y el Siete, y el Dos entre el
+Cuatro y el As.
+
+**3) Pares** — solo juegan quienes tengan al menos una pareja. Hay que
+declarar si se tienen o no, y la declaración es pública.
+
+| Categoría | Qué es | Vale |
+|-----------|--------|------|
+| Duples | dos parejas, o cuatro cartas iguales | 3 piedras |
+| Medias | tres cartas iguales | 2 piedras |
+| Pareja | dos cartas iguales | 1 piedra |
+
+Entre dos duples gana el de la pareja más alta y, si empatan, la segunda.
+Entre dos medias, la más alta. Entre dos parejas, la más alta.
+
+**4) Juego** — solo juegan quienes sumen **31 o más**, contando Rey, Caballo y
+Sota como **10** y el resto por su número (As = 1). También se declara si se
+tiene o no.
+
+Orden de mejor juego (de mejor a peor): **31, 32, 40, 37, 36, 35, 34, 33**.
+
+| Juego | Vale |
+|-------|------|
+| 31 | 3 piedras |
+| cualquier otro (32-40) | 2 piedras |
+
+**[DECISIÓN P27, A CONFIRMAR]**: con `ochoReyes = true`, el Tres cuenta 10 y
+el Dos cuenta 1 también **al sumar el juego**, no solo al comparar Grande y
+Chica. Es la lectura más común de la variante, pero hay mesas que la aplican
+solo a Grande y Chica, y el valor del punto (§12.6 bis) cambia con ello.
+
+**4-bis) Punto** — si **nadie** tiene juego, en lugar del lance de juego se
+juega "al punto": gana la suma más alta que no llegue a 31. Vale **1 piedra**.
+**[DECISIÓN P27, A CONFIRMAR]**: 1 y no 2 — hay mesas que lo pagan a 2
+(`config.puntoVale`).
+
+### 12.7 Envites
+
+En cada lance, empezando por el mano y por orden:
+
+| Acción | Efecto |
+|--------|--------|
+| **Paso** | cede la palabra. Si pasan los cuatro, el lance queda "en paso" y vale **1 piedra** al ganador, que se decide en el recuento. |
+| **Envido** | apuesta un número de piedras, **mínimo 2**. |
+| **Subir** | envida por encima de lo apostado (mínimo, +1 sobre lo anterior). |
+| **Quiero** | acepta: lo apostado se resuelve en el recuento. |
+| **No quiero** | rechaza: quien envidó se lleva **las piedras acumuladas antes del último envite** (1 si no había nada) y el lance no se compara. |
+| **Órdago** | apuesta el **juego entero** (§12.8). |
+
+- Aceptar o rechazar corresponde a la pareja contraria; el compañero de quien
+  envidó no puede subir hasta que la contraria responda.
+- En **Pares** y **Juego** solo pueden envidar quienes hayan declarado que
+  tienen. Si solo una pareja tiene, se lleva lo suyo sin comparación.
+- Si **ningún** jugador tiene pares (o juego), ese lance **no existe** en esa
+  mano: no se envida ni se paga nada (en juego, se sustituye por el punto).
+
+### 12.8 Órdago
+
+- Se puede lanzar en cualquier lance, en lugar de un envite.
+- Si la contraria dice **"no quiero"**, quien lo lanzó gana **1 piedra** y la
+  mano sigue.
+- Si dice **"quiero"**, se **descubren las cartas de los cuatro** y se resuelve
+  ese lance en el acto: la pareja que lo gane **gana el juego entero**, sea
+  cual sea el tanteo.
+
+### 12.9 Recuento
+
+Al terminar la mano (sin órdago aceptado) se descubren las cartas y se
+resuelven los lances **en el orden de §12.6**, sumando a cada pareja:
+
+1. lo envidado y querido en ese lance, o la piedra del "en paso";
+2. lo que valgan sus **pares** y su **juego** (tablas de §12.6), que se cobran
+   **aunque el lance se haya jugado en paso**, y por **cada jugador** de la
+   pareja que los tenga;
+3. si una pareja llega a 40 piedras a mitad del recuento, el juego termina **en
+   ese momento**: no se siguen contando lances.
+
+Empates en cualquier comparación: gana la mano más cercana al mano (§12.4).
+
+### 12.10 Señas
+
+**[DECISIÓN P27, A CONFIRMAR]** — hay dos caminos y no son equivalentes:
+
+- **A (propuesta por defecto): sin señas.** El motor no abre ningún canal
+  entre compañeros. Es coherente con "sin chat libre" (§11.1) y con que en una
+  app cada uno mira su móvil, donde una seña física no se ve.
+- **B: señas digitales limitadas.** Un conjunto cerrado de gestos que solo ve
+  el compañero, reutilizando el mecanismo de §11.1. Es más fiel al juego de
+  bar, pero abre un canal privado dentro de la partida, y eso hay que decidirlo
+  a propósito, no de rebote.
+
+### 12.11 Abandono o desconexión
+
+- El Mus **no se puede jugar con 3**. Si un jugador abandona, la partida queda
+  **suspendida** esperando su reconexión; no se convierte en otra cosa.
+- **[DECISIÓN P27, A CONFIRMAR]**: si no vuelve en el plazo, la partida se
+  anula y **no cuenta** en las estadísticas de sala (§11.2) — a diferencia de
+  Chinchón y Pocha, donde el abandono sí produce un ganador.
+- Los bots (modo "contra la máquina") tendrían que saber envidar y farolear:
+  es un problema mucho más difícil que el de los bots actuales y **no está
+  incluido** en este contrato.
+
+### 12.12 Cambios de contrato que Mus exige
+
+Esto es lo que hace que Mus no sea "un `GameModule` más". Cada punto es una
+decisión de arquitectura pendiente, no un detalle de implementación:
+
+- **`GameId`** pasa a `'chinchon' | 'pocha' | 'mus'` (§10.1, mismo patrón).
+- **Equipos.** Es el cambio de fondo: el marcador deja de ser por jugador.
+  `PublicPlayer` necesita `teamIndex: 0 | 1`, y las vistas necesitan un
+  `teams: { index, piedras, amarrakos, juegos }[]`. `winnerId: PlayerId | null`
+  (§2.5) **no sirve**: hace falta un ganador de equipo. Chinchón y Pocha
+  comparten hoy el supuesto "un jugador, una puntuación"; Mus lo rompe, y con
+  él la clasificación de `/sala` y `/mesa` (P16) y las estadísticas de §11.2,
+  que cuentan `wins` por jugador.
+- **`MAX_PLAYERS` / `MIN_PLAYERS`**: Mus es exactamente 4. §10.6 dejó estos
+  valores como límite absoluto de sala y el rango real en el `GameConfig` de
+  cada juego; ese diseño ya lo admite (`minPlayers = maxPlayers = 4`).
+- **`GameAction`** nuevas: `mus`, `noMus`, `descartar { cardIds }`,
+  `envidar { piedras }`, `querer`, `noQuerer`, `ordago`,
+  `declararPares { tiene }`, `declararJuego { tiene }`.
+- **`ERROR_CODES`** nuevos: `NOT_IN_MUS_PHASE`, `MUST_DISCARD_AT_LEAST_ONE`,
+  `BET_TOO_LOW`, `CANNOT_BID_WITHOUT_PARES`, `CANNOT_BID_WITHOUT_JUEGO`,
+  `NOT_YOUR_TEAM_TURN`.
+- **`MusConfig`**: `{ gameId: 'mus'; maxPlayers: 4; ochoReyes: boolean;
+  juegos: 1 | 2 | 3; puntoVale: 1 | 2; sonido: boolean }`.
+- **Base de datos**: sin migración (`rooms.game_id` es `text`, §10.8).
+
+### 12.13 Tests dorados (escribir con estos casos exactos)
+
+1. **Grande, comparación carta a carta.** `[Rey, Rey, Caballo, As]` contra
+   `[Rey, Rey, Sota, Sota]`: gana la primera (empatan los dos Reyes; Caballo
+   supera a Sota).
+2. **Ocho reyes.** `[Tres, Rey, Sota, As]` con `ochoReyes: true` equivale a
+   `[Rey, Rey, Sota, As]` a efectos de Grande; con `ochoReyes: false`, el Tres
+   queda por debajo de la Sota y la mano vale menos.
+3. **Chica.** `[As, Dos, Rey, Caballo]` con `ochoReyes: true` gana a
+   `[As, Cuatro, Rey, Rey]`: empatan los Ases y el Dos vale como As, que es
+   más bajo que el Cuatro.
+4. **Pares.** `[Rey, Rey, Sota, Sota]` (duples) gana a `[Rey, Rey, Rey, As]`
+   (medias), y paga 3 piedras frente a 2.
+5. **Juego.** `[Rey, Caballo, Sota, As]` suma 31 y gana a
+   `[Rey, Rey, Rey, Sota]`, que suma 40. El 31 paga 3 piedras.
+6. **Punto.** Ninguna mano llega a 31: `[Rey, Sota, Siete, As]` suma 28 y gana
+   a `[Caballo, Sota, Seis, As]`, que suma 27. Paga `config.puntoVale`. Este
+   caso se cierra cuando esté tomada la decisión de §12.6 sobre cuánto vale el
+   Tres al sumar juego.
+7. **Empate y mano.** Dos manos idénticas en Grande: gana quien esté antes
+   contando desde el mano.
+8. **Órdago querido.** Se descubren las cartas, se resuelve solo ese lance y la
+   pareja ganadora gana el juego con el marcador que sea.
+9. **Corte del recuento.** Pareja a 38 piedras que gana Grande "en paso" (1) y
+   tiene medias (2): llega a 40 con la primera y el recuento **para**; las
+   piedras de medias no se cuentan.

@@ -473,9 +473,39 @@ Antes de que escriba código, exige: *«Lista los ficheros que vas a crear y esp
 
 En este orden, y solo cuando los 4 hitos de `00-MASTER.md` §7 estén cumplidos:
 
-1. **Segundo juego: Pocha.** Es el que más pone a prueba la generalidad del motor (apuestas, bazas, rondas de tamaño variable) sin ser tan complejo como el Mus. Al implementarlo se descubre qué hay que sacar a `core/`. **No generalices antes de tenerlo.** Contrato de reglas: `P21` (`01-CONTRATOS.md` §9-§10). Motor, servidor e interfaz son paquetes futuros (propuesta: P22 motor, P23 servidor, P24 interfaz), pendientes de confirmación antes de empezar cada uno.
-2. Reacciones rápidas (4 emojis, sin chat libre).
-3. Estadísticas del grupo, guardadas por sala.
-4. Mus (necesita parejas, señas y una capa social muy distinta: es un proyecto en sí mismo).
-5. Juego original con roles secretos, que es lo que realmente diferencia la plataforma.
-6. App nativa con Expo, solo si el playtest demuestra que el juego offline y las notificaciones hacen falta de verdad.
+1. ~~**Segundo juego: Pocha.**~~ **HECHO.** Es el que más pone a prueba la generalidad del motor (apuestas, bazas, rondas de tamaño variable) sin ser tan complejo como el Mus. Al implementarlo se descubre qué hay que sacar a `core/`. **No generalices antes de tenerlo.** Contrato de reglas: `P21` (`01-CONTRATOS.md` §9-§10). Motor: `P22`. Servidor e interfaz entraron juntos, sin número de paquete propio, en el commit «Cablea Pocha (segundo juego) en servidor y web, con modo contra la máquina».
+2. ~~Reacciones rápidas (4 emojis, sin chat libre).~~ **HECHO: `P25`** (`01-CONTRATOS.md` §11.1).
+3. ~~Estadísticas del grupo, guardadas por sala.~~ **HECHO: `P26`** (`01-CONTRATOS.md` §11.2).
+4. Mus (necesita parejas, señas y una capa social muy distinta: es un proyecto en sí mismo). Contrato de reglas congelado: `P27` (`01-CONTRATOS.md` §12), **solo documentación**. Motor, servidor e interfaz siguen sin empezar y necesitan confirmación explícita antes de cada uno: §12.12 lista los cambios de contrato (equipos, marcador por pareja) que arrastran a `/sala`, `/mesa` y a las propias estadísticas de §11.2.
+5. Juego original con roles secretos, que es lo que realmente diferencia la plataforma. **No hay contrato que ejecutar**: es un juego que todavía no existe, y diseñarlo es una decisión de producto de Unai, no de una sesión de implementación.
+6. App nativa con Expo, solo si el playtest demuestra que el juego offline y las notificaciones hacen falta de verdad. **Condicionado a datos de playtest reales** (`00-MASTER.md` §10), que hoy no existen.
+
+---
+
+## P25 · Reacciones rápidas (roadmap «Después del MVP» §2) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §2.3, §2.4 (sobre de red), §8.4 (animaciones), §11.1 (este paquete).
+
+Cuatro emojis de lista cerrada, sin chat libre en ninguna parte. Evento propio `reaction:send` con enfriamiento por jugador y difusión a todos los miembros, incluida la pantalla central. No toca el motor.
+
+**Entregado:** `packages/protocol/src/reactions.ts` (+ esquema y eventos en `socket.ts`), `RoomManager.sendReaction()`, `broadcastReaction()`, barra y overlay en la web (`ReactionBar`, `ReactionOverlay`), keyframe `reaction-float` en `globals.css`. Tests: `packages/protocol/src/reactions.test.ts` y `apps/server/src/rooms/social.test.ts`.
+
+---
+
+## P26 · Estadísticas del grupo por sala (roadmap «Después del MVP» §3) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §4 (persistencia), §11.2 (este paquete).
+
+Partidas, victorias, rondas y mejor/peor puntuación por jugador, acumuladas en la sala y sobreviviendo a las revanchas. Se piden a demanda con `room:stats`; no viajan en cada snapshot.
+
+**Entregado:** `packages/protocol/src/stats.ts`, `Room.recordMatchEnd()` y `Room.getStats()`, hook `onStats`, `db/migrations/0002_room_stats.sql` con `apps/server/src/db/stats-repo.ts`, y `StatsPanel` en el lobby, en el fin de partida de `/sala` y en el de `/mesa`. Tests: `apps/server/src/rooms/social.test.ts`.
+
+---
+
+## P27 · Contrato de Mus (tercer juego) ⚠️ SOLO DOCUMENTACIÓN — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §9-§10 (para ver qué se está ampliando), §12 (este paquete).
+
+Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9 (Pocha): materiales y variante de ocho reyes, parejas y asientos, estructura en piedras/amarrakos/juegos, fase de mus y descarte, los cuatro lances con sus tablas de fuerza y de pago, sistema de envites y órdago, recuento, señas, abandono, `MusConfig` y tests dorados.
+
+**Lo que NO hace este paquete:** motor, servidor ni interfaz. §12.12 deja escrito por qué el siguiente paso no es mecánico: Mus es el primer juego **por parejas** y rompe el supuesto «un jugador, una puntuación» que comparten Chinchón y Pocha. Antes de empezar el motor hay que cerrar las decisiones marcadas **[DECISIÓN P27, A CONFIRMAR]**: señas, valor del Tres al sumar juego, valor del punto, asignación de parejas y abandono.

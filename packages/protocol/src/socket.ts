@@ -8,6 +8,8 @@ import type { GameId, PlayerId, RoomCode } from './ids.ts';
 import type { PlayerView, TableView } from './views.ts';
 import type { GameConfig } from './config.ts';
 import type { Result } from './result.ts';
+import { ReactionIdSchema, type ReactionId, type ReactionPayload } from './reactions.ts';
+import type { RoomStats } from './stats.ts';
 
 // --- acks: respuestas de los manejadores ------------------------------------
 
@@ -76,6 +78,19 @@ export interface ClientToServerEvents {
     ack: (res: Result<GameActionAck>) => void,
   ) => void;
   'rematch:vote': (payload: { value: boolean }, ack: (res: Result<null>) => void) => void;
+  /**
+   * Reacción rápida (roadmap "Después del MVP" §2). Cualquier jugador de la
+   * sala, en cualquier estado, con enfriamiento propio por jugador
+   * (`REACTION_COOLDOWN_MS`): al superarlo, el ack responde `RATE_LIMITED`.
+   * No es una `GameAction` -- no toca el motor ni consume versión.
+   */
+  'reaction:send': (payload: { reaction: ReactionId }, ack: (res: Result<null>) => void) => void;
+  /**
+   * Estadísticas acumuladas de la sala (roadmap "Después del MVP" §3). A
+   * demanda, no en cada snapshot: ver la nota de `stats.ts`. Solo lectura y
+   * solo datos públicos, así que también la puede pedir una pantalla central.
+   */
+  'room:stats': (payload: Record<string, never>, ack: (res: Result<RoomStats>) => void) => void;
   ping: (payload: Record<string, never>, ack: (res: Result<PingAck>) => void) => void;
 }
 
@@ -116,6 +131,8 @@ export interface ServerToClientEvents {
   events: (payload: EventsPayload) => void;
   toast: (payload: ToastPayload) => void;
   connection: (payload: ConnectionPayload) => void;
+  /** Reacción de un jugador, difundida a todos los miembros (incluida la pantalla central). */
+  reaction: (payload: ReactionPayload) => void;
 }
 
 // --- esquemas zod de los payloads de entrada (validación en el servidor) ----
@@ -174,6 +191,12 @@ const rematchVoteSchema = z.object({
   value: z.boolean(),
 });
 
+// Lista cerrada de 4 identificadores (reactions.ts): cualquier otra cosa la
+// rechaza el guard del servidor con INVALID_ACTION antes de tocar la sala.
+const reactionSendSchema = z.object({
+  reaction: ReactionIdSchema,
+});
+
 export const clientPayloadSchemas = {
   'room:create': roomCreateSchema,
   'room:join': roomJoinSchema,
@@ -187,6 +210,8 @@ export const clientPayloadSchemas = {
   'screen:attach': screenAttachSchema,
   'game:action': gameActionSchema,
   'rematch:vote': rematchVoteSchema,
+  'reaction:send': reactionSendSchema,
+  'room:stats': emptySchema,
   ping: emptySchema,
 } as const;
 

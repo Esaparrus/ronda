@@ -19,6 +19,7 @@ import type { TableView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { Banner } from '@/components/ui/Banner';
 import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
+import { ReactionOverlay } from '@/components/ui/ReactionOverlay';
 import { CornerCode } from './CornerCode';
 import { MesaLobbyBoard } from './MesaLobbyBoard';
 import { MesaGameBoard } from './MesaGameBoard';
@@ -100,6 +101,10 @@ export function MesaClient({ code }: MesaClientProps) {
   return (
     <div className="relative flex min-h-dvh flex-col bg-tinta">
       <Banner status={connection} />
+      {/* La pantalla central recibe las reacciones pero no las manda: aquí
+          no hay ReactionBar, solo el overlay (roadmap "Después del MVP" §2).
+          Es la pantalla donde más gracia tienen, y sigue sin accionar nada. */}
+      <ReactionOverlay variant="mesa" />
       {tableView.status !== 'lobby' ? <CornerCode view={tableView} /> : null}
       {tableView.status === 'lobby' ? <MesaLobbyBoard view={tableView} /> : null}
       {tableView.status === 'playing' && tableView.gameId === 'chinchon' ? (

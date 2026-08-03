@@ -4,8 +4,14 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ronda/web", "dev"],
-      "port": 3000
+      "runtimeArgs": ["--filter", "@ronda/web", "dev", "--port", "3001"],
+      "port": 3001
+    },
+    {
+      "name": "server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env", "--watch", "apps/server/src/index.ts"],
+      "port": 8787
     }
   ]
 }

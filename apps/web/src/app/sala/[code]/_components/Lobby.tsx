@@ -12,6 +12,8 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { Sheet } from '@/components/ui/Sheet';
+import { StatsPanel } from '@/components/ui/StatsPanel';
 
 // Genérico por `gameId` desde que Pocha tiene su propio lobby (los campos
 // que usa este componente -- roomCode/players/me.playerId/config -- son
@@ -27,6 +29,7 @@ export function Lobby({ view }: LobbyProps) {
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const [addingBot, setAddingBot] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [config, setConfig] = useState<GameConfig>(view.config);
 
   const me = view.players.find((p) => p.playerId === view.me.playerId);
@@ -155,6 +158,17 @@ export function Lobby({ view }: LobbyProps) {
             Añadir jugador IA
           </Button>
         ) : null}
+        {/* Estadísticas del grupo (roadmap "Después del MVP" §3). En el
+            lobby es donde tienen sentido: es el momento entre partidas.
+            Van en una hoja, no en la pantalla, para no robarle sitio al
+            código de sala ni al QR, que es lo que la gente mira aquí. */}
+        <button
+          type="button"
+          onClick={() => setStatsOpen(true)}
+          className="self-center text-14 text-brasa underline"
+        >
+          Estadísticas del grupo
+        </button>
       </section>
 
       {isHost ? (
@@ -184,6 +198,16 @@ export function Lobby({ view }: LobbyProps) {
           Esperando a que el anfitrión empiece la partida.
         </p>
       )}
+
+      <Sheet open={statsOpen} onClose={() => setStatsOpen(false)}>
+        <div className="flex flex-col gap-4">
+          <h2 className="text-20 font-semibold text-hueso">Estadísticas del grupo</h2>
+          <StatsPanel refreshKey={statsOpen ? 'abierto' : 'cerrado'} />
+          <Button variant="ghost" onClick={() => setStatsOpen(false)}>
+            Cerrar
+          </Button>
+        </div>
+      </Sheet>
     </main>
   );
 }

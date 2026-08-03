@@ -17,7 +17,7 @@ import {
   type Err,
   type GameConfig,
 } from '@ronda/protocol';
-import { broadcastRoom, broadcastClosed, broadcastToast } from './broadcast.ts';
+import { broadcastRoom, broadcastClosed, broadcastReaction, broadcastToast } from './broadcast.ts';
 import { scheduleBotTurn } from '../rooms/bot-driver.ts';
 
 /** Estado por socket: a qué sala/jugador está ligado. */
@@ -242,6 +242,43 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     });
     if (r.ok) rebroadcast(deps, st.roomCode);
     ack(r);
+  });
+
+  // --- reaction:send ---
+  socket.on('reaction:send', (payload, ack) => {
+    const respond: Respond = (e) => ack(e);
+    if (!guard(deps, sid, 'reaction:send', payload, respond)) return;
+    const st = requirePlayer(deps, sid, respond);
+    if (!st) return;
+    const r = deps.mgr.sendReaction({
+      roomCode: st.roomCode,
+      playerId: st.playerId,
+      reaction: payload.reaction,
+      now: deps.now(),
+    });
+    if (r.ok) {
+      // No pasa por `rebroadcast`: una reacción no cambia el estado de la
+      // partida, así que no hay snapshot nuevo que difundir ni turno de bot
+      // que programar. Solo el evento cosmético.
+      const room = deps.mgr.getRoomByCode(st.roomCode);
+      if (room) broadcastReaction(deps.io, room, r.value);
+    }
+    ack(r.ok ? { ok: true, value: null } : r);
+  });
+
+  // --- room:stats ---
+  socket.on('room:stats', (payload, ack) => {
+    const respond: Respond = (e) => ack(e);
+    if (!guard(deps, sid, 'room:stats', payload, respond)) return;
+    // A diferencia del resto, no exige `requirePlayer`: la pantalla central
+    // (`screen:attach`) también puede pedirlas, y no tiene playerId. Basta
+    // con estar ligado a una sala.
+    const st = deps.states.get(sid);
+    if (!st || !st.roomCode) {
+      respond({ ok: false, code: 'PLAYER_NOT_IN_ROOM' });
+      return;
+    }
+    ack(deps.mgr.getStats({ roomCode: st.roomCode }));
   });
 
   // --- ping ---
