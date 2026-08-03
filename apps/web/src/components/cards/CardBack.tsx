@@ -41,9 +41,11 @@ export function CardBack({
       aria-label="Carta boca abajo"
       className={className}
       style={{
-        opacity: dimmed ? 0.5 : 1,
+        // Ver nota en PlayingCard.tsx: el atenuado no usa `opacity` en el
+        // <svg> entero (dejaría translúcida la parte solapada por la carta
+        // siguiente en Hand.tsx), sino un velo interior más abajo.
         transform: selected ? 'translateY(-6px)' : undefined,
-        transition: 'transform 150ms ease, opacity 150ms ease',
+        transition: 'transform 150ms ease',
         overflow: 'visible',
       }}
     >
@@ -91,6 +93,18 @@ export function CardBack({
         />
         <polygon points="0,-9 7,0 0,9 -7,0" fill="var(--color-brasa)" stroke="var(--card-ink)" strokeWidth={1.75} />
       </g>
+
+      {/* Velo de atenuado -- ver PlayingCard.tsx. */}
+      <rect
+        x={1.75}
+        y={1.75}
+        width={VIEWBOX_WIDTH - 1.5}
+        height={VIEWBOX_HEIGHT - 1.5}
+        rx={9}
+        fill="var(--color-tinta)"
+        opacity={dimmed ? 0.5 : 0}
+        style={{ transition: 'opacity 150ms ease' }}
+      />
     </svg>
   );
 }

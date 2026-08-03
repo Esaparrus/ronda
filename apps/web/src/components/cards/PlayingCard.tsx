@@ -130,13 +130,19 @@ function PlayingCardComponent({
       aria-label={card.isJoker ? 'Comodín' : `${card.rank} de ${card.suit}`}
       className={className}
       style={{
-        opacity: dimmed ? 0.5 : 1,
+        // Nota: el atenuado de `dimmed` NO se hace con `opacity` en este <svg>
+        // -- las cartas de la mano se solapan (Hand.tsx) con margen negativo,
+        // así que una carta con `opacity` reducida deja translucida la parte
+        // que tapa de la carta de detrás (se "veía a través"). En vez de eso
+        // se pinta un velo opaco-a-medias DENTRO del propio svg (más abajo,
+        // encima de toda la carta): ese svg sigue siendo una capa 100% opaca
+        // de cara al resto de la página, así que sigue tapando por completo
+        // lo que hay detrás.
         transform: selected ? 'translateY(-14px) rotate(-2.5deg) scale(1.05)' : undefined,
         filter: selected
           ? `drop-shadow(0 10px 14px rgba(0,0,0,.45)) drop-shadow(0 0 8px ${suitColor})`
           : 'drop-shadow(0 4px 0 rgba(27,29,42,.4))',
-        transition:
-          'transform 220ms cubic-bezier(.34,1.56,.64,1), opacity 150ms ease, filter 150ms ease',
+        transition: 'transform 220ms cubic-bezier(.34,1.56,.64,1), filter 150ms ease',
         overflow: 'visible',
       }}
     >
@@ -198,6 +204,21 @@ function PlayingCardComponent({
           />
         </>
       ) : null}
+
+      {/* Velo de atenuado: mismo contorno redondeado que el fondo, pintado
+          ENCIMA de toda la carta en vez de bajar la opacidad del <svg>
+          entero (ver nota de más arriba). Siempre montado -- solo cambia su
+          opacidad -- para poder animar la transición de encendido/apagado. */}
+      <rect
+        x={1.75}
+        y={1.75}
+        width={VIEWBOX_WIDTH - 1.5}
+        height={VIEWBOX_HEIGHT - 1.5}
+        rx={9}
+        fill="var(--color-tinta)"
+        opacity={dimmed ? 0.5 : 0}
+        style={{ transition: 'opacity 150ms ease' }}
+      />
     </svg>
   );
 }

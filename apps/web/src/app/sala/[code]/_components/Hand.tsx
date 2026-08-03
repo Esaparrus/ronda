@@ -11,12 +11,14 @@
 //   forzando el <svg> interior a llenarlo (`[&_svg]:h-full [&_svg]:w-full`),
 //   apoyándose en que su `viewBox` mantiene la proporción 2:3 al escalar.
 // - Toque para seleccionar; toque otra vez la MISMA carta ya seleccionada
-//   para descartarla (o cerrar, si es una carta que cierra) -- ya no hace
-//   falta un botón de confirmación aparte.
+//   para descartarla -- ya no hace falta un botón de confirmación aparte.
+//   Si esa carta también permite cerrar la ronda, GameScreen.tsx pregunta
+//   antes de decidir por el jugador (cerrar es irreversible y quizá
+//   prefiera seguir jugando buscando mejor jugada).
 // - Arrastrar para reordenar (igual que antes): arrastre a mano con eventos
 //   de puntero, sin librerías de drag-and-drop.
 // - Arrastrar una carta HACIA ARRIBA (hacia la mesa) más allá de un umbral,
-//   en vez de reordenarla, la descarta/cierra al soltar -- "lanzarla a la
+//   en vez de reordenarla, la descarta al soltar -- "lanzarla a la
 //   mesa", como haría alguien con cartas físicas en la mano. Las cartas usan
 //   `touch-action: none` (no `pan-y`, que tenían antes): con `pan-y` el
 //   propio navegador se queda el gesto vertical como scroll nativo de la
@@ -39,7 +41,7 @@ export interface HandProps {
   selected: CardId | null;
   /** Primer toque sobre una carta no seleccionada: la selecciona. */
   onSelect: (cardId: CardId) => void;
-  /** Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la mesa: descarta (o cierra). */
+  /** Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la mesa: descarta (GameScreen.tsx decide si además pregunta por el cierre). */
   onCommit: (cardId: CardId) => void;
   myColorIndex: 0 | 1 | 2 | 3;
   jokerPoints: number;
