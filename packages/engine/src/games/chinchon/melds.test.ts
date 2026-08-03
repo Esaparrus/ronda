@@ -241,6 +241,17 @@ describe('Propiedad: 5.000 manos aleatorias', () => {
 // ---------------------------------------------------------------------------
 // Rendimiento: 10.000 solves en < 2s
 // ---------------------------------------------------------------------------
+//
+// El presupuesto de 2 s se mide en la máquina más lenta del proyecto: un Intel
+// N150 (4 núcleos E, Windows 11, Node 24), bajo `vitest run` con `singleFork`.
+// Medido ahí, 28 ejecuciones del bucle de 10.000 resoluciones dan entre 53 y
+// 151 ms (mediana ~80 ms), así que el margen es de 13x incluso en la peor
+// ejecución observada. Antes de optimizar `melds.ts` el mismo bucle tardaba
+// 2.712-3.911 ms en esa máquina y el test fallaba o no según el momento; el
+// número no se subió, se arregló la implementación (ver la nota de "Búferes
+// reutilizables" en melds.ts).
+//
+// O sea: si esto vuelve a fallar, no es ruido de la máquina. Es una regresión.
 
 describe('Rendimiento', () => {
   it('10.000 solveHand de manos de 8 cartas en menos de 2 segundos', () => {
