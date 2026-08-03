@@ -3,7 +3,7 @@ import { RoomManager } from './room-manager.ts';
 import { isValidNick, normalizeNick, nickKey } from './nick.ts';
 import { createToken, hashToken } from './tokens.ts';
 import { generateRoomCode } from './codes.ts';
-import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, DEFAULT_CONFIG } from '@ronda/protocol';
+import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, DEFAULT_CONFIG, DEFAULT_POCHA_CONFIG } from '@ronda/protocol';
 
 const NOW = 1_000_000;
 
@@ -474,6 +474,10 @@ describe('revancha', () => {
     expect(after.rematchVotes).toEqual([]);
     for (const p of after.players) {
       expect(p.score).toBe(0);
+      // Sala de Chinchón (createRoom más arriba): `p` es ChinchonPlayer, con
+      // `eliminated`. El estado del motor ahora es una unión (Chinchón|Pocha,
+      // room.ts) porque el servidor ya no asume un único juego.
+      if (!('eliminated' in p)) throw new Error('esperaba ChinchonPlayer');
       expect(p.eliminated).toBe(false);
     }
     const seatsAfter = after.players.map((p) => ({ playerId: p.playerId, seat: p.seat }));
@@ -499,5 +503,76 @@ describe('sweep', () => {
     const closed = m.sweep(NOW + 60_000);
     expect(closed).toBe(0);
     expect(m.getRoomByCode(c.value.roomCode)).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pocha (segundo juego, cableado en el servidor): el motor y el protocolo ya
+// estaban terminados (P22); estos tests cubren que RoomManager despacha de
+// verdad por `gameId` en vez de asumir Chinchón.
+// ---------------------------------------------------------------------------
+
+describe('Pocha', () => {
+  it('crea una sala de Pocha', () => {
+    const m = mgr();
+    const r = m.createRoom({ gameId: 'pocha', config: DEFAULT_POCHA_CONFIG, nick: 'Ana', now: NOW });
+    expect(r.ok).toBe(true);
+  });
+
+  it('start() con 3 jugadores reparte una ronda de verdad', () => {
+    const m = mgr();
+    const c = m.createRoom({ gameId: 'pocha', config: DEFAULT_POCHA_CONFIG, nick: 'A1', now: NOW });
+    if (!c.ok) throw new Error();
+    m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+    m.joinRoom({ roomCode: c.value.roomCode, nick: 'A3', now: NOW });
+    const r = m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+    expect(r.ok).toBe(true);
+
+    const state = stateOf(room(m, c.value.roomCode));
+    expect(state.gameId).toBe('pocha');
+    // Ronda 1 de la pirámide siempre reparte 1 carta por jugador (§9.2).
+    expect(state.players.every((p) => p.hand.length === 1)).toBe(true);
+    expect(state.turnSeat).not.toBeNull();
+  });
+
+  it('start() con 2 jugadores -> NOT_ENOUGH_PLAYERS (Pocha exige mínimo 3, §9.2)', () => {
+    const m = mgr();
+    const c = m.createRoom({ gameId: 'pocha', config: DEFAULT_POCHA_CONFIG, nick: 'A1', now: NOW });
+    if (!c.ok) throw new Error();
+    m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+    const r = m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error();
+    expect(r.code).toBe('NOT_ENOUGH_PLAYERS');
+  });
+
+  it('rematch reinicia una partida de Pocha con gameId y marcador a cero', () => {
+    const m = mgr();
+    const c = m.createRoom({ gameId: 'pocha', config: DEFAULT_POCHA_CONFIG, nick: 'A1', now: NOW });
+    if (!c.ok) throw new Error();
+    const j2 = m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+    const j3 = m.joinRoom({ roomCode: c.value.roomCode, nick: 'A3', now: NOW });
+    if (!j2.ok || !j3.ok) throw new Error();
+    m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+
+    // Fuerza directamente el fin de partida (sin jugar las 25 rondas de la
+    // pirámide de 3 jugadores): el reducer no expone eso, así que se muta el
+    // estado del motor como haría el propio reducer al terminar la última
+    // ronda -- mismo atajo que ya usan los tests de revancha de Chinchón más
+    // arriba en este fichero.
+    const before = room(m, c.value.roomCode);
+    if (!before.state) throw new Error('sin estado');
+    before.state = { ...before.state, status: 'gameEnd' };
+    before.status = 'gameEnd';
+
+    for (const p of [c.value, j2.value, j3.value]) {
+      const v = m.voteRematch({ roomCode: c.value.roomCode, playerId: p.playerId, value: true, now: NOW });
+      expect(v.ok).toBe(true);
+    }
+
+    const after = stateOf(room(m, c.value.roomCode));
+    expect(after.gameId).toBe('pocha');
+    expect(after.status).toBe('playing');
+    expect(after.players.every((p) => p.score === 0)).toBe(true);
   });
 });

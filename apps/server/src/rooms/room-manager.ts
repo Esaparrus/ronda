@@ -4,7 +4,6 @@
 // empezada). Toda mutación actualiza lastActivityAt. applyAction delega en
 // GAMES[gameId].applyAction y NUNCA implementa reglas por su cuenta.
 import {
-  type ChinchonConfig,
   type GameAction,
   type GameConfig,
   type GameId,
@@ -13,8 +12,7 @@ import {
   err,
   ok,
 } from '@ronda/protocol';
-import { GAMES, createInitialState as engineCreateInitialState } from '@ronda/engine';
-import type { ChinchonState } from '@ronda/engine';
+import { GAMES } from '@ronda/engine';
 import { generateRoomCode } from './codes.ts';
 import { createToken, hashToken } from './tokens.ts';
 import { isValidNick, normalizeNick } from './nick.ts';
@@ -23,10 +21,19 @@ import {
   LOBBY_TTL_MS,
   PLAYING_TTL_MS,
   Room,
+  type EngineState,
   type PlayerRuntime,
   type RoomHooks,
 } from './room.ts';
 import { randomUUID } from 'node:crypto';
+
+/** Mínimo de jugadores por juego (§9.2 Pocha: "fijo, no configurable"; §2.1
+ * Chinchón: MIN_PLAYERS general). No hay una constante de contrato por juego
+ * para esto (MIN_PLAYERS/MAX_PLAYERS de @ronda/protocol son el límite
+ * ABSOLUTO de sala, §10.6, no el de un juego concreto). */
+function minPlayersFor(gameId: GameId): number {
+  return gameId === 'pocha' ? 3 : 2;
+}
 
 export interface JoinResult {
   roomCode: string;
@@ -78,7 +85,7 @@ export class RoomManager {
     nick: string;
     now: number;
   }): Result<JoinResult> {
-    if (input.gameId !== 'chinchon') return err('GAME_NOT_FOUND');
+    if (!GAMES[input.gameId]) return err('GAME_NOT_FOUND');
     if (!isValidNick(input.nick)) return err('NICK_INVALID');
 
     const code = generateRoomCode((c) => this.rooms.has(c));
@@ -289,30 +296,12 @@ export class RoomManager {
     if (!player.isHost) return err('NOT_HOST');
 
     const actives = room.playersBySeat();
-    if (actives.length < 2) return err('NOT_ENOUGH_PLAYERS');
+    if (actives.length < minPlayersFor(room.gameId)) return err('NOT_ENOUGH_PLAYERS');
 
     const module = GAMES[room.gameId];
     if (!module) return err('GAME_NOT_FOUND');
 
-    room.state = engineCreateInitialState({
-      // `engineCreateInitialState` es, hoy, específicamente el
-      // `createInitialState` de Chinchón (importado con alias de
-      // `@ronda/engine`): el registro `GAMES` se consulta arriba solo para
-      // comprobar que el juego existe, pero el propio reparto todavía NO se
-      // despacha por `module.createInitialState` de verdad -- ese cableado
-      // genérico es trabajo de P23 (servidor), no de este paquete (P22,
-      // packages/engine). Hoy `room.config` siempre es un `ChinchonConfig`
-      // en runtime (createRoom ya rechaza cualquier gameId != 'chinchon'),
-      // así que el cast es fiel al comportamiento actual, no una mentira.
-      config: room.config as ChinchonConfig,
-      players: room.playersBySeat().map((p) => ({
-        playerId: p.playerId,
-        nick: p.nick,
-        seat: p.seat,
-      })),
-      seed: room.seed,
-      roomCode: room.code,
-    });
+    room.state = module.createInitialState(dealInput(room)) as EngineState;
     room.status = 'playing';
     room.touch(input.now);
     room.hooks.onSnapshot?.(room);
@@ -391,10 +380,17 @@ export class RoomManager {
       return ok(null);
     }
 
-    // Si en partida quedan <2 activos, gana el que quede.
+    // Si en partida quedan menos del mínimo del juego (2 en Chinchón, 3 en
+    // Pocha, §9.2), termina la partida y gana quien quede con más puntos.
+    // Simplificación del mismo nivel que ya tenía Chinchón (comentario de
+    // arriba): no implementa la propuesta completa de §9.9 para Pocha
+    // (anular la ronda en curso sin puntuar) -- esa nota del contrato está
+    // marcada ella misma como pendiente de confirmar, y el motor no tiene
+    // hoy ninguna `GameAction` de "jugador se fue" en ningún juego. Como los
+    // bots nunca se desconectan, esto no afecta al modo "contra la máquina".
     if (room.status === 'playing') {
       const connected = [...room.players.values()].filter((p) => p.connected);
-      if (connected.length < 2) {
+      if (connected.length < minPlayersFor(room.gameId)) {
         room.status = 'gameEnd';
         if (room.state && connected[0]) {
           room.state = { ...room.state, status: 'gameEnd', winnerId: connected[0].playerId };
@@ -454,8 +450,8 @@ export class RoomManager {
     const r = module.applyAction(currentState, input.playerId, input.action, input.now);
     if (!r.ok) return r;
     // El módulo devuelve estado tipado como `unknown` (AnyGameModule). Aquí
-    // recuperamos el tipo concreto de Chinchón, que es el único juego del MVP.
-    const newState = r.value.state as ChinchonState;
+    // recuperamos el tipo concreto (Chinchón o Pocha).
+    const newState = r.value.state as EngineState;
     room.state = newState;
     room.processedActions.set(input.clientActionId, newState.version);
     room.touch(input.now);
@@ -513,21 +509,7 @@ export class RoomManager {
       const module = GAMES[room.gameId];
       if (!module) return err('GAME_NOT_FOUND');
       room.seed = randomSeed();
-      room.state = engineCreateInitialState({
-        // Ver comentario homólogo en `start()` más arriba: `engineCreateInitialState`
-        // es hoy siempre el de Chinchón (no despacha por `GAMES[room.gameId]`,
-        // gap pre-existente documentado, fuera de alcance de P22). `room.config`
-        // es en la práctica siempre `ChinchonConfig` porque `createRoom` solo
-        // permite `gameId: 'chinchon'` hoy.
-        config: room.config as ChinchonConfig,
-        players: room.playersBySeat().map((p) => ({
-          playerId: p.playerId,
-          nick: p.nick,
-          seat: p.seat,
-        })),
-        seed: room.seed,
-        roomCode: room.code,
-      });
+      room.state = module.createInitialState(dealInput(room)) as EngineState;
       room.status = 'playing';
       room.hooks.onTrack?.(room, 'rematch', {});
     }
@@ -631,6 +613,28 @@ export class RoomManager {
 
 function randomSeed(): string {
   return randomUUID();
+}
+
+/**
+ * Input para `module.createInitialState`. Se construye en una variable con
+ * nombre (no un literal pasado directo) a propósito: `CreateInitialStateInput`
+ * (packages/engine/src/core/types.ts) no declara `roomCode`, pero ambos
+ * reducers (Chinchón y Pocha) lo aceptan como campo adicional opcional para
+ * poblar `state.roomCode` -- pasar un literal con esa propiedad de más
+ * fallaría el chequeo de propiedades excedentes de TypeScript; pasar una
+ * variable no.
+ */
+function dealInput(room: Room) {
+  return {
+    config: room.config,
+    players: room.playersBySeat().map((p) => ({
+      playerId: p.playerId,
+      nick: p.nick,
+      seat: p.seat,
+    })),
+    seed: room.seed,
+    roomCode: room.code,
+  };
 }
 
 /** Primer apodo "Robot N" libre en la sala (único, como exige isNickTaken). */

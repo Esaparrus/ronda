@@ -83,7 +83,7 @@ export default function ReglasPage() {
       </p>
 
       <Link
-        href="/crear"
+        href="/crear/chinchon"
         className="mt-auto flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
       >
         Crear partida

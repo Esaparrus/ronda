@@ -93,6 +93,8 @@ export default function DesignShowcasePage() {
           <Avatar name="Marta" colorIndex={1} />
           <Avatar name="Leo" colorIndex={2} />
           <Avatar name="Cata" colorIndex={3} />
+          <Avatar name="Nora" colorIndex={4} />
+          <Avatar name="Iker" colorIndex={5} />
         </div>
       </Section>
 

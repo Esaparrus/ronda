@@ -12,9 +12,10 @@ import { GAMES } from '@ronda/engine';
 import type { PlayerId } from '@ronda/protocol';
 import type { TypedIoServer } from '../io.ts';
 import type { RoomManager } from './room-manager.ts';
+import type { EngineState } from './room.ts';
 import type { Room } from './room.ts';
 import { broadcastRoom } from '../socket/broadcast.ts';
-import { decideChinchonAction } from './bot-policy.ts';
+import { decideChinchonAction, decidePochaAction } from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
 
@@ -54,10 +55,22 @@ export function scheduleBotTurn(deps: BotDriverDeps, roomCode: string): void {
   pending.set(roomCode, timer);
 }
 
+/**
+ * ¿Sigue en pie para confirmar la siguiente ronda? Chinchón elimina a mitad
+ * de partida (`eliminated`) además de registrar abandono (`left`); Pocha
+ * solo tiene `left` (§9.8: nadie queda eliminado a mitad de partida).
+ */
+function isEligibleForConfirm(state: EngineState, playerId: PlayerId): boolean {
+  const player = state.players.find((p) => p.playerId === playerId);
+  if (!player) return false;
+  if ('eliminated' in player && player.eliminated) return false;
+  return !player.left;
+}
+
 /** ¿Qué bot tiene que actuar ahora mismo, y qué tiene que hacer? null si ninguno. */
 function nextBotTurn(room: Room): BotTurn | null {
   const state = room.state;
-  if (room.gameId !== 'chinchon' || !state) return null;
+  if (!state) return null;
 
   if (room.status === 'playing') {
     const seat = state.turnSeat;
@@ -76,10 +89,7 @@ function nextBotTurn(room: Room): BotTurn | null {
     const votes = state.rematchVotes;
     const next = room
       .playersBySeat()
-      .filter((p) => {
-        const enginePlayer = state.players.find((sp) => sp.playerId === p.playerId);
-        return enginePlayer && !enginePlayer.eliminated && !enginePlayer.left;
-      })
+      .filter((p) => isEligibleForConfirm(state, p.playerId))
       .find((p) => !votes.includes(p.playerId));
     if (!next?.isBot) return null;
     return { playerId: next.playerId, kind: 'nextRound' };
@@ -107,8 +117,8 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
     const module = GAMES[room.gameId];
     if (!module) return;
     const view = module.getPlayerView(state, turn.playerId);
-    if (view.kind !== 'player' || view.gameId !== 'chinchon') return;
-    const action = decideChinchonAction(view);
+    if (view.kind !== 'player') return;
+    const action = view.gameId === 'pocha' ? decidePochaAction(view) : decideChinchonAction(view);
     if (!action) return;
     const r = deps.mgr.applyAction({
       roomCode,

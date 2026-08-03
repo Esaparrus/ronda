@@ -22,6 +22,8 @@
   --color-oro: #c79a3b; /* palo de oros */
   --color-azul: #3e6ea8; /* palo de espadas */
   --color-verde: #2f6f5e; /* palo de bastos */
+  --color-violeta: #6d5a9e; /* asiento 5 (Pocha, hasta 6 jugadores) */
+  --color-rosa: #b8567e; /* asiento 6 (Pocha, hasta 6 jugadores) */
 
   /* --- Colores de la carta (recreación RondaCard, claude.ai/design) ------
    * Paleta propia de la CARA de la carta: más saturada que la de la interfaz
@@ -58,12 +60,16 @@
   --leading-body: 1.5;
 }
 
-/* Colores de asiento (colorIndex 0..3), contrato §8.1: brasa, azul, verde, oro. */
+/* Colores de asiento (colorIndex 0..3), contrato §8.1: brasa, azul, verde, oro.
+ * Asientos 4 y 5 (§10.7, hasta 6 jugadores en Pocha): violeta y rosa, fuera
+ * de la paleta de palos para no confundir asiento con palo en pantalla. */
 :root {
   --seat-0: var(--color-brasa);
   --seat-1: var(--color-azul);
   --seat-2: var(--color-verde);
   --seat-3: var(--color-oro);
+  --seat-4: var(--color-violeta);
+  --seat-5: var(--color-rosa);
 
   color-scheme: dark;
 }

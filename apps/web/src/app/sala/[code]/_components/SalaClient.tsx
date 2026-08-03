@@ -21,6 +21,8 @@ import { Lobby } from './Lobby';
 import { GameScreen } from './GameScreen';
 import { RoundEndScreen } from './RoundEndScreen';
 import { GameEndScreen } from './GameEndScreen';
+import { PochaGameScreen } from './PochaGameScreen';
+import { PochaRoundEndScreen } from './PochaRoundEndScreen';
 
 export interface SalaClientProps {
   code: string;
@@ -99,7 +101,7 @@ export function SalaClient({ code }: SalaClientProps) {
             : 'Se ha cerrado.'}
         </p>
         <Link
-          href="/crear"
+          href="/juegos"
           className="flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
         >
           Crear una partida nueva
@@ -137,21 +139,6 @@ export function SalaClient({ code }: SalaClientProps) {
     );
   }
 
-  // PlayerView es una unión discriminada por `gameId` desde P22 (motor de
-  // Pocha). Las cuatro pantallas de abajo (Lobby/GameScreen/RoundEndScreen/
-  // GameEndScreen) son, hoy, específicamente de Chinchón -- este es el único
-  // sitio donde se estrecha el tipo, para no repetir el guard en cada una.
-  // Hoy no se pueden crear salas de Pocha (room-manager.createRoom lo
-  // rechaza), así que esta rama nunca se alcanza en la práctica; pantallas
-  // de Pocha de verdad son trabajo de P24.
-  if (view.gameId !== 'chinchon') {
-    return (
-      <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-        <p className="text-16 text-hueso">Este juego todavía no tiene pantalla.</p>
-      </main>
-    );
-  }
-
   const isHost = view.players.find((p) => p.playerId === view.me.playerId)?.isHost ?? false;
 
   async function handleCloseRoom() {
@@ -176,8 +163,12 @@ export function SalaClient({ code }: SalaClientProps) {
         </div>
       ) : null}
       {view.status === 'lobby' ? <Lobby view={view} /> : null}
-      {view.status === 'playing' ? <GameScreen view={view} /> : null}
-      {view.status === 'roundEnd' ? <RoundEndScreen view={view} /> : null}
+      {view.status === 'playing' && view.gameId === 'chinchon' ? <GameScreen view={view} /> : null}
+      {view.status === 'playing' && view.gameId === 'pocha' ? <PochaGameScreen view={view} /> : null}
+      {view.status === 'roundEnd' && view.gameId === 'chinchon' ? <RoundEndScreen view={view} /> : null}
+      {view.status === 'roundEnd' && view.gameId === 'pocha' ? (
+        <PochaRoundEndScreen view={view} />
+      ) : null}
       {view.status === 'gameEnd' ? <GameEndScreen view={view} /> : null}
       <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
         <div className="flex flex-col gap-4">

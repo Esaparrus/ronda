@@ -11,7 +11,12 @@ import type {
   PlayerId,
   RoomCode,
 } from '@ronda/protocol';
-import type { ChinchonState } from '@ronda/engine';
+import type { ChinchonState, PochaState } from '@ronda/engine';
+
+/** Estado del motor de cualquier juego registrado (§10.8: GameModule<S,A>
+ * ya era genérico de verdad; esta unión es lo único que faltaba en el lado
+ * del servidor para dejar de asumir Chinchón a mano). */
+export type EngineState = ChinchonState | PochaState;
 
 /** Estado runtime de un jugador en la sala. */
 export interface PlayerRuntime {
@@ -59,7 +64,7 @@ export class Room {
   status: RoomStatus;
   players: Map<PlayerId, PlayerRuntime> = new Map();
   /** Estado del motor; null mientras esté en lobby. */
-  state: ChinchonState | null = null;
+  state: EngineState | null = null;
   /** socketIds de pantallas centrales conectadas. */
   screens: Set<string> = new Set();
   hostPlayerId: PlayerId | null = null;
@@ -118,7 +123,7 @@ export class Room {
   }
 
   /** Snapshot censurado (delega al motor). Lanza si state es null. */
-  snapshot(): { state: ChinchonState; seed: string } {
+  snapshot(): { state: EngineState; seed: string } {
     if (!this.state) throw new Error('snapshot: sala sin estado de motor');
     return { state: this.state, seed: this.seed };
   }

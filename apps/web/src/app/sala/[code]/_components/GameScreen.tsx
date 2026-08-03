@@ -31,7 +31,10 @@ export function GameScreen({ view }: GameScreenProps) {
 
   const { me } = view;
   const myPlayer = view.players.find((p) => p.playerId === me.playerId);
-  const myColorIndex = myPlayer?.colorIndex ?? 0;
+  // Chinchón nunca pasa de 4 jugadores (colorIndex 0-3): el color de combinación
+  // (meldColor, PlayingCard.tsx) es deliberadamente solo esos 4 colores de palo,
+  // aunque colorIndex esté ensanchado a 0-5 para Pocha (§10.7).
+  const myColorIndex = ((myPlayer?.colorIndex ?? 0) % 4) as 0 | 1 | 2 | 3;
   const isMyTurn = view.turnPlayerId === me.playerId;
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)

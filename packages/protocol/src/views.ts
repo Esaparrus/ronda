@@ -32,16 +32,16 @@ export type PochaAvailableAction = 'bid' | 'playCard' | 'nextRound';
 
 /**
  * Jugador público (sin mano). Compartido por ambos juegos: los campos son
- * genéricos de verdad. `colorIndex` sigue congelado en `0|1|2|3` (§10.7):
- * ensancharlo a 0-5 para el caso de hasta 6 jugadores de Pocha es un punto de
- * diseño real (2 colores de asiento nuevos) explícitamente diferido a P24
- * (interfaz de Pocha) -- no se toca aquí.
+ * genéricos de verdad. `colorIndex` se ensanchó a `0|1|2|3|4|5` (§10.7,
+ * resuelto en la pantalla de Pocha): 2 colores de asiento nuevos
+ * (`--seat-4`/`--seat-5`, `apps/web/src/styles/globals.css`) para los
+ * asientos 5 y 6, que Chinchón nunca usa (máximo 4 jugadores).
  */
 export interface PublicPlayer {
   playerId: PlayerId;
   nick: string;
-  seat: number; // 0..3 en Chinchón; 0..5 en Pocha (§10.7: colorIndex no sigue aún)
-  colorIndex: 0 | 1 | 2 | 3; // color de asiento, asignado por asiento
+  seat: number; // 0..3 en Chinchón; 0..5 en Pocha
+  colorIndex: 0 | 1 | 2 | 3 | 4 | 5; // color de asiento, asignado por asiento
   score: number; // acumulado de la partida
   handCount: number; // nº de cartas, nunca cuáles
   connected: boolean;
@@ -175,7 +175,14 @@ export const PublicPlayerSchema = z.object({
   playerId: z.string(),
   nick: z.string(),
   seat: z.number().int().min(0).max(5),
-  colorIndex: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+  colorIndex: z.union([
+    z.literal(0),
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+  ]),
   score: z.number().int(),
   handCount: z.number().int().min(0),
   connected: z.boolean(),

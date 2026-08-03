@@ -17,38 +17,44 @@ import type {
   ChinchonPlayerView,
   ChinchonTableView,
   GameEvent,
+  PlayerView,
+  PochaCommonView,
+  PochaPlayerView,
+  PochaTableView,
+  PublicPlayer,
+  TableView,
 } from '@ronda/protocol';
 
 /** Versión del lobby (0). El motor arranca en versión 0. */
 const LOBBY_VERSION = 0;
 
+/** Jugadores públicos, comunes a la vista de lobby de cualquier juego. */
+function buildLobbyPlayers(room: Room): PublicPlayer[] {
+  return room.playersBySeat().map((p) => ({
+    playerId: p.playerId,
+    nick: p.nick,
+    seat: p.seat,
+    colorIndex: p.seat as PublicPlayer['colorIndex'],
+    score: 0,
+    handCount: 0,
+    connected: p.connected,
+    isHost: p.isHost,
+    eliminated: false,
+  }));
+}
+
 /**
- * Construye la parte común de la vista de lobby (jugadores públicos, config,
- * etc.). Tipada como `ChinchonCommonView` en vez del `CommonView` genérico
- * (unión discriminada desde P22): esta vista mínima de lobby es
- * deliberadamente Chinchón-shaped (turnPhase/deckCount/discardTop/
- * discardCount son vocabulario suyo) porque hoy solo se pueden crear salas
- * de Chinchón (`room-manager.ts` rechaza cualquier otro gameId al crear la
- * sala) -- una vista de lobby de Pocha de verdad es trabajo de P23/P24.
+ * Construye la parte común de la vista de lobby de Chinchón (vocabulario
+ * turnPhase/deckCount/discardTop/discardCount).
  */
-function buildCommon(room: Room): ChinchonCommonView {
+function buildChinchonLobbyCommon(room: Room): ChinchonCommonView {
   return {
     roomCode: room.code,
-    gameId: room.gameId as 'chinchon',
+    gameId: 'chinchon',
     config: room.config as ChinchonCommonView['config'],
     status: room.status === 'closed' ? 'gameEnd' : room.status,
     round: 0,
-    players: room.playersBySeat().map((p) => ({
-      playerId: p.playerId,
-      nick: p.nick,
-      seat: p.seat,
-      colorIndex: (p.seat % 4) as 0 | 1 | 2 | 3,
-      score: 0,
-      handCount: 0,
-      connected: p.connected,
-      isHost: p.isHost,
-      eliminated: false,
-    })),
+    players: buildLobbyPlayers(room),
     turnPlayerId: null,
     turnPhase: null,
     deckCount: 0,
@@ -60,11 +66,43 @@ function buildCommon(room: Room): ChinchonCommonView {
   };
 }
 
-/** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
-function lobbyPlayerView(room: Room, playerId: string): ChinchonPlayerView {
+/** Misma idea que `buildChinchonLobbyCommon`, con la forma de Pocha (§9/§10.2). */
+function buildPochaLobbyCommon(room: Room): PochaCommonView {
   return {
+    roomCode: room.code,
+    gameId: 'pocha',
+    config: room.config as PochaCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    rematchVotes: [],
+    trumpSuit: null,
+    trumpCardId: null,
+    roundSize: 0,
+    dealerSeat: 0,
+    bids: [],
+    tricksWon: [],
+    currentTrick: [],
+    leadSuit: null,
+    roundResult: null,
+  };
+}
+
+/** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
+function lobbyPlayerView(room: Room, playerId: string): PlayerView {
+  if (room.gameId === 'pocha') {
+    const view: PochaPlayerView = {
+      kind: 'player',
+      ...buildPochaLobbyCommon(room),
+      me: { playerId, hand: [], legalCardIds: [], availableActions: [] },
+    };
+    return view;
+  }
+  const view: ChinchonPlayerView = {
     kind: 'player',
-    ...buildCommon(room),
+    ...buildChinchonLobbyCommon(room),
     me: {
       playerId,
       hand: [],
@@ -76,10 +114,16 @@ function lobbyPlayerView(room: Room, playerId: string): ChinchonPlayerView {
       availableActions: [],
     },
   };
+  return view;
 }
 
-function lobbyTableView(room: Room): ChinchonTableView {
-  return { kind: 'table', ...buildCommon(room) };
+function lobbyTableView(room: Room): TableView {
+  if (room.gameId === 'pocha') {
+    const view: PochaTableView = { kind: 'table', ...buildPochaLobbyCommon(room) };
+    return view;
+  }
+  const view: ChinchonTableView = { kind: 'table', ...buildChinchonLobbyCommon(room) };
+  return view;
 }
 
 /**

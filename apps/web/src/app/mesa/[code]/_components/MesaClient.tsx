@@ -24,6 +24,8 @@ import { MesaLobbyBoard } from './MesaLobbyBoard';
 import { MesaGameBoard } from './MesaGameBoard';
 import { MesaRoundEndScreen } from './MesaRoundEndScreen';
 import { MesaGameEndScreen } from './MesaGameEndScreen';
+import { PochaMesaGameBoard } from './PochaMesaGameBoard';
+import { PochaMesaRoundEndScreen } from './PochaMesaRoundEndScreen';
 
 export interface MesaClientProps {
   code: string;
@@ -92,25 +94,26 @@ export function MesaClient({ code }: MesaClientProps) {
   const tableView: TableView = view;
 
   // TableView es, desde P22, unión discriminada por `gameId` (motor de
-  // Pocha). Las cuatro pantallas de mesa de abajo son, hoy, específicamente
-  // de Chinchón -- mismo motivo y mismo patrón que en SalaClient.tsx. Hoy no
-  // se pueden crear salas de Pocha, así que esta rama nunca se alcanza en la
-  // práctica; una mesa de Pocha de verdad es trabajo de P24.
-  if (tableView.gameId !== 'chinchon') {
-    return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-16 text-hueso">Este juego todavía no tiene pantalla de mesa.</p>
-      </main>
-    );
-  }
-
+  // Pocha). MesaLobbyBoard y MesaGameEndScreen ya son genéricos (leen solo
+  // campos comunes); MesaGameBoard/MesaRoundEndScreen son de Chinchón, con
+  // sus equivalentes de Pocha al lado.
   return (
     <div className="relative flex min-h-dvh flex-col bg-tinta">
       <Banner status={connection} />
       {tableView.status !== 'lobby' ? <CornerCode view={tableView} /> : null}
       {tableView.status === 'lobby' ? <MesaLobbyBoard view={tableView} /> : null}
-      {tableView.status === 'playing' ? <MesaGameBoard view={tableView} /> : null}
-      {tableView.status === 'roundEnd' ? <MesaRoundEndScreen view={tableView} /> : null}
+      {tableView.status === 'playing' && tableView.gameId === 'chinchon' ? (
+        <MesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'playing' && tableView.gameId === 'pocha' ? (
+        <PochaMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'roundEnd' && tableView.gameId === 'chinchon' ? (
+        <MesaRoundEndScreen view={tableView} />
+      ) : null}
+      {tableView.status === 'roundEnd' && tableView.gameId === 'pocha' ? (
+        <PochaMesaRoundEndScreen view={tableView} />
+      ) : null}
       {tableView.status === 'gameEnd' ? <MesaGameEndScreen view={tableView} /> : null}
     </div>
   );

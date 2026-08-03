@@ -89,3 +89,6 @@ export const GameConfigSchema = z.discriminatedUnion('gameId', [
  * (p.ej. `core/deck.ts`).
  */
 export const DEFAULT_CONFIG: ChinchonConfig = ChinchonConfigSchema.parse({});
+
+/** Config de Pocha por defecto, mismo patrón que `DEFAULT_CONFIG` de arriba. */
+export const DEFAULT_POCHA_CONFIG: PochaConfig = PochaConfigSchema.parse({});

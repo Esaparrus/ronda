@@ -4,7 +4,7 @@
 
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
-import type { ChinchonConfig, ChinchonPlayerView } from '@ronda/protocol';
+import type { ChinchonConfig, GameConfig, PlayerView, PochaConfig } from '@ronda/protocol';
 import { messageFor } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { RoomCode } from '@/components/ui/RoomCode';
@@ -13,21 +13,12 @@ import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 
-// Este lobby renderiza variantes de Chinchón (comodines, umbral de cierre,
-// etc.), así que su prop es deliberadamente `ChinchonPlayerView`, no el
-// `PlayerView` genérico (unión discriminada desde P22). El dispatcher
-// (SalaClient.tsx) es quien estrecha el tipo antes de renderizar este
-// componente. Un lobby de Pocha de verdad es trabajo de P24.
+// Genérico por `gameId` desde que Pocha tiene su propio lobby (los campos
+// que usa este componente -- roomCode/players/me.playerId/config -- son
+// comunes a cualquier `PlayerView`; solo la sección "Variantes" se ramifica
+// por juego, ver ChinchonVariants/PochaVariants más abajo).
 export interface LobbyProps {
-  view: ChinchonPlayerView;
-}
-
-function updateLocal<K extends keyof ChinchonConfig>(
-  setConfig: (fn: (prev: ChinchonConfig) => ChinchonConfig) => void,
-  key: K,
-  value: ChinchonConfig[K],
-) {
-  setConfig((prev) => ({ ...prev, [key]: value }));
+  view: PlayerView;
 }
 
 export function Lobby({ view }: LobbyProps) {
@@ -36,7 +27,7 @@ export function Lobby({ view }: LobbyProps) {
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const [addingBot, setAddingBot] = useState(false);
-  const [config, setConfig] = useState(view.config);
+  const [config, setConfig] = useState<GameConfig>(view.config);
 
   const me = view.players.find((p) => p.playerId === view.me.playerId);
   const isHost = me?.isHost ?? false;
@@ -79,9 +70,14 @@ export function Lobby({ view }: LobbyProps) {
     }
   }
 
-  function setField<K extends keyof ChinchonConfig>(key: K, value: ChinchonConfig[K]) {
-    updateLocal(setConfig, key, value);
+  function setChinchonField<K extends keyof ChinchonConfig>(key: K, value: ChinchonConfig[K]) {
+    setConfig((prev) => ({ ...(prev as ChinchonConfig), [key]: value }));
     void useRondaStore.getState().updateConfig({ [key]: value } as Partial<ChinchonConfig>);
+  }
+
+  function setPochaField<K extends keyof PochaConfig>(key: K, value: PochaConfig[K]) {
+    setConfig((prev) => ({ ...(prev as PochaConfig), [key]: value }));
+    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<PochaConfig>);
   }
 
   async function handleStart() {
@@ -100,7 +96,11 @@ export function Lobby({ view }: LobbyProps) {
     setAddingBot(false);
   }
 
-  const canStart = view.players.length >= 2;
+  // Mínimo de jugadores por juego: 2 en Chinchón, 3 en Pocha (§9.2, "fijo,
+  // no configurable") -- mismo criterio que `minPlayersFor` del servidor
+  // (apps/server/src/rooms/room-manager.ts).
+  const minPlayers = view.gameId === 'pocha' ? 3 : 2;
+  const canStart = view.players.length >= minPlayers;
   const hasFreeSeat = view.players.length < config.maxPlayers;
 
   return (
@@ -160,60 +160,11 @@ export function Lobby({ view }: LobbyProps) {
       {isHost ? (
         <section className="flex flex-col gap-6">
           <h2 className="text-20 font-semibold text-hueso">Variantes</h2>
-          <SegmentedControl
-            legend="Jugadores"
-            helperText="Cuántos jugadores puede tener la sala."
-            value={config.maxPlayers}
-            onChange={(v) => setField('maxPlayers', v)}
-            options={[
-              { value: 2, label: '2' },
-              { value: 3, label: '3' },
-              { value: 4, label: '4' },
-            ]}
-          />
-          <SegmentedControl
-            legend="Comodines"
-            helperText="Cuántos comodines lleva la baraja."
-            value={config.jokers}
-            onChange={(v) => setField('jokers', v)}
-            options={[
-              { value: 0, label: 'Sin comodines' },
-              { value: 2, label: 'Con comodines' },
-            ]}
-          />
-          <SegmentedControl
-            legend="Umbral de cierre"
-            helperText="Puntos sueltos máximos para poder cerrar."
-            value={config.closeThreshold}
-            onChange={(v) => setField('closeThreshold', v)}
-            options={[
-              { value: 0, label: '0' },
-              { value: 3, label: '3' },
-              { value: 5, label: '5' },
-              { value: 10, label: '10' },
-            ]}
-          />
-          <SegmentedControl
-            legend="Puntuación de eliminación"
-            helperText="Puntos para quedar eliminado de la partida."
-            value={config.eliminationScore}
-            onChange={(v) => setField('eliminationScore', v)}
-            options={[
-              { value: 50, label: '50' },
-              { value: 100, label: '100' },
-              { value: 150, label: '150' },
-            ]}
-          />
-          <SegmentedControl
-            legend="Chinchón acaba la partida"
-            helperText="Un chinchón termina la partida en el acto."
-            value={config.chinchonEndsGame}
-            onChange={(v) => setField('chinchonEndsGame', v)}
-            options={[
-              { value: true, label: 'Sí' },
-              { value: false, label: 'No' },
-            ]}
-          />
+          {view.gameId === 'pocha' ? (
+            <PochaVariantsSection config={config as PochaConfig} setField={setPochaField} />
+          ) : (
+            <ChinchonVariantsSection config={config as ChinchonConfig} setField={setChinchonField} />
+          )}
         </section>
       ) : null}
 
@@ -234,5 +185,115 @@ export function Lobby({ view }: LobbyProps) {
         </p>
       )}
     </main>
+  );
+}
+
+interface ChinchonVariantsSectionProps {
+  config: ChinchonConfig;
+  setField: <K extends keyof ChinchonConfig>(key: K, value: ChinchonConfig[K]) => void;
+}
+
+function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionProps) {
+  return (
+    <>
+      <SegmentedControl
+        legend="Jugadores"
+        helperText="Cuántos jugadores puede tener la sala."
+        value={config.maxPlayers}
+        onChange={(v) => setField('maxPlayers', v)}
+        options={[
+          { value: 2, label: '2' },
+          { value: 3, label: '3' },
+          { value: 4, label: '4' },
+        ]}
+      />
+      <SegmentedControl
+        legend="Comodines"
+        helperText="Cuántos comodines lleva la baraja."
+        value={config.jokers}
+        onChange={(v) => setField('jokers', v)}
+        options={[
+          { value: 0, label: 'Sin comodines' },
+          { value: 2, label: 'Con comodines' },
+        ]}
+      />
+      <SegmentedControl
+        legend="Umbral de cierre"
+        helperText="Puntos sueltos máximos para poder cerrar."
+        value={config.closeThreshold}
+        onChange={(v) => setField('closeThreshold', v)}
+        options={[
+          { value: 0, label: '0' },
+          { value: 3, label: '3' },
+          { value: 5, label: '5' },
+          { value: 10, label: '10' },
+        ]}
+      />
+      <SegmentedControl
+        legend="Puntuación de eliminación"
+        helperText="Puntos para quedar eliminado de la partida."
+        value={config.eliminationScore}
+        onChange={(v) => setField('eliminationScore', v)}
+        options={[
+          { value: 50, label: '50' },
+          { value: 100, label: '100' },
+          { value: 150, label: '150' },
+        ]}
+      />
+      <SegmentedControl
+        legend="Chinchón acaba la partida"
+        helperText="Un chinchón termina la partida en el acto."
+        value={config.chinchonEndsGame}
+        onChange={(v) => setField('chinchonEndsGame', v)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+    </>
+  );
+}
+
+interface PochaVariantsSectionProps {
+  config: PochaConfig;
+  setField: <K extends keyof PochaConfig>(key: K, value: PochaConfig[K]) => void;
+}
+
+function PochaVariantsSection({ config, setField }: PochaVariantsSectionProps) {
+  return (
+    <>
+      <SegmentedControl
+        legend="Jugadores"
+        helperText="Cuántos jugadores puede tener la sala."
+        value={config.maxPlayers}
+        onChange={(v) => setField('maxPlayers', v)}
+        options={[
+          { value: 3, label: '3' },
+          { value: 4, label: '4' },
+          { value: 5, label: '5' },
+          { value: 6, label: '6' },
+        ]}
+      />
+      <SegmentedControl
+        legend="Triunfo"
+        helperText="Se revela una carta y su palo manda en la ronda."
+        value={config.trump}
+        onChange={(v) => setField('trump', v)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+      <SegmentedControl
+        legend="Orden de fuerza"
+        helperText="Qué carta gana la baza dentro de un palo."
+        value={config.rankOrder}
+        onChange={(v) => setField('rankOrder', v)}
+        options={[
+          { value: 'numerico', label: 'Numérico' },
+          { value: 'brisca', label: 'Brisca' },
+        ]}
+      />
+    </>
   );
 }

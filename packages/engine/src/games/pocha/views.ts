@@ -20,10 +20,9 @@ import {
 } from '@ronda/protocol';
 import type { PochaState } from './state.ts';
 
-/** Color de asiento por defecto: igual criterio que Chinchón (§10.7: sin
- * ensanchar todavía a 0-5, punto de diseño diferido a P24). */
-function colorIndex(seat: number): 0 | 1 | 2 | 3 {
-  return (seat % 4) as 0 | 1 | 2 | 3;
+/** Color de asiento: un color por asiento (0-5), ya ensanchado (§10.7). */
+function colorIndex(seat: number): 0 | 1 | 2 | 3 | 4 | 5 {
+  return seat as 0 | 1 | 2 | 3 | 4 | 5;
 }
 
 function buildPublicPlayers(state: PochaState): PublicPlayer[] {
