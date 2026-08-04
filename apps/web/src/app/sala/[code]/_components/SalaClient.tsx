@@ -19,6 +19,7 @@ import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
 import { InactiveTabScreen } from '@/components/ui/InactiveTabScreen';
 import { ReactionBar } from '@/components/ui/ReactionBar';
 import { ReactionOverlay } from '@/components/ui/ReactionOverlay';
+import { CardArtProvider, cardArtForGame } from '@/components/cards/CardArtContext';
 import { Lobby } from './Lobby';
 import { GameScreen } from './GameScreen';
 import { RoundEndScreen } from './RoundEndScreen';
@@ -154,56 +155,75 @@ export function SalaClient({ code }: SalaClientProps) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <Banner status={connection} />
-      {/* Barra superior: reacciones rápidas a la izquierda (roadmap
+    // La baraja la fija el juego de la sala: Chinchón entero en SVG, Pocha y
+    // Mus con la baraja española de `public/cards/`. Ver `CardArtContext.tsx`.
+    <CardArtProvider art={cardArtForGame(view.gameId)}>
+      <div className="flex min-h-dvh flex-col">
+        <Banner status={connection} />
+        {/* Barra superior: reacciones rápidas a la izquierda (roadmap
           "Después del MVP" §2) y el cierre de sala del anfitrión a la
           derecha. Las reacciones van AQUÍ, y no flotando sobre la mesa,
           para no competir con la regla de "en tu turno solo hay una acción
           principal visible" (00-MASTER.md §8). */}
-      <div className="flex items-center justify-between gap-2 px-4 py-1">
-        <ReactionBar />
-        {isHost ? (
-          <button
-            type="button"
-            onClick={() => setConfirmClose(true)}
-            className="shrink-0 text-12 text-humo underline"
-          >
-            Cerrar sala
-          </button>
+        <div className="flex items-center justify-between gap-2 px-4 py-1">
+          <ReactionBar />
+          {isHost ? (
+            <button
+              type="button"
+              onClick={() => setConfirmClose(true)}
+              className="shrink-0 text-12 text-humo underline"
+            >
+              Cerrar sala
+            </button>
+          ) : null}
+        </div>
+        <ReactionOverlay />
+        {view.status === 'lobby' ? <Lobby view={view} /> : null}
+        {view.status === 'playing' && view.gameId === 'chinchon' ? (
+          <GameScreen view={view} />
         ) : null}
-      </div>
-      <ReactionOverlay />
-      {view.status === 'lobby' ? <Lobby view={view} /> : null}
-      {view.status === 'playing' && view.gameId === 'chinchon' ? <GameScreen view={view} /> : null}
-      {view.status === 'playing' && view.gameId === 'pocha' ? <PochaGameScreen view={view} /> : null}
-      {view.status === 'playing' && view.gameId === 'mus' ? <MusGameScreen view={view} /> : null}
-      {view.status === 'roundEnd' && view.gameId === 'chinchon' ? <RoundEndScreen view={view} /> : null}
-      {view.status === 'roundEnd' && view.gameId === 'pocha' ? (
-        <PochaRoundEndScreen view={view} />
-      ) : null}
-      {view.status === 'roundEnd' && view.gameId === 'mus' ? <MusRoundEndScreen view={view} /> : null}
-      {/* Mus tiene su propio fin de partida: GameEndScreen ordena por `score`
+        {view.status === 'playing' && view.gameId === 'pocha' ? (
+          <PochaGameScreen view={view} />
+        ) : null}
+        {view.status === 'playing' && view.gameId === 'mus' ? <MusGameScreen view={view} /> : null}
+        {view.status === 'roundEnd' && view.gameId === 'chinchon' ? (
+          <RoundEndScreen view={view} />
+        ) : null}
+        {view.status === 'roundEnd' && view.gameId === 'pocha' ? (
+          <PochaRoundEndScreen view={view} />
+        ) : null}
+        {view.status === 'roundEnd' && view.gameId === 'mus' ? (
+          <MusRoundEndScreen view={view} />
+        ) : null}
+        {/* Mus tiene su propio fin de partida: GameEndScreen ordena por `score`
           y corona a `winnerId`, y en Mus los dos van a 0 y a null porque gana
           una pareja (§12.12). */}
-      {view.status === 'gameEnd' && view.gameId === 'mus' ? <MusGameEndScreen view={view} /> : null}
-      {view.status === 'gameEnd' && view.gameId !== 'mus' ? <GameEndScreen view={view} /> : null}
-      <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
-        <div className="flex flex-col gap-4">
-          <p className="text-16 text-hueso">¿Cerrar la sala para todos?</p>
-          <p className="text-14 text-humo">
-            Termina la partida ahora mismo para el resto de jugadores. No se puede deshacer.
-          </p>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setConfirmClose(false)} className="flex-1">
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={handleCloseRoom} loading={closingRoom} className="flex-1">
-              Cerrar sala
-            </Button>
+        {view.status === 'gameEnd' && view.gameId === 'mus' ? (
+          <MusGameEndScreen view={view} />
+        ) : null}
+        {view.status === 'gameEnd' && view.gameId !== 'mus' ? <GameEndScreen view={view} /> : null}
+        <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
+          <div className="flex flex-col gap-4">
+            <p className="text-16 text-hueso">¿Cerrar la sala para todos?</p>
+            <p className="text-14 text-humo">
+              Termina la partida ahora mismo para el resto de jugadores. No se puede deshacer.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setConfirmClose(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleCloseRoom}
+                loading={closingRoom}
+                className="flex-1"
+              >
+                Cerrar sala
+              </Button>
+            </div>
           </div>
-        </div>
-      </Sheet>
-    </div>
+        </Sheet>
+      </div>
+    </CardArtProvider>
   );
 }

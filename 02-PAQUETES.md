@@ -566,3 +566,23 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 **Detalle de interfaz que sí es una decisión:** las declaraciones de pares y juego se pintan como **un solo botón que dice la verdad de tu mano**. §12.6 las describe como declaraciones públicas y el motor rechaza mentir con `FALSE_DECLARATION` (§12.14.2): ofrecer el botón de mentir solo serviría para generar errores.
 
 **Tests:** `apps/server/src/rooms/mus-room.test.ts`, 9 casos — los cuatro jugadores obligatorios, el intercambio de asientos y sus permisos, el rechazo de bots, la victoria repartida a la pareja y la anulación por abandono.
+
+---
+
+## P30 · Baraja española de imágenes en Pocha y Mus — HECHO
+
+**Contexto:** `00-MASTER.md` §1 decisión 4 (que este paquete revoca en parte), `01-CONTRATOS.md` §8.3 (representación de cartas), §8.5 (contraste).
+
+**La decisión, y de quién es.** La baraja SVG propia se sustituye por imágenes de baraja española en Pocha y Mus. Es una decisión de Unai, no un descubrimiento de implementación: la decisión 4 del maestro decía lo contrario y por eso queda anotada allí en vez de tachada aquí.
+
+**Por qué NO en Chinchón.** Las imágenes son los **40 naipes** de la baraja corta (1-7, 10-12 en los cuatro palos), que es exactamente lo que reparten Pocha (§9) y Mus (§12). Chinchón (§5) reparte 48 + 2 comodines: sus ochos, nueves y comodines no tienen imagen. Se probaron las dos cosas y la mezcla se ve — dos estilos de dibujo dentro de la misma mano —, así que Chinchón pide baraja SVG entera. El SVG de `cardArt.tsx` no se retira: sigue siendo la baraja de un juego de los tres.
+
+**Cómo lo decide cada pantalla.** Por contexto de React (`CardArtContext`), no por prop: `SalaClient` y `MesaClient` envuelven su árbol con `cardArtForGame(view.gameId)`, y `PlayingCard` no llega a saber a qué se juega. Encadenar una prop habría tocado `Hand`, `Pile`, `RevealedHand`, `CenterTable` y `SeatRing` sin que ninguno tenga nada que decir al respecto. Sin proveedor el valor es `'auto'` (imagen si la hay), que es lo que quiere el escaparate de `/dev/design`.
+
+**Peso.** Los PNG de origen pesaban 7,5 MB la baraja entera, que se los descarga el móvil de cada jugador. Se sirven en WebP a 320×448 (554 KB los 40): la carta más grande que pinta la app son los 120 px CSS de `size='lg'` y del `clamp()` de `/mesa`, así que 320 px cubre pantallas de hasta 2,6×. Los PNG se quedan en el repositorio como origen, sin usarse.
+
+**Entregado en `apps/web`:** `src/components/cards/cardImages.ts` (ruta de cada naipe, o `null` si no hay), `src/components/cards/CardArtContext.tsx` (proveedor, hook y `cardArtForGame`), el naipe fotográfico dentro del `<svg>` de `PlayingCard` —recortado con `clipPath` al mismo redondeo y con el contorno de tinta repintado encima— y una caché aparte `ronda-cards-v1` en `sw.js`, "caché primero", para que la baraja no se vuelva a descargar en cada partida.
+
+**Detalle que sí es una decisión:** la imagen es 5:7 y el naipe 2:3, y se estrecha un 4,6 % (`preserveAspectRatio="none"`) en vez de recortarse. Recortar se comía el filete de color del borde, que está a 3,6 unidades del canto.
+
+**Sigue pendiente, y es de Unai:** las imágenes son de un tercero y llevan marca de agua. Antes de publicar hay que sustituirlas por arte propio o con licencia — el código no cambia, solo los ficheros de `public/cards/`.

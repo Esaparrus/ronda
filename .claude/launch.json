@@ -8,6 +8,13 @@
       "port": 3001
     },
     {
+      "name": "web-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ronda/web", "dev"],
+      "autoPort": true,
+      "port": 3001
+    },
+    {
       "name": "server",
       "runtimeExecutable": "node",
       "runtimeArgs": ["--env-file=.env", "--watch", "apps/server/src/index.ts"],

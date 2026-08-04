@@ -1,5 +1,12 @@
-// Carta jugable en SVG propio. Contrato §8.3 (representación de cartas) y
-// P11 (componente puro, sin dependencias de imagen/emoji).
+// Carta jugable. Contrato §8.3 (representación de cartas) y P11 (componente
+// puro).
+//
+// Los 40 naipes de la baraja corta se pintan con la baraja española de
+// `public/cards/` (ver `cardImages.ts`); el resto —ochos, nueves y comodines,
+// que solo aparecen en Chinchón— siguen dibujándose con el SVG propio que se
+// describe abajo, que por eso no se ha retirado. El marco (fondo, contorno de
+// tinta, barra de combinación y velo de atenuado) es el mismo en los dos
+// casos, así que una mano mezclada mantiene la misma silueta.
 //
 // Recreación del diseño "RondaCard" importado de claude.ai/design: pips
 // dispuestos como en una baraja impresa de verdad (1-9), figuras propias
@@ -22,10 +29,12 @@
 // un selector `[&_svg]`, apoyándose en que el `viewBox` mantiene la
 // proporción 2:3. Envolver el svg en un <div> de tamaño fijo rompería ese
 // mecanismo de escalado de /mesa.
-import { memo } from 'react';
+import { memo, useId } from 'react';
 import { parseCardId, type CardId, type Suit } from '@ronda/protocol';
 import { CardBack } from './CardBack';
 import { CourtIllustration, JokerOrnaments, PIP_LAYOUTS, SuitPip, cornerLabel } from './cardArt';
+import { cardImageSrc } from './cardImages';
+import { useCardArt } from './CardArtContext';
 
 export type CardSize = 'sm' | 'md' | 'lg';
 
@@ -90,6 +99,12 @@ function PlayingCardComponent({
   className,
 }: PlayingCardProps) {
   const { width, height } = SIZE_PX[size];
+  // Id del recorte redondeado del naipe fotográfico. Se pide siempre —antes
+  // de cualquier retorno temprano— porque es un hook, y es único por
+  // instancia: dos <PlayingCard> en la misma página no pueden compartir
+  // `<clipPath id>` sin que el segundo herede el recorte del primero.
+  const clipId = useId();
+  const art = useCardArt();
 
   if (faceDown) {
     return (
@@ -120,6 +135,11 @@ function PlayingCardComponent({
 
   const card = parsed.value;
   const suitColor = card.suit ? SUIT_COLOR_VAR[card.suit] : 'var(--card-joker)';
+  // Naipe fotográfico si lo hay (los 40 de la baraja corta) y si el subárbol
+  // no ha pedido baraja SVG — Chinchón la pide entera, porque sus ochos,
+  // nueves y comodines no tienen imagen y la mano saldría a dos estilos.
+  // Ver `cardImages.ts` y `CardArtContext.tsx`.
+  const imageSrc = art === 'svg' ? null : cardImageSrc(card.suit, card.rank);
 
   return (
     <svg
@@ -158,19 +178,65 @@ function PlayingCardComponent({
         strokeWidth={3.25}
       />
 
-      {/* Línea interior de color de palo, inset 6 */}
-      <rect
-        x={6}
-        y={6}
-        width={VIEWBOX_WIDTH - 12}
-        height={VIEWBOX_HEIGHT - 12}
-        rx={6}
-        fill="none"
-        stroke={suitColor}
-        strokeWidth={2}
-      />
+      {/* Línea interior de color de palo, inset 6. El naipe fotográfico trae
+          la suya impresa, así que ahí no se pinta. */}
+      {imageSrc === null ? (
+        <rect
+          x={6}
+          y={6}
+          width={VIEWBOX_WIDTH - 12}
+          height={VIEWBOX_HEIGHT - 12}
+          rx={6}
+          fill="none"
+          stroke={suitColor}
+          strokeWidth={2}
+        />
+      ) : null}
 
-      {card.isJoker ? (
+      {imageSrc !== null ? (
+        <>
+          {/* Recorte con el mismo redondeo que el fondo: la imagen llega
+              cuadrada a las esquinas y sin él asomaría por fuera del naipe. */}
+          <defs>
+            <clipPath id={clipId}>
+              <rect
+                x={1.75}
+                y={1.75}
+                width={VIEWBOX_WIDTH - 1.5}
+                height={VIEWBOX_HEIGHT - 1.5}
+                rx={9}
+              />
+            </clipPath>
+          </defs>
+          {/* `preserveAspectRatio="none"`: la imagen es 5:7 y el naipe 2:3, y
+              se prefiere estrechar el dibujo un 4,6 % —imperceptible— a
+              recortarlo, que se comería el filete de color del borde. */}
+          <image
+            href={imageSrc}
+            x={1.75}
+            y={1.75}
+            width={VIEWBOX_WIDTH - 1.5}
+            height={VIEWBOX_HEIGHT - 1.5}
+            preserveAspectRatio="none"
+            clipPath={`url(#${clipId})`}
+          />
+          {/* Contorno de tinta repintado ENCIMA de la imagen: el del fondo
+              queda tapado por dentro y el naipe perdería la mitad del trazo,
+              que es justo lo que lo separa del tapete y de la carta de al
+              lado cuando la mano se solapa. */}
+          <rect
+            x={1.75}
+            y={1.75}
+            width={VIEWBOX_WIDTH - 1.5}
+            height={VIEWBOX_HEIGHT - 1.5}
+            rx={9}
+            fill="none"
+            stroke="var(--card-ink)"
+            strokeWidth={3.25}
+          />
+          {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
+        </>
+      ) : card.isJoker ? (
         <>
           <JokerOrnaments />
           {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
@@ -193,7 +259,13 @@ function PlayingCardComponent({
         <>
           <CardFace rank={card.rank} suit={card.suit} color={suitColor} />
           {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
-          <CornerBadge x={5} y={5} label={cornerLabel(card.rank)} bg={suitColor} inkText={card.suit === 'oros'} />
+          <CornerBadge
+            x={5}
+            y={5}
+            label={cornerLabel(card.rank)}
+            bg={suitColor}
+            inkText={card.suit === 'oros'}
+          />
           <CornerBadge
             x={VIEWBOX_WIDTH - 5 - 16}
             y={VIEWBOX_HEIGHT - 5 - 16}
@@ -280,7 +352,16 @@ function CornerBadge({
   const cy = y + SIZE / 2;
   const badge = (
     <>
-      <rect x={x} y={y} width={SIZE} height={SIZE} rx={5} fill={bg} stroke="var(--card-ink)" strokeWidth={1.75} />
+      <rect
+        x={x}
+        y={y}
+        width={SIZE}
+        height={SIZE}
+        rx={5}
+        fill={bg}
+        stroke="var(--card-ink)"
+        strokeWidth={1.75}
+      />
       <text
         x={cx}
         y={cy}

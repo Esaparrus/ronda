@@ -7,7 +7,21 @@
 // una vista de caché ni una respuesta de socket.
 const CACHE_NAME = 'ronda-shell-v1';
 
-const SHELL_URLS = ['/', '/unirse', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+// Caché aparte para la baraja (`/cards/*.webp`). No entra en el precache del
+// shell: son 40 ficheros que no hacen falta hasta que empieza una partida.
+// Se guardan según se piden y ya no se vuelven a pedir — el nombre de cada
+// naipe identifica su contenido para siempre, así que no hay nada que
+// revalidar; para cambiar de baraja se sube el número de versión.
+const CARDS_CACHE_NAME = 'ronda-cards-v1';
+const KEEP_CACHES = [CACHE_NAME, CARDS_CACHE_NAME];
+
+const SHELL_URLS = [
+  '/',
+  '/unirse',
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -22,7 +36,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys.filter((key) => !KEEP_CACHES.includes(key)).map((key) => caches.delete(key)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -51,6 +69,26 @@ self.addEventListener('fetch', (event) => {
           })
           .catch(() => cached);
         return cached || network;
+      }),
+    );
+    return;
+  }
+
+  // Baraja: caché primero. Es lo único de la app que se sirve de caché
+  // durante una partida y no contradice el "nunca una vista de caché" de
+  // arriba, porque una imagen de un naipe no es estado de la partida: el
+  // servidor sigue siendo quien dice qué carta hay en cada sitio.
+  if (url.pathname.startsWith('/cards/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CARDS_CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        });
       }),
     );
     return;
