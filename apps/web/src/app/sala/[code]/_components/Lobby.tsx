@@ -4,8 +4,13 @@
 
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
-import type { ChinchonConfig, GameConfig, PlayerView, PochaConfig } from '@ronda/protocol';
-import { messageFor } from '@ronda/protocol';
+import type {
+  ChinchonConfig,
+  GameConfig,
+  MusConfig,
+  PlayerView,
+  PochaConfig,
+} from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { RoomCode } from '@/components/ui/RoomCode';
 import { Avatar } from '@/components/ui/Avatar';
@@ -31,6 +36,9 @@ export function Lobby({ view }: LobbyProps) {
   const [addingBot, setAddingBot] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [config, setConfig] = useState<GameConfig>(view.config);
+  // Mus: primer jugador marcado para intercambiar asiento (§12.2, decisión 1
+  // de P28). Se toca uno, se toca otro, y cambian de sitio.
+  const [swapFrom, setSwapFrom] = useState<string | null>(null);
 
   const me = view.players.find((p) => p.playerId === view.me.playerId);
   const isHost = me?.isHost ?? false;
@@ -83,6 +91,26 @@ export function Lobby({ view }: LobbyProps) {
     void useRondaStore.getState().updateConfig({ [key]: value } as Partial<PochaConfig>);
   }
 
+  function setMusField<K extends keyof MusConfig>(key: K, value: MusConfig[K]) {
+    setConfig((prev) => ({ ...(prev as MusConfig), [key]: value }));
+    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<MusConfig>);
+  }
+
+  /** Mus: marca a un jugador, o lo intercambia con el ya marcado. */
+  async function handleSeatTap(playerId: string) {
+    if (swapFrom === null) {
+      setSwapFrom(playerId);
+      return;
+    }
+    if (swapFrom === playerId) {
+      setSwapFrom(null);
+      return;
+    }
+    const from = swapFrom;
+    setSwapFrom(null);
+    await useRondaStore.getState().swapSeats(from, playerId);
+  }
+
   async function handleStart() {
     setStarting(true);
     await useRondaStore.getState().startRoom();
@@ -100,11 +128,15 @@ export function Lobby({ view }: LobbyProps) {
   }
 
   // Mínimo de jugadores por juego: 2 en Chinchón, 3 en Pocha (§9.2, "fijo,
-  // no configurable") -- mismo criterio que `minPlayersFor` del servidor
+  // no configurable") y 4 en Mus (§12.2, "no hay Mus sin cuatro") -- mismo
+  // criterio que `minPlayersFor` del servidor
   // (apps/server/src/rooms/room-manager.ts).
-  const minPlayers = view.gameId === 'pocha' ? 3 : 2;
+  const isMus = view.gameId === 'mus';
+  const minPlayers = isMus ? 4 : view.gameId === 'pocha' ? 3 : 2;
   const canStart = view.players.length >= minPlayers;
-  const hasFreeSeat = view.players.length < config.maxPlayers;
+  // Mus no tiene bots (§12.11): el servidor rechaza `room:addBot` en sus
+  // salas, así que aquí ni se ofrece.
+  const hasFreeSeat = !isMus && view.players.length < config.maxPlayers;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-6 py-8">
@@ -133,16 +165,42 @@ export function Lobby({ view }: LobbyProps) {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-20 font-semibold text-hueso">Jugadores</h2>
+        {isMus ? (
+          <p className="text-14 text-humo">
+            {isHost
+              ? 'Los compañeros se sientan enfrentados. Toca a dos jugadores para cambiarlos de sitio y formar las parejas.'
+              : 'Los compañeros se sientan enfrentados. El anfitrión decide las parejas antes de empezar.'}
+          </p>
+        ) : null}
         <ul className="flex flex-col gap-2">
           {view.players.map((p) => (
             <li
               key={p.playerId}
-              className="flex items-center gap-3 rounded-lg border border-linea bg-mesa px-3 py-2"
+              className={`flex flex-wrap items-center gap-2 rounded-lg border bg-mesa px-3 py-2 ${
+                swapFrom === p.playerId ? 'border-brasa' : 'border-linea'
+              }`}
             >
               <Avatar name={p.nick} colorIndex={p.colorIndex} size={36} />
               <span className="flex-1 truncate text-16 text-hueso">{p.nick}</span>
+              {/* La pareja solo existe en Mus: en los otros dos juegos
+                  `teamIndex` llega a null y no se pinta nada (§12.12). */}
+              {p.teamIndex !== null ? <Pill>Pareja {p.teamIndex === 0 ? 'A' : 'B'}</Pill> : null}
               {p.isHost ? <Pill>Anfitrión</Pill> : null}
               <Pill>{p.connected ? 'Conectado' : 'Desconectado'}</Pill>
+              {isMus && isHost ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => handleSeatTap(p.playerId)}
+                  className="px-3"
+                  aria-pressed={swapFrom === p.playerId}
+                >
+                  {swapFrom === null
+                    ? 'Cambiar sitio'
+                    : swapFrom === p.playerId
+                      ? 'Cancelar'
+                      : 'Cambiar por este'}
+                </Button>
+              ) : null}
               {isHost && !p.isHost ? (
                 // Contrato §8.5.2 / P18: zona táctil mínima 56px -- se
                 // mantiene el min-h-14 por defecto del Button.
@@ -174,7 +232,9 @@ export function Lobby({ view }: LobbyProps) {
       {isHost ? (
         <section className="flex flex-col gap-6">
           <h2 className="text-20 font-semibold text-hueso">Variantes</h2>
-          {view.gameId === 'pocha' ? (
+          {isMus ? (
+            <MusVariantsSection config={config as MusConfig} setField={setMusField} />
+          ) : view.gameId === 'pocha' ? (
             <PochaVariantsSection config={config as PochaConfig} setField={setPochaField} />
           ) : (
             <ChinchonVariantsSection config={config as ChinchonConfig} setField={setChinchonField} />
@@ -190,7 +250,14 @@ export function Lobby({ view }: LobbyProps) {
             Empezar
           </Button>
           {!canStart ? (
-            <p className="text-12 text-humo">{messageFor('NOT_ENOUGH_PLAYERS')}</p>
+            // El texto de `messageFor('NOT_ENOUGH_PLAYERS')` es el del
+            // servidor y dice "al menos dos", que es el mínimo de Chinchón.
+            // Aquí se sabe el juego, así que se dice el número de verdad.
+            <p className="text-12 text-humo">
+              {`Hacen falta ${minPlayers === 4 ? 'cuatro' : minPlayers === 3 ? 'tres' : 'dos'} jugadores${
+                isMus ? '' : ' como mínimo'
+              }.`}
+            </p>
           ) : null}
         </div>
       ) : (
@@ -272,6 +339,50 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
         options={[
           { value: true, label: 'Sí' },
           { value: false, label: 'No' },
+        ]}
+      />
+    </>
+  );
+}
+
+interface MusVariantsSectionProps {
+  config: MusConfig;
+  setField: <K extends keyof MusConfig>(key: K, value: MusConfig[K]) => void;
+}
+
+/** Variantes de Mus (§12). Sin control de "Jugadores": son 4 fijos (§12.2). */
+function MusVariantsSection({ config, setField }: MusVariantsSectionProps) {
+  return (
+    <>
+      <SegmentedControl
+        legend="Ocho reyes"
+        helperText="Los Treses valen como Rey y los Doses como As."
+        value={config.ochoReyes}
+        onChange={(v) => setField('ochoReyes', v)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+      <SegmentedControl
+        legend="Juegos para ganar"
+        helperText="Cuántos juegos (vacas) hay que ganar para llevarse la partida."
+        value={config.juegos}
+        onChange={(v) => setField('juegos', v)}
+        options={[
+          { value: 1, label: '1' },
+          { value: 2, label: '2' },
+          { value: 3, label: '3' },
+        ]}
+      />
+      <SegmentedControl
+        legend="El punto vale"
+        helperText="Piedras que paga el punto cuando nadie tiene juego."
+        value={config.puntoVale}
+        onChange={(v) => setField('puntoVale', v)}
+        options={[
+          { value: 1, label: '1 piedra' },
+          { value: 2, label: '2 piedras' },
         ]}
       />
     </>

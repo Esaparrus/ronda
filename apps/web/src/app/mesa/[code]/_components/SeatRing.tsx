@@ -23,6 +23,12 @@ export interface SeatRingProps {
   /** Contenido extra bajo la puntuación de cada asiento (p.ej. cante/bazas
    * de Pocha). No usado por Chinchón -- geometría del anillo sin cambios. */
   renderBadge?: (p: PublicPlayer) => ReactNode;
+  /**
+   * Si se pinta la puntuación del jugador. Mus la apaga: ahí `score` va
+   * siempre a 0 porque puntúa la pareja (§12.12), y un 0 gigante bajo cada
+   * asiento sería un número inventado. Su marcador va en otro sitio.
+   */
+  showScore?: boolean;
 }
 
 const RADIUS = 'clamp(150px, 34vmin, 280px)';
@@ -36,7 +42,12 @@ function threadTransform(angleDeg: number, radius: string): string {
   return `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${radius})`;
 }
 
-export function SeatRing({ players, turnPlayerId, renderBadge }: SeatRingProps) {
+export function SeatRing({
+  players,
+  turnPlayerId,
+  renderBadge,
+  showScore = true,
+}: SeatRingProps) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const seatCount = Math.max(ordered.length, 1);
   const angleStep = 360 / seatCount;
@@ -84,7 +95,11 @@ export function SeatRing({ players, turnPlayerId, renderBadge }: SeatRingProps) 
             <div className="scale-[0.55]">
               <Pile cards={handBacks} faceDown size="sm" />
             </div>
-            <span className="font-mono text-[clamp(1.25rem,2.2vw,2rem)] text-hueso">{p.score}</span>
+            {showScore ? (
+              <span className="font-mono text-[clamp(1.25rem,2.2vw,2rem)] text-hueso">
+                {p.score}
+              </span>
+            ) : null}
             {renderBadge ? renderBadge(p) : null}
           </div>
         );

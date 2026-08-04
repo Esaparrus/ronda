@@ -13,12 +13,17 @@ import type {
   RoomStats,
   RoomStatsRow,
 } from '@ronda/protocol';
-import type { ChinchonState, PochaState } from '@ronda/engine';
+import type { ChinchonState, MusState, PochaState } from '@ronda/engine';
 
 /** Estado del motor de cualquier juego registrado (§10.8: GameModule<S,A>
  * ya era genérico de verdad; esta unión es lo único que faltaba en el lado
  * del servidor para dejar de asumir Chinchón a mano). */
-export type EngineState = ChinchonState | PochaState;
+export type EngineState = ChinchonState | PochaState | MusState;
+
+/** Estado de los juegos "un jugador, una puntuación" (§12.12): todos menos
+ * Mus. Se usa donde el servidor lee `winnerId`, `round` o `player.score`,
+ * que en Mus no existen porque el marcador es de la pareja. */
+export type ScoredEngineState = ChinchonState | PochaState;
 
 /** Estado runtime de un jugador en la sala. */
 export interface PlayerRuntime {
@@ -167,29 +172,55 @@ export class Room {
     this.statsSeed = this.seed;
     this.matchesPlayed += 1;
 
+    // Mus rompe el supuesto "un jugador, una puntuación" (§12.12): gana una
+    // pareja, el jugador no tiene `score` y la ronda es la mano. Se traduce
+    // aquí, donde se conoce el juego, y no en la interfaz.
+    if (state.gameId === 'mus') {
+      for (const p of state.players) {
+        const won = state.winnerTeamIndex !== null && p.teamIndex === state.winnerTeamIndex;
+        const juegos = state.juegosWon[p.teamIndex] ?? 0;
+        this.addStatsRow(p, { won, rounds: state.handNumber, score: juegos });
+      }
+      return true;
+    }
+
     for (const p of state.players) {
-      const row = this.stats.get(p.playerId) ?? {
-        playerId: p.playerId,
-        nick: p.nick,
-        seat: p.seat,
-        matches: 0,
-        wins: 0,
-        rounds: 0,
-        totalScore: 0,
-        bestScore: null,
-        worstScore: null,
-      };
-      row.nick = p.nick; // el apodo de la última partida manda
-      row.seat = p.seat;
-      row.matches += 1;
-      if (state.winnerId === p.playerId) row.wins += 1;
-      row.rounds += state.round;
-      row.totalScore += p.score;
-      row.bestScore = row.bestScore === null ? p.score : this.pickBest(row.bestScore, p.score);
-      row.worstScore = row.worstScore === null ? p.score : this.pickWorst(row.worstScore, p.score);
-      this.stats.set(p.playerId, row);
+      this.addStatsRow(p, {
+        won: state.winnerId === p.playerId,
+        rounds: state.round,
+        score: p.score,
+      });
     }
     return true;
+  }
+
+  /** Acumula una partida en la fila de un jugador. Común a los tres juegos:
+   * lo único que cambia entre ellos es de dónde salen `won`/`rounds`/`score`. */
+  private addStatsRow(
+    player: { playerId: PlayerId; nick: string; seat: number },
+    match: { won: boolean; rounds: number; score: number },
+  ): void {
+    const row = this.stats.get(player.playerId) ?? {
+      playerId: player.playerId,
+      nick: player.nick,
+      seat: player.seat,
+      matches: 0,
+      wins: 0,
+      rounds: 0,
+      totalScore: 0,
+      bestScore: null,
+      worstScore: null,
+    };
+    row.nick = player.nick; // el apodo de la última partida manda
+    row.seat = player.seat;
+    row.matches += 1;
+    if (match.won) row.wins += 1;
+    row.rounds += match.rounds;
+    row.totalScore += match.score;
+    row.bestScore = row.bestScore === null ? match.score : this.pickBest(row.bestScore, match.score);
+    row.worstScore =
+      row.worstScore === null ? match.score : this.pickWorst(row.worstScore, match.score);
+    this.stats.set(player.playerId, row);
   }
 
   /** Estadísticas de la sala, ya ordenadas para pintar. */
@@ -208,9 +239,10 @@ export class Room {
 
   /**
    * En Chinchón gana quien MENOS puntos suma (§5: se elimina al pasar del
-   * umbral); en Pocha, quien MÁS (§9.7). "Mejor puntuación" no significa lo
-   * mismo en los dos juegos, así que el criterio vive aquí, donde se conoce
-   * el `gameId`, y no en la interfaz.
+   * umbral); en Pocha, quien MÁS (§9.7), y en Mus también (lo que se acumula
+   * son juegos ganados por la pareja). "Mejor puntuación" no significa lo
+   * mismo en todos, así que el criterio vive aquí, donde se conoce el
+   * `gameId`, y no en la interfaz.
    */
   private lowerIsBetter(): boolean {
     return this.gameId === 'chinchon';

@@ -473,11 +473,12 @@ describe('revancha', () => {
     expect(after.status).toBe('playing');
     expect(after.rematchVotes).toEqual([]);
     for (const p of after.players) {
-      expect(p.score).toBe(0);
       // Sala de Chinchón (createRoom más arriba): `p` es ChinchonPlayer, con
-      // `eliminated`. El estado del motor ahora es una unión (Chinchón|Pocha,
-      // room.ts) porque el servidor ya no asume un único juego.
+      // `eliminated`. El estado del motor ahora es una unión (Chinchón|Pocha|
+      // Mus, room.ts) porque el servidor ya no asume un único juego, y el
+      // jugador de Mus ni siquiera tiene `score` (§12.12).
       if (!('eliminated' in p)) throw new Error('esperaba ChinchonPlayer');
+      expect(p.score).toBe(0);
       expect(p.eliminated).toBe(false);
     }
     const seatsAfter = after.players.map((p) => ({ playerId: p.playerId, seat: p.seat }));
@@ -573,6 +574,8 @@ describe('Pocha', () => {
     const after = stateOf(room(m, c.value.roomCode));
     expect(after.gameId).toBe('pocha');
     expect(after.status).toBe('playing');
-    expect(after.players.every((p) => p.score === 0)).toBe(true);
+    // Sala de Pocha: sus jugadores sí tienen `score` (a diferencia de los de
+    // Mus, §12.12), pero hay que estrecharlo desde la unión de `EngineState`.
+    expect(after.players.every((p) => 'score' in p && p.score === 0)).toBe(true);
   });
 });

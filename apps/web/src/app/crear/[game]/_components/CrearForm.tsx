@@ -7,10 +7,12 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import {
   DEFAULT_CONFIG,
+  DEFAULT_MUS_CONFIG,
   DEFAULT_POCHA_CONFIG,
   messageFor,
   type ChinchonConfig,
   type GameId,
+  type MusConfig,
   type PochaConfig,
 } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
@@ -31,9 +33,15 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [nickError, setNickError] = useState<string | null>(null);
   const [chinchonConfig, setChinchonConfig] = useState<ChinchonConfig>(DEFAULT_CONFIG);
   const [pochaConfig, setPochaConfig] = useState<PochaConfig>(DEFAULT_POCHA_CONFIG);
+  const [musConfig, setMusConfig] = useState<MusConfig>(DEFAULT_MUS_CONFIG);
   const [submitting, setSubmitting] = useState(false);
 
-  const title = gameId === 'pocha' ? 'Crear partida de Pocha' : 'Crear partida de Chinchón';
+  const title =
+    gameId === 'mus'
+      ? 'Crear partida de Mus'
+      : gameId === 'pocha'
+        ? 'Crear partida de Pocha'
+        : 'Crear partida de Chinchón';
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -44,7 +52,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
     }
     setNickError(null);
     setSubmitting(true);
-    const config = gameId === 'pocha' ? pochaConfig : chinchonConfig;
+    const config =
+      gameId === 'mus' ? musConfig : gameId === 'pocha' ? pochaConfig : chinchonConfig;
     const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
     setSubmitting(false);
     if (created) {
@@ -76,7 +85,9 @@ export function CrearForm({ gameId }: CrearFormProps) {
           {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
         </div>
 
-        {gameId === 'pocha' ? (
+        {gameId === 'mus' ? (
+          <MusVariants config={musConfig} setConfig={setMusConfig} />
+        ) : gameId === 'pocha' ? (
           <PochaVariants config={pochaConfig} setConfig={setPochaConfig} />
         ) : (
           <ChinchonVariants config={chinchonConfig} setConfig={setChinchonConfig} />
@@ -215,6 +226,74 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
           />
         </div>
       </details>
+    </>
+  );
+}
+
+interface MusVariantsProps {
+  config: MusConfig;
+  setConfig: (fn: (prev: MusConfig) => MusConfig) => void;
+}
+
+/**
+ * Variantes de Mus (§12). No hay control de "Jugadores": son exactamente 4
+ * (§12.2), y ofrecer el número sería ofrecer algo que no se puede elegir.
+ */
+function MusVariants({ config, setConfig }: MusVariantsProps) {
+  const set = <K extends keyof MusConfig>(key: K, value: MusConfig[K]) =>
+    updateConfig(setConfig, key, value);
+
+  return (
+    <>
+      <p className="text-14 text-humo">
+        El Mus se juega siempre entre cuatro, en dos parejas. Podrás decidir quién va con quién en la
+        sala, antes de empezar.
+      </p>
+
+      <SegmentedControl
+        legend="Ocho reyes"
+        helperText="Los Treses valen como Rey y los Doses como As."
+        value={config.ochoReyes}
+        onChange={(v) => set('ochoReyes', v)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+
+      <SegmentedControl
+        legend="Juegos para ganar"
+        helperText="Cuántos juegos (vacas) hay que ganar para llevarse la partida."
+        value={config.juegos}
+        onChange={(v) => set('juegos', v)}
+        options={[
+          { value: 1, label: '1' },
+          { value: 2, label: '2' },
+          { value: 3, label: '3' },
+        ]}
+      />
+
+      <SegmentedControl
+        legend="El punto vale"
+        helperText="Piedras que paga el punto cuando nadie tiene juego."
+        value={config.puntoVale}
+        onChange={(v) => set('puntoVale', v)}
+        options={[
+          { value: 1, label: '1 piedra' },
+          { value: 2, label: '2 piedras' },
+        ]}
+      />
+
+      <SegmentedControl
+        legend="Sonido"
+        helperText="Activa los sonidos de la partida."
+        value={config.soundEnabled}
+        onChange={(v) => set('soundEnabled', v)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
     </>
   );
 }

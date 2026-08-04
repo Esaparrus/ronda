@@ -119,6 +119,12 @@ export interface RondaState {
    * persona. Solo anfitrión, solo en lobby.
    */
   addBot: () => Promise<boolean>;
+  /**
+   * Intercambia el asiento de dos jugadores. Solo anfitrión, solo en lobby.
+   * Existe por Mus: las parejas salen del asiento (`seat % 2`, §12.2) y las
+   * asigna el anfitrión moviendo gente de sitio.
+   */
+  swapSeats: (aPlayerId: PlayerId, bPlayerId: PlayerId) => Promise<boolean>;
 
   /**
    * Voto de revancha en fin de partida (contrato P16 / §2.3). Evento propio
@@ -412,6 +418,17 @@ export const useRondaStore = create<RondaState>((set, get) => {
     async addBot() {
       if (get().connection !== 'online') return false;
       const res = await emitWithAck(socket, 'room:addBot', {});
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      set({ lastError: null });
+      return true;
+    },
+
+    async swapSeats(aPlayerId, bPlayerId) {
+      if (get().connection !== 'online') return false;
+      const res = await emitWithAck(socket, 'room:swapSeats', { aPlayerId, bPlayerId });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
         return false;

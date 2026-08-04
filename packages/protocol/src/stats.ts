@@ -19,17 +19,31 @@ export interface RoomStatsRow {
   seat: number;
   /** Partidas TERMINADAS en las que este jugador estaba en la sala. */
   matches: number;
-  /** Partidas ganadas. */
+  /**
+   * Partidas ganadas. En Mus gana una PAREJA (§12.12), así que la victoria
+   * se le apunta a los dos miembros del equipo ganador: la fila sigue siendo
+   * por jugador porque la sala no tiene parejas fijas entre partidas -- una
+   * revancha con los asientos cambiados es otra pareja.
+   */
   wins: number;
-  /** Rondas jugadas (suma de las rondas de cada partida terminada). */
+  /**
+   * Rondas jugadas (suma de las rondas de cada partida terminada). En Mus
+   * son MANOS (`handNumber`), no juegos: es el equivalente natural de la
+   * ronda de los otros dos.
+   */
   rounds: number;
-  /** Suma de las puntuaciones finales de cada partida terminada. */
+  /**
+   * Suma de las puntuaciones finales de cada partida terminada. En Mus el
+   * jugador no tiene puntuación (`PublicPlayer.score` va siempre a 0, §12.12)
+   * y lo que se acumula aquí son los JUEGOS (vacas) que ganó su pareja en esa
+   * partida -- lo único que sigue siendo verdad al mirarlo por jugador.
+   */
   totalScore: number;
   /**
    * Mejor y peor puntuación final. "Mejor" depende del juego: en Chinchón es
-   * la MÁS BAJA (§5, se elimina quien pasa del umbral) y en Pocha la MÁS
-   * ALTA (§9.7, gana quien más suma). El servidor ya aplica el criterio del
-   * juego de la sala; la interfaz solo los pinta. null = sin partidas aún.
+   * la MÁS BAJA (§5, se elimina quien pasa del umbral), y en Pocha (§9.7) y
+   * en Mus la MÁS ALTA. El servidor ya aplica el criterio del juego de la
+   * sala; la interfaz solo los pinta. null = sin partidas aún.
    */
   bestScore: number | null;
   worstScore: number | null;

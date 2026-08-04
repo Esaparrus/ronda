@@ -31,12 +31,15 @@ import {
 } from './room.ts';
 import { randomUUID } from 'node:crypto';
 
-/** Mínimo de jugadores por juego (§9.2 Pocha: "fijo, no configurable"; §2.1
- * Chinchón: MIN_PLAYERS general). No hay una constante de contrato por juego
- * para esto (MIN_PLAYERS/MAX_PLAYERS de @ronda/protocol son el límite
- * ABSOLUTO de sala, §10.6, no el de un juego concreto). */
-function minPlayersFor(gameId: GameId): number {
-  return gameId === 'pocha' ? 3 : 2;
+/** Mínimo de jugadores por juego (§9.2 Pocha: "fijo, no configurable"; §12.2
+ * Mus: exactamente 4, "no hay Mus sin cuatro"; §2.1 Chinchón: MIN_PLAYERS
+ * general). No hay una constante de contrato por juego para esto
+ * (MIN_PLAYERS/MAX_PLAYERS de @ronda/protocol son el límite ABSOLUTO de sala,
+ * §10.6, no el de un juego concreto). */
+export function minPlayersFor(gameId: GameId): number {
+  if (gameId === 'pocha') return 3;
+  if (gameId === 'mus') return 4;
+  return 2;
 }
 
 export interface JoinResult {
@@ -182,6 +185,11 @@ export class RoomManager {
     const host = room.players.get(input.playerId);
     if (!host) return err('PLAYER_NOT_IN_ROOM');
     if (!host.isHost) return err('NOT_HOST');
+    // Mus no tiene bots (§12.11: envidar y farolear es otro problema, y P28
+    // los dejó fuera a propósito). Se rechaza aquí y no solo escondiendo el
+    // botón: un bot en una mesa de Mus dejaría la partida colgada en su
+    // turno para siempre, porque bot-driver.ts no lo va a mover.
+    if (room.gameId === 'mus') return err('INVALID_ACTION');
 
     const seat = room.nextFreeSeat();
     if (seat === null) return err('ROOM_FULL');
@@ -206,6 +214,41 @@ export class RoomManager {
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'player_joined', { nick, isBot: true });
     return ok({ roomCode: room.code, playerId, playerToken: token, seat });
+  }
+
+  // --- swapSeats -------------------------------------------------------------
+
+  /**
+   * Intercambia el asiento de dos jugadores. Solo el anfitrión y solo en
+   * lobby. Existe por Mus: las parejas se derivan de `seat % 2` (§12.2) y la
+   * decisión 1 de P28 dice que las asigna el anfitrión moviendo asientos.
+   * Vale para los tres juegos -- el asiento también fija el orden de turno.
+   */
+  swapSeats(input: {
+    roomCode: string;
+    playerId: PlayerId; // anfitrión
+    aPlayerId: PlayerId;
+    bPlayerId: PlayerId;
+    now: number;
+  }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status !== 'lobby') return err('ROOM_ALREADY_STARTED');
+    const host = room.players.get(input.playerId);
+    if (!host) return err('PLAYER_NOT_IN_ROOM');
+    if (!host.isHost) return err('NOT_HOST');
+    if (input.aPlayerId === input.bPlayerId) return err('INVALID_ACTION');
+
+    const a = room.players.get(input.aPlayerId);
+    const b = room.players.get(input.bPlayerId);
+    if (!a || !b) return err('PLAYER_NOT_IN_ROOM');
+
+    const seat = a.seat;
+    a.seat = b.seat;
+    b.seat = seat;
+    room.touch(input.now);
+    room.hooks.onSnapshot?.(room);
+    return ok(null);
   }
 
   // --- resume --------------------------------------------------------------
@@ -396,8 +439,16 @@ export class RoomManager {
       const connected = [...room.players.values()].filter((p) => p.connected);
       if (connected.length < minPlayersFor(room.gameId)) {
         room.status = 'gameEnd';
-        if (room.state && connected[0]) {
-          room.state = { ...room.state, status: 'gameEnd', winnerId: connected[0].playerId };
+        const state = room.state;
+        if (state?.gameId === 'mus') {
+          // Mus, decisión 6 de P28 (§12.11): la partida se ANULA. No hay
+          // pareja ganadora que declarar -- con tres no hay Mus, y darle la
+          // victoria a la pareja que quede entera sería inventarse un
+          // resultado -- y por eso tampoco se llama a `recordMatchEnd()`:
+          // esta partida no cuenta en las estadísticas de §11.2.
+          room.state = { ...state, status: 'gameEnd', winnerTeamIndex: null };
+        } else if (state && connected[0]) {
+          room.state = { ...state, status: 'gameEnd', winnerId: connected[0].playerId };
           // Una partida que acaba por abandono cuenta igual en las
           // estadísticas de la sala: se jugó y tiene ganador.
           if (room.recordMatchEnd()) room.hooks.onStats?.(room);
@@ -477,7 +528,15 @@ export class RoomManager {
         // las estadísticas actualizadas.
         if (room.recordMatchEnd()) room.hooks.onStats?.(room);
         room.hooks.onPersist?.(room);
-        room.hooks.onTrack?.(room, 'game_ended', { winnerId: newState.winnerId });
+        // En Mus gana una pareja y `winnerId` no existe (§12.12): la
+        // telemetría publica el equipo, no un jugador inventado.
+        room.hooks.onTrack?.(
+          room,
+          'game_ended',
+          newState.gameId === 'mus'
+            ? { winnerTeamIndex: newState.winnerTeamIndex }
+            : { winnerId: newState.winnerId },
+        );
       } else {
         room.hooks.onPersist?.(room);
         room.status = 'roundEnd';

@@ -17,6 +17,9 @@ import type {
   ChinchonPlayerView,
   ChinchonTableView,
   GameEvent,
+  MusCommonView,
+  MusPlayerView,
+  MusTableView,
   PlayerView,
   PochaCommonView,
   PochaPlayerView,
@@ -41,10 +44,12 @@ function buildLobbyPlayers(room: Room): PublicPlayer[] {
     connected: p.connected,
     isHost: p.isHost,
     eliminated: false,
-    // El lobby es común a todos los juegos y todavía no sabe de parejas: en
-    // Mus las asigna el anfitrión moviendo asientos (§12.2) y el motor las
-    // deriva del asiento al empezar la partida.
-    teamIndex: null,
+    // Parejas: solo Mus las tiene (§12.12). El motor las deriva de
+    // `seat % 2` al empezar (§12.2), así que el lobby puede adelantarlas con
+    // la misma fórmula -- y tiene que hacerlo, porque el anfitrión asigna
+    // las parejas moviendo asientos y necesita ver el resultado antes de
+    // darle a "Empezar". En los otros dos juegos, `null` dice la verdad.
+    teamIndex: room.gameId === 'mus' ? ((p.seat % 2) as 0 | 1) : null,
   }));
 }
 
@@ -95,8 +100,56 @@ function buildPochaLobbyCommon(room: Room): PochaCommonView {
   };
 }
 
+/** Misma idea, con la forma de Mus (§12.12). El marcador de parejas ya
+ * aparece a cero para que el lobby pueda pintarlo sin casos especiales. */
+function buildMusLobbyCommon(room: Room): MusCommonView {
+  return {
+    roomCode: room.code,
+    gameId: 'mus',
+    config: room.config as MusCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null, // en Mus gana una pareja: siempre null (§12.12)
+    rematchVotes: [],
+    teams: [
+      { index: 0, piedras: 0, amarrakos: 0, juegos: 0 },
+      { index: 1, piedras: 0, amarrakos: 0, juegos: 0 },
+    ],
+    winnerTeamIndex: null,
+    manoSeat: 0,
+    phase: 'mus',
+    lance: null,
+    bet: null,
+    musSaid: [],
+    paresDeclared: [],
+    juegoDeclared: [],
+    handResult: null,
+  };
+}
+
 /** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
 function lobbyPlayerView(room: Room, playerId: string): PlayerView {
+  if (room.gameId === 'mus') {
+    // Su pareja sale de su asiento, igual que en `buildLobbyPlayers`: es la
+    // misma fórmula que aplicará el motor al empezar (§12.2).
+    const seat = room.playersBySeat().find((p) => p.playerId === playerId)?.seat ?? 0;
+    const view: MusPlayerView = {
+      kind: 'player',
+      ...buildMusLobbyCommon(room),
+      me: {
+        playerId,
+        hand: [],
+        teamIndex: (seat % 2) as 0 | 1,
+        pares: null,
+        juego: { suma: 0, tiene: false },
+        minEnvite: null,
+        availableActions: [],
+      },
+    };
+    return view;
+  }
   if (room.gameId === 'pocha') {
     const view: PochaPlayerView = {
       kind: 'player',
@@ -123,6 +176,10 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
 }
 
 function lobbyTableView(room: Room): TableView {
+  if (room.gameId === 'mus') {
+    const view: MusTableView = { kind: 'table', ...buildMusLobbyCommon(room) };
+    return view;
+  }
   if (room.gameId === 'pocha') {
     const view: PochaTableView = { kind: 'table', ...buildPochaLobbyCommon(room) };
     return view;

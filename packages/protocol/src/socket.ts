@@ -2,7 +2,12 @@
 // entrada (los que el servidor valida ANTES de tocar nada). Contrato §2.3, §2.4.
 import { z } from 'zod';
 import { GameActionSchema } from './actions.ts';
-import { ChinchonConfigSchema, GameConfigSchema, PochaConfigSchema } from './config.ts';
+import {
+  ChinchonConfigSchema,
+  GameConfigSchema,
+  MusConfigSchema,
+  PochaConfigSchema,
+} from './config.ts';
 import type { GameEvent } from './events.ts';
 import type { GameId, PlayerId, RoomCode } from './ids.ts';
 import type { PlayerView, TableView } from './views.ts';
@@ -61,6 +66,20 @@ export interface ClientToServerEvents {
    * segunda persona). Solo el anfitrión, solo en lobby, solo con hueco.
    */
   'room:addBot': (payload: Record<string, never>, ack: (res: Result<JoinAck>) => void) => void;
+  /**
+   * Intercambia el asiento de dos jugadores. Solo el anfitrión y solo en
+   * lobby. Existe por Mus: es un juego POR PAREJAS y la decisión 1 de P28
+   * dice que las asigna «el anfitrión moviendo asientos» y el motor las
+   * deriva de `seat % 2` (§12.2). Sin esto, la pareja la decidiría el orden
+   * de llegada a la sala, que no es una decisión de nadie.
+   *
+   * No es exclusivo de Mus -- reordenar la mesa también cambia el orden de
+   * turno en Chinchón y en Pocha -- pero es Mus quien lo hace necesario.
+   */
+  'room:swapSeats': (
+    payload: { aPlayerId: PlayerId; bPlayerId: PlayerId },
+    ack: (res: Result<null>) => void,
+  ) => void;
   'room:kick': (payload: { playerId: PlayerId }, ack: (res: Result<null>) => void) => void;
   'room:leave': (payload: Record<string, never>, ack: (res: Result<null>) => void) => void;
   /** Solo el anfitrión: cierra la sala para todos (contrato §2.4 `room:closed`, razón `host_left`). */
@@ -141,13 +160,11 @@ export interface ServerToClientEvents {
 // El servidor hace: schemas[eventName]?.parse(payload) antes de tocar nada.
 
 const roomCreateSchema = z.object({
-  // Contrato §10.1 (P21/P22): GameId se ensanchó a 'chinchon' | 'pocha'. El
-  // cliente de hoy (apps/web) todavía solo sabe crear salas de Chinchón
-  // (P24, interfaz de Pocha, sigue sin empezar): esta línea acepta ambos
-  // valores a nivel de protocolo -- room-manager.ts (apps/server) sigue
-  // rechazando explícitamente cualquier gameId que no sea 'chinchon' con
-  // GAME_NOT_FOUND hasta que P23 lo cablee de verdad.
-  gameId: z.union([z.literal('chinchon'), z.literal('pocha')]),
+  // Contrato §10.1 (P21/P22) y §12.12 (P27/P28): GameId es
+  // 'chinchon' | 'pocha' | 'mus'. Los tres están cableados de punta a punta
+  // (motor, servidor e interfaz); `room-manager.ts` sigue siendo quien
+  // rechaza con GAME_NOT_FOUND cualquier gameId sin módulo registrado.
+  gameId: z.union([z.literal('chinchon'), z.literal('pocha'), z.literal('mus')]),
   config: GameConfigSchema,
   nick: z.string(),
 });
@@ -168,13 +185,22 @@ const roomConfigSchema = z.object({
   // de ZodObject): se valida como la unión de los parciales de cada miembro
   // en su lugar. room-manager.ts sigue siendo quien decide, en runtime, qué
   // campos tienen sentido para el `gameId` real de la sala.
-  patch: z.union([ChinchonConfigSchema.partial(), PochaConfigSchema.partial()]),
+  patch: z.union([
+    ChinchonConfigSchema.partial(),
+    PochaConfigSchema.partial(),
+    MusConfigSchema.partial(),
+  ]),
 });
 
 const emptySchema = z.object({}).strict();
 
 const roomKickSchema = z.object({
   playerId: z.string(),
+});
+
+const roomSwapSeatsSchema = z.object({
+  aPlayerId: z.string(),
+  bPlayerId: z.string(),
 });
 
 const screenAttachSchema = z.object({
@@ -204,6 +230,7 @@ export const clientPayloadSchemas = {
   'room:config': roomConfigSchema,
   'room:start': emptySchema,
   'room:addBot': emptySchema,
+  'room:swapSeats': roomSwapSeatsSchema,
   'room:kick': roomKickSchema,
   'room:leave': emptySchema,
   'room:close': emptySchema,

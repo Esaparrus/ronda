@@ -3,6 +3,7 @@
 // ease-out (en vez de encenderse/apagarse). Se desactiva sola con
 // prefers-reduced-motion vía la regla global de transition-duration en
 // globals.css (P10): no hace falta comprobarlo aquí.
+import type { ReactNode } from 'react';
 import type { PlayerId, PublicPlayer } from '@ronda/protocol';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -10,9 +11,21 @@ export interface PlayerStripProps {
   players: PublicPlayer[];
   turnPlayerId: PlayerId | null;
   myPlayerId: PlayerId;
+  /**
+   * Qué se pinta bajo cada apodo. Por defecto, "cartas · puntos", que es lo
+   * que dicen Chinchón y Pocha. Mus necesita otra cosa: ahí `score` va
+   * siempre a 0 porque puntúa la pareja (§12.12) y enseñar un 0 sería
+   * mentir. Mismo mecanismo que `renderBadge` de SeatRing en /mesa.
+   */
+  renderInfo?: (player: PublicPlayer) => ReactNode;
 }
 
-export function PlayerStrip({ players, turnPlayerId, myPlayerId }: PlayerStripProps) {
+export function PlayerStrip({
+  players,
+  turnPlayerId,
+  myPlayerId,
+  renderInfo,
+}: PlayerStripProps) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const seatCount = Math.max(ordered.length, 1);
   const turnIndex = turnPlayerId ? ordered.findIndex((p) => p.playerId === turnPlayerId) : -1;
@@ -32,7 +45,7 @@ export function PlayerStrip({ players, turnPlayerId, myPlayerId }: PlayerStripPr
             {p.playerId === myPlayerId ? ' (tú)' : ''}
           </span>
           <span className="font-mono text-12 text-humo">
-            {p.handCount} · {p.score}
+            {renderInfo ? renderInfo(p) : `${p.handCount} · ${p.score}`}
           </span>
         </div>
       ))}

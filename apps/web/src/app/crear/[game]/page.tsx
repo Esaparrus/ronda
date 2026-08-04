@@ -5,7 +5,7 @@
 import { notFound } from 'next/navigation';
 import { CrearForm } from './_components/CrearForm';
 
-const GAME_IDS = ['chinchon', 'pocha'] as const;
+const GAME_IDS = ['chinchon', 'pocha', 'mus'] as const;
 type SupportedGameId = (typeof GAME_IDS)[number];
 
 function isSupportedGame(g: string): g is SupportedGameId {

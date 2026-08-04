@@ -135,6 +135,23 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     ack(r);
   });
 
+  // --- room:swapSeats ---
+  socket.on('room:swapSeats', (payload, ack) => {
+    const respond: Respond = (e) => ack(e);
+    if (!guard(deps, sid, 'room:swapSeats', payload, respond)) return;
+    const st = requirePlayer(deps, sid, respond);
+    if (!st) return;
+    const r = deps.mgr.swapSeats({
+      roomCode: st.roomCode,
+      playerId: st.playerId,
+      aPlayerId: payload.aPlayerId,
+      bPlayerId: payload.bPlayerId,
+      now: deps.now(),
+    });
+    if (r.ok) rebroadcast(deps, st.roomCode);
+    ack(r);
+  });
+
   // --- room:kick ---
   socket.on('room:kick', (payload, ack) => {
     const respond: Respond = (e) => ack(e);

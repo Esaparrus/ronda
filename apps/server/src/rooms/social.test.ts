@@ -64,6 +64,10 @@ function endMatch(
   const r = roomOf(m, code);
   const state = r.state;
   if (!state) throw new Error('sala sin estado');
+  // Estas salas son de Chinchón o de Pocha: las de Mus puntúan por pareja y
+  // ni sus jugadores tienen `score` ni su estado tiene `winnerId` (§12.12),
+  // así que se descartan aquí en vez de castear.
+  if (state.gameId === 'mus') throw new Error('endMatch no vale para Mus');
   state.players.forEach((p, i) => {
     p.score = scoresBySeat[i] ?? 0;
   });

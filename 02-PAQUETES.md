@@ -476,7 +476,7 @@ En este orden, y solo cuando los 4 hitos de `00-MASTER.md` §7 estén cumplidos:
 1. ~~**Segundo juego: Pocha.**~~ **HECHO.** Es el que más pone a prueba la generalidad del motor (apuestas, bazas, rondas de tamaño variable) sin ser tan complejo como el Mus. Al implementarlo se descubre qué hay que sacar a `core/`. **No generalices antes de tenerlo.** Contrato de reglas: `P21` (`01-CONTRATOS.md` §9-§10). Motor: `P22`. Servidor e interfaz entraron juntos, sin número de paquete propio, en el commit «Cablea Pocha (segundo juego) en servidor y web, con modo contra la máquina».
 2. ~~Reacciones rápidas (4 emojis, sin chat libre).~~ **HECHO: `P25`** (`01-CONTRATOS.md` §11.1).
 3. ~~Estadísticas del grupo, guardadas por sala.~~ **HECHO: `P26`** (`01-CONTRATOS.md` §11.2).
-4. Mus (necesita parejas y una capa social muy distinta: es un proyecto en sí mismo). Contrato de reglas congelado: `P27` (`01-CONTRATOS.md` §12). Motor: `P28`, **hecho**. **Servidor e interfaz siguen sin empezar** y necesitan confirmación explícita antes de cada uno: §12.12 lista los cambios de contrato (equipos, marcador por pareja) que arrastran a `/sala`, `/mesa` y a las propias estadísticas de §11.2, y de eso P28 solo ha hecho la parte del protocolo.
+4. ~~Mus (necesita parejas y una capa social muy distinta: es un proyecto en sí mismo).~~ **HECHO.** Contrato de reglas congelado: `P27` (`01-CONTRATOS.md` §12). Motor: `P28`. Servidor e interfaz: `P29`, incluido el marcador por parejas que §12.12 avisaba de que arrastraba a `/sala`, `/mesa` y a las estadísticas de §11.2.
 5. Juego original con roles secretos, que es lo que realmente diferencia la plataforma. **No hay contrato que ejecutar**: es un juego que todavía no existe, y diseñarlo es una decisión de producto de Unai, no de una sesión de implementación.
 6. App nativa con Expo, solo si el playtest demuestra que el juego offline y las notificaciones hacen falta de verdad. **Condicionado a datos de playtest reales** (`00-MASTER.md` §10), que hoy no existen.
 
@@ -536,3 +536,33 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 **Tests:** `packages/engine/src/games/mus/mus.test.ts`, 53 casos — los 9 dorados de §12.13 uno a uno, más fase de mus/descarte, declaraciones, envites, parejas y juegos (vaca), determinismo, serializabilidad y censura de vistas.
 
 **Lo que NO hace este paquete:** servidor, interfaz y bots. Los bots quedan explícitamente fuera por §12.11 (envidar y farolear es otro problema), y `bot-driver.ts` los desactiva para `gameId === 'mus'`. Para poder jugar una partida de Mus de principio a fin faltan todavía la clasificación por parejas en `/sala` y `/mesa` (P16) y las estadísticas de §11.2, que siguen contando `wins` por jugador.
+
+---
+
+## P29 · Mus — servidor e interfaz (roadmap «Después del MVP» §4) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §12 completo, §12.12 (cambios de contrato) y §12.14 (lo que encontró P28). Motor: `P28`.
+
+**Alcance:** cablear Mus de punta a punta. El motor no se ha tocado: todo lo que sigue es capa de sala e interfaz, más el ensanchado de protocolo que hacía falta para llegar a ellas.
+
+**El cambio de fondo — el marcador deja de ser por jugador.** Es lo que §12.12 avisaba de que no era mecánico, y se ha resuelto sin inventar números:
+
+- `Room.recordMatchEnd()` se parte en dos caminos. En Mus la victoria se le apunta a **los dos miembros** de la pareja ganadora, `rounds` son las **manos** (`handNumber`) y `totalScore` son los **juegos (vacas)** que ganó su pareja: es lo único que sigue siendo verdad al mirarlo por jugador, porque una revancha con los asientos cambiados es otra pareja. Documentado en `stats.ts`.
+- `PlayerStrip` (`renderInfo`) y `SeatRing` (`showScore`) dejan de pintar `score` en Mus: ahí va siempre 0 (§12.12) y un 0 bajo cada asiento sería un número inventado.
+- Fin de partida propio en los dos sitios (`MusGameEndScreen`, `MusMesaGameEndScreen`): las pantallas de Chinchón y Pocha ordenan por `score` y coronan a `winnerId`, y en Mus los dos van a 0 y a `null`.
+
+**Parejas: decisión 1 de P28, ya ejecutable.** Nuevo evento `room:swapSeats { aPlayerId, bPlayerId }` (anfitrión, solo en lobby) y `RoomManager.swapSeats()`. El lobby enseña la pareja de cada asiento — el servidor la adelanta con la misma fórmula que usará el motor, `seat % 2` — y el anfitrión forma las parejas tocando a dos jugadores. Vale para los tres juegos: el asiento también fija el orden de turno.
+
+**Abandono (decisión 6 de P28).** Si una sala de Mus se queda sin cuatro, la partida se **anula**: `winnerTeamIndex` a `null`, sin `recordMatchEnd()` y sin contar en §11.2. Darle la victoria a la pareja que quede entera sería inventarse el resultado.
+
+**Sin bots (§12.11).** `room:addBot` se rechaza en salas de Mus con `INVALID_ACTION`, no solo escondiendo el botón: un bot en una mesa de Mus dejaría la partida colgada en su turno para siempre.
+
+**Entregado en `@ronda/protocol`:** `'mus'` en `roomCreateSchema`, `MusConfigSchema.partial()` en el patch de `room:config`, evento y esquema de `room:swapSeats`, y la semántica de Mus documentada en `stats.ts`.
+
+**Entregado en `apps/server`:** `EngineState` += `MusState` (y `ScoredEngineState` para los dos que sí puntúan por jugador), `minPlayersFor('mus') = 4`, `swapSeats()`, el reparto de estadísticas por pareja, la anulación por abandono, la telemetría de `game_ended` con `winnerTeamIndex`, y las vistas de lobby de Mus en `broadcast.ts`.
+
+**Entregado en `apps/web`:** catálogo, ficha (`/juegos/mus`), reglas (`/reglas/mus`) y creación (`/crear/mus`) con las variantes de §12 —sin control de "jugadores", que son 4 fijos—; lobby con parejas e intercambio de asientos; `/sala` con `MusScoreboard` (piedras y amarrakos), `MusHand` (descarte + pares y juego privados), `MusActionBar` (una fila de botones por fase), `MusEnvitePicker`, `MusRoundEndScreen` (el recuento de §12.9, con las filas no contadas atenuadas) y `MusGameEndScreen`; `/mesa` con `MusMesaGameBoard`, `MusMesaScore`, `MusMesaRoundEndScreen` y `MusMesaGameEndScreen`.
+
+**Detalle de interfaz que sí es una decisión:** las declaraciones de pares y juego se pintan como **un solo botón que dice la verdad de tu mano**. §12.6 las describe como declaraciones públicas y el motor rechaza mentir con `FALSE_DECLARATION` (§12.14.2): ofrecer el botón de mentir solo serviría para generar errores.
+
+**Tests:** `apps/server/src/rooms/mus-room.test.ts`, 9 casos — los cuatro jugadores obligatorios, el intercambio de asientos y sus permisos, el rechazo de bots, la victoria repartida a la pareja y la anulación por abandono.

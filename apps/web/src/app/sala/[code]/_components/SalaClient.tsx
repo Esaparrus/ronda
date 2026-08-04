@@ -25,6 +25,9 @@ import { RoundEndScreen } from './RoundEndScreen';
 import { GameEndScreen } from './GameEndScreen';
 import { PochaGameScreen } from './PochaGameScreen';
 import { PochaRoundEndScreen } from './PochaRoundEndScreen';
+import { MusGameScreen } from './MusGameScreen';
+import { MusRoundEndScreen } from './MusRoundEndScreen';
+import { MusGameEndScreen } from './MusGameEndScreen';
 
 export interface SalaClientProps {
   code: string;
@@ -174,11 +177,17 @@ export function SalaClient({ code }: SalaClientProps) {
       {view.status === 'lobby' ? <Lobby view={view} /> : null}
       {view.status === 'playing' && view.gameId === 'chinchon' ? <GameScreen view={view} /> : null}
       {view.status === 'playing' && view.gameId === 'pocha' ? <PochaGameScreen view={view} /> : null}
+      {view.status === 'playing' && view.gameId === 'mus' ? <MusGameScreen view={view} /> : null}
       {view.status === 'roundEnd' && view.gameId === 'chinchon' ? <RoundEndScreen view={view} /> : null}
       {view.status === 'roundEnd' && view.gameId === 'pocha' ? (
         <PochaRoundEndScreen view={view} />
       ) : null}
-      {view.status === 'gameEnd' ? <GameEndScreen view={view} /> : null}
+      {view.status === 'roundEnd' && view.gameId === 'mus' ? <MusRoundEndScreen view={view} /> : null}
+      {/* Mus tiene su propio fin de partida: GameEndScreen ordena por `score`
+          y corona a `winnerId`, y en Mus los dos van a 0 y a null porque gana
+          una pareja (§12.12). */}
+      {view.status === 'gameEnd' && view.gameId === 'mus' ? <MusGameEndScreen view={view} /> : null}
+      {view.status === 'gameEnd' && view.gameId !== 'mus' ? <GameEndScreen view={view} /> : null}
       <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
         <div className="flex flex-col gap-4">
           <p className="text-16 text-hueso">¿Cerrar la sala para todos?</p>

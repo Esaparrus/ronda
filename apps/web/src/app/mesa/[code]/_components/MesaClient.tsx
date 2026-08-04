@@ -27,6 +27,9 @@ import { MesaRoundEndScreen } from './MesaRoundEndScreen';
 import { MesaGameEndScreen } from './MesaGameEndScreen';
 import { PochaMesaGameBoard } from './PochaMesaGameBoard';
 import { PochaMesaRoundEndScreen } from './PochaMesaRoundEndScreen';
+import { MusMesaGameBoard } from './MusMesaGameBoard';
+import { MusMesaRoundEndScreen } from './MusMesaRoundEndScreen';
+import { MusMesaGameEndScreen } from './MusMesaGameEndScreen';
 
 export interface MesaClientProps {
   code: string;
@@ -119,7 +122,20 @@ export function MesaClient({ code }: MesaClientProps) {
       {tableView.status === 'roundEnd' && tableView.gameId === 'pocha' ? (
         <PochaMesaRoundEndScreen view={tableView} />
       ) : null}
-      {tableView.status === 'gameEnd' ? <MesaGameEndScreen view={tableView} /> : null}
+      {tableView.status === 'playing' && tableView.gameId === 'mus' ? (
+        <MusMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'roundEnd' && tableView.gameId === 'mus' ? (
+        <MusMesaRoundEndScreen view={tableView} />
+      ) : null}
+      {/* Mus tiene su propio fin de partida: gana una pareja, no un jugador
+          con la puntuación más baja (§12.12). */}
+      {tableView.status === 'gameEnd' && tableView.gameId === 'mus' ? (
+        <MusMesaGameEndScreen view={tableView} />
+      ) : null}
+      {tableView.status === 'gameEnd' && tableView.gameId !== 'mus' ? (
+        <MesaGameEndScreen view={tableView} />
+      ) : null}
     </div>
   );
 }
