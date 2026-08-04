@@ -1018,11 +1018,15 @@ payload solo admite uno de cuatro identificadores.
 
 ## 12. REGLAS DE MUS — versión congelada (P27)
 
-Tercer juego del roadmap (`02-PAQUETES.md`, "Después del MVP" §4). **Este
-paquete es solo documentación**: no hay motor, ni servidor, ni interfaz de
-Mus. Mismo criterio que P21 con Pocha — todo detalle mecánico que no estaba
-decidido queda marcado como **[DECISIÓN P27, A CONFIRMAR]** en lugar de
-inventarse en silencio.
+Tercer juego del roadmap (`02-PAQUETES.md`, "Después del MVP" §4). Mismo
+criterio que P21 con Pocha — todo detalle mecánico que no estaba decidido
+quedó marcado como **[DECISIÓN P27, A CONFIRMAR]** en lugar de inventarse en
+silencio.
+
+> **Estado (P28).** Las seis decisiones abiertas están **cerradas** y el
+> **motor está escrito** (`packages/engine/src/games/mus/`). Servidor e
+> interfaz de Mus siguen sin empezar. §12.14 recoge lo que P28 encontró al
+> implementar y no estaba en el contrato.
 
 Aviso de tamaño, para que nadie lo empiece a la ligera: `00-MASTER.md` §4 y
 `02-PAQUETES.md` ya avisan de que el Mus "es un proyecto en sí mismo". §12.12
@@ -1045,8 +1049,9 @@ Chinchón y Pocha compartían.
   Mus a 2 ni a 3 en esta versión.
 - **2 parejas fijas** durante toda la partida. Los compañeros se sientan
   enfrentados: asientos **0 y 2** contra **1 y 3**.
-- **[DECISIÓN P27, A CONFIRMAR]**: las parejas las asigna el anfitrión en el
-  lobby moviendo asientos; no hay sorteo automático.
+- **[CONFIRMADO EN P28]**: las parejas las asigna el anfitrión en el lobby
+  moviendo asientos; no hay sorteo automático. El motor las deriva del asiento
+  (`teamOfSeat = seat % 2`) y no las guarda aparte.
 
 ### 12.3 Estructura de la partida
 
@@ -1079,8 +1084,9 @@ mano     =  reparto -> fase de mus -> 4 lances -> recuento
    cartas (nunca 0) y roba las mismas. Vuelve a empezar el punto 1.
 3. En cuanto uno corta, se acabó el mus para esa mano y se juegan los lances
    con las cartas que cada uno tenga.
-4. **[DECISIÓN P27, A CONFIRMAR]**: sin límite de rondas de mus. Si faltan
-   cartas para servir un descarte, se barajan los descartes.
+4. **[CONFIRMADO EN P28]**: sin límite de rondas de mus. Si faltan cartas para
+   servir un descarte, se barajan los descartes (incluidos los que se acaban
+   de tirar, que es como se juega en la mesa).
 
 ### 12.6 Los cuatro lances, en orden
 
@@ -1128,15 +1134,19 @@ Orden de mejor juego (de mejor a peor): **31, 32, 40, 37, 36, 35, 34, 33**.
 | 31 | 3 piedras |
 | cualquier otro (32-40) | 2 piedras |
 
-**[DECISIÓN P27, A CONFIRMAR]**: con `ochoReyes = true`, el Tres cuenta 10 y
-el Dos cuenta 1 también **al sumar el juego**, no solo al comparar Grande y
-Chica. Es la lectura más común de la variante, pero hay mesas que la aplican
-solo a Grande y Chica, y el valor del punto (§12.6 bis) cambia con ello.
+**[RESUELTO EN P28 — Unai]**: la variante `ochoReyes` **NO** interviene al
+sumar el juego. Sota, Rey y Caballo cuentan 10 y el resto vale su número, sea
+cual sea la config: el Tres suma 3 y el Dos suma 2 siempre. `ochoReyes` solo
+cambia la fuerza con la que se comparan Grande y Chica (y, por tanto, qué
+cartas hacen pareja en §12.6.3).
+
+Consecuencia asumida: el 31 sale menos y el lance del punto (§12.6 bis)
+aparece más a menudo que con la otra lectura.
 
 **4-bis) Punto** — si **nadie** tiene juego, en lugar del lance de juego se
 juega "al punto": gana la suma más alta que no llegue a 31. Vale **1 piedra**.
-**[DECISIÓN P27, A CONFIRMAR]**: 1 y no 2 — hay mesas que lo pagan a 2
-(`config.puntoVale`).
+**[CONFIRMADO EN P28]**: 1 y no 2 — hay mesas que lo pagan a 2, y para eso
+está `config.puntoVale`, que admite los dos valores con 1 por defecto.
 
 ### 12.7 Envites
 
@@ -1183,23 +1193,25 @@ Empates en cualquier comparación: gana la mano más cercana al mano (§12.4).
 
 ### 12.10 Señas
 
-**[DECISIÓN P27, A CONFIRMAR]** — hay dos caminos y no son equivalentes:
+**[RESUELTO EN P28 — Unai: opción A]**: **sin señas.** El motor no abre
+ningún canal entre compañeros, ni de gestos ni de nada. Es coherente con "sin
+chat libre" (§11.1) y con que en una app cada uno mira su móvil, donde una
+seña física no se ve.
 
-- **A (propuesta por defecto): sin señas.** El motor no abre ningún canal
-  entre compañeros. Es coherente con "sin chat libre" (§11.1) y con que en una
-  app cada uno mira su móvil, donde una seña física no se ve.
-- **B: señas digitales limitadas.** Un conjunto cerrado de gestos que solo ve
-  el compañero, reutilizando el mecanismo de §11.1. Es más fiel al juego de
-  bar, pero abre un canal privado dentro de la partida, y eso hay que decidirlo
-  a propósito, no de rebote.
+La opción B que se barajaba (un conjunto cerrado de gestos que solo viera el
+compañero, reutilizando el mecanismo de §11.1) queda **descartada**: abre un
+canal privado dentro de la partida, y eso no se hace de rebote. Si algún día
+se retoma, es un paquete propio con su contrato, no un añadido al motor.
 
 ### 12.11 Abandono o desconexión
 
 - El Mus **no se puede jugar con 3**. Si un jugador abandona, la partida queda
   **suspendida** esperando su reconexión; no se convierte en otra cosa.
-- **[DECISIÓN P27, A CONFIRMAR]**: si no vuelve en el plazo, la partida se
-  anula y **no cuenta** en las estadísticas de sala (§11.2) — a diferencia de
-  Chinchón y Pocha, donde el abandono sí produce un ganador.
+- **[CONFIRMADO EN P28]**: si no vuelve en el plazo, la partida se anula y
+  **no cuenta** en las estadísticas de sala (§11.2) — a diferencia de Chinchón
+  y Pocha, donde el abandono sí produce un ganador. Como en los otros dos
+  juegos, esto es responsabilidad de `apps/server`, no del motor: `MusPlayer`
+  tiene `left`, pero el motor **no salta asientos** porque no hay Mus con tres.
 - Los bots (modo "contra la máquina") tendrían que saber envidar y farolear:
   es un problema mucho más difícil que el de los bots actuales y **no está
   incluido** en este contrato.
@@ -1246,13 +1258,60 @@ decisión de arquitectura pendiente, no un detalle de implementación:
 5. **Juego.** `[Rey, Caballo, Sota, As]` suma 31 y gana a
    `[Rey, Rey, Rey, Sota]`, que suma 40. El 31 paga 3 piedras.
 6. **Punto.** Ninguna mano llega a 31: `[Rey, Sota, Siete, As]` suma 28 y gana
-   a `[Caballo, Sota, Seis, As]`, que suma 27. Paga `config.puntoVale`. Este
-   caso se cierra cuando esté tomada la decisión de §12.6 sobre cuánto vale el
-   Tres al sumar juego.
+   a `[Caballo, Sota, Seis, As]`, que suma 27. Paga `config.puntoVale`.
+   (Cerrado en P28: la suma no depende de `ochoReyes`, §12.6.)
 7. **Empate y mano.** Dos manos idénticas en Grande: gana quien esté antes
    contando desde el mano.
 8. **Órdago querido.** Se descubren las cartas, se resuelve solo ese lance y la
    pareja ganadora gana el juego con el marcador que sea.
-9. **Corte del recuento.** Pareja a 38 piedras que gana Grande "en paso" (1) y
-   tiene medias (2): llega a 40 con la primera y el recuento **para**; las
-   piedras de medias no se cuentan.
+9. **Corte del recuento.** Pareja a **39** piedras que gana Grande "en paso"
+   (1) y tiene medias (2): llega a 40 con la primera y el recuento **para**;
+   las piedras de medias no se cuentan.
+   (El contrato decía "38", pero 38 + 1 son 39. P28 corrige la aritmética
+   manteniendo la intención del caso, que es el corte.)
+
+---
+
+### 12.14 Lo que P28 encontró al implementar el motor
+
+Igual que P22 declaró el gap de vistas que §10 no había cubierto, aquí queda
+escrito lo que hubo que decidir o corregir al escribir el motor. Nada de esto
+se coló en silencio.
+
+**1. Falta la acción `paso`.** §12.12 lista las `GameAction` nuevas y se deja
+`paso`, que §12.7 describe como la primera fila de la tabla de envites. Sin
+ella no se puede ceder la palabra. Añadida a `GameActionSchema`.
+
+**2. `FALSE_DECLARATION`, código de error nuevo.** `declararPares` y
+`declararJuego` son acciones del jugador, pero la respuesta verdadera está en
+sus cartas y el motor es la autoridad (§2). Sin un código propio, mentir caía
+en el genérico `INVALID_ACTION` y la interfaz no podía explicar qué pasó.
+
+**3. `PublicPlayer.teamIndex` admite `null`.** §12.12 lo pedía como
+`0 | 1` obligatorio. Hacerlo obligatorio forzaría a Chinchón y a Pocha a
+inventarse una pareja que sus reglas no tienen, y cualquier valor que
+eligieran sería mentira para la clasificación y para §11.2. `null` dice la
+verdad ("este juego no tiene parejas") y obliga a distinguir el caso.
+
+**4. Orden de las tablas dentro de un lance [DECISIÓN P28].** §12.9 no fija en
+qué orden se apuntan las tablas de pares/juego de las dos parejas. Se apuntan
+primero a la **pareja del mano**. Solo se nota en el caso límite en que las
+dos llegarían a 40 con las tablas del mismo lance, y "más cerca del mano gana"
+es el criterio que §12.9 usa en todo lo demás.
+
+**5. Las piedras del "no quiero" se pagan en el acto.** §12.9 enumera lo que
+se suma en el recuento y el rechazo no está en la lista; §12.7 dice que quien
+envidó "se lleva" las piedras. El motor las apunta al rechazarse, no al final.
+Importa: un "no quiero" puede llevar a 40 y terminar el juego con lances sin
+jugar. El recuento las enseña marcadas pero no las suma dos veces.
+
+**6. AVISO — la escala de fuerza sin `ochoReyes` no es la habitual.** §12.6
+dice que con `ochoReyes = false` "el Tres va entre la Sota y el Siete, y el
+Dos entre el Cuatro y el As". Lo dice dos veces y de forma internamente
+coherente (§12.6 y el caso dorado §12.13.2), así que el motor lo implementa
+tal cual. Pero **en la mayoría de las mesas sin ocho reyes el Tres es
+simplemente un 3** (por debajo del Cuatro) y el Dos un 2. Si esto fue un
+desliz al congelar el contrato, corregirlo es cambiar una tabla
+(`FUERZA_SIN_OCHO_REYES` en `hand.ts`) y el caso dorado 2, y nada más. El
+valor por defecto es `ochoReyes: true`, así que hoy no afecta a ninguna
+partida.

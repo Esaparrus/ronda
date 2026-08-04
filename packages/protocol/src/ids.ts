@@ -6,8 +6,11 @@ export type RoomCode = string;
 /** Identificador de jugador: uuid v4. */
 export type PlayerId = string;
 
-/** Identificador de partida/juego. Contrato §10.1 (P21/P22): ensanchado para Pocha. */
-export type GameId = 'chinchon' | 'pocha';
+/**
+ * Identificador de partida/juego. Contrato §10.1 (P21/P22): ensanchado para
+ * Pocha; §12.12 (P27/P28): ensanchado para Mus, mismo patrón.
+ */
+export type GameId = 'chinchon' | 'pocha' | 'mus';
 
 /**
  * Identificador de carta. Formato:

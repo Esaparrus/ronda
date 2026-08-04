@@ -118,6 +118,9 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
     if (!module) return;
     const view = module.getPlayerView(state, turn.playerId);
     if (view.kind !== 'player') return;
+    // Mus no tiene bots: envidar y farolear es un problema muy distinto al de
+    // los bots actuales y §12.11 lo deja explícitamente fuera del contrato.
+    if (view.gameId === 'mus') return;
     const action = view.gameId === 'pocha' ? decidePochaAction(view) : decideChinchonAction(view);
     if (!action) return;
     const r = deps.mgr.applyAction({

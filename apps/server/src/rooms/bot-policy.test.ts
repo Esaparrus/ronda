@@ -24,6 +24,7 @@ function baseView(overrides: Partial<PochaPlayerView> = {}): PochaPlayerView {
         connected: true,
         isHost: true,
         eliminated: false,
+        teamIndex: null,
       },
       {
         playerId: 'p1',
@@ -35,6 +36,7 @@ function baseView(overrides: Partial<PochaPlayerView> = {}): PochaPlayerView {
         connected: true,
         isHost: false,
         eliminated: false,
+        teamIndex: null,
       },
       {
         playerId: 'p2',
@@ -46,6 +48,7 @@ function baseView(overrides: Partial<PochaPlayerView> = {}): PochaPlayerView {
         connected: true,
         isHost: false,
         eliminated: false,
+        teamIndex: null,
       },
     ],
     turnPlayerId: 'p2',

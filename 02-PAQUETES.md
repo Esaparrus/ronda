@@ -476,7 +476,7 @@ En este orden, y solo cuando los 4 hitos de `00-MASTER.md` §7 estén cumplidos:
 1. ~~**Segundo juego: Pocha.**~~ **HECHO.** Es el que más pone a prueba la generalidad del motor (apuestas, bazas, rondas de tamaño variable) sin ser tan complejo como el Mus. Al implementarlo se descubre qué hay que sacar a `core/`. **No generalices antes de tenerlo.** Contrato de reglas: `P21` (`01-CONTRATOS.md` §9-§10). Motor: `P22`. Servidor e interfaz entraron juntos, sin número de paquete propio, en el commit «Cablea Pocha (segundo juego) en servidor y web, con modo contra la máquina».
 2. ~~Reacciones rápidas (4 emojis, sin chat libre).~~ **HECHO: `P25`** (`01-CONTRATOS.md` §11.1).
 3. ~~Estadísticas del grupo, guardadas por sala.~~ **HECHO: `P26`** (`01-CONTRATOS.md` §11.2).
-4. Mus (necesita parejas, señas y una capa social muy distinta: es un proyecto en sí mismo). Contrato de reglas congelado: `P27` (`01-CONTRATOS.md` §12), **solo documentación**. Motor, servidor e interfaz siguen sin empezar y necesitan confirmación explícita antes de cada uno: §12.12 lista los cambios de contrato (equipos, marcador por pareja) que arrastran a `/sala`, `/mesa` y a las propias estadísticas de §11.2.
+4. Mus (necesita parejas y una capa social muy distinta: es un proyecto en sí mismo). Contrato de reglas congelado: `P27` (`01-CONTRATOS.md` §12). Motor: `P28`, **hecho**. **Servidor e interfaz siguen sin empezar** y necesitan confirmación explícita antes de cada uno: §12.12 lista los cambios de contrato (equipos, marcador por pareja) que arrastran a `/sala`, `/mesa` y a las propias estadísticas de §11.2, y de eso P28 solo ha hecho la parte del protocolo.
 5. Juego original con roles secretos, que es lo que realmente diferencia la plataforma. **No hay contrato que ejecutar**: es un juego que todavía no existe, y diseñarlo es una decisión de producto de Unai, no de una sesión de implementación.
 6. App nativa con Expo, solo si el playtest demuestra que el juego offline y las notificaciones hacen falta de verdad. **Condicionado a datos de playtest reales** (`00-MASTER.md` §10), que hoy no existen.
 
@@ -509,3 +509,30 @@ Partidas, victorias, rondas y mejor/peor puntuación por jugador, acumuladas en 
 Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9 (Pocha): materiales y variante de ocho reyes, parejas y asientos, estructura en piedras/amarrakos/juegos, fase de mus y descarte, los cuatro lances con sus tablas de fuerza y de pago, sistema de envites y órdago, recuento, señas, abandono, `MusConfig` y tests dorados.
 
 **Lo que NO hace este paquete:** motor, servidor ni interfaz. §12.12 deja escrito por qué el siguiente paso no es mecánico: Mus es el primer juego **por parejas** y rompe el supuesto «un jugador, una puntuación» que comparten Chinchón y Pocha. Antes de empezar el motor hay que cerrar las decisiones marcadas **[DECISIÓN P27, A CONFIRMAR]**: señas, valor del Tres al sumar juego, valor del punto, asignación de parejas y abandono.
+
+---
+
+## P28 · `packages/engine` — motor de Mus (roadmap «Después del MVP» §4) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §3 (requisitos del motor), §12 completo (reglas), §12.12 (cambios de contrato), §12.13 (tests dorados), §12.14 (lo que este paquete encontró).
+
+**Alcance:** SOLO el motor y el ensanchado de protocolo que necesita. Servidor e interfaz de Mus **no** entran aquí.
+
+**Decisiones cerradas antes de empezar** (las seis que §12 dejaba marcadas como `[DECISIÓN P27, A CONFIRMAR]`):
+
+| # | Decisión | Resultado |
+|---|----------|-----------|
+| 1 | Parejas | Las asigna el anfitrión moviendo asientos; el motor las deriva de `seat % 2`. |
+| 2 | Rondas de mus | Sin límite; si falta mazo se barajan los descartes. |
+| 3 | `ochoReyes` al sumar juego | **No interviene.** Sota, Rey y Caballo cuentan 10 y el resto su número, siempre. La variante solo cambia Grande, Chica y qué cartas hacen pareja. |
+| 4 | Valor del punto | 1 piedra, con `config.puntoVale` para las mesas que lo pagan a 2. |
+| 5 | Señas | **Opción A: sin señas.** El motor no abre ningún canal entre compañeros. |
+| 6 | Abandono | La partida se anula y no cuenta en §11.2; suspenderla es cosa de `apps/server`, como en los otros dos juegos. |
+
+**Entregado en `@ronda/protocol`:** `GameId` += `'mus'`; `MusConfigSchema`/`MusConfig`/`DEFAULT_MUS_CONFIG` en la unión discriminada; 10 acciones nuevas (`mus`, `noMus`, `descartar`, `paso`, `envidar`, `querer`, `noQuerer`, `ordago`, `declararPares`, `declararJuego`); 7 códigos de error nuevos con su texto en `messages.ts`; 11 eventos cosméticos de Mus; y el cambio de fondo de §12.12 — `PublicPlayer.teamIndex` (nullable, ver §12.14.3) y las vistas `MusCommonView`/`MusPlayerView`/`MusTableView` con `teams: MusTeam[]` y `winnerTeamIndex`.
+
+**Entregado en `@ronda/engine`:** `packages/engine/src/games/mus/` — `deck.ts` (reutiliza la baraja de 40 de Pocha), `hand.ts` (fuerza con y sin ocho reyes, grande, chica, pares, juego, punto), `state.ts`, `reducer.ts` (fase de mus, descarte, declaraciones, los cuatro lances con envites y órdago), `recuento.ts` (§12.9 con el corte a 40) y `views.ts`. `musModule` registrado en `GAMES`.
+
+**Tests:** `packages/engine/src/games/mus/mus.test.ts`, 53 casos — los 9 dorados de §12.13 uno a uno, más fase de mus/descarte, declaraciones, envites, parejas y juegos (vaca), determinismo, serializabilidad y censura de vistas.
+
+**Lo que NO hace este paquete:** servidor, interfaz y bots. Los bots quedan explícitamente fuera por §12.11 (envidar y farolear es otro problema), y `bot-driver.ts` los desactiva para `gameId === 'mus'`. Para poder jugar una partida de Mus de principio a fin faltan todavía la clasificación por parejas en `/sala` y `/mesa` (P16) y las estadísticas de §11.2, que siguen contando `wins` por jugador.

@@ -25,6 +25,24 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   // simplemente no las acepta. ---
   z.object({ type: z.literal('bid'), amount: z.number().int() }),
   z.object({ type: z.literal('playCard'), cardId: cardIdField }),
+  // --- Mus (§12.12, P27/P28). De las acciones de arriba solo `nextRound` se
+  // reutiliza (confirmar el fin de mano); el resto es vocabulario de Chinchón
+  // o de Pocha y `applyAction` de Mus no las acepta. ---
+  z.object({ type: z.literal('mus') }),
+  z.object({ type: z.literal('noMus') }),
+  z.object({ type: z.literal('descartar'), cardIds: z.array(cardIdField) }),
+  // GAP DE §12.12 (encontrado en P28): la lista de acciones nuevas del
+  // contrato omite `paso`, pero §12.7 lo describe como la primera fila de la
+  // tabla de envites y sin él no se puede ceder la palabra. Se añade aquí y
+  // se declara explícitamente en vez de colarlo en silencio, igual que P22
+  // hizo con el gap de vistas de §10.
+  z.object({ type: z.literal('paso') }),
+  z.object({ type: z.literal('envidar'), piedras: z.number().int() }),
+  z.object({ type: z.literal('querer') }),
+  z.object({ type: z.literal('noQuerer') }),
+  z.object({ type: z.literal('ordago') }),
+  z.object({ type: z.literal('declararPares'), tiene: z.boolean() }),
+  z.object({ type: z.literal('declararJuego'), tiene: z.boolean() }),
 ]);
 
 export type GameAction = z.infer<typeof GameActionSchema>;

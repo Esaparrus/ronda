@@ -13,6 +13,7 @@ function player(overrides: Partial<PublicPlayer>): PublicPlayer {
     connected: true,
     isHost: true,
     eliminated: false,
+    teamIndex: null,
     ...overrides,
   };
 }

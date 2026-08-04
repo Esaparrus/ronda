@@ -36,6 +36,7 @@ function buildPublicPlayers(state: PochaState): PublicPlayer[] {
     connected: true, // el servidor (RoomManager) sobreescribe al difundir, igual que Chinchón
     isHost: p.seat === 0,
     eliminated: false, // Pocha no elimina a mitad de partida (§9.8)
+    teamIndex: null, // Pocha no tiene parejas (§12.12, P28)
   }));
 }
 

@@ -38,6 +38,7 @@ function buildPublicPlayers(state: ChinchonState): PublicPlayer[] {
     connected: true,
     isHost: p.seat === 0,
     eliminated: p.eliminated,
+    teamIndex: null, // Chinchón no tiene parejas (§12.12, P28)
   }));
 }
 

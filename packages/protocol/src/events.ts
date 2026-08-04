@@ -30,6 +30,24 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('bid'), playerId: z.string(), amount: z.number().int() }),
   z.object({ t: z.literal('cardPlayed'), playerId: z.string(), cardId: z.string() }),
   z.object({ t: z.literal('trickWon'), playerId: z.string(), cards: z.array(z.string()) }),
+  // --- Mus (§12.12, P27/P28). `dealt` (arriba) se reutiliza tal cual al
+  // repartir cada mano; el resto es exclusivo de Mus. Como todo GameEvent,
+  // son COSMÉTICOS: `descarte` dice cuántas cartas, nunca cuáles, porque las
+  // del rival son privadas. ---
+  z.object({ t: z.literal('musSaid'), playerId: z.string(), mus: z.boolean() }),
+  z.object({ t: z.literal('descarte'), playerId: z.string(), count: z.number().int() }),
+  z.object({ t: z.literal('lanceStarted'), lance: z.string() }),
+  z.object({ t: z.literal('declaracion'), playerId: z.string(), lance: z.string(), tiene: z.boolean() }),
+  z.object({ t: z.literal('envido'), playerId: z.string(), piedras: z.number().int() }),
+  z.object({ t: z.literal('querido'), playerId: z.string() }),
+  z.object({ t: z.literal('noQuerido'), playerId: z.string() }),
+  z.object({ t: z.literal('ordago'), playerId: z.string() }),
+  // Piedras de cada pareja tras el recuento, indexadas por teamIndex.
+  z.object({ t: z.literal('handScored'), piedras: z.array(z.number().int()) }),
+  z.object({ t: z.literal('juegoWon'), teamIndex: z.number().int() }),
+  // Equivalente por parejas de `gameOver`: en Mus gana un equipo, no un
+  // jugador, y `winnerId` no sirve (§12.12).
+  z.object({ t: z.literal('gameOverTeam'), teamIndex: z.number().int() }),
 ]);
 
 export type GameEvent = z.infer<typeof GameEventSchema>;

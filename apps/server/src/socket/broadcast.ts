@@ -41,6 +41,10 @@ function buildLobbyPlayers(room: Room): PublicPlayer[] {
     connected: p.connected,
     isHost: p.isHost,
     eliminated: false,
+    // El lobby es común a todos los juegos y todavía no sabe de parejas: en
+    // Mus las asigna el anfitrión moviendo asientos (§12.2) y el motor las
+    // deriva del asiento al empezar la partida.
+    teamIndex: null,
   }));
 }
 

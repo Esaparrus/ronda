@@ -67,17 +67,37 @@ export const PochaConfigSchema = CommonGameConfigSchema.extend({
 
 export type PochaConfig = z.infer<typeof PochaConfigSchema>;
 
+// --- Mus (§12.12, P27/P28) ---------------------------------------------------
+
+/** Nº de jugadores de Mus: exactamente 4, ni uno más ni uno menos (§12.2). */
+const MUS_MAX_PLAYERS = z.literal(4);
+/** Juegos ("vaca") que hay que ganar para llevarse la partida (§12.3). */
+const MUS_JUEGOS = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+/** Piedras que paga el lance del punto cuando nadie tiene juego (§12.6 bis). */
+const PUNTO_VALE = z.union([z.literal(1), z.literal(2)]);
+
+export const MusConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('mus' satisfies GameId).default('mus'),
+  maxPlayers: MUS_MAX_PLAYERS.default(4),
+  ochoReyes: z.boolean().default(true),
+  juegos: MUS_JUEGOS.default(1),
+  puntoVale: PUNTO_VALE.default(1),
+});
+
+export type MusConfig = z.infer<typeof MusConfigSchema>;
+
 // --- Unión discriminada ------------------------------------------------------
 
 /**
  * Config válida para cualquier juego. Unión discriminada por `gameId`
  * (§10.2). Antes de P22 era, en la práctica, un alias de `ChinchonConfig`.
  */
-export type GameConfig = ChinchonConfig | PochaConfig;
+export type GameConfig = ChinchonConfig | PochaConfig | MusConfig;
 
 export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ChinchonConfigSchema,
   PochaConfigSchema,
+  MusConfigSchema,
 ]);
 
 /**
@@ -92,3 +112,6 @@ export const DEFAULT_CONFIG: ChinchonConfig = ChinchonConfigSchema.parse({});
 
 /** Config de Pocha por defecto, mismo patrón que `DEFAULT_CONFIG` de arriba. */
 export const DEFAULT_POCHA_CONFIG: PochaConfig = PochaConfigSchema.parse({});
+
+/** Config de Mus por defecto, mismo patrón que `DEFAULT_CONFIG` de arriba. */
+export const DEFAULT_MUS_CONFIG: MusConfig = MusConfigSchema.parse({});
