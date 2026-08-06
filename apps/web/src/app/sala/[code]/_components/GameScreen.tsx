@@ -17,13 +17,12 @@ import { useState } from 'react';
 import type { CardId, ChinchonPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { CommonArea } from './CommonArea';
+import type { DropTarget } from './CommonArea';
 import { Hand } from './Hand';
 import { ActionBar } from './ActionBar';
 import { TableHeader } from './TableHeader';
 import { TableSeat, orderAroundMe } from './TableSeat';
 import { BarTable } from '@/components/ui/BarTable';
-import { Sheet } from '@/components/ui/Sheet';
-import { Button } from '@/components/ui/Button';
 
 // Huecos de garbanzo bajo cada asiento. En Chinchón el garbanzo cuenta lo
 // que te ACERCA a quedarte fuera: los puntos acumulados, medidos contra
@@ -50,7 +49,7 @@ export function GameScreen({ view }: GameScreenProps) {
   // jugador confirme: cerrar (o chinchón) termina la ronda/partida, así que
   // no se dispara solo porque la carta lo permita -- puede preferir seguir
   // jugando para buscar una jugada mejor (0 puntos, chinchón...).
-  const [pendingCloseCardId, setPendingCloseCardId] = useState<CardId | null>(null);
+  const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
 
   const { me } = view;
   const myPlayer = view.players.find((p) => p.playerId === me.playerId);
@@ -81,32 +80,20 @@ export function GameScreen({ view }: GameScreenProps) {
   // jugador, porque cerrar es irreversible (termina la ronda o, si es
   // chinchón, la partida entera) y quizá prefiera seguir buscando mejor
   // jugada.
-  function handleCommit(cardId: CardId) {
+  function handleCommit(cardId: CardId, target: DropTarget) {
     setSelected(null);
     if (!isMyTurn || view.turnPhase !== 'discard') return;
-    const willClose = me.canClose && me.closableDiscards.includes(cardId);
-    if (willClose) {
-      setPendingCloseCardId(cardId);
+    if (target === 'close') {
+      if (!me.closableDiscards.includes(cardId)) return;
+      void useRondaStore.getState().sendAction({ type: 'close', cardId });
       return;
     }
     void useRondaStore.getState().sendAction({ type: 'discard', cardId });
   }
 
-  function handleConfirmClose() {
-    if (!pendingCloseCardId) return;
-    void useRondaStore.getState().sendAction({ type: 'close', cardId: pendingCloseCardId });
-    setPendingCloseCardId(null);
-  }
-
   // "Seguir jugando": la misma carta se descarta normal, sin cerrar -- la
   // ronda continúa y la carta que cerraba se queda disponible por si
   // aparece una jugada mejor más adelante.
-  function handleDiscardInstead() {
-    if (!pendingCloseCardId) return;
-    void useRondaStore.getState().sendAction({ type: 'discard', cardId: pendingCloseCardId });
-    setPendingCloseCardId(null);
-  }
-
   const canDrawDeck =
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDeck');
   const canDrawDiscard =
@@ -144,6 +131,9 @@ export function GameScreen({ view }: GameScreenProps) {
             discardCount={view.discardCount}
             onDrawDeck={canDrawDeck ? handleDrawDeck : undefined}
             onDrawDiscard={canDrawDiscard ? handleDrawDiscard : undefined}
+            showDropTargets={isMyTurn && view.turnPhase === 'discard'}
+            activeDropTarget={activeDropTarget}
+            canClose={me.canClose}
           />
         </BarTable>
 
@@ -169,6 +159,8 @@ export function GameScreen({ view }: GameScreenProps) {
           selected={selected}
           onSelect={handleSelect}
           onCommit={handleCommit}
+          onDropTargetChange={setActiveDropTarget}
+          closableDiscards={me.closableDiscards}
           myColorIndex={myColorIndex}
         />
 
@@ -181,23 +173,6 @@ export function GameScreen({ view }: GameScreenProps) {
         />
       </div>
 
-      <Sheet open={pendingCloseCardId !== null} onClose={() => setPendingCloseCardId(null)}>
-        <div className="flex flex-col gap-4">
-          <p className="text-16 text-hueso">Esa carta te permite cerrar la ronda.</p>
-          <p className="text-14 text-humo">
-            Si cierras, la ronda termina ahora mismo. Si prefieres seguir jugando, puedes descartarla
-            sin cerrar y buscar una jugada mejor.
-          </p>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={handleDiscardInstead} className="flex-1">
-              Seguir jugando
-            </Button>
-            <Button variant="primary" onClick={handleConfirmClose} className="flex-1">
-              Cerrar ronda
-            </Button>
-          </div>
-        </div>
-      </Sheet>
     </div>
   );
 }

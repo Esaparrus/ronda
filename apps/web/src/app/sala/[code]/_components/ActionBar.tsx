@@ -51,7 +51,9 @@ export function ActionBar({
   }, [isMyTurn, turnPlayerConnected]);
 
   const myTurnHint =
-    turnPhase === 'draw' ? 'Toca el mazo o el descarte para robar.' : 'Toca dos veces una carta, o arrástrala arriba, para descartar.';
+    turnPhase === 'draw'
+      ? 'Toca el mazo o el descarte para robar.'
+      : 'Arrastra una carta a Descartar o a Cerrar ronda.';
 
   // Anuncio de cambio de turno para lectores de pantalla (contrato P18:
   // "aria-live para el cambio de turno"). Región siempre presente y visible

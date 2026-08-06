@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
 import { useRondaStore } from '@/lib/store';
 import { pointsFor } from '@/lib/cardPoints';
+import type { DropTarget } from './CommonArea';
 
 export interface HandProps {
   hand: CardId[];
@@ -42,7 +43,9 @@ export interface HandProps {
   /** Primer toque sobre una carta no seleccionada: la selecciona. */
   onSelect: (cardId: CardId) => void;
   /** Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la mesa: descarta (GameScreen.tsx decide si además pregunta por el cierre). */
-  onCommit: (cardId: CardId) => void;
+  onCommit: (cardId: CardId, target: DropTarget) => void;
+  onDropTargetChange: (target: DropTarget | null) => void;
+  closableDiscards: CardId[];
   myColorIndex: 0 | 1 | 2 | 3;
 }
 
@@ -54,7 +57,6 @@ const MIN_CARD_WIDTH = 48;
 const MAX_CARD_WIDTH = 112;
 const CARD_ASPECT = 108 / 72; // alto/ancho del viewBox de PlayingCard (2:3)
 const TAP_THRESHOLD_PX = 6;
-const DISCARD_DRAG_THRESHOLD_PX = 56;
 
 interface DragState {
   cardId: CardId;
@@ -63,7 +65,7 @@ interface DragState {
   startClientY: number;
   startIndex: number;
   moved: boolean;
-  discarding: boolean;
+  dropTarget: DropTarget | null;
 }
 
 function meldedSet(bestMelds: CardId[][]): Set<CardId> {
@@ -77,6 +79,8 @@ export function Hand({
   selected,
   onSelect,
   onCommit,
+  onDropTargetChange,
+  closableDiscards,
   myColorIndex,
 }: HandProps) {
   const [order, setOrder] = useState<CardId[]>(hand);
@@ -130,8 +134,18 @@ export function Hand({
       startClientY: e.clientY,
       startIndex: index,
       moved: false,
-      discarding: false,
+      dropTarget: null,
     };
+    onDropTargetChange(null);
+  }
+
+  function findDropTarget(clientX: number, clientY: number, cardId: CardId): DropTarget | null {
+    const element = document.elementFromPoint(clientX, clientY);
+    const zone = element?.closest<HTMLElement>('[data-drop-target]');
+    const target = zone?.dataset.dropTarget;
+    if (target === 'discard') return 'discard';
+    if (target === 'close' && closableDiscards.includes(cardId)) return 'close';
+    return null;
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -143,13 +157,15 @@ export function Hand({
     const deltaY = e.clientY - drag.startClientY;
     if (Math.abs(deltaX) > TAP_THRESHOLD_PX || Math.abs(deltaY) > TAP_THRESHOLD_PX) drag.moved = true;
 
-    // Arrastre hacia arriba, hacia la mesa: "lanza" la carta al descarte.
-    // Prevalece sobre el reordenamiento horizontal en cuanto cruza el umbral.
-    drag.discarding = deltaY < -DISCARD_DRAG_THRESHOLD_PX;
+    const dropTarget = findDropTarget(e.clientX, e.clientY, drag.cardId);
+    drag.dropTarget = dropTarget;
+    onDropTargetChange(dropTarget);
     setDraggingCardId(drag.cardId);
-    setDragLift(drag.discarding ? deltaY : Math.min(0, deltaY / 3));
+    setDragLift(dropTarget ? Math.min(-24, deltaY / 2) : Math.min(0, deltaY / 3));
 
-    if (drag.discarding) return;
+    // Mientras la carta estÃ¡ sobre un cajÃ³n, el destino explÃ­cito manda
+    // sobre el arrastre horizontal de reordenaciÃ³n.
+    if (dropTarget) return;
 
     const currentIndex = order.indexOf(drag.cardId);
     if (currentIndex === -1) return;
@@ -171,21 +187,23 @@ export function Hand({
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragState.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const dropTarget = findDropTarget(e.clientX, e.clientY, drag.cardId) ?? drag.dropTarget;
     dragState.current = null;
     setDraggingCardId(null);
     setDragLift(0);
-    if (!drag || e.pointerId !== drag.pointerId) return;
+    onDropTargetChange(null);
 
     if (!drag.moved) {
       // Toque simple: la primera vez selecciona; si ya estaba seleccionada,
-      // la segunda vez descarta (o cierra).
-      if (drag.cardId === selected) onCommit(drag.cardId);
+      // la segunda vez hace un descarte normal, nunca un cierre accidental.
+      if (drag.cardId === selected) onCommit(drag.cardId, 'discard');
       else onSelect(drag.cardId);
       return;
     }
 
-    if (drag.discarding) {
-      onCommit(drag.cardId);
+    if (dropTarget) {
+      onCommit(drag.cardId, dropTarget);
       return;
     }
 
