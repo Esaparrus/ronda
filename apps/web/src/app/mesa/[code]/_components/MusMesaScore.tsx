@@ -5,6 +5,7 @@
 // Vista siempre pública: piedras, amarrakos y juegos son de la pareja y los
 // ve todo el mundo. Aquí no llega nada privado.
 import type { MusTeam } from '@ronda/protocol';
+import { Garbanzos } from '@/components/ui/Garbanzos';
 
 const PIEDRAS_POR_AMARRAKO = 5;
 const AMARRAKOS_POR_JUEGO = 8;
@@ -27,13 +28,15 @@ export function MusMesaScore({ teams, juegosParaGanar }: MusMesaScoreProps) {
             <span className="font-mono text-[clamp(2rem,4.5vw,3.5rem)] text-hueso">
               {team.piedras}
             </span>
-            <div className="flex items-center gap-1" aria-hidden="true">
-              {Array.from({ length: AMARRAKOS_POR_JUEGO }, (_, i) => (
-                <span
-                  key={i}
-                  className={`h-3 w-3 rounded-full ${i < team.amarrakos ? 'bg-brasa' : 'bg-linea'}`}
-                />
-              ))}
+            {/* A tamaño de tele el garbanzo se escala con `scale`: sus
+             * medidas son fijas (11x8) porque una legumbre tiene la
+             * proporción que tiene, y estirarla la convertiría en pastilla. */}
+            <div className="scale-[1.6] py-1">
+              <Garbanzos
+                count={team.amarrakos}
+                total={AMARRAKOS_POR_JUEGO}
+                label={`Amarrakos de la pareja ${team.index === 0 ? 'A' : 'B'}`}
+              />
             </div>
             <span className="text-[clamp(0.8rem,1.2vw,1rem)] text-humo">
               {team.amarrakos} {team.amarrakos === 1 ? 'amarrako' : 'amarrakos'}

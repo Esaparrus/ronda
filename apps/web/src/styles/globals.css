@@ -5,25 +5,53 @@
  * mapeados a utilidades de Tailwind con @theme (bg-mesa, text-hueso,
  * border-linea, text-brasa...).
  *
- * Concepto (§8): no es un casino. Es una mesa de bar con una baraja bien
- * impresa: tinta densa, papel hueso, colores planos, geometría. Nada de verde
- * tapete ni dorado de casino.
+ * Concepto (§8, reescrito en P32): un bar de barrio español. Madera oscura con
+ * veta, latón gastado, hule y tapete verde de mesa camilla, y los tantos
+ * contados con garbanzos. La regla que había aquí antes —«nada de verde tapete
+ * ni dorado de casino»— la revoca P32 por decisión de Unai: lo que se
+ * descartaba era el CASINO, y una mesa de bar con su tapete no lo es. Lo que
+ * sigue prohibido es el brillo de casino: nada de neón, nada de dorado
+ * metálico, nada de fieltro saturado.
  */
 @import 'tailwindcss';
 
 @theme {
-  /* --- Colores (contrato §8.1) ------------------------------------------- */
-  --color-tinta: #14161f; /* fondo general */
-  --color-mesa: #1e2130; /* superficies, tarjetas de interfaz */
-  --color-linea: #2e3346; /* bordes */
-  --color-hueso: #ede6d8; /* texto principal y cara de las cartas */
-  --color-humo: #9aa0b5; /* texto secundario */
-  --color-brasa: #d4462f; /* acción principal y palo de copas */
-  --color-oro: #c79a3b; /* palo de oros */
-  --color-azul: #3e6ea8; /* palo de espadas */
-  --color-verde: #2f6f5e; /* palo de bastos */
-  --color-violeta: #6d5a9e; /* asiento 5 (Pocha, hasta 6 jugadores) */
-  --color-rosa: #b8567e; /* asiento 6 (Pocha, hasta 6 jugadores) */
+  /* --- Colores (contrato §8.1, paleta de bar reescrita en P32) ----------- */
+  --color-tinta: #241509; /* fondo general: madera oscura */
+  --color-veta: #2a180c; /* segunda banda de la veta de la madera */
+  --color-mesa: #3b2417; /* superficies, tarjetas de interfaz */
+  --color-linea: #5a4530; /* bordes */
+  --color-hueso: #efe3c8; /* texto principal y cara de las cartas */
+  --color-humo: #b8a688; /* texto secundario */
+  --color-brasa: #8c2f22; /* acción principal */
+  --color-oro: #c9982e; /* latón: acento, bordes vivos, foco */
+  --color-teja: #a33b2a; /* asiento 1 */
+  --color-verde: #3f6b4f; /* asiento 2 (verde botella) */
+  --color-azul: #5b6b7a; /* asiento 4 (gris pizarra) */
+  --color-violeta: #7a5a8c; /* asiento 5 (Pocha, hasta 6 jugadores) */
+  --color-rosa: #9c4f5e; /* asiento 6 (Pocha, hasta 6 jugadores) */
+
+  /* --- Mesa de bar (P32) -------------------------------------------------
+   * La mesa es un mueble, no un rectángulo de color: tablero de madera con
+   * veta, cuatro tachuelas de latón en las esquinas y un tapete verde
+   * hundido con su filete rojo. Los tonos van aquí y no en el componente
+   * porque la regla de ESLint prohíbe literales de color fuera de este
+   * fichero. */
+  --table-wood-a: #6b4726; /* canto iluminado del tablero */
+  --table-wood-b: #4a2f18;
+  --table-wood-c: #3b2417; /* canto en sombra */
+  --table-felt-a: #335640; /* tapete, centro */
+  --table-felt-b: #213a2c; /* tapete, borde */
+  --table-edge: #7a2a20; /* filete rojo del tapete y marcas de palo */
+  --table-stud-a: #e0b85a; /* tachuela de latón, brillo */
+  --table-stud-b: #8a6a2a; /* tachuela de latón, sombra */
+
+  /* Garbanzo: los tantos se cuentan con legumbre, como en la mesa de al
+   * lado. Tres paradas porque una legumbre tiene brillo, cuerpo y sombra;
+   * con dos parece una pastilla. */
+  --garbanzo-a: #f2e3b8;
+  --garbanzo-b: #c9a868;
+  --garbanzo-c: #9c7e48;
 
   /* --- Colores de la carta (recreación RondaCard, claude.ai/design) ------
    * Paleta propia de la CARA de la carta: más saturada que la de la interfaz
@@ -36,13 +64,15 @@
   --card-copas: #e14b3b;
   --card-espadas: #3e7bc4;
   --card-bastos: #3c9068;
-  --card-joker: #b9c0d6; /* adornos de esquina del comodín */
   --card-back-gold: #f2c25a; /* borde y acentos del dorso */
   --card-back-a: #2b2140; /* trama diagonal del dorso, tono 1 */
   --card-back-b: #372a52; /* trama diagonal del dorso, tono 2 */
 
-  /* --- Tipografías (contrato §8.2), vía next/font/google en layout.tsx --- */
-  --font-display: var(--font-familjen-grotesk), ui-sans-serif, system-ui, sans-serif;
+  /* --- Tipografías (contrato §8.2, display reescrito en P32) -------------
+   * Domine en vez de Familjen Grotesk: una serif de peso alto lee como el
+   * rótulo pintado de un bar, y la grotesca leía como una app. El cuerpo y
+   * los datos no cambian. */
+  --font-display: var(--font-domine), ui-serif, Georgia, serif;
   --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, monospace;
 
@@ -60,14 +90,15 @@
   --leading-body: 1.5;
 }
 
-/* Colores de asiento (colorIndex 0..3), contrato §8.1: brasa, azul, verde, oro.
- * Asientos 4 y 5 (§10.7, hasta 6 jugadores en Pocha): violeta y rosa, fuera
- * de la paleta de palos para no confundir asiento con palo en pantalla. */
+/* Colores de asiento (colorIndex 0..3), contrato §8.1: teja, verde botella,
+ * latón, pizarra. Asientos 4 y 5 (§10.7, hasta 6 jugadores en Pocha):
+ * berenjena y vino. Ninguno coincide con --color-brasa: la acción principal
+ * no puede confundirse con un asiento. */
 :root {
-  --seat-0: var(--color-brasa);
-  --seat-1: var(--color-azul);
-  --seat-2: var(--color-verde);
-  --seat-3: var(--color-oro);
+  --seat-0: var(--color-teja);
+  --seat-1: var(--color-verde);
+  --seat-2: var(--color-oro);
+  --seat-3: var(--color-azul);
   --seat-4: var(--color-violeta);
   --seat-5: var(--color-rosa);
 
@@ -79,8 +110,22 @@ body {
   height: 100%;
 }
 
+/* El fondo es la propia madera de la mesa: una veta de 6px (P32). El
+ * `background-attachment: fixed` evita que la veta se mueva al hacer scroll,
+ * que es lo que la delataría como rayas en vez de como madera. */
 body {
   background-color: var(--color-tinta);
+  background-image: radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in srgb, var(--color-oro) 8%, transparent),
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      180deg,
+      var(--color-tinta) 0 3px,
+      var(--color-veta) 3px 6px
+    );
+  background-attachment: fixed;
   color: var(--color-hueso);
   font-family: var(--font-sans);
   line-height: var(--leading-body);
@@ -88,10 +133,64 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Foco de teclado siempre visible (contrato §8.5.6). */
+/* Foco de teclado siempre visible (contrato §8.5.6). Va en latón y no en
+ * brasa desde P32: sobre madera oscura el rojo apagado no se despega y el
+ * latón sí. */
 :focus-visible {
-  outline: 2px solid var(--color-brasa);
+  outline: 2px solid var(--color-oro);
   outline-offset: 2px;
+}
+
+/* --- Mueble de la mesa (P32) ---------------------------------------------
+ * Tres capas apiladas, como el mueble de verdad: tablero de madera, filete
+ * rojo y tapete hundido. Están aquí y no en el componente porque son
+ * degradados con literales de color, que solo pueden vivir en este fichero.
+ */
+.bar-table {
+  background: linear-gradient(
+    155deg,
+    var(--table-wood-a),
+    var(--table-wood-b) 55%,
+    var(--table-wood-c)
+  );
+  box-shadow:
+    inset 0 2px 4px rgb(255 255 255 / 0.08),
+    inset 0 -6px 10px rgb(0 0 0 / 0.5),
+    0 10px 26px rgb(0 0 0 / 0.45);
+}
+
+.bar-felt {
+  background: radial-gradient(ellipse at 50% 35%, var(--table-felt-a), var(--table-felt-b) 75%);
+  border: 2px dashed color-mix(in srgb, var(--table-edge) 40%, transparent);
+  box-shadow:
+    inset 0 3px 10px rgb(0 0 0 / 0.35),
+    0 4px 10px rgb(0 0 0 / 0.35);
+}
+
+/* Tachuela de latón de una esquina del tablero. */
+.bar-stud {
+  background: radial-gradient(circle at 35% 30%, var(--table-stud-a), var(--table-stud-b));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+/* Un garbanzo. No es redondo: es más ancho que alto y con el pico abajo, o
+ * parece una ficha de casino, que es justo lo que no queremos. */
+.garbanzo {
+  border-radius: 60% 60% 55% 55%;
+  background: radial-gradient(
+    ellipse at 35% 30%,
+    var(--garbanzo-a),
+    var(--garbanzo-b) 70%,
+    var(--garbanzo-c)
+  );
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.4);
+}
+
+/* Hueco de garbanzo aún sin ganar: la sombra del que falta. */
+.garbanzo-vacio {
+  border-radius: 60% 60% 55% 55%;
+  background: color-mix(in srgb, var(--color-tinta) 70%, transparent);
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.5);
 }
 
 /* Lanzamiento de la carta al descarte (contrato §8.4: 180ms). La rotación

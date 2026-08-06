@@ -1,6 +1,12 @@
 // Pantalla de partida de Pocha. Mismo esqueleto vertical que GameScreen.tsx
-// (Chinchón): fila de jugadores, zona común, mano, barra de acción -- pero
-// con cantes y bazas en vez de mazo/descarte/combinaciones.
+// (Chinchón): fila de jugadores, la mesa, mano, barra de acción -- pero con
+// cantes y bazas en vez de mazo/descarte/combinaciones.
+//
+// P32: Pocha se queda con <PlayerStrip> y <PochaBidRow> donde Chinchón y Mus
+// pasan a sentar a la gente en el borde de la mesa. No es un olvido: Pocha
+// admite SEIS jugadores (§10.7) y cinco asientos de 72px no caben en el
+// borde de arriba de un móvil sin partirse en dos filas. La mesa de bar sí
+// entra: el tapete de <BarTable> es donde se juega la baza.
 'use client';
 
 import type { PochaPlayerView } from '@ronda/protocol';
@@ -11,6 +17,8 @@ import { PochaTrickArea } from './PochaTrickArea';
 import { PochaHand } from './PochaHand';
 import { PochaBidPicker } from './PochaBidPicker';
 import { PochaActionBar } from './PochaActionBar';
+import { TableHeader } from './TableHeader';
+import { BarTable } from '@/components/ui/BarTable';
 
 export interface PochaGameScreenProps {
   view: PochaPlayerView;
@@ -41,16 +49,25 @@ export function PochaGameScreen({ view }: PochaGameScreenProps) {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <TableHeader
+        left={`Ronda ${view.round} · ${view.roundSize}`}
+        turnNick={turnPlayer?.nick ?? null}
+      />
+
       <PlayerStrip players={view.players} turnPlayerId={view.turnPlayerId} myPlayerId={me.playerId} />
       <PochaBidRow players={view.players} bids={view.bids} tricksWon={view.tricksWon} />
 
-      <PochaTrickArea
-        trumpCardId={view.trumpCardId}
-        currentTrick={view.currentTrick}
-        players={view.players}
-      />
+      <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-2">
+        <BarTable>
+          <PochaTrickArea
+            trumpCardId={view.trumpCardId}
+            currentTrick={view.currentTrick}
+            players={view.players}
+          />
+        </BarTable>
+      </div>
 
-      <div className="mt-auto flex flex-col">
+      <div className="flex flex-col">
         <PochaHand hand={me.hand} legalCardIds={me.legalCardIds} canPlay={canPlay} onPlay={handlePlay} />
 
         <PochaActionBar

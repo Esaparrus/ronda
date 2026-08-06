@@ -612,3 +612,37 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 **Rendimiento del resolver, de propina.** El test de §5.10 («10.000 `solveHand` en menos de 2 s») llevaba tiempo en rojo: 4,1 s antes de este paquete. Medido, el 81 % del tiempo se iba en `enumerateMelds`, que probaba las 4 × 10 × 8 combinaciones de (palo, inicio, longitud) buscando cada carta en un `Map` con clave de texto — unas 3.200 búsquedas con `${suit}-${pos}` por mano. Ahora la mano se resume en una máscara de 10 bits por palo y las escaleras salen recorriendo los tramos de bits seguidos, sin construir ni una cadena y tocando solo lo que el jugador tiene. Con eso el resolver va **11 veces más rápido** (10.000 manos: 7,8 s → 0,68 s en el banco; el test pasa en ~0,8 s). El test de propiedad de 5.000 manos es lo que garantiza que la reescritura no cambió ninguna respuesta.
 
 **Efecto de reglas que conviene tener presente en el playtest:** con 40 cartas y 4 jugadores quedan 11 en el mazo tras el reparto, frente a 21 antes. Se llega mucho antes al rebarajado del descarte de §5.3, y las partidas de 4 son más cortas y más secas.
+
+---
+
+## P32 · La mesa de bar: paleta, mueble y garbanzos — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §8 completo (reescrito por este paquete: §8.1, §8.2, §8.3, §8.4 y el §8.6 nuevo). Va encima de `P31`.
+
+**De dónde sale.** Del proyecto `Ronda mobile app UI design` de claude.ai/design, fichero `Ronda.dc.html`, importado con el MCP de diseño. No es una interpretación de un encargo hablado: es un diseño concreto, con sus medidas y sus hexadecimales, y este paquete lo implementa.
+
+**La decisión, y de quién es.** «Que la mesa se vea así pero en vertical, una mesa de bar de España antigua, y que las fichas sean garbanzos»: Unai. Choca de frente con una línea del §8 que estaba congelada —«nada de verde tapete ni dorado de casino»—, así que queda anotado ahí en vez de reescrito por lo bajo. La lectura que se adopta: lo que se descartaba era el **casino** (neón, dorado metálico, fieltro saturado, mesa ovalada), no el mueble. Una mesa de bar con su tapete no es una mesa de casino.
+
+**Entregado — la piel.** Paleta entera nueva en `globals.css` y su espejo en `lib/tokens.ts`: madera (`--tinta` #241509, `--veta`), superficies (`--mesa` #3B2417), latón (`--oro` #C9982E) y una acción principal más apagada (`--brasa` #8C2F22). El fondo de la página deja de ser un color plano y pasa a ser la veta de la madera, con `background-attachment: fixed` para que no se lea como rayas al hacer scroll. Los seis colores de asiento se rehacen (teja, verde botella, latón, pizarra, berenjena, vino) y **ninguno vuelve a ser `--brasa`**: antes el asiento 0 y el botón de acción eran el mismo rojo. El foco de teclado pasa de brasa a latón porque sobre madera oscura el rojo apagado no se despega. Display: `Domine` en vez de `Familjen Grotesk`.
+
+**Entregado — el mueble.** `BarTable` (tablero de madera 340×262, cuatro tachuelas de latón, tapete verde hundido con filete rojo y un palo español marcado en cada esquina) y `Garbanzos` (fila de legumbre, con huecos vacíos para lo que falta). Cuadrada y no ovalada a propósito, ver §8.6. Los degradados viven en `globals.css` como `.bar-table` / `.bar-felt` / `.bar-stud` / `.garbanzo`, porque la regla de ESLint de P10 prohíbe literales de color en los componentes y no había razón para hacerle una excepción.
+
+**Entregado — las pantallas.** `TableSeat` + `orderAroundMe()` sientan a la gente alrededor de la mesa en vertical: tú abajo en una chapa con la marca «TÚ», los demás arriba en el orden en que te llega el turno. Chinchón (`GameScreen`) y Mus (`MusGameScreen`) se remaquetan enteros sobre eso; `CommonArea` y el texto de lance de Mus pasan a ser el contenido del tapete, y las cartas de mesa bajan de tamaño para caber en él. `TableHeader` recoge lo único que quedaba de la banda de jugadores: de quién es el turno.
+
+**Lo que este paquete se lleva por delante, y por qué.** `PlayerStrip` desaparece de Chinchón y de Mus: con la gente sentada en la mesa, repetía la misma información en otro sitio de la pantalla. Con ella se va el hilo de turno de esas dos pantallas, que era el «elemento firma» del §8.4 — sobrevive en `/mesa` y en Pocha, que son los sitios donde sigue habiendo una banda que recorrer. En Chinchón y Mus el turno pasa a ser un aro de hueso en el avatar.
+
+**Dónde llegan los garbanzos, y qué cuenta cada uno.** Mus es el caso literal (amarrakos, §12.3) y de ahí sale todo: `MusScoreboard` y `MusMesaScore` cambian sus bolitas grises por legumbre — el comentario del fichero ya decía «como se llevan en la mesa» y el dibujo no lo cumplía. Chinchón mide con ellos lo que te acerca a quedarte fuera (octavos de `eliminationScore`). Pocha los pone en `PochaBidRow`: garbanzo = baza ganada, huecos = lo que cantaste.
+
+**Lo que NO se implementa del diseño, y por qué.**
+
+| En `Ronda.dc.html` | Qué se hizo |
+|---|---|
+| Variante «Comodines» en la sala, sección de comodines en la baraja, `pointsFor` con `rank<=9` y comodín a 25 | **Descartado: obsoleto.** El diseño es anterior a P31. La baraja son 40 naipes y el comodín no existe como concepto. |
+| El `RondaCard` SVG que importa (pips, figuras, comodín) | **Descartado: obsoleto.** P31 borró ese dibujo; la cara de la carta es la imagen de `public/cards/`. Del diseño solo sigue vivo el dorso, que ya coincidía. |
+| Pestañas Chinchón / Pocha / Mus sobre la mesa, y pestañas Inicio / Sala / Partida / Baraja | **Descartado: andamiaje.** Sirven para recorrer el diseño en el lienzo sin partida. La sala ya sabe a qué se juega. |
+| Rombos y tréboles (♦ ♣) en las esquinas del tapete | **Cambiado.** Son palos de baraja francesa en una app de baraja española. Van los cuatro palos españoles, uno por esquina. |
+| Asientos alrededor de la mesa en Pocha | **No implementado.** Pocha admite seis jugadores (§10.7) y cinco asientos de 72 px no caben en el borde superior de un móvil. Conserva `PlayerStrip` y `PochaBidRow`; lo que sí gana es el tapete y los garbanzos. |
+
+**Arreglado de paso:** `PILE_SAMPLE` del escaparate `/dev/design` llevaba un `oros-9` desde antes de P31 y se pintaba como dorso roto, porque `PlayingCard` degrada a dorso las cartas que no parsean en vez de lanzar.
+
+**Verificación.** `pnpm typecheck` y `pnpm test` en verde. Comprobado en el navegador sobre el servidor de desarrollo (`/dev/design`, `/`, `/crear/chinchon`): paleta aplicada, `Domine` cargada, mesa a 340×262 exactos con sus degradados, garbanzos con el radio y el degradado del diseño, y cero errores de consola. Las tres pantallas de partida **no** se han podido ver en el navegador: necesitan servidor de sockets y una sala real, así que de ellas responden el compilador y los tests, no una captura.

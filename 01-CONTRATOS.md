@@ -492,27 +492,49 @@ Layout: móvil primero. `/mesa` es la única pantalla pensada para 16:9 grande.
 
 ## 8. Dirección de diseño (congelada)
 
-**Concepto:** no es un casino. Es una mesa de bar con una baraja bien impresa. La referencia son las barajas españolas de imprenta: tinta densa, papel hueso, colores planos, geometría. Deliberadamente **no** verde tapete ni dorado de casino.
+**Concepto (reescrito en P32, decisión de Unai):** un **bar de barrio español**. Madera oscura con veta, latón gastado, tapete verde de mesa camilla con su filete rojo, y los tantos contados con **garbanzos**. Sigue sin ser un casino: lo que se descartaba en la versión original de este párrafo era el brillo de casino —neón, dorado metálico, fieltro saturado, mesa ovalada—, no el mueble. Una mesa de bar con tapete no es una mesa de casino, así que **se levanta la prohibición del verde tapete** que decía aquí hasta P32; el resto de la prohibición sigue en pie.
+
+> El diseño de origen es el proyecto `Ronda mobile app UI design` de claude.ai/design (`Ronda.dc.html`). Lo que se implementó y lo que se descartó de él está en `02-PAQUETES.md` P32.
 
 ### 8.1 Tokens de color
 
 ```css
---tinta:     #14161F;  /* fondo general */
---mesa:      #1E2130;  /* superficies, tarjetas de interfaz */
---linea:     #2E3346;  /* bordes */
---hueso:     #EDE6D8;  /* texto principal y cara de las cartas */
---humo:      #9AA0B5;  /* texto secundario */
---brasa:     #D4462F;  /* acción principal y palo de copas */
---oro:       #C79A3B;  /* palo de oros */
---azul:      #3E6EA8;  /* palo de espadas */
---verde:     #2F6F5E;  /* palo de bastos */
+--tinta:     #241509;  /* fondo general: madera oscura */
+--veta:      #2A180C;  /* segunda banda de la veta del fondo */
+--mesa:      #3B2417;  /* superficies, tarjetas de interfaz */
+--linea:     #5A4530;  /* bordes */
+--hueso:     #EFE3C8;  /* texto principal y cara de las cartas */
+--humo:      #B8A688;  /* texto secundario */
+--brasa:     #8C2F22;  /* acción principal */
+--oro:       #C9982E;  /* latón: acento, bordes vivos, foco */
+--teja:      #A33B2A;  /* asiento 1 */
+--verde:     #3F6B4F;  /* asiento 2 (verde botella) */
+--azul:      #5B6B7A;  /* asiento 4 (gris pizarra) */
+--violeta:   #7A5A8C;  /* asiento 5 */
+--rosa:      #9C4F5E;  /* asiento 6 */
 ```
 
-Colores de asiento (`colorIndex` 0..3): `--brasa`, `--azul`, `--verde`, `--oro`.
+Colores de asiento (`colorIndex` 0..5): `--teja`, `--verde`, `--oro`, `--azul`, `--violeta`, `--rosa`. **Ninguno es `--brasa`**: la acción principal no puede confundirse con un asiento, que es lo que pasaba antes de P32 con el asiento 0.
+
+El fondo de la página no es un color plano sino la propia madera: una veta de 6 px (`--tinta` / `--veta`) con un halo de latón al 8 % arriba, y `background-attachment: fixed` para que no se mueva al hacer scroll —que es lo que la delataría como rayas.
+
+La paleta de la CARA de la carta (`--card-*`) no cambia: la carta es un objeto impreso aparte de la interfaz que la rodea, y es la baraja fotografiada de `public/cards/` (P30/P31).
+
+#### El mueble y la legumbre
+
+```css
+--table-wood-a: #6B4726;  --table-wood-b: #4A2F18;  --table-wood-c: #3B2417;
+--table-felt-a: #335640;  --table-felt-b: #213A2C;
+--table-edge:   #7A2A20;  /* filete rojo del tapete y marcas de palo */
+--table-stud-a: #E0B85A;  --table-stud-b: #8A6A2A;  /* tachuelas de latón */
+--garbanzo-a:   #F2E3B8;  --garbanzo-b: #C9A868;  --garbanzo-c: #9C7E48;
+```
+
+Se materializan en cuatro clases de `globals.css` —`.bar-table`, `.bar-felt`, `.bar-stud`, `.garbanzo`/`.garbanzo-vacio`— porque son degradados, y un literal de color solo puede vivir en ese fichero.
 
 ### 8.2 Tipografías (Google Fonts, vía `next/font`)
 
-- **Display / números de carta:** `Familjen Grotesk` (700). Se usa con moderación: números de carta, marcador, título de pantalla.
+- **Display:** `Domine` (600 / 700). **Cambiada en P32**, era `Familjen Grotesk`: una serif con mucho peso es lo que hay pintado en la fachada de un bar, y la grotesca leía como app. Se usa con moderación: marcador, título de pantalla, inicial del avatar.
 - **Cuerpo e interfaz:** `IBM Plex Sans` (400 / 600).
 - **Datos y puntuación:** `IBM Plex Mono` (500), cifras tabulares, para que los marcadores no bailen.
 
@@ -520,15 +542,17 @@ Escala: 12 / 14 / 16 / 20 / 28 / 40 / 64. Interlineado 1.2 en display, 1.5 en cu
 
 ### 8.3 La carta (componente `PlayingCard`)
 
-SVG generado, sin imágenes. Proporción **2:3**. Fondo `--hueso`, línea interior de 1.5 px del color del palo a 6 px del borde, esquinas 8 px.
-- Rango arriba a la izquierda en `Familjen Grotesk` 700, y repetido abajo a la derecha girado 180°.
-- El símbolo del palo es **geométrico y propio**: oros = círculo con anillo interior; copas = arco en U sobre pie rectangular; espadas = rombo alargado; bastos = barra con dos muescas. Todo con `<path>`, nada de tipografías de iconos ni emojis.
-- Comodín: la palabra `JOKER` en vertical y los cuatro símbolos en las esquinas, en gris `--humo`.
-- Dorso: `--tinta` con una retícula diagonal de líneas `--linea` a 45° y el punto central en `--brasa`.
+Proporción **2:3** (`viewBox` 0 0 72 108), esquinas 8 px. El MARCO es SVG —fondo, contorno de tinta, barra de combinación y velo de atenuado— y la CARA es la imagen de la baraja española de `public/cards/`.
+
+> **Actualizado por P30/P31, no por P32.** Este párrafo describía hasta aquí una baraja dibujada entera en SVG (pips geométricos, figuras, comodín). Ya no existe: P30 metió la baraja de imágenes y P31 borró el dibujo SVG al quedarse sin camino, porque los 40 naipes de los tres juegos tienen imagen. Queda escrito aquí porque el documento seguía describiendo un componente que no existe. **Sigue pendiente y es de Unai:** esas imágenes son de un tercero y llevan marca de agua (ver P30).
+
+- Dorso: sigue siendo SVG (`CardBack`), retícula diagonal en dos tonos violeta con filete y rombo en `--card-back-gold`. Es lo único que se dibuja de la carta.
 
 ### 8.4 Elemento firma: **el hilo de turno**
 
-Una línea fina y continua de 2 px en `--brasa` que **viaja físicamente** de un asiento al siguiente cuando cambia el turno (250 ms, `ease-out`), en lugar de encenderse y apagarse. En el móvil recorre la banda superior de jugadores; en `/mesa` recorre el anillo de asientos alrededor del centro. Es lo único animado con ambición: todo lo demás es sobrio.
+Una línea fina y continua de 2 px en `--brasa` que **viaja físicamente** de un asiento al siguiente cuando cambia el turno (250 ms, `ease-out`), en lugar de encenderse y apagarse.
+
+> **Acotado por P32.** El hilo nació cuando las tres pantallas de partida tenían una banda de jugadores en la que recorrer. Sigue igual donde sigue habiendo banda: en `/mesa` (el anillo de asientos de `SeatRing`) y en Pocha, que conserva `PlayerStrip` por caber hasta seis. En Chinchón y en Mus ya no hay banda —la gente está sentada alrededor de la mesa—, y ahí el turno se marca con **aro de `--hueso`** en el avatar del asiento en turno, más el apodo en el encabezado. El aro va en hueso y no en latón porque el latón ya es el borde de todos los avatares, y como señal de turno no diría nada.
 
 Otras animaciones permitidas, y solo estas: reparto en cascada (40 ms por carta), lanzamiento de la carta al descarte (180 ms, con rotación determinista derivada del `CardId` para que el montón parezca real), y revelado de combinaciones al final de ronda (escalonado, 80 ms). Todo se desactiva con `prefers-reduced-motion`.
 
@@ -541,6 +565,24 @@ Otras animaciones permitidas, y solo estas: reparto en cascada (40 ms por carta)
 5. El estado de conexión es una banda de 4 px arriba: verde translúcido conectado, `--oro` reconectando, `--brasa` sin conexión.
 6. Foco de teclado siempre visible. Contraste mínimo AA sobre `--tinta`.
 7. Textos: frase corta, verbo activo, sin exclamaciones. «Roba una carta», no «¡Es tu turno, roba una carta!».
+
+### 8.6 La mesa y los garbanzos (P32)
+
+**La mesa** (`BarTable`) es un mueble, no un rectángulo de color: tablero de madera de 340×262 con las esquinas a 10 px, cuatro tachuelas de latón de 7 px, y un tapete verde hundido 13 px con esquinas a 26 px, su filete rojo interior y **un palo español marcado en cada esquina** (oros, copas, espadas, bastos). Es **cuadrada, no ovalada**: la ovalada es de casino; la de bar de barrio es cuadrada y de cuatro patas.
+
+`BarTable` solo pone el mueble. Lo que se apoya encima lo pasa quien la usa: mazo y descarte en Chinchón, triunfo y baza en Pocha, el lance en Mus.
+
+**Los asientos** en vertical (`TableSeat`): tú abajo, en una chapa ovalada con la marca «TÚ»; los demás arriba, en columnas de 72 px, ordenados por `orderAroundMe()` según te llega el turno. En Mus eso deja al compañero (asiento+2) en el centro de la fila de arriba, enfrente de ti, sin que el componente sepa nada de parejas: es la geometría de la mesa real. **Pocha se queda fuera** y conserva `PlayerStrip`: admite seis jugadores (§10.7) y cinco asientos de 72 px no caben en el borde superior de un móvil.
+
+**Los garbanzos** (`Garbanzos`) son la unidad de cuenta visible. Ocho huecos en los tres juegos, para que la fila signifique siempre lo mismo —cuántos te faltan para que pase algo— pero contando cosas distintas:
+
+| Juego | Qué es un garbanzo | Huecos |
+|-------|--------------------|--------|
+| Mus | Un amarrako de tu pareja (§12.3). Es el caso literal: en la mesa se apartan con legumbre. | 8 = un juego |
+| Chinchón | Un octavo de `config.eliminationScore`. Cuenta lo que te acerca a quedarte fuera. | 8 = eliminado |
+| Pocha | Una baza ganada en la ronda, en `PochaBidRow`. | Lo que cantaste — y si te pasas, la fila crece por encima |
+
+El número **siempre** acompaña a la fila: un garbanzo se ve de un vistazo, pero «27» no se lee en garbanzos, y §8.5.6 pide que ningún dato dependa solo de una forma.
 
 ---
 

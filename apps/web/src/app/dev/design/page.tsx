@@ -15,6 +15,8 @@ import { Banner, type ConnectionStatus } from '@/components/ui/Banner';
 import { Pill } from '@/components/ui/Pill';
 import { Avatar } from '@/components/ui/Avatar';
 import { RoomCode } from '@/components/ui/RoomCode';
+import { Garbanzos } from '@/components/ui/Garbanzos';
+import { BarTable } from '@/components/ui/BarTable';
 
 // Las 40 cartas: 4 palos x 10 rangos. Generado localmente
 // (no se importa @ronda/engine desde el escaparate web: es cosmético, no
@@ -33,7 +35,9 @@ function allCardIds(): CardId[] {
 
 const ALL_CARDS = allCardIds();
 const CONNECTION_STATUSES: ConnectionStatus[] = ['online', 'reconnecting', 'offline'];
-const PILE_SAMPLE: CardId[] = ['oros-3', 'copas-7', 'espadas-11', 'bastos-1', 'oros-9'];
+// Cartas de la baraja de 40 (P31): sin ochos ni nueves. El montón de muestra
+// llevaba un 'oros-9' desde antes de P31 y se pintaba como dorso roto.
+const PILE_SAMPLE: CardId[] = ['oros-3', 'copas-7', 'espadas-11', 'bastos-1', 'oros-10'];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -77,6 +81,21 @@ export default function DesignShowcasePage() {
             {loadingDemo ? 'Enviando…' : 'Probar loading'}
           </Button>
         </div>
+      </Section>
+
+      <Section title="Garbanzos (P32: los tantos se cuentan con legumbre)">
+        <div className="flex flex-col gap-3">
+          <Garbanzos count={3} total={8} label="Amarrakos de ejemplo" />
+          <Garbanzos count={8} total={8} label="Juego completo de ejemplo" />
+          <Garbanzos count={2} label="Bazas ganadas de ejemplo" />
+        </div>
+      </Section>
+
+      <Section title="Mesa de bar (P32)">
+        <BarTable>
+          <PlayingCard cardId="espadas-12" size="md" />
+          <PlayingCard cardId="oros-3" size="md" />
+        </BarTable>
       </Section>
 
       <Section title="Pill">

@@ -1,19 +1,42 @@
-// Pantalla de partida ("Partida" en el contrato P14): estructura vertical
-// fija -- Banda de conexión (la monta <SalaClient>, no aquí), Fila de
-// jugadores con hilo de turno, Zona común (mazo + descarte), Mano en el
-// tercio inferior, Barra de acción. Todo el estado de reglas viene ya
-// resuelto del servidor en `view`; aquí solo se traduce a interacción.
+// Pantalla de partida ("Partida" en el contrato P14, remaquetada por P32):
+// estructura vertical fija -- Banda de conexión (la monta <SalaClient>, no
+// aquí), encabezado con el turno, la MESA con los jugadores sentados
+// alrededor (rivales arriba, tú abajo) y el mazo y el descarte encima del
+// tapete, Mano en el tercio inferior, Barra de acción. Todo el estado de
+// reglas viene ya resuelto del servidor en `view`; aquí solo se traduce a
+// interacción.
+//
+// Lo que P32 se lleva de P14: la fila de jugadores con el hilo de turno
+// (<PlayerStrip>). Con los jugadores sentados en la mesa, una fila aparte
+// repetía la misma información en otro sitio de la pantalla. El turno pasa a
+// marcarse en el aro del avatar y en el encabezado. <PlayerStrip> sigue vivo
+// para Pocha, que reparte hasta 6 asientos y no cabe en el borde de la mesa.
 'use client';
 
 import { useState } from 'react';
 import type { CardId, ChinchonPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
-import { PlayerStrip } from './PlayerStrip';
 import { CommonArea } from './CommonArea';
 import { Hand } from './Hand';
 import { ActionBar } from './ActionBar';
+import { TableHeader } from './TableHeader';
+import { TableSeat, orderAroundMe } from './TableSeat';
+import { BarTable } from '@/components/ui/BarTable';
 import { Sheet } from '@/components/ui/Sheet';
 import { Button } from '@/components/ui/Button';
+
+// Huecos de garbanzo bajo cada asiento. En Chinchón el garbanzo cuenta lo
+// que te ACERCA a quedarte fuera: los puntos acumulados, medidos contra
+// `config.eliminationScore`. Ocho huecos porque es el mismo puñado que los
+// amarrakos de Mus (§12.3), y así la fila significa lo mismo en los tres
+// juegos: cuántos te faltan para que pase algo.
+const BEAN_SLOTS = 8;
+
+function beansForScore(score: number, eliminationScore: number): number {
+  if (eliminationScore <= 0) return 0;
+  const perBean = eliminationScore / BEAN_SLOTS;
+  return Math.max(0, Math.min(BEAN_SLOTS, Math.ceil(score / perBean)));
+}
 
 // Vocabulario de Chinchón (mazo/descarte, comodines, bestMelds...): el
 // dispatcher (SalaClient.tsx) ya estrecha `PlayerView` antes de llegar aquí.
@@ -89,23 +112,56 @@ export function GameScreen({ view }: GameScreenProps) {
   const canDrawDiscard =
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDiscard');
 
+  const { top, me: mySeat } = orderAroundMe(view.players, me.playerId);
+  const beansFor = (score: number) => ({
+    count: beansForScore(score, view.config.eliminationScore),
+    total: BEAN_SLOTS,
+    label: 'puntos acumulados',
+  });
+
   return (
     <div className="flex min-h-dvh flex-col">
-      <PlayerStrip
-        players={view.players}
-        turnPlayerId={view.turnPlayerId}
-        myPlayerId={me.playerId}
-      />
+      <TableHeader left={`Mano ${view.round}`} turnNick={turnPlayer?.nick ?? null} />
 
-      <CommonArea
-        deckCount={view.deckCount}
-        discardTop={view.discardTop}
-        discardCount={view.discardCount}
-        onDrawDeck={canDrawDeck ? handleDrawDeck : undefined}
-        onDrawDiscard={canDrawDiscard ? handleDrawDiscard : undefined}
-      />
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[6px] px-1 py-2">
+        <div className="flex min-h-[60px] items-end justify-center gap-4">
+          {top.map((p) => (
+            <TableSeat
+              key={p.playerId}
+              player={p}
+              variant="top"
+              isTurn={p.playerId === view.turnPlayerId}
+              beans={beansFor(p.score)}
+              info={`${p.handCount} · ${p.score}`}
+            />
+          ))}
+        </div>
 
-      <div className="mt-auto flex flex-col">
+        <BarTable>
+          <CommonArea
+            deckCount={view.deckCount}
+            discardTop={view.discardTop}
+            discardCount={view.discardCount}
+            onDrawDeck={canDrawDeck ? handleDrawDeck : undefined}
+            onDrawDiscard={canDrawDiscard ? handleDrawDiscard : undefined}
+          />
+        </BarTable>
+
+        <div className="flex min-h-[46px] items-start justify-center">
+          {mySeat ? (
+            <TableSeat
+              player={mySeat}
+              variant="plate"
+              isYou
+              isTurn={isMyTurn}
+              beans={beansFor(mySeat.score)}
+              info={`${me.hand.length} · ${mySeat.score}`}
+            />
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex flex-col">
         <Hand
           hand={me.hand}
           bestMelds={me.bestMelds}

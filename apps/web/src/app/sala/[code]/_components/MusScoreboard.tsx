@@ -2,12 +2,14 @@
 // §12.3 (40 piedras = 8 amarrakos = 1 juego) y §12.12 (el marcador es de la
 // pareja, nunca del jugador).
 //
-// Los amarrakos se pintan como bolitas porque es como se llevan en la mesa
-// -- se apartan de cinco en cinco -- y porque de un vistazo se ve quién va
-// ganando sin leer un número.
+// Los amarrakos se pintan como GARBANZOS (P32) porque es literalmente como se
+// llevan en la mesa -- se apartan de cinco en cinco -- y porque de un vistazo
+// se ve quién va ganando sin leer un número. Hasta P32 eran bolitas grises:
+// el comentario ya decía "como en la mesa" y el dibujo no lo cumplía.
 'use client';
 
 import type { MusTeam } from '@ronda/protocol';
+import { Garbanzos } from '@/components/ui/Garbanzos';
 
 /** §12.3. Se repite aquí y no se importa del motor: apps/web no depende de
  * @ronda/engine, solo del protocolo. */
@@ -42,16 +44,11 @@ export function MusScoreboard({ teams, myTeamIndex, juegosParaGanar }: MusScoreb
               </span>
               <span className="font-mono text-16 text-hueso">{team.piedras}</span>
             </div>
-            <div className="flex items-center gap-1" aria-hidden="true">
-              {Array.from({ length: AMARRAKOS_POR_JUEGO }, (_, i) => (
-                <span
-                  key={i}
-                  className={`h-2 w-2 rounded-full ${
-                    i < team.amarrakos ? 'bg-brasa' : 'bg-linea'
-                  }`}
-                />
-              ))}
-            </div>
+            <Garbanzos
+              count={team.amarrakos}
+              total={AMARRAKOS_POR_JUEGO}
+              label={`Amarrakos de la pareja ${team.index === 0 ? 'A' : 'B'}`}
+            />
             <span className="text-12 text-humo">
               {team.amarrakos} {team.amarrakos === 1 ? 'amarrako' : 'amarrakos'}
               {sueltas > 0 ? ` y ${sueltas}` : ''}

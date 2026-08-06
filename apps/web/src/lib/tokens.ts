@@ -11,15 +11,17 @@
 // Debe reflejar EXACTAMENTE los valores de globals.css. Si cambian ahí,
 // cambian aquí.
 export const COLOR_TOKENS = {
-  tinta: '#14161F',
-  mesa: '#1E2130',
-  linea: '#2E3346',
-  hueso: '#EDE6D8',
-  humo: '#9AA0B5',
-  brasa: '#D4462F',
-  oro: '#C79A3B',
-  azul: '#3E6EA8',
-  verde: '#2F6F5E',
+  tinta: '#241509',
+  veta: '#2A180C',
+  mesa: '#3B2417',
+  linea: '#5A4530',
+  hueso: '#EFE3C8',
+  humo: '#B8A688',
+  brasa: '#8C2F22',
+  oro: '#C9982E',
+  teja: '#A33B2A',
+  azul: '#5B6B7A',
+  verde: '#3F6B4F',
 } as const;
 
 export type ColorToken = keyof typeof COLOR_TOKENS;
@@ -32,7 +34,6 @@ export const CARD_COLOR_TOKENS = {
   copas: '#E14B3B',
   espadas: '#3E7BC4',
   bastos: '#3C9068',
-  joker: '#B9C0D6',
   backGold: '#F2C25A',
   backA: '#2B2140',
   backB: '#372A52',

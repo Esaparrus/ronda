@@ -1,5 +1,8 @@
-// Zona común: mazo (con nº de cartas restantes) y montón de descarte con la
-// carta superior visible. Contrato P14.
+// Lo que hay encima del tapete en Chinchón: mazo (con nº de cartas
+// restantes) y montón de descarte con la carta superior visible. Contrato
+// P14, recolocado por P32 dentro de <BarTable> — antes era una banda a lo
+// ancho de la pantalla; ahora es el contenido de la mesa, así que las cartas
+// bajan de tamaño 'lg' a 'md' para caber en el tapete sin comerse el filete.
 //
 // El mazo real es privado (el servidor solo manda `deckCount`, nunca las
 // cartas): se generan ids de relleno (`deck-0`, `deck-1`...) solo para que
@@ -25,11 +28,10 @@ export interface CommonAreaProps {
 
 const MAX_VISUAL_DECK_STACK = 5;
 
-// Cartas de la mesa (mazo/descarte) a tamaño 'lg': se leen mejor desde la
-// mano en el móvil. El hueco del descarte vacío usa las mismas medidas para
-// que el layout no salte cuando aparece la primera carta.
-const EMPTY_DISCARD_WIDTH = 120;
-const EMPTY_DISCARD_HEIGHT = 180;
+// Medidas del tamaño 'md' de PlayingCard. El hueco del descarte vacío las
+// repite para que el layout no salte cuando aparece la primera carta.
+const EMPTY_DISCARD_WIDTH = 72;
+const EMPTY_DISCARD_HEIGHT = 108;
 
 export function CommonArea({
   deckCount,
@@ -44,30 +46,30 @@ export function CommonArea({
   );
 
   return (
-    <div className="flex flex-1 items-center justify-center gap-10 py-4">
-      <div className="flex flex-col items-center gap-2">
+    <>
+      <div className="flex flex-col items-center gap-[6px]">
         <button
           type="button"
           onClick={onDrawDeck}
           disabled={!onDrawDeck}
           aria-label={onDrawDeck ? 'Robar del mazo' : 'Mazo'}
-          className="rounded-lg p-1 disabled:cursor-default"
+          className="rounded-lg disabled:cursor-default"
         >
-          <Pile cards={deckPlaceholders} faceDown size="lg" />
+          <Pile cards={deckPlaceholders} faceDown size="md" />
         </button>
-        <Pill>{deckCount} en el mazo</Pill>
+        <Pill className="border-oro bg-tinta text-hueso">{deckCount} mazo</Pill>
       </div>
 
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-[6px]">
         <button
           type="button"
           onClick={onDrawDiscard}
           disabled={!onDrawDiscard}
           aria-label={onDrawDiscard ? 'Robar la carta del descarte' : 'Montón de descarte'}
-          className="rounded-lg p-1 disabled:cursor-default"
+          className="rounded-lg disabled:cursor-default"
         >
           {discardTop ? (
-            <PlayingCard cardId={discardTop} size="lg" />
+            <PlayingCard cardId={discardTop} size="md" />
           ) : (
             <div
               aria-hidden="true"
@@ -76,8 +78,8 @@ export function CommonArea({
             />
           )}
         </button>
-        <Pill>{discardCount} en el descarte</Pill>
+        <Pill className="border-oro bg-tinta text-hueso">{discardCount} descarte</Pill>
       </div>
-    </div>
+    </>
   );
 }

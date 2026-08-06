@@ -1,19 +1,22 @@
 // Layout raíz. Contrato P10 / §7 / §8.
 //
 // Fuentes vía next/font/google (self-hosted, sin llamada externa en runtime):
-// Familjen Grotesk 700 (display), IBM Plex Sans 400/600 (cuerpo), IBM Plex
-// Mono 500 (datos y puntuación). Cada una expone su variable CSS, que
-// globals.css mapea a --font-display / --font-sans / --font-mono.
+// Domine 600/700 (display), IBM Plex Sans 400/600 (cuerpo), IBM Plex Mono 500
+// (datos y puntuación). Cada una expone su variable CSS, que globals.css
+// mapea a --font-display / --font-sans / --font-mono.
+//
+// P32: el display pasa de Familjen Grotesk a Domine. Una serif con mucho peso
+// es lo que hay pintado en la fachada de un bar; la grotesca leía como app.
 import type { Metadata, Viewport } from 'next';
-import { Familjen_Grotesk, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import { Domine, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import { COLOR_TOKENS } from '@/lib/tokens';
 import '../styles/globals.css';
 
-const familjenGrotesk = Familjen_Grotesk({
+const domine = Domine({
   subsets: ['latin'],
-  weight: '700',
-  variable: '--font-familjen-grotesk',
+  weight: ['600', '700'],
+  variable: '--font-domine',
   display: 'swap',
 });
 
@@ -55,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="es"
-      className={`${familjenGrotesk.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
+      className={`${domine.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
     >
       <body className="bg-tinta font-sans text-hueso">
         <RegisterServiceWorker />
