@@ -586,3 +586,29 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 **Detalle que sí es una decisión:** la imagen es 5:7 y el naipe 2:3, y se estrecha un 4,6 % (`preserveAspectRatio="none"`) en vez de recortarse. Recortar se comía el filete de color del borde, que está a 3,6 unidades del canto.
 
 **Sigue pendiente, y es de Unai:** las imágenes son de un tercero y llevan marca de agua. Antes de publicar hay que sustituirlas por arte propio o con licencia — el código no cambia, solo los ficheros de `public/cards/`.
+
+---
+
+## P31 · Una sola baraja de 40 para los tres juegos — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §2.1, §2.7, §3.1, §5.1, §5.4, §5.5, §5.7, §5.9, §5.10 (todas actualizadas por este paquete), §9.1 y §12.1 (que ya describían esta misma baraja). Va encima de `P30`.
+
+**La decisión, y de quién es.** «Que en todos los juegos se juegue solo con las cartas que tenían dibujo»: Unai. Chinchón repartía 48 cartas + 2 comodines y era el único de los tres que lo hacía; ahora reparte los mismos 40 naipes que Pocha y Mus. Es un cambio a un contrato marcado como congelado, así que queda anotado en `01-CONTRATOS.md` §5.1 en vez de reescrito por lo bajo.
+
+**La regla que había que decidir, porque el contrato no la cubría.** Quitar los ochos y los nueves deja un hueco entre el 7 y la sota, y §5.4 definía las escaleras como «cartas consecutivas … en orden 1,2,…,12». Decisión de Unai: **el hueco no corta la escalera**, 6-7-sota es escalera. Se implementa con `rankPosition()` en `@ronda/protocol` (1-7 → 1-7; sota, caballo, rey → 8, 9, 10) y todo lo que cuenta escaleras —enumeración de combinaciones y `isChinchon`— trabaja sobre posiciones, no sobre rangos. La alternativa (escaleras solo dentro de 1-7 o dentro de sota-caballo-rey) dejaba el chinchón en 4 manos posibles de toda la baraja; así son 16.
+
+**El comodín deja de existir como concepto**, no solo de repartirse. `Card` pierde `isJoker` y sus `suit`/`rank` dejan de poder ser nulos; `parseCardId` rechaza `joker-1`, `oros-8` y `copas-9`; `cardPoints(card)` ya no recibe config. Media docena de comprobaciones de nulos por el motor y la web se caen solas. Dejar el tipo diciendo que puede haber comodines cuando ninguna baraja puede producirlos era lo peor de los dos mundos.
+
+**Entregado en `@ronda/protocol`:** `Rank` pasa a `1..7 | 10 | 11 | 12`, nuevos `RANKS` y `rankPosition()`, `Card` sin `isJoker` y con `suit`/`rank` no nulos, `makeCardId`/`parseCardId` sin comodín, `cardPoints(card)` sin config, y fuera de `ChinchonConfigSchema` las variantes `jokers`, `jokerPoints` y `maxJokersPerMeld`.
+
+**Entregado en `@ronda/engine`:** `core/deck.ts` construye una sola baraja (`buildDeck()` sin config, `DECK_SIZE = 40`); `chinchon/melds.ts` enumera escaleras sobre posiciones y pierde toda la rama de comodines, y `solveHand`/`enumerateMelds` dejan de recibir config.
+
+**Entregado en `apps/web`:** fuera los controles de «Comodines» y «Puntos del comodín» de `/crear/chinchon` y del lobby; `pointsFor` sin `jokerPoints`, y con él el hilo de esa prop por `GameScreen`, `RoundEndScreen`, `MesaRoundEndScreen`, `Hand` y `RevealedHand`; textos de `/reglas` reescritos (baraja de 40 y el hueco 7→sota); escaparate de `/dev/design` a 40 cartas.
+
+**Lo que este paquete se lleva por delante de P30, y por qué.** `CardArtContext` y la baraja SVG (`cardArt.tsx`) se borran. Existían porque Chinchón repartía cartas sin imagen; ahora las 40 cartas de los tres juegos tienen imagen y ese código no tenía forma de ejecutarse. `CardBack` se queda: el dorso sigue siendo SVG.
+
+**Tests:** casos dorados de §5.10 rehechos —el 4 pasa a ser la escalera que cruza el hueco, el 6 el tope sota-caballo-rey— más los nuevos de `rankPosition`, los 16 chinchones posibles, el rechazo de ochos/nueves/comodines al parsear y al resolver, y el reparto de 4 jugadores que ahora deja 11 cartas en el mazo en vez de 21.
+
+**Rendimiento del resolver, de propina.** El test de §5.10 («10.000 `solveHand` en menos de 2 s») llevaba tiempo en rojo: 4,1 s antes de este paquete. Medido, el 81 % del tiempo se iba en `enumerateMelds`, que probaba las 4 × 10 × 8 combinaciones de (palo, inicio, longitud) buscando cada carta en un `Map` con clave de texto — unas 3.200 búsquedas con `${suit}-${pos}` por mano. Ahora la mano se resume en una máscara de 10 bits por palo y las escaleras salen recorriendo los tramos de bits seguidos, sin construir ni una cadena y tocando solo lo que el jugador tiene. Con eso el resolver va **11 veces más rápido** (10.000 manos: 7,8 s → 0,68 s en el banco; el test pasa en ~0,8 s). El test de propiedad de 5.000 manos es lo que garantiza que la reescritura no cambió ninguna respuesta.
+
+**Efecto de reglas que conviene tener presente en el playtest:** con 40 cartas y 4 jugadores quedan 11 en el mazo tras el reparto, frente a 21 antes. Se llega mucho antes al rebarajado del descarte de §5.3, y las partidas de 4 son más cortas y más secas.

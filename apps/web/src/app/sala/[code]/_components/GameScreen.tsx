@@ -114,7 +114,6 @@ export function GameScreen({ view }: GameScreenProps) {
           onSelect={handleSelect}
           onCommit={handleCommit}
           myColorIndex={myColorIndex}
-          jokerPoints={view.config.jokerPoints}
         />
 
         <ActionBar

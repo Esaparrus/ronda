@@ -1,4 +1,4 @@
-// Escaparate de diseño: pinta las 50 cartas, todos los tamaños y todos los
+// Escaparate de diseño: pinta las 40 cartas, todos los tamaños y todos los
 // componentes de src/components/ui y src/components/cards. Contrato P11.
 // Solo para desarrollo — no forma parte de las rutas jugables (§7).
 'use client';
@@ -16,10 +16,10 @@ import { Pill } from '@/components/ui/Pill';
 import { Avatar } from '@/components/ui/Avatar';
 import { RoomCode } from '@/components/ui/RoomCode';
 
-// Las 50 cartas: 4 palos x 12 rangos + 2 comodines. Generado localmente
+// Las 40 cartas: 4 palos x 10 rangos. Generado localmente
 // (no se importa @ronda/engine desde el escaparate web: es cosmético, no
 // lógica de juego).
-const RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+const RANKS = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12] as const;
 
 function allCardIds(): CardId[] {
   const ids: CardId[] = [];
@@ -28,7 +28,6 @@ function allCardIds(): CardId[] {
       ids.push(`${suit}-${rank}`);
     }
   }
-  ids.push('joker-1', 'joker-2');
   return ids;
 }
 
@@ -147,7 +146,7 @@ export default function DesignShowcasePage() {
         </div>
       </Section>
 
-      <Section title="Las 50 cartas — tamaño sm (comprobación a 360px de ancho)">
+      <Section title="Las 40 cartas — tamaño sm (comprobación a 360px de ancho)">
         <div className="flex max-w-[360px] flex-wrap gap-1 border border-linea p-2">
           {ALL_CARDS.map((cardId) => (
             <PlayingCard key={cardId} cardId={cardId} size="sm" />
@@ -161,7 +160,6 @@ export default function DesignShowcasePage() {
             {(SUITS as readonly Suit[]).map((suit) => (
               <PlayingCard key={suit} cardId={`${suit}-7`} size={size} />
             ))}
-            <PlayingCard cardId="joker-1" size={size} />
           </div>
         </Section>
       ))}

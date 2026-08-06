@@ -95,10 +95,12 @@ function forceTurnHand(state: ChinchonState, hand: CardId[]): ChinchonState {
 // ---------------------------------------------------------------------------
 
 describe('1. Reparto', () => {
-  it('4 jugadores, semilla fija: 7 cartas cada uno, 1 descarte, 21 mazo (con 2 comodines)', () => {
+  it('4 jugadores, semilla fija: 7 cartas cada uno, 1 descarte, 11 en el mazo', () => {
     const s = newGame('seed-A');
-    // 50 cartas - 28 repartidas - 1 descarte = 21
-    expect(s.deck.length).toBe(21);
+    // P31: 40 cartas - 28 repartidas - 1 descarte = 11. Con la baraja de 48 +
+    // 2 comodines quedaban 21: la de 40 aprieta el mazo y hace que la mesa de
+    // 4 llegue antes a rebarajar el descarte (§5.3).
+    expect(s.deck.length).toBe(11);
     expect(s.discard.length).toBe(1);
     for (const p of s.players) {
       expect(p.hand.length).toBe(7);
@@ -460,7 +462,7 @@ describe('12. Partida completa determinista (200 partidas)', () => {
         continue;
       }
       // Descarta la carta suelta de más puntos (no en mejor meld).
-      const sol = solveHand(hand8, s.config);
+      const sol = solveHand(hand8);
       const inMeld = new Set<CardId>(sol.melds.flat());
       const candidates = hand8.filter((c) => !inMeld.has(c) && c !== player.lockedCardId);
       const fromCandidates = candidates[0];

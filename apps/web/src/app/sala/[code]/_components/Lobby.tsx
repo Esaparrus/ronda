@@ -299,16 +299,6 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
         ]}
       />
       <SegmentedControl
-        legend="Comodines"
-        helperText="Cuántos comodines lleva la baraja."
-        value={config.jokers}
-        onChange={(v) => setField('jokers', v)}
-        options={[
-          { value: 0, label: 'Sin comodines' },
-          { value: 2, label: 'Con comodines' },
-        ]}
-      />
-      <SegmentedControl
         legend="Umbral de cierre"
         helperText="Puntos sueltos máximos para poder cerrar."
         value={config.closeThreshold}

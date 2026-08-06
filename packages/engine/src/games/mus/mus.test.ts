@@ -669,8 +669,10 @@ describe('requisitos del motor (§3)', () => {
   it('la baraja es la española de 40 cartas, sin comodines', () => {
     const deck = buildMusDeck();
     expect(deck).toHaveLength(MUS_DECK_SIZE);
-    expect(deck.some((c) => c.isJoker)).toBe(false);
-    expect(deck.some((c) => c.rank === 8 || c.rank === 9)).toBe(false);
+    // P31: que no haya ochos, nueves ni comodines lo garantiza ya el tipo
+    // `Rank`, así que se comprueba por id -- que es lo que viaja por el socket.
+    const noIds = ['oros-8', 'oros-9', 'joker-1', 'joker-2'];
+    for (const bad of noIds) expect(deck.some((c) => c.id === bad)).toBe(false);
   });
 
   it('es determinista: misma semilla, mismo reparto', () => {

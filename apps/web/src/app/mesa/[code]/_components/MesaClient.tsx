@@ -24,7 +24,6 @@ import { CornerCode } from './CornerCode';
 import { MesaLobbyBoard } from './MesaLobbyBoard';
 import { MesaGameBoard } from './MesaGameBoard';
 import { MesaRoundEndScreen } from './MesaRoundEndScreen';
-import { CardArtProvider, cardArtForGame } from '@/components/cards/CardArtContext';
 import { MesaGameEndScreen } from './MesaGameEndScreen';
 import { PochaMesaGameBoard } from './PochaMesaGameBoard';
 import { PochaMesaRoundEndScreen } from './PochaMesaRoundEndScreen';
@@ -103,44 +102,40 @@ export function MesaClient({ code }: MesaClientProps) {
   // campos comunes); MesaGameBoard/MesaRoundEndScreen son de Chinchón, con
   // sus equivalentes de Pocha al lado.
   return (
-    // Misma baraja que en /sala para el mismo juego: la mesa central y los
-    // móviles no pueden enseñar dos dibujos distintos de la misma carta.
-    <CardArtProvider art={cardArtForGame(tableView.gameId)}>
-      <div className="relative flex min-h-dvh flex-col bg-tinta">
-        <Banner status={connection} />
-        {/* La pantalla central recibe las reacciones pero no las manda: aquí
+    <div className="relative flex min-h-dvh flex-col bg-tinta">
+      <Banner status={connection} />
+      {/* La pantalla central recibe las reacciones pero no las manda: aquí
           no hay ReactionBar, solo el overlay (roadmap "Después del MVP" §2).
           Es la pantalla donde más gracia tienen, y sigue sin accionar nada. */}
-        <ReactionOverlay variant="mesa" />
-        {tableView.status !== 'lobby' ? <CornerCode view={tableView} /> : null}
-        {tableView.status === 'lobby' ? <MesaLobbyBoard view={tableView} /> : null}
-        {tableView.status === 'playing' && tableView.gameId === 'chinchon' ? (
-          <MesaGameBoard view={tableView} />
-        ) : null}
-        {tableView.status === 'playing' && tableView.gameId === 'pocha' ? (
-          <PochaMesaGameBoard view={tableView} />
-        ) : null}
-        {tableView.status === 'roundEnd' && tableView.gameId === 'chinchon' ? (
-          <MesaRoundEndScreen view={tableView} />
-        ) : null}
-        {tableView.status === 'roundEnd' && tableView.gameId === 'pocha' ? (
-          <PochaMesaRoundEndScreen view={tableView} />
-        ) : null}
-        {tableView.status === 'playing' && tableView.gameId === 'mus' ? (
-          <MusMesaGameBoard view={tableView} />
-        ) : null}
-        {tableView.status === 'roundEnd' && tableView.gameId === 'mus' ? (
-          <MusMesaRoundEndScreen view={tableView} />
-        ) : null}
-        {/* Mus tiene su propio fin de partida: gana una pareja, no un jugador
+      <ReactionOverlay variant="mesa" />
+      {tableView.status !== 'lobby' ? <CornerCode view={tableView} /> : null}
+      {tableView.status === 'lobby' ? <MesaLobbyBoard view={tableView} /> : null}
+      {tableView.status === 'playing' && tableView.gameId === 'chinchon' ? (
+        <MesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'playing' && tableView.gameId === 'pocha' ? (
+        <PochaMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'roundEnd' && tableView.gameId === 'chinchon' ? (
+        <MesaRoundEndScreen view={tableView} />
+      ) : null}
+      {tableView.status === 'roundEnd' && tableView.gameId === 'pocha' ? (
+        <PochaMesaRoundEndScreen view={tableView} />
+      ) : null}
+      {tableView.status === 'playing' && tableView.gameId === 'mus' ? (
+        <MusMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'roundEnd' && tableView.gameId === 'mus' ? (
+        <MusMesaRoundEndScreen view={tableView} />
+      ) : null}
+      {/* Mus tiene su propio fin de partida: gana una pareja, no un jugador
           con la puntuación más baja (§12.12). */}
-        {tableView.status === 'gameEnd' && tableView.gameId === 'mus' ? (
-          <MusMesaGameEndScreen view={tableView} />
-        ) : null}
-        {tableView.status === 'gameEnd' && tableView.gameId !== 'mus' ? (
-          <MesaGameEndScreen view={tableView} />
-        ) : null}
-      </div>
-    </CardArtProvider>
+      {tableView.status === 'gameEnd' && tableView.gameId === 'mus' ? (
+        <MusMesaGameEndScreen view={tableView} />
+      ) : null}
+      {tableView.status === 'gameEnd' && tableView.gameId !== 'mus' ? (
+        <MesaGameEndScreen view={tableView} />
+      ) : null}
+    </div>
   );
 }

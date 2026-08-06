@@ -8,7 +8,7 @@
 // (sim/bot.ts, contra un servidor real por socket) como el modo "contra la
 // máquina" en vivo (bot-driver.ts, contra el RoomManager directamente).
 import type { CardId, ChinchonPlayerView, GameAction, PochaPlayerView } from '@ronda/protocol';
-import { parseCardId } from '@ronda/protocol';
+import { cardPoints, parseCardId } from '@ronda/protocol';
 import { fuerza } from '@ronda/engine';
 
 export function decideChinchonAction(view: ChinchonPlayerView): GameAction | null {
@@ -40,12 +40,10 @@ export function decideChinchonAction(view: ChinchonPlayerView): GameAction | nul
   return null;
 }
 
-/** Heurística de "peligrosidad" de una carta suelta: sus puntos. */
+/** Heurística de "peligrosidad" de una carta suelta: sus puntos (§5.5). */
 function cardScore(id: CardId): number {
-  if (id.startsWith('joker')) return 25;
-  const dash = id.lastIndexOf('-');
-  const rank = Number(id.slice(dash + 1));
-  return rank >= 10 ? 10 : rank;
+  const parsed = parseCardId(id);
+  return parsed.ok ? cardPoints(parsed.value) : 0;
 }
 
 // ---------------------------------------------------------------------------

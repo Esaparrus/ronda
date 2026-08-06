@@ -3,23 +3,28 @@
 // Algoritmo (al pie de la letra del §5.9):
 //   1. Indexa las cartas de la mano 0..n-1 (n <= 8). Cada subconjunto = máscara.
 //   2. Enumera TODAS las combinaciones válidas como máscaras:
-//        - Grupos: 3-4 cartas del mismo rango, o 2 + un comodín.
-//        - Escaleras: 3+ cartas consecutivas del mismo palo (1..12, sin vuelta),
-//          con o sin comodín.
-//        - Se descartan las combinaciones con >1 comodín.
+//        - Grupos: 3-4 cartas del mismo rango.
+//        - Escaleras: 3+ cartas seguidas del mismo palo, sin vuelta.
 //   3. best(mask) = min( puntos(mask), min sobre c ⊆ mask de best(mask \ c) )
 //      con memoización. n <= 8 => <= 256 estados => instantáneo.
 //   4. Reconstruye la solución guardando la combinación elegida en cada estado.
 //
 // Desempate (§5.9): deadwood mínimo → MÁS cartas en combinaciones → MENOS
 // combinaciones (preferir largas) → orden estable por CardId.
+//
+// P31: fuera los comodines (ya no existen en la baraja) y las escaleras se
+// cuentan sobre la POSICIÓN del rango, no sobre el rango. La baraja de 40
+// tiene un hueco entre el 7 y la sota, y 6-7-sota es escalera: lo dice
+// `rankPosition` en @ronda/protocol, que es el único sitio donde vive esa
+// decisión.
 import {
   parseCardId,
-  cardPoints as pointsOf,
+  rankPosition,
   SUITS,
   type Card,
   type CardId,
   type ChinchonConfig,
+  type Suit,
 } from '@ronda/protocol';
 
 // ---------------------------------------------------------------------------
@@ -45,8 +50,8 @@ interface IndexedHand {
   fullMask: number;
 }
 
-/** Indexa la mano: cartas únicas con points calculados según config. */
-function indexHand(hand: CardId[], config: ChinchonConfig): IndexedHand {
+/** Indexa la mano: cartas únicas, ya con sus puntos. */
+function indexHand(hand: CardId[]): IndexedHand {
   const seen = new Set<CardId>();
   const cards: Card[] = [];
   for (const id of hand) {
@@ -54,12 +59,18 @@ function indexHand(hand: CardId[], config: ChinchonConfig): IndexedHand {
     seen.add(id);
     const r = parseCardId(id);
     if (!r.ok) throw new Error(`indexHand: id inválido: ${id}`);
-    cards.push({ ...r.value, points: pointsOf(r.value, config) });
+    cards.push(r.value);
   }
   const n = cards.length;
   if (n > 8) throw new Error(`indexHand: mano demasiado grande (n=${n})`);
   return { cards, n, fullMask: n === 0 ? 0 : (1 << n) - 1 };
 }
+
+/** Posiciones de escalera: 1 (as) a 10 (rey). Ver `rankPosition`. */
+const POSITIONS = 10;
+
+/** Palo → 0..3, para indexar tablas planas sin construir claves de texto. */
+const SUIT_INDEX: Record<Suit, number> = { oros: 0, copas: 1, espadas: 2, bastos: 3 };
 
 /** Número de bits a 1 (cartas que ocupa una combinación). */
 function popcount(x: number): number {
@@ -75,93 +86,95 @@ function popcount(x: number): number {
 // Paso 2: enumeración de combinaciones válidas como máscaras
 // ---------------------------------------------------------------------------
 
-/** Enumera las combinaciones a partir de un IndexedHand (sin re-indexar). */
+/**
+ * Enumera las combinaciones a partir de un IndexedHand (sin re-indexar).
+ *
+ * Todo va sobre enteros: la mano se resume en un mapa `palo × posición` de
+ * 40 casillas y en una máscara de 10 bits por palo con las posiciones
+ * presentes. Las escaleras salen recorriendo los tramos de bits seguidos de
+ * esas máscaras, así que solo se toca lo que el jugador tiene en la mano.
+ *
+ * La versión anterior probaba las 4 × 10 × 8 combinaciones de (palo, inicio,
+ * longitud) buscando cada carta en un `Map` con clave de texto: unas 3.200
+ * búsquedas con `${suit}-${pos}` por mano, y se llevaba el 81 % del tiempo
+ * del resolver. Aquí no se construye ni una cadena.
+ *
+ * No hace falta deduplicar: cada grupo es un subconjunto distinto de un mismo
+ * rango, cada escalera es un (palo, inicio, longitud) distinto, y un grupo
+ * (≥2 palos) nunca puede coincidir con una escalera (1 palo).
+ */
 function enumerateMeldsIndexed(idx: IndexedHand): number[] {
   const { cards, n } = idx;
-  const melds = new Set<number>();
+  const melds: number[] = [];
 
-  const addMask = (idxs: number[]) => {
-    let m = 0;
-    for (const i of idxs) m |= 1 << i;
-    melds.add(m);
-  };
-
-  const jokerIndices: number[] = [];
-  const bySuitRank = new Map<string, number>(); // "suit-rank" -> index
-  const byRank = new Map<number, number[]>(); // rank -> indices
+  // `posBySuit[s]`: bits 0..9 de las posiciones que hay de ese palo.
+  // `cardAt[s * POSITIONS + p]`: índice de esa carta en la mano, o -1.
+  const posBySuit = [0, 0, 0, 0];
+  const cardAt = new Int32Array(SUITS.length * POSITIONS).fill(-1);
+  // Índices por posición de rango (0..9), para los grupos.
+  const byRank: number[][] = [];
 
   for (let i = 0; i < n; i++) {
     const c = cards[i];
     if (!c) continue;
-    if (c.isJoker) {
-      jokerIndices.push(i);
-    } else if (c.suit !== null && c.rank !== null) {
-      bySuitRank.set(`${c.suit}-${c.rank}`, i);
-      const arr = byRank.get(c.rank);
-      if (arr) arr.push(i);
-      else byRank.set(c.rank, [i]);
-    }
+    const s = SUIT_INDEX[c.suit];
+    const p = rankPosition(c.rank) - 1;
+    posBySuit[s] = (posBySuit[s] ?? 0) | (1 << p);
+    cardAt[s * POSITIONS + p] = i;
+    const arr = byRank[p];
+    if (arr) arr.push(i);
+    else byRank[p] = [i];
   }
-  const firstJoker = jokerIndices[0];
 
-  // --- Grupos: mismo rango, tamaño 3-4; o pareja + comodín. ---
-  for (const [, idxs] of byRank) {
-    if (idxs.length >= 3) {
-      for (let i = 0; i < idxs.length; i++) {
-        const a = idxs[i];
-        if (a === undefined) continue;
-        for (let j = i + 1; j < idxs.length; j++) {
-          const b = idxs[j];
-          if (b === undefined) continue;
-          for (let k = j + 1; k < idxs.length; k++) {
-            const c = idxs[k];
-            if (c === undefined) continue;
-            addMask([a, b, c]);
-            for (let l = k + 1; l < idxs.length; l++) {
-              const d = idxs[l];
-              if (d === undefined) continue;
-              addMask([a, b, c, d]);
-            }
+  // --- Grupos: mismo rango, tamaño 3-4. ---
+  for (const idxs of byRank) {
+    if (!idxs || idxs.length < 3) continue;
+    for (let i = 0; i < idxs.length; i++) {
+      const a = idxs[i];
+      if (a === undefined) continue;
+      for (let j = i + 1; j < idxs.length; j++) {
+        const b = idxs[j];
+        if (b === undefined) continue;
+        for (let k = j + 1; k < idxs.length; k++) {
+          const c = idxs[k];
+          if (c === undefined) continue;
+          melds.push((1 << a) | (1 << b) | (1 << c));
+          for (let l = k + 1; l < idxs.length; l++) {
+            const d = idxs[l];
+            if (d === undefined) continue;
+            melds.push((1 << a) | (1 << b) | (1 << c) | (1 << d));
           }
         }
       }
     }
-    if (idxs.length === 2 && firstJoker !== undefined) {
-      const a = idxs[0];
-      const b = idxs[1];
-      if (a !== undefined && b !== undefined) addMask([a, b, firstJoker]);
-    }
   }
 
-  // --- Escaleras: consecutivas mismo palo, longitud >= 3, sin vuelta 12->1. ---
-  for (const suit of SUITS) {
-    for (let start = 1; start <= 12; start++) {
-      for (let len = 3; start + len - 1 <= 12; len++) {
-        const present: number[] = [];
-        let missing = 0;
-        for (let r = start; r < start + len; r++) {
-          const idxF = bySuitRank.get(`${suit}-${r}`);
-          if (idxF !== undefined) present.push(idxF);
-          else missing++;
-        }
-        if (missing === 0) {
-          addMask(present);
-        } else if (missing === 1 && present.length >= 2 && firstJoker !== undefined) {
-          addMask([...present, firstJoker]);
-        }
+  // --- Escaleras: posiciones seguidas del mismo palo, longitud >= 3, sin
+  // vuelta rey->as. Las posiciones van de 1 (as) a 10 (rey). ---
+  for (let s = 0; s < SUITS.length; s++) {
+    const present = posBySuit[s] ?? 0;
+    if (present === 0) continue;
+    for (let start = 0; start < POSITIONS; start++) {
+      if (!(present & (1 << start))) continue;
+      // Acumula desde `start` mientras las posiciones sigan seguidas, y suelta
+      // una combinación en cuanto el tramo llega a 3 cartas.
+      let mask = 0;
+      for (let p = start; p < POSITIONS && present & (1 << p); p++) {
+        mask |= 1 << (cardAt[s * POSITIONS + p] ?? 0);
+        if (p - start + 1 >= 3) melds.push(mask);
       }
     }
   }
 
-  return [...melds];
+  return melds;
 }
 
 /**
  * Enumera TODAS las combinaciones válidas de la mano como máscaras de bits.
  * API pública del contrato §5.9 paso 2. Sin duplicados.
  */
-export function enumerateMelds(hand: CardId[], config: ChinchonConfig): number[] {
-  return enumerateMeldsIndexed(indexHand(hand, config));
+export function enumerateMelds(hand: CardId[]): number[] {
+  return enumerateMeldsIndexed(indexHand(hand));
 }
 
 // ---------------------------------------------------------------------------
@@ -174,8 +187,8 @@ export function enumerateMelds(hand: CardId[], config: ChinchonConfig): number[]
  * Desempate: deadwood mínimo → MÁS cartas en combinaciones → MENOS
  * combinaciones (preferir largas) → orden estable por CardId (al reconstruir).
  */
-export function solveHand(hand: CardId[], config: ChinchonConfig): MeldSolution {
-  const idx = indexHand(hand, config);
+export function solveHand(hand: CardId[]): MeldSolution {
+  const idx = indexHand(hand);
   const { cards, n, fullMask } = idx;
   if (n === 0) return { melds: [], leftovers: [], deadwood: 0 };
 
@@ -321,28 +334,30 @@ export function solveHand(hand: CardId[], config: ChinchonConfig): MeldSolution 
 
 /**
  * ¿Es chinchón? Solo si la mano de 7 cartas forma UNA escalera de 7 del mismo
- * palo SIN comodines. Contrato §5.7. Los comodines no valen para el chinchón.
+ * palo. Contrato §5.7.
+ *
+ * Se mide sobre posiciones, igual que las escaleras del §5.4, así que con la
+ * baraja de 40 hay 4 escaleras de 7 por palo (empezando en as, dos, tres o
+ * cuatro) — 16 manos en total.
  */
 export function isChinchon(hand: CardId[]): boolean {
   if (hand.length !== 7) return false;
 
   const suits = new Set<string>();
-  const ranks: number[] = [];
+  const positions: number[] = [];
   for (const id of hand) {
     const r = parseCardId(id);
     if (!r.ok) return false;
-    if (r.value.isJoker) return false;
-    if (r.value.suit === null || r.value.rank === null) return false;
     suits.add(r.value.suit);
-    ranks.push(r.value.rank);
+    positions.push(rankPosition(r.value.rank));
   }
   if (suits.size !== 1) return false;
 
-  ranks.sort((a, b) => a - b);
-  const first = ranks[0];
+  positions.sort((a, b) => a - b);
+  const first = positions[0];
   if (first === undefined) return false;
-  for (let i = 0; i < ranks.length; i++) {
-    if (ranks[i] !== first + i) return false;
+  for (let i = 0; i < positions.length; i++) {
+    if (positions[i] !== first + i) return false;
   }
   return true;
 }
@@ -356,11 +371,15 @@ export function isChinchon(hand: CardId[]): boolean {
  * Cierra si, tras retirar discardId de la mano de 8, el deadwood es
  * <= config.closeThreshold. Devuelve false si la carta no está en la mano.
  */
-export function canCloseWith(hand: CardId[], discardId: CardId, config: ChinchonConfig): boolean {
+export function canCloseWith(
+  hand: CardId[],
+  discardId: CardId,
+  config: Pick<ChinchonConfig, 'closeThreshold'>,
+): boolean {
   if (hand.length !== 8) return false;
   if (!hand.includes(discardId)) return false;
   const remaining = hand.filter((id) => id !== discardId);
-  const sol = solveHand(remaining, config);
+  const sol = solveHand(remaining);
   return sol.deadwood <= config.closeThreshold;
 }
 
@@ -368,7 +387,10 @@ export function canCloseWith(hand: CardId[], discardId: CardId, config: Chinchon
  * Cartas cuyo descarte permite cerrar. PlayerView.me.closableDiscards.
  * Para una mano de 8, devuelve las cartas que puedes tirar para quedar <= umbral.
  */
-export function closableDiscards(hand: CardId[], config: ChinchonConfig): CardId[] {
+export function closableDiscards(
+  hand: CardId[],
+  config: Pick<ChinchonConfig, 'closeThreshold'>,
+): CardId[] {
   if (hand.length !== 8) return [];
   const out: CardId[] = [];
   for (const id of hand) {

@@ -112,7 +112,7 @@ function buildMe(state: ChinchonState, playerId: PlayerId): ChinchonPlayerViewMe
 
   // Resolver sobre la mano actual. En fase discard la mano tiene 8 cartas:
   // las sugerencias se calculan considerando que el jugador descartará una.
-  const sol = solveHand(hand, state.config);
+  const sol = solveHand(hand);
 
   // canClose: ¿existe alguna carta cuyo descarte permita cerrar?
   const closable = hand.length === 8 ? closableDiscards(hand, state.config) : [];

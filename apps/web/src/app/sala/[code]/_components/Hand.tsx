@@ -44,7 +44,6 @@ export interface HandProps {
   /** Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la mesa: descarta (GameScreen.tsx decide si además pregunta por el cierre). */
   onCommit: (cardId: CardId) => void;
   myColorIndex: 0 | 1 | 2 | 3;
-  jokerPoints: number;
 }
 
 // Fracción de cada carta que tapa la siguiente (0.35 = se ve un 65% de
@@ -79,7 +78,6 @@ export function Hand({
   onSelect,
   onCommit,
   myColorIndex,
-  jokerPoints,
 }: HandProps) {
   const [order, setOrder] = useState<CardId[]>(hand);
   const [containerWidth, setContainerWidth] = useState(360);
@@ -262,7 +260,7 @@ export function Hand({
                 />
               </div>
               {!isMelded ? (
-                <span className="font-mono text-12 text-humo">{pointsFor(cardId, jokerPoints)}</span>
+                <span className="font-mono text-12 text-humo">{pointsFor(cardId)}</span>
               ) : null}
               {isLocked ? <Pill className="text-12">Bloqueada</Pill> : null}
             </div>

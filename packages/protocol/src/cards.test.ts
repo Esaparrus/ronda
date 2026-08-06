@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCardId, makeCardId, cardPoints, type Card } from './cards.ts';
-import { DEFAULT_CONFIG } from './config.ts';
+import { parseCardId, makeCardId, cardPoints, rankPosition, RANKS, type Card } from './cards.ts';
 
 /** Helper: parsear o lanzar, para no repetir el guard en cada aserción. */
 function card(id: string): Card {
@@ -15,7 +14,6 @@ describe('parseCardId', () => {
       id: 'oros-7',
       suit: 'oros',
       rank: 7,
-      isJoker: false,
       points: 7,
     });
   });
@@ -25,15 +23,22 @@ describe('parseCardId', () => {
     expect(c.suit).toBe('copas');
     expect(c.rank).toBe(12);
     expect(c.points).toBe(10);
-    expect(c.isJoker).toBe(false);
   });
 
-  it('parsea comodines joker-1 y joker-2', () => {
-    for (const id of ['joker-1', 'joker-2'] as const) {
-      const c = card(id);
-      expect(c.isJoker).toBe(true);
-      expect(c.suit).toBeNull();
-      expect(c.rank).toBeNull();
+  // P31: la baraja es de 40. Ochos, nueves y comodines dejan de existir, y
+  // parsearlos tiene que fallar -- no basta con no repartirlos.
+  it('devuelve error para los ochos y los nueves', () => {
+    for (const id of ['oros-8', 'copas-9', 'espadas-8', 'bastos-9']) {
+      const r = parseCardId(id);
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.error.kind).toBe('bad_rank');
+    }
+  });
+
+  it('devuelve error para los comodines', () => {
+    for (const id of ['joker-1', 'joker-2', 'joker-3']) {
+      expect(parseCardId(id).ok).toBe(false);
     }
   });
 
@@ -55,16 +60,19 @@ describe('parseCardId', () => {
     expect(r.error.kind).toBe('bad_suit');
   });
 
-  it('devuelve error para comodín inválido (joker-3)', () => {
-    const r = parseCardId('joker-3');
-    expect(r.ok).toBe(false);
-    if (r.ok) return;
-    expect(r.error.kind).toBe('bad_joker');
-  });
-
   it('devuelve error para formato sin guion o vacío', () => {
     expect(parseCardId('oros7').ok).toBe(false);
     expect(parseCardId('').ok).toBe(false);
+  });
+
+  it('acepta los 40 naipes de la baraja, y solo esos', () => {
+    let ok = 0;
+    for (const suit of ['oros', 'copas', 'espadas', 'bastos']) {
+      for (let rank = 1; rank <= 12; rank++) {
+        if (parseCardId(`${suit}-${rank}`).ok) ok++;
+      }
+    }
+    expect(ok).toBe(40);
   });
 });
 
@@ -72,27 +80,29 @@ describe('makeCardId', () => {
   it('construye el id de una carta normal', () => {
     expect(makeCardId({ suit: 'espadas', rank: 5 })).toBe('espadas-5');
   });
-  it('construye el id de un comodín', () => {
-    expect(makeCardId({ joker: 2 })).toBe('joker-2');
+});
+
+describe('rankPosition', () => {
+  // La decisión de P31: la baraja de 40 tiene un hueco entre el 7 y la sota, y
+  // las escaleras lo cruzan. Este es el único sitio que lo sabe.
+  it('numera los diez rangos del 1 al 10, sin huecos', () => {
+    expect(RANKS.map(rankPosition)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  it('el 7 y la sota son posiciones seguidas', () => {
+    expect(rankPosition(10) - rankPosition(7)).toBe(1);
   });
 });
 
 describe('cardPoints', () => {
-  const config = DEFAULT_CONFIG; // jokerPoints = 25
-
-  it('rangos 1..9 valen su valor', () => {
-    expect(cardPoints(card('oros-1'), config)).toBe(1);
-    expect(cardPoints(card('copas-9'), config)).toBe(9);
+  it('rangos 1..7 valen su valor', () => {
+    expect(cardPoints(card('oros-1'))).toBe(1);
+    expect(cardPoints(card('copas-7'))).toBe(7);
   });
 
   it('rangos 10,11,12 valen 10', () => {
-    expect(cardPoints(card('oros-10'), config)).toBe(10);
-    expect(cardPoints(card('oros-11'), config)).toBe(10);
-    expect(cardPoints(card('oros-12'), config)).toBe(10);
-  });
-
-  it('comodín vale config.jokerPoints', () => {
-    expect(cardPoints(card('joker-1'), config)).toBe(25);
-    expect(cardPoints(card('joker-1'), { ...config, jokerPoints: 20 })).toBe(20);
+    expect(cardPoints(card('oros-10'))).toBe(10);
+    expect(cardPoints(card('oros-11'))).toBe(10);
+    expect(cardPoints(card('oros-12'))).toBe(10);
   });
 });

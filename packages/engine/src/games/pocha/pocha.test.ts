@@ -54,8 +54,10 @@ describe('buildPochaDeck (§9.1)', () => {
   it('40 cartas, sin 8 ni 9, sin comodines', () => {
     const deck = buildPochaDeck();
     expect(deck.length).toBe(POCHA_DECK_SIZE);
-    expect(deck.some((c) => c.isJoker)).toBe(false);
-    expect(deck.some((c) => c.rank === 8 || c.rank === 9)).toBe(false);
+    // P31: que no haya ochos, nueves ni comodines lo garantiza ya el tipo
+    // `Rank`, así que se comprueba por id -- que es lo que viaja por el socket.
+    const noIds = ['oros-8', 'oros-9', 'joker-1', 'joker-2'];
+    for (const bad of noIds) expect(deck.some((c) => c.id === bad)).toBe(false);
     const ids = new Set(deck.map((c) => c.id));
     expect(ids.size).toBe(40);
   });

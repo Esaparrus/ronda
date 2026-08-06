@@ -135,17 +135,6 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
       />
 
       <SegmentedControl
-        legend="Comodines"
-        helperText="Cuántos comodines lleva la baraja."
-        value={config.jokers}
-        onChange={(v) => set('jokers', v)}
-        options={[
-          { value: 0, label: 'Sin comodines' },
-          { value: 2, label: 'Con comodines' },
-        ]}
-      />
-
-      <SegmentedControl
         legend="Umbral de cierre"
         helperText="Puntos sueltos máximos para poder cerrar."
         value={config.closeThreshold}
@@ -192,16 +181,6 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
             options={[
               { value: -10, label: '-10' },
               { value: 0, label: '0' },
-            ]}
-          />
-          <SegmentedControl
-            legend="Puntos del comodín"
-            helperText="Puntos que vale un comodín suelto."
-            value={config.jokerPoints}
-            onChange={(v) => set('jokerPoints', v)}
-            options={[
-              { value: 20, label: '20' },
-              { value: 25, label: '25' },
             ]}
           />
           <SegmentedControl

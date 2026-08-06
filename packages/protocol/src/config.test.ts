@@ -27,13 +27,10 @@ describe('GameConfigSchema', () => {
       gameId: 'chinchon',
       maxPlayers: 4,
       handSize: 7,
-      jokers: 2,
       closeThreshold: 5,
       dryCloseBonus: -10,
       eliminationScore: 100,
       chinchonEndsGame: true,
-      jokerPoints: 25,
-      maxJokersPerMeld: 1,
       forbidDiscardDrawnCard: true,
       soundEnabled: true,
     });
@@ -54,11 +51,9 @@ describe('GameConfigSchema', () => {
     const custom = ChinchonConfigSchema.parse({
       gameId: 'chinchon',
       maxPlayers: 2,
-      jokers: 0,
       eliminationScore: 50,
     });
     expect(custom.maxPlayers).toBe(2);
-    expect(custom.jokers).toBe(0);
     expect(custom.eliminationScore).toBe(50);
     // y respeta los defaults de lo no indicado
     expect(custom.handSize).toBe(7);

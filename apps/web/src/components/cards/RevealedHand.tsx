@@ -11,7 +11,6 @@ import { pointsFor } from '@/lib/cardPoints';
 export interface RevealedHandProps {
   melds: CardId[][];
   leftovers: CardId[];
-  jokerPoints: number;
   size?: CardSize;
   className?: string;
 }
@@ -21,7 +20,6 @@ const OVERLAP_PX: Record<CardSize, number> = { sm: 16, md: 24, lg: 40 };
 export function RevealedHand({
   melds,
   leftovers,
-  jokerPoints,
   size = 'sm',
   className = '',
 }: RevealedHandProps) {
@@ -44,7 +42,7 @@ export function RevealedHand({
           {leftovers.map((cardId) => (
             <div key={cardId} className="flex flex-col items-center gap-1">
               <PlayingCard cardId={cardId} size={size} dimmed />
-              <Pill className="text-12">{pointsFor(cardId, jokerPoints)}</Pill>
+              <Pill className="text-12">{pointsFor(cardId)}</Pill>
             </div>
           ))}
         </div>

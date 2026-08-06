@@ -1,19 +1,15 @@
-// Puntos de una carta suelta (deadwood), contrato §5.5: rangos 1..9 → su
-// valor, 10/11/12 → 10, comodín → jokerPoints de la config.
+// Puntos de una carta suelta (deadwood), contrato §5.5: rangos 1..7 → su
+// valor, figuras (10, 11, 12) → 10.
 //
-// No se llama a `cardPoints` de @ronda/protocol directamente porque su
-// firma pide un `GameConfig` completo y aquí solo hace falta el único
-// campo relevante (`jokerPoints`); replicar la fórmula (idéntica y
-// trivial) evita fabricar un GameConfig falso solo para satisfacer el
-// tipo. Compartido entre Hand.tsx (P14) y RevealedHand.tsx (P16) para no
-// triplicar la misma función pequeña y pura.
-import { parseCardId, type CardId } from '@ronda/protocol';
+// P31: era una copia de la fórmula porque `cardPoints` de @ronda/protocol
+// pedía un `GameConfig` entero solo para saber cuánto valía el comodín. Sin
+// comodines la firma es `cardPoints(card)`, así que aquí solo queda el
+// envoltorio que tolera un id inválido devolviendo 0 en vez de reventar el
+// render. Compartido entre Hand.tsx (P14) y RevealedHand.tsx (P16).
+import { cardPoints, parseCardId, type CardId } from '@ronda/protocol';
 
-export function pointsFor(cardId: CardId, jokerPoints: number): number {
+export function pointsFor(cardId: CardId): number {
   const parsed = parseCardId(cardId);
   if (!parsed.ok) return 0;
-  const card = parsed.value;
-  if (card.isJoker) return jokerPoints;
-  if (card.rank === null) return 0;
-  return card.rank <= 9 ? card.rank : 10;
+  return cardPoints(parsed.value);
 }

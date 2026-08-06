@@ -33,7 +33,7 @@ export const err = (code: ErrorCode, detail?: string): Err => ({ ok: false, code
 export type RoomCode = string;   // 4 caracteres
 export type PlayerId = string;   // uuid v4
 export type GameId = 'chinchon';
-export type CardId = string;     // 'oros-7' | 'copas-12' | 'joker-1' | 'joker-2'
+export type CardId = string;     // 'oros-7' | 'copas-12' — baraja de 40, sin comodines (P31)
 
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin I O 0 1
 export const ROOM_CODE_LENGTH = 4;
@@ -222,13 +222,10 @@ type GameAction =
 interface GameConfig {
   maxPlayers: 2|3|4;              // por defecto 4
   handSize: 7;                    // congelado en 7 para el MVP
-  jokers: 0|2;                    // por defecto 2
   closeThreshold: 0|3|5|10;       // puntos sueltos máximos para cerrar · por defecto 5
   dryCloseBonus: -10|0;           // cerrar con 0 puntos · por defecto -10
   eliminationScore: 50|100|150;   // por defecto 100 (se elimina al SUPERARLO)
   chinchonEndsGame: boolean;      // por defecto true
-  jokerPoints: 20|25;             // por defecto 25
-  maxJokersPerMeld: 1;            // congelado en 1
   forbidDiscardDrawnCard: boolean;// por defecto true
   soundEnabled: boolean;          // por defecto true (preferencia local, no afecta al motor)
 }
@@ -270,11 +267,15 @@ Requisitos duros del motor:
 
 ```ts
 type Suit = 'oros' | 'copas' | 'espadas' | 'bastos';
-interface Card { id: CardId; suit: Suit | null; rank: number | null; isJoker: boolean; points: number }
+type Rank = 1|2|3|4|5|6|7|10|11|12;
+interface Card { id: CardId; suit: Suit; rank: Rank; points: number }
 
-// 48 cartas: rangos 1..12 en los cuatro palos. Más 2 comodines si config.jokers === 2.
-// Puntos: rank 1..9 → su valor. rank 10,11,12 → 10. Comodín → config.jokerPoints.
-// Escaleras: orden natural 1,2,3,...,12. No hay vuelta (12→1 no vale).
+// 40 cartas: rangos 1-7, 10, 11, 12 en los cuatro palos. Sin comodines. Es la
+// MISMA baraja en los tres juegos (P31).
+// Puntos: rank 1..7 → su valor. rank 10,11,12 → 10.
+// Escaleras: sobre la POSICIÓN del rango (rankPosition: 1..7 → 1..7, 10,11,12
+// → 8,9,10), no sobre el rango. El hueco entre el 7 y la sota NO corta la
+// escalera: 6-7-sota es escalera. No hay vuelta (rey→as no vale).
 // Grupos: 3 o 4 cartas del mismo rango (los palos son distintos por construcción).
 ```
 
@@ -362,7 +363,9 @@ Estrategia de persistencia:
 Esta es la única fuente de verdad. Si algo no está aquí, no existe.
 
 ### 5.1 Materiales
-Baraja de 48 cartas: rangos 1 a 12 en oros, copas, espadas y bastos. Más 2 comodines si `config.jokers === 2`.
+Baraja española de **40 cartas**: rangos 1-7, 10 (sota), 11 (caballo) y 12 (rey) en oros, copas, espadas y bastos. **Sin comodines.**
+
+> **P31 — cambio a un contrato congelado, decidido por Unai.** Hasta P30 esta baraja era de 48 + 2 comodines. Ahora es la misma que la de Pocha (§9.1) y la de Mus (§12.1): los tres juegos reparten los mismos 40 naipes. Consecuencias que se detallan más abajo: las escaleras se cuentan por posición (§5.4), desaparecen las variantes `jokers`, `jokerPoints` y `maxJokersPerMeld` (§2.7), y en una mesa de 4 quedan 11 cartas en el mazo tras el reparto en vez de 21, así que se rebaraja el descarte (§5.3) mucho antes.
 
 ### 5.2 Preparación de una ronda
 1. Se baraja con el RNG sembrado.
@@ -384,13 +387,13 @@ No existe ninguna otra acción que consuma turno. `sortHand` se puede hacer en c
 
 ### 5.4 Combinaciones válidas
 - **Grupo:** 3 o 4 cartas del mismo rango. (Los palos son distintos siempre, porque no hay cartas repetidas.)
-- **Escalera:** 3 o más cartas consecutivas del mismo palo, en orden 1,2,…,12. Sin vuelta: `11,12,1` no vale.
-- **Comodines:** un comodín puede sustituir a cualquier carta dentro de un grupo o de una escalera. **Máximo 1 comodín por combinación** (`maxJokersPerMeld: 1`, congelado).
+- **Escalera:** 3 o más cartas seguidas del mismo palo. "Seguidas" se mide sobre la **posición** del rango en la baraja de 40, no sobre el número: 1,2,3,4,5,6,7,sota,caballo,rey son las posiciones 1 a 10. Por lo tanto **6-7-sota es escalera** y 5-6-7-sota es escalera de cuatro. Sin vuelta: `caballo,rey,as` no vale.
+- **Sin comodines.** No existen en la baraja (§5.1).
 - Ninguna carta puede estar en dos combinaciones a la vez.
 
 ### 5.5 Puntos sueltos (*deadwood*)
 Suma de los puntos de las cartas que no forman parte de ninguna combinación, usando **la mejor combinación posible** de la mano (calculada por el resolver, §5.8).
-- Rangos 1–9: su valor. Rangos 10, 11, 12: 10 puntos. Comodín suelto: `config.jokerPoints` (25 por defecto).
+- Rangos 1–7: su valor. Rangos 10, 11, 12: 10 puntos.
 
 ### 5.6 Cerrar
 Un jugador puede ejecutar `close` con una carta `X` si, tras retirar `X` de su mano de 8 cartas, sus puntos sueltos son **≤ `config.closeThreshold`** (5 por defecto). Si no, el servidor responde `CANNOT_CLOSE`.
@@ -398,7 +401,7 @@ Un jugador puede ejecutar `close` con una carta `X` si, tras retirar `X` de su m
 - La ronda termina inmediatamente. Nadie más juega.
 
 ### 5.7 Chinchón
-Una mano de 7 cartas que forma **una única escalera de 7 cartas del mismo palo**, sin comodines (congelado: los comodines no valen para el chinchón).
+Una mano de 7 cartas que forma **una única escalera de 7 cartas del mismo palo**, medida en posiciones igual que el §5.4. Con la baraja de 40 hay **4 chinchones por palo** (empezando en as, dos, tres o cuatro), 16 en total.
 - Se declara con `close` descartando la octava carta.
 - Si `config.chinchonEndsGame` es `true` (por defecto): la partida entera termina en ese instante y ese jugador gana, sea cual sea el marcador.
 - Si es `false`: la ronda termina y el jugador que hizo chinchón resta 25 puntos; los demás suman sus puntos sueltos.
@@ -418,13 +421,11 @@ Entrada: mano de 7 u 8 cartas. Salida: `{ melds: CardId[][], leftovers: CardId[]
 ```
 1. Indexa las cartas 0..n-1 (n ≤ 8). Cada subconjunto es una máscara de bits.
 2. Enumera TODAS las combinaciones válidas como máscaras:
-   a) Grupos: para cada rango con k cartas presentes (k ≥ 2), todos los subconjuntos de
-      tamaño ≥ 3; y todos los subconjuntos de tamaño exactamente 2 más un comodín.
-   b) Escaleras: para cada palo, para cada rango inicial s de 1 a 12 y cada longitud
-      L ≥ 3 con s+L-1 ≤ 12:
-        - si están presentes las L cartas → combinación sin comodín.
-        - si falta exactamente 1 y hay comodín libre → combinación con comodín.
-   c) Descarta cualquier combinación con más de 1 comodín.
+   a) Grupos: para cada rango con k cartas presentes (k ≥ 3), todos los subconjuntos de
+      tamaño 3 y 4.
+   b) Escaleras: para cada palo, para cada POSICIÓN inicial s de 1 a 10 y cada longitud
+      L ≥ 3 con s+L-1 ≤ 10: si están presentes las L cartas → combinación.
+      (Posición, no rango: ver §5.4. El hueco 7→sota no corta la escalera.)
 3. Búsqueda exhaustiva con memoización sobre la máscara restante:
      best(mask) = min( puntos(mask) ,  min sobre combinaciones c ⊆ mask de best(mask \ c) )
    Como n ≤ 8, hay como mucho 256 estados. Es instantáneo.
@@ -432,24 +433,24 @@ Entrada: mano de 7 u 8 cartas. Salida: `{ melds: CardId[][], leftovers: CardId[]
 ```
 
 Casos límite obligatorios en los tests:
-- Dos comodines en la mano: cada uno puede ir en una combinación distinta, nunca los dos en la misma.
+- Escalera que cruza el hueco de la baraja (…6-7-sota-caballo…): válida, y es el caso que hay que fijar (P31).
 - Una carta que encaja en un grupo y en una escalera: el resolver elige lo que minimice puntos.
 - Mano sin ninguna combinación: `melds = []`, `deadwood` = suma de todo.
-- Escalera de 7 con comodín: **no** es chinchón, pero sí es una escalera válida con 0 puntos sueltos.
 - Escalera de 8 cartas en la mano de 8 antes de descartar: válida, se descarta la sobrante.
+- Una mano con un ocho, un nueve o un comodín: el resolver **lanza**, no la puntúa (no son cartas de la baraja).
 
 ### 5.10 Tests dorados (escribir con estas manos exactas)
 
-`config` por defecto. Formato `palo-rango`, comodines `joker-1`/`joker-2`.
+`config` por defecto. Formato `palo-rango`. **Actualizados en P31**: los casos 4, 5 y 6 usaban comodines o nueves y se han sustituido por los que fijan la baraja de 40 — el hueco 7→sota y el tope sota-caballo-rey.
 
 | # | Mano (7) | melds esperadas | deadwood |
 |---|----------|-----------------|----------|
 | 1 | oros-1, oros-2, oros-3, oros-4, oros-5, oros-6, oros-7 | 1 escalera de 7 | 0 (chinchón) |
 | 2 | oros-1, oros-2, oros-3, copas-5, copas-5… *(inválido, no repetir)* | — | — |
 | 3 | oros-1, oros-2, oros-3, copas-7, espadas-7, bastos-7, copas-12 | escalera(3) + grupo(3) | 10 |
-| 4 | oros-4, oros-5, joker-1, oros-7, copas-3, copas-4, copas-5 | escalera oros 4-7 con comodín + escalera copas 3-5 | 0 |
-| 5 | oros-1, copas-3, espadas-5, bastos-7, oros-9, copas-11, espadas-12 | ninguna | 1+3+5+7+9+10+10 = 45 |
-| 6 | joker-1, joker-2, oros-10, oros-11, copas-4, copas-5, copas-6 | escalera copas 4-6 + escalera oros 10-12 con 1 comodín | 25 (el otro comodín suelto) |
+| 4 | oros-5, oros-6, oros-7, oros-10, copas-3, copas-4, copas-5 | escalera oros 5-6-7-sota (cruza el hueco) + escalera copas 3-5 | 0 |
+| 5 | oros-1, copas-3, espadas-5, bastos-7, oros-11, copas-12, espadas-10 | ninguna | 1+3+5+7+10+10+10 = 46 |
+| 6 | espadas-10, espadas-11, espadas-12, oros-1, oros-2, copas-4, copas-5 | escalera espadas sota-caballo-rey | 1+2+4+5 = 12 |
 | 7 | oros-11, oros-12, copas-1, oros-1, espadas-1, bastos-1 + copas-2 | grupo de cuatro 1 + resto suelto | 10+10+2 = 22 |
 
 (La fila 2 está intencionadamente marcada como inválida: sirve para recordar que **no puede haber cartas repetidas**; el test correspondiente debe comprobar que construir una mano con duplicados lanza error de invariante.)
@@ -829,14 +830,11 @@ interface ChinchonConfig extends CommonGameConfig {
   gameId: 'chinchon';
   maxPlayers: 2 | 3 | 4;
   handSize: 7;
-  jokers: 0 | 2;
   closeThreshold: 0 | 3 | 5 | 10;
   dryCloseBonus: -10 | 0;
   eliminationScore: 50 | 100 | 150;
   chinchonEndsGame: boolean;
-  jokerPoints: 20 | 25;
-  maxJokersPerMeld: 1;
-  forbidDiscardDrawnCard: boolean;
+  forbidDiscardDrawnCard: boolean; // P31: fuera jokers, jokerPoints, maxJokersPerMeld
 }
 
 interface PochaConfig extends CommonGameConfig {

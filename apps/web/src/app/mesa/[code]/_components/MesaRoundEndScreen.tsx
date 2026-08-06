@@ -83,7 +83,6 @@ export function MesaRoundEndScreen({ view }: MesaRoundEndScreenProps) {
                   <RevealedHand
                     melds={row.melds}
                     leftovers={row.leftovers}
-                    jokerPoints={view.config.jokerPoints}
                   />
                 </div>
               </li>

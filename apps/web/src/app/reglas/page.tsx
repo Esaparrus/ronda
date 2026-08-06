@@ -17,7 +17,7 @@ interface Section {
 const SECTIONS: Section[] = [
   {
     title: 'La baraja',
-    body: 'Se juega con una baraja española de 48 cartas: oros, copas, espadas y bastos, del 1 al 12. Lo normal es añadir 2 comodines.',
+    body: 'Se juega con la baraja española de 40 cartas: oros, copas, espadas y bastos, del 1 al 7 más sota, caballo y rey. Sin ochos, sin nueves y sin comodines.',
   },
   {
     title: 'Reparto',
@@ -31,7 +31,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Combinaciones',
-    body: 'Puedes agrupar tus cartas en grupos (3 o 4 cartas del mismo número, cada una de un palo distinto) o escaleras (3 o más cartas seguidas del mismo palo; el 12 no enlaza con el 1). Un comodín sustituye a cualquier carta, pero solo uno por combinación. Las cartas que no encajan en ninguna combinación son tus puntos sueltos: valen su número, salvo el 10, el 11 y el 12, que valen 10, y el comodín suelto, que vale 25.',
+    body: 'Puedes agrupar tus cartas en grupos (3 o 4 cartas del mismo número, cada una de un palo distinto) o escaleras (3 o más cartas seguidas del mismo palo). Como la baraja no tiene ochos ni nueves, del 7 se pasa a la sota: 6-7-sota es escalera. El rey no enlaza con el as. Las cartas que no encajan en ninguna combinación son tus puntos sueltos: valen su número, salvo sota, caballo y rey, que valen 10.',
     example:
       'El 4, el 5 y el 6 de bastos forman una escalera. El 7 de oros, copas y espadas forman un grupo.',
   },
@@ -43,7 +43,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Chinchón',
-    body: 'Si tus 7 cartas forman una única escalera del mismo palo, sin comodines, es un chinchón. Lo normal es que gane la partida entera al instante, sin que importe el marcador de nadie.',
+    body: 'Si tus 7 cartas forman una única escalera del mismo palo, es un chinchón. Lo normal es que gane la partida entera al instante, sin que importe el marcador de nadie.',
   },
   {
     title: 'Puntuación y eliminación',

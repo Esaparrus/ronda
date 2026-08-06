@@ -89,7 +89,6 @@ export function RoundEndScreen({ view }: RoundEndScreenProps) {
                 <RevealedHand
                   melds={row.melds}
                   leftovers={row.leftovers}
-                  jokerPoints={view.config.jokerPoints}
                 />
               </li>
             );

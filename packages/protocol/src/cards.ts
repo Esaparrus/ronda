@@ -1,44 +1,55 @@
-// Cartas de la baraja española + comodines. Contrato §2.1, §3.1.
+// La baraja española de 40. Contrato §2.1, §3.1, §5.1.
+//
+// P31: se retiran los comodines y los rangos 8 y 9. Los tres juegos reparten
+// ahora exactamente los mismos 40 naipes, así que el comodín deja de ser un
+// concepto del dominio: no hay `isJoker`, ni `joker-N`, ni puntos de comodín,
+// y `suit`/`rank` dejan de poder ser nulos.
 import type { CardId } from './ids.ts';
-import type { ChinchonConfig } from './config.ts';
 
 export type Suit = 'oros' | 'copas' | 'espadas' | 'bastos';
 
 export const SUITS: readonly Suit[] = ['oros', 'copas', 'espadas', 'bastos'];
 
-/** Rango numérico de una carta no comodín: 1..12. */
-export type Rank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+/** Rango de una carta: la baraja corta, sin ochos ni nueves. */
+export type Rank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 10 | 11 | 12;
+
+/** Los diez rangos, en orden de escalera. Orden canónico de la baraja. */
+export const RANKS: readonly Rank[] = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
+
+const RANK_SET: ReadonlySet<number> = new Set(RANKS);
 
 export interface Card {
   id: CardId;
-  suit: Suit | null;
-  rank: Rank | null;
-  isJoker: boolean;
+  suit: Suit;
+  rank: Rank;
   points: number;
 }
 
 const SUIT_SET: ReadonlySet<string> = new Set(SUITS);
 
 /**
- * Puntos de una carta. Contrato §5.5:
- *   - rangos 1..9 → su valor
- *   - rangos 10,11,12 → 10
- *   - comodín → config.jokerPoints
+ * Posición del rango en la escalera, 1..10. Contrato §5.4.
  *
- * La firma recibe `config` para que el comodín respete la configuración.
- * Las cartas no comodín ignoran la config. Tipada como `ChinchonConfig` (no
- * el `GameConfig` ensanchado de P22): el comodín y sus puntos son un
- * concepto exclusivo de Chinchón -- Pocha no tiene comodines (§9.1).
+ * Existe porque la baraja de 40 tiene un hueco: del 7 se pasa a la sota. Las
+ * escaleras se cuentan sobre esta posición, no sobre el rango, así que
+ * 6-7-sota es una escalera de tres y el chinchón (escalera de 7) sigue
+ * saliendo. Decisión de Unai al adoptar la baraja de 40 (P31).
  */
-export function cardPoints(card: Card, config: ChinchonConfig): number {
-  if (card.isJoker) return config.jokerPoints;
-  if (card.rank === null) return 0;
-  return card.rank <= 9 ? card.rank : 10;
+export function rankPosition(rank: Rank): number {
+  return rank <= 7 ? rank : rank - 2;
+}
+
+/**
+ * Puntos de una carta. Contrato §5.5: rangos 1..7 su valor, figuras (10, 11,
+ * 12) 10 puntos. Ya no depende de la config — lo único que la necesitaba era
+ * el comodín, que ya no existe.
+ */
+export function cardPoints(card: Card): number {
+  return card.rank <= 7 ? card.rank : 10;
 }
 
 /** Construye el id canónico de una carta a partir de sus componentes. */
-export function makeCardId(parts: { suit: Suit; rank: Rank } | { joker: 1 | 2 }): CardId {
-  if ('joker' in parts) return `joker-${parts.joker}`;
+export function makeCardId(parts: { suit: Suit; rank: Rank }): CardId {
   return `${parts.suit}-${parts.rank}`;
 }
 
@@ -46,44 +57,25 @@ export type ParseCardError =
   | { kind: 'empty' }
   | { kind: 'bad_format'; raw: string }
   | { kind: 'bad_suit'; raw: string }
-  | { kind: 'bad_rank'; raw: string }
-  | { kind: 'bad_joker'; raw: string };
+  | { kind: 'bad_rank'; raw: string };
 
 /**
  * Parsea un CardId en su estructura Card. Pura, sin lanzar.
  *
- * - 'oros-7'        → { suit: 'oros', rank: 7, isJoker: false, ... }
- * - 'copas-12'      → { suit: 'copas', rank: 12, ... }
- * - 'joker-1'       → { isJoker: true, joker: 1, ... }
- * - 'oros-13'       → error (rank fuera de rango)
- * - 'oros-0'        → error
- * - 'picas-1'       → error (palo inválido)
+ * - 'oros-7'   → { suit: 'oros', rank: 7, points: 7 }
+ * - 'copas-12' → { suit: 'copas', rank: 12, points: 10 }
+ * - 'oros-8'   → error (no está en la baraja de 40)
+ * - 'oros-13'  → error (rango fuera de rango)
+ * - 'joker-1'  → error (ya no hay comodines)
+ * - 'picas-1'  → error (palo inválido)
  */
-export function parseCardId(id: CardId): { ok: true; value: Card } | { ok: false; error: ParseCardError } {
+export function parseCardId(
+  id: CardId,
+): { ok: true; value: Card } | { ok: false; error: ParseCardError } {
   const raw = id.trim();
 
   if (raw.length === 0) return { ok: false, error: { kind: 'empty' } };
 
-  // Joker: 'joker-1' | 'joker-2'
-  if (raw.startsWith('joker-')) {
-    const nStr = raw.slice('joker-'.length);
-    if (nStr !== '1' && nStr !== '2') {
-      return { ok: false, error: { kind: 'bad_joker', raw } };
-    }
-    const joker = Number(nStr) as 1 | 2;
-    return {
-      ok: true,
-      value: {
-        id: `joker-${joker}`,
-        suit: null,
-        rank: null,
-        isJoker: true,
-        points: 0, // puntos dependen de config; se calculan con cardPoints()
-      },
-    };
-  }
-
-  // Carta normal: '<suit>-<rank>'
   const dash = raw.indexOf('-');
   if (dash <= 0 || dash === raw.length - 1) {
     return { ok: false, error: { kind: 'bad_format', raw } };
@@ -95,7 +87,7 @@ export function parseCardId(id: CardId): { ok: true; value: Card } | { ok: false
     return { ok: false, error: { kind: 'bad_suit', raw } };
   }
   const rankNum = Number(rankStr);
-  if (!Number.isInteger(rankNum) || rankNum < 1 || rankNum > 12) {
+  if (!Number.isInteger(rankNum) || !RANK_SET.has(rankNum)) {
     return { ok: false, error: { kind: 'bad_rank', raw } };
   }
   const rank = rankNum as Rank;
@@ -104,12 +96,10 @@ export function parseCardId(id: CardId): { ok: true; value: Card } | { ok: false
     id: `${suit}-${rank}`,
     suit,
     rank,
-    isJoker: false,
-    points: rank <= 9 ? rank : 10,
+    points: rank <= 7 ? rank : 10,
   };
   return { ok: true, value: card };
 }
 
 /** Type guard: ¿es un palo válido? */
-export const isSuit = (v: unknown): v is Suit =>
-  typeof v === 'string' && SUIT_SET.has(v);
+export const isSuit = (v: unknown): v is Suit => typeof v === 'string' && SUIT_SET.has(v);

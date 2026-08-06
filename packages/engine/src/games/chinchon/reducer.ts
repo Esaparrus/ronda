@@ -125,7 +125,7 @@ export function dealRound(s: ChinchonState): ChinchonState {
   const next = cloneState(s);
 
   // Baraja la baraja completa con la semilla y el contador actuales.
-  const fullDeck = buildDeck(next.config);
+  const fullDeck = buildDeck();
   const sh = shuffle(fullDeck, next.rng.seed, next.rng.calls);
   // Trabajamos con CardId[]: el estado solo guarda ids.
   let pool: CardId[] = sh.items.map((c) => c.id);
@@ -508,7 +508,7 @@ function endRound(
   const scored: { playerId: PlayerId; delta: number; total: number }[] = [];
   for (const p of next.players) {
     if (p.eliminated || p.left) continue;
-    const sol = solveHand(p.hand, next.config);
+    const sol = solveHand(p.hand);
     let delta = sol.deadwood;
     if (p.playerId === closerId) {
       // El que cierra: si 0 puntos, dryCloseBonus (por defecto -10).
@@ -566,7 +566,7 @@ function endRoundNoClose(
   const scored: { playerId: PlayerId; delta: number; total: number }[] = [];
   for (const p of next.players) {
     if (p.eliminated || p.left) continue;
-    const sol = solveHand(p.hand, next.config);
+    const sol = solveHand(p.hand);
     p.score += sol.deadwood;
     scored.push({ playerId: p.playerId, delta: sol.deadwood, total: p.score });
   }
@@ -606,7 +606,7 @@ function buildRows(
   return state.players
     .filter((p) => !p.left)
     .map((p) => {
-      const sol = solveHand(p.hand, state.config);
+      const sol = solveHand(p.hand);
       return {
         playerId: p.playerId,
         melds: sol.melds,

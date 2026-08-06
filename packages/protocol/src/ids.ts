@@ -13,9 +13,11 @@ export type PlayerId = string;
 export type GameId = 'chinchon' | 'pocha' | 'mus';
 
 /**
- * Identificador de carta. Formato:
- *   - '<suit>-<rank>' con suit ∈ {oros,copas,espadas,bastos}, rank ∈ 1..12
- *   - 'joker-1' | 'joker-2'
+ * Identificador de carta: '<suit>-<rank>' con suit ∈ {oros,copas,espadas,
+ * bastos} y rank ∈ {1..7, 10, 11, 12} — la baraja española de 40 (§5.1).
+ *
+ * P31: ya no existe 'joker-1' | 'joker-2'. Los tres juegos reparten la misma
+ * baraja de 40 naipes, sin ochos, sin nueves y sin comodines.
  */
 export type CardId = string;
 

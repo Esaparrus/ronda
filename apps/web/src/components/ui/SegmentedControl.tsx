@@ -1,5 +1,5 @@
 // Grupo de botones grandes para elegir entre pocas opciones (número de
-// jugadores, comodines, umbral de cierre...). Contrato P13 /crear:
+// jugadores, umbral de cierre, puntos de eliminación...). Contrato P13 /crear:
 // "controles grandes", zona táctil mínima 56px (§8.5.2).
 'use client';
 

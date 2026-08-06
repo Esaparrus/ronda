@@ -1,27 +1,17 @@
 // Carta jugable. Contrato §8.3 (representación de cartas) y P11 (componente
 // puro).
 //
-// Los 40 naipes de la baraja corta se pintan con la baraja española de
-// `public/cards/` (ver `cardImages.ts`); el resto —ochos, nueves y comodines,
-// que solo aparecen en Chinchón— siguen dibujándose con el SVG propio que se
-// describe abajo, que por eso no se ha retirado. El marco (fondo, contorno de
-// tinta, barra de combinación y velo de atenuado) es el mismo en los dos
-// casos, así que una mano mezclada mantiene la misma silueta.
+// P31: los tres juegos reparten la misma baraja de 40 (§5.1), y de los 40
+// naipes hay imagen, así que la cara es SIEMPRE la baraja española de
+// `public/cards/` (ver `cardImages.ts`). El dibujo SVG propio que vivía aquí
+// —pips, figuras y comodín— se retira con el mismo commit: dejaba de tener
+// camino, porque ya no existe carta repartible sin imagen. El marco (fondo,
+// contorno de tinta, barra de combinación y velo de atenuado) sigue siendo
+// SVG, y es lo que le da al naipe su silueta dentro de la app.
 //
-// Recreación del diseño "RondaCard" importado de claude.ai/design: pips
-// dispuestos como en una baraja impresa de verdad (1-9), figuras propias
-// para Sota/Caballo/Rey (10/11/12), comodín con adornos de esquina, e
-// índices de esquina en placa de color (arriba a la izquierda y abajo a la
-// derecha, invertido 180° como en cualquier baraja real). El viewBox
-// (0 0 72 108) coincide 1:1 con el `viewBox` con el que se autoraron las
-// coordenadas del diseño, así que no hace falta reescalar nada a mano.
-//
-// Nota de contraste (§8.5, AA): el índice de esquina y "JOKER" van siempre
-// en tinta de carta (--card-ink) o papel de carta (--card-face) — nunca en
-// un color de palo — porque los tokens de palo no alcanzan 4.5:1 sobre
-// ninguno de los dos. Los colores de palo se reservan para el propio
-// dibujo (símbolo/figura/placa de fondo), donde el contrato exige solo
-// 3:1 de contraste no-textual, que sí cumplen.
+// El viewBox (0 0 72 108) se mantiene: es la proporción 2:3 de la que depende
+// el escalado de /mesa, y las coordenadas literales del contrato (radio de
+// esquina, insets, grosores) están autoradas contra él.
 //
 // Deliberadamente sigue siendo un único <svg> como raíz (sin <div>
 // envolvente): CenterTable.tsx escala la carta al tamaño `lg` DENTRO de un
@@ -32,9 +22,7 @@
 import { memo, useId } from 'react';
 import { parseCardId, type CardId, type Suit } from '@ronda/protocol';
 import { CardBack } from './CardBack';
-import { CourtIllustration, JokerOrnaments, PIP_LAYOUTS, SuitPip, cornerLabel } from './cardArt';
 import { cardImageSrc } from './cardImages';
-import { useCardArt } from './CardArtContext';
 
 export type CardSize = 'sm' | 'md' | 'lg';
 
@@ -104,7 +92,6 @@ function PlayingCardComponent({
   // instancia: dos <PlayingCard> en la misma página no pueden compartir
   // `<clipPath id>` sin que el segundo herede el recorte del primero.
   const clipId = useId();
-  const art = useCardArt();
 
   if (faceDown) {
     return (
@@ -134,12 +121,8 @@ function PlayingCardComponent({
   }
 
   const card = parsed.value;
-  const suitColor = card.suit ? SUIT_COLOR_VAR[card.suit] : 'var(--card-joker)';
-  // Naipe fotográfico si lo hay (los 40 de la baraja corta) y si el subárbol
-  // no ha pedido baraja SVG — Chinchón la pide entera, porque sus ochos,
-  // nueves y comodines no tienen imagen y la mano saldría a dos estilos.
-  // Ver `cardImages.ts` y `CardArtContext.tsx`.
-  const imageSrc = art === 'svg' ? null : cardImageSrc(card.suit, card.rank);
+  const suitColor = SUIT_COLOR_VAR[card.suit];
+  const imageSrc = cardImageSrc(card.suit, card.rank);
 
   return (
     <svg
@@ -147,7 +130,7 @@ function PlayingCardComponent({
       width={width}
       height={height}
       role="img"
-      aria-label={card.isJoker ? 'Comodín' : `${card.rank} de ${card.suit}`}
+      aria-label={`${card.rank} de ${card.suit}`}
       className={className}
       style={{
         // Nota: el atenuado de `dimmed` NO se hace con `opacity` en este <svg>
@@ -178,104 +161,46 @@ function PlayingCardComponent({
         strokeWidth={3.25}
       />
 
-      {/* Línea interior de color de palo, inset 6. El naipe fotográfico trae
-          la suya impresa, así que ahí no se pinta. */}
-      {imageSrc === null ? (
-        <rect
-          x={6}
-          y={6}
-          width={VIEWBOX_WIDTH - 12}
-          height={VIEWBOX_HEIGHT - 12}
-          rx={6}
-          fill="none"
-          stroke={suitColor}
-          strokeWidth={2}
-        />
-      ) : null}
-
-      {imageSrc !== null ? (
-        <>
-          {/* Recorte con el mismo redondeo que el fondo: la imagen llega
-              cuadrada a las esquinas y sin él asomaría por fuera del naipe. */}
-          <defs>
-            <clipPath id={clipId}>
-              <rect
-                x={1.75}
-                y={1.75}
-                width={VIEWBOX_WIDTH - 1.5}
-                height={VIEWBOX_HEIGHT - 1.5}
-                rx={9}
-              />
-            </clipPath>
-          </defs>
-          {/* `preserveAspectRatio="none"`: la imagen es 5:7 y el naipe 2:3, y
-              se prefiere estrechar el dibujo un 4,6 % —imperceptible— a
-              recortarlo, que se comería el filete de color del borde. */}
-          <image
-            href={imageSrc}
-            x={1.75}
-            y={1.75}
-            width={VIEWBOX_WIDTH - 1.5}
-            height={VIEWBOX_HEIGHT - 1.5}
-            preserveAspectRatio="none"
-            clipPath={`url(#${clipId})`}
-          />
-          {/* Contorno de tinta repintado ENCIMA de la imagen: el del fondo
-              queda tapado por dentro y el naipe perdería la mitad del trazo,
-              que es justo lo que lo separa del tapete y de la carta de al
-              lado cuando la mano se solapa. */}
+      {/* Recorte con el mismo redondeo que el fondo: la imagen llega
+          cuadrada a las esquinas y sin él asomaría por fuera del naipe. */}
+      <defs>
+        <clipPath id={clipId}>
           <rect
             x={1.75}
             y={1.75}
             width={VIEWBOX_WIDTH - 1.5}
             height={VIEWBOX_HEIGHT - 1.5}
             rx={9}
-            fill="none"
-            stroke="var(--card-ink)"
-            strokeWidth={3.25}
           />
-          {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
-        </>
-      ) : card.isJoker ? (
-        <>
-          <JokerOrnaments />
-          {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
-          <text
-            x={VIEWBOX_WIDTH / 2}
-            y={VIEWBOX_HEIGHT / 2}
-            fontFamily="var(--font-display)"
-            fontWeight={700}
-            fontSize={11}
-            fill="var(--card-ink)"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            transform={`rotate(-90 ${VIEWBOX_WIDTH / 2} ${VIEWBOX_HEIGHT / 2})`}
-            letterSpacing={2}
-          >
-            JOKER
-          </text>
-        </>
-      ) : card.rank !== null && card.suit !== null ? (
-        <>
-          <CardFace rank={card.rank} suit={card.suit} color={suitColor} />
-          {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
-          <CornerBadge
-            x={5}
-            y={5}
-            label={cornerLabel(card.rank)}
-            bg={suitColor}
-            inkText={card.suit === 'oros'}
-          />
-          <CornerBadge
-            x={VIEWBOX_WIDTH - 5 - 16}
-            y={VIEWBOX_HEIGHT - 5 - 16}
-            label={cornerLabel(card.rank)}
-            bg={suitColor}
-            inkText={card.suit === 'oros'}
-            rotate180
-          />
-        </>
-      ) : null}
+        </clipPath>
+      </defs>
+      {/* `preserveAspectRatio="none"`: la imagen es 5:7 y el naipe 2:3, y se
+          prefiere estrechar el dibujo un 4,6 % —imperceptible— a recortarlo,
+          que se comería el filete de color del borde. */}
+      <image
+        href={imageSrc}
+        x={1.75}
+        y={1.75}
+        width={VIEWBOX_WIDTH - 1.5}
+        height={VIEWBOX_HEIGHT - 1.5}
+        preserveAspectRatio="none"
+        clipPath={`url(#${clipId})`}
+      />
+      {/* Contorno de tinta repintado ENCIMA de la imagen: el del fondo queda
+          tapado por dentro y el naipe perdería la mitad del trazo, que es
+          justo lo que lo separa del tapete y de la carta de al lado cuando la
+          mano se solapa. */}
+      <rect
+        x={1.75}
+        y={1.75}
+        width={VIEWBOX_WIDTH - 1.5}
+        height={VIEWBOX_HEIGHT - 1.5}
+        rx={9}
+        fill="none"
+        stroke="var(--card-ink)"
+        strokeWidth={3.25}
+      />
+      {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
 
       {/* Velo de atenuado: mismo contorno redondeado que el fondo, pintado
           ENCIMA de toda la carta en vez de bajar la opacidad del <svg>
@@ -312,70 +237,4 @@ function MeldBar({ color }: { color: string }) {
       strokeWidth={1}
     />
   );
-}
-
-/** El pip o la figura de corte que corresponde al rango: 1-9 pips, 10-12 figura. */
-function CardFace({ rank, suit, color }: { rank: number; suit: Suit; color: string }) {
-  if (rank >= 10) {
-    return <CourtIllustration rank={rank as 10 | 11 | 12} suit={suit} color={color} />;
-  }
-  const positions = PIP_LAYOUTS[rank] ?? [];
-  return (
-    <>
-      {positions.map((pt, i) => (
-        <g key={i} transform={`translate(${pt.x} ${pt.y}) scale(${pt.s}) translate(-30 -30)`}>
-          <SuitPip suit={suit} color={color} />
-        </g>
-      ))}
-    </>
-  );
-}
-
-/** Placa de índice de esquina (arriba-izq. normal, abajo-der. invertida 180°). */
-function CornerBadge({
-  x,
-  y,
-  label,
-  bg,
-  inkText,
-  rotate180 = false,
-}: {
-  x: number;
-  y: number;
-  label: string;
-  bg: string;
-  inkText: boolean;
-  rotate180?: boolean;
-}) {
-  const SIZE = 16;
-  const cx = x + SIZE / 2;
-  const cy = y + SIZE / 2;
-  const badge = (
-    <>
-      <rect
-        x={x}
-        y={y}
-        width={SIZE}
-        height={SIZE}
-        rx={5}
-        fill={bg}
-        stroke="var(--card-ink)"
-        strokeWidth={1.75}
-      />
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontFamily="var(--font-display)"
-        fontWeight={700}
-        fontSize={11.5}
-        fill={inkText ? 'var(--card-ink)' : 'var(--card-face)'}
-      >
-        {label}
-      </text>
-    </>
-  );
-  if (!rotate180) return badge;
-  return <g transform={`rotate(180 ${cx} ${cy})`}>{badge}</g>;
 }
