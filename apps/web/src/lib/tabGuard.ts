@@ -16,6 +16,8 @@
 //      demás quedan inactivas. Deliberadamente no hay mensaje de vuelta ni
 //      votación: es la regla más simple que cumple "la pestaña vieja se
 //      marca inactiva", no una negociación general de liderazgo.
+import { createUuid } from './uuid.ts';
+
 export interface TabGuard {
   dispose(): void;
 }
@@ -36,7 +38,7 @@ export function startTabGuard(roomCode: string, onInactive: () => void): TabGuar
     return { dispose() {} };
   }
 
-  const tabId = crypto.randomUUID();
+  const tabId = createUuid();
   const channel = new BroadcastChannel(`ronda.tab.${roomCode}`);
   let inactive = false;
 

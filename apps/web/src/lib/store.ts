@@ -21,6 +21,7 @@ import { messageFor, REACTION_TTL_MS } from '@ronda/protocol';
 import { clearToken, getToken, saveToken } from './token.ts';
 import { connectIfNeeded, emitWithAck, getSocket } from './socket.ts';
 import { createServerDownWatcher } from './serverDown.ts';
+import { createUuid } from './uuid.ts';
 
 export type ConnectionStatus = 'online' | 'reconnecting' | 'offline';
 
@@ -329,7 +330,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
       set({ pendingAction: true, lastError: null });
 
       const attempt = () => {
-        const clientActionId = crypto.randomUUID();
+        const clientActionId = createUuid();
         const expectedVersion = get().version;
         return emitWithAck(socket, 'game:action', { clientActionId, expectedVersion, action });
       };

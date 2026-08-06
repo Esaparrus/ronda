@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ronda-server
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+      - key: CORS_ORIGIN
+        value: https://ronda-web-psi.vercel.app
+      # Placeholder para la prueba gratuita. Se sustituye por Postgres
+      # gestionado cuando activemos persistencia real.
+      - key: DATABASE_URL
+        value: postgres://local-test/no-db
