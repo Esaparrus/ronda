@@ -322,6 +322,18 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
         ]}
       />
       <SegmentedControl
+        legend="Tiempo por turno"
+        helperText="Cuenta atrás por jugador. Al agotarse, se hace una jugada automática legal."
+        value={config.turnTimeSeconds}
+        onChange={(v) => setField('turnTimeSeconds', v)}
+        options={[
+          { value: 0, label: 'Sin tiempo' },
+          { value: 30, label: '30 s' },
+          { value: 60, label: '60 s' },
+          { value: 90, label: '90 s' },
+        ]}
+      />
+      <SegmentedControl
         legend="Chinchón acaba la partida"
         helperText="Un chinchón termina la partida en el acto."
         value={config.chinchonEndsGame}

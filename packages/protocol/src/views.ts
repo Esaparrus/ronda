@@ -78,6 +78,8 @@ export interface ChinchonCommonView extends CommonViewBase {
   gameId: 'chinchon';
   config: ChinchonConfig;
   turnPhase: TurnPhase;
+  /** Instante límite del turno en ms, o null cuando se juega sin tiempo. */
+  turnDeadlineAt: number | null;
   deckCount: number;
   discardTop: CardId | null;
   discardCount: number;

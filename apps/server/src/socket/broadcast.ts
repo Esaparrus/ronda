@@ -67,6 +67,7 @@ function buildChinchonLobbyCommon(room: Room): ChinchonCommonView {
     players: buildLobbyPlayers(room),
     turnPlayerId: null,
     turnPhase: null,
+    turnDeadlineAt: null,
     deckCount: 0,
     discardTop: null,
     discardCount: 0,

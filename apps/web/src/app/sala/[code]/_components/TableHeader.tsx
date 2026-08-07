@@ -11,19 +11,34 @@ export interface TableHeaderProps {
   left: string;
   /** Apodo de quien tiene el turno, o null si no hay turno ahora mismo. */
   turnNick: string | null;
+  /** Cuenta atrás formateada, o null cuando la sala juega sin tiempo. */
+  timerLabel?: string | null;
+  /** Cuando quedan pocos segundos, se resalta para llamar la atención. */
+  timerUrgent?: boolean;
 }
 
-export function TableHeader({ left, turnNick }: TableHeaderProps) {
+export function TableHeader({ left, turnNick, timerLabel, timerUrgent = false }: TableHeaderProps) {
   return (
     <div className="flex items-center justify-between border-b-2 border-linea bg-mesa px-4 py-2">
       <span className="font-mono text-12 uppercase leading-none tracking-wider text-humo">
         {left}
       </span>
-      {turnNick ? (
-        <span className="font-mono text-12 uppercase leading-none tracking-wider text-oro">
-          Turno de {turnNick}
-        </span>
-      ) : null}
+      <div className="flex items-center gap-3">
+        {timerLabel ? (
+          <span
+            className={`font-mono text-12 uppercase leading-none tracking-wider ${
+              timerUrgent ? 'text-brasa' : 'text-humo'
+            }`}
+          >
+            Tiempo {timerLabel}
+          </span>
+        ) : null}
+        {turnNick ? (
+          <span className="font-mono text-12 uppercase leading-none tracking-wider text-oro">
+            Turno de {turnNick}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -92,6 +92,7 @@ export function createInitialState(input: {
     dealerSeat: 0, // repartidor de la ronda 1 es el asiento 0
     turnSeat: null,
     turnPhase: null,
+    turnDeadlineAt: null,
     players: playersSorted.map((p) => ({
       playerId: p.playerId,
       nick: p.nick,
@@ -137,6 +138,9 @@ export function dealRound(s: ChinchonState): ChinchonState {
     p.lockedCardId = null;
   }
   next.discard = [];
+  // El servidor fija el nuevo límite al iniciar la ronda. El motor no usa
+  // relojes para que siga siendo puro y determinista.
+  next.turnDeadlineAt = null;
 
   // Reparte 7 cartas, una a una, empezando por el siguiente asiento activo al
   // repartidor y rotando saltando eliminados/abandonados.

@@ -54,6 +54,8 @@ export interface ChinchonState {
   // Turno activo.
   turnSeat: number | null;
   turnPhase: TurnPhase;
+  /** Instante límite del turno, gestionado por el servidor; null sin tiempo. */
+  turnDeadlineAt?: number | null;
 
   // Jugadores en orden de asiento.
   players: ChinchonPlayer[];

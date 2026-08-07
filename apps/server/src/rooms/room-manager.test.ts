@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { RoomManager } from './room-manager.ts';
 import { isValidNick, normalizeNick, nickKey } from './nick.ts';
 import { createToken, hashToken } from './tokens.ts';
@@ -296,6 +296,37 @@ describe('RoomManager applyAction', () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.code).toBe('STALE_VERSION');
+  });
+});
+
+describe('temporizador de Chinchón', () => {
+  it('al agotarse roba y descarta una carta legal, sin cerrar', () => {
+    vi.useFakeTimers();
+    try {
+      const m = mgr();
+      const config = { ...DEFAULT_CONFIG, turnTimeSeconds: 30 as const };
+      const c = m.createRoom({ gameId: 'chinchon', config, nick: 'A1', now: NOW });
+      if (!c.ok) throw new Error();
+      const j = m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+      if (!j.ok) throw new Error();
+      m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+
+      const before = stateOf(room(m, c.value.roomCode));
+      if (before.gameId !== 'chinchon') throw new Error('esperaba Chinchón');
+      const timedSeat = before.turnSeat;
+      expect(before.turnDeadlineAt).toBe(NOW + 30_000);
+      vi.advanceTimersByTime(30_000);
+
+      const after = stateOf(room(m, c.value.roomCode));
+      if (after.gameId !== 'chinchon') throw new Error('esperaba Chinchón');
+      expect(after.status).toBe('playing');
+      expect(after.turnSeat).not.toBe(timedSeat);
+      expect(after.turnPhase).toBe('draw');
+      expect(after.discard.length).toBe(2);
+      expect(after.turnDeadlineAt).toBe(Date.now() + 30_000);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

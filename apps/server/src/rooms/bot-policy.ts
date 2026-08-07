@@ -29,15 +29,25 @@ export function decideChinchonAction(view: ChinchonPlayerView): GameAction | nul
   }
   if (actions.has('discard')) {
     // Descarta la carta suelta de más puntos (no en bestMelds).
-    const inMeld = new Set<CardId>(me.bestMelds.flat());
-    const candidates = me.hand.filter((c) => !inMeld.has(c) && c !== me.lockedCardId);
-    const pick =
-      candidates.length > 0
-        ? candidates.reduce((a, b) => (cardScore(a) > cardScore(b) ? a : b))
-        : (me.hand.find((c) => c !== me.lockedCardId) ?? me.hand[0]);
-    if (pick) return { type: 'discard', cardId: pick };
+    return chooseChinchonDiscard(view);
   }
   return null;
+}
+
+/** Descarte automático al agotarse el tiempo; nunca intenta cerrar. */
+export function decideChinchonTimeoutDiscard(view: ChinchonPlayerView): GameAction | null {
+  if (!view.me.availableActions.includes('discard')) return null;
+  return chooseChinchonDiscard(view);
+}
+
+function chooseChinchonDiscard(view: ChinchonPlayerView): GameAction | null {
+  const inMeld = new Set<CardId>(view.me.bestMelds.flat());
+  const candidates = view.me.hand.filter((c) => !inMeld.has(c) && c !== view.me.lockedCardId);
+  const pick =
+    candidates.length > 0
+      ? candidates.reduce((a, b) => (cardScore(a) > cardScore(b) ? a : b))
+      : (view.me.hand.find((c) => c !== view.me.lockedCardId) ?? view.me.hand[0]);
+  return pick ? { type: 'discard', cardId: pick } : null;
 }
 
 /** Heurística de "peligrosidad" de una carta suelta: sus puntos (§5.5). */

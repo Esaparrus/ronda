@@ -32,6 +32,7 @@ describe('GameConfigSchema', () => {
       eliminationScore: 100,
       chinchonEndsGame: true,
       forbidDiscardDrawnCard: true,
+      turnTimeSeconds: 60,
       soundEnabled: true,
     });
   });

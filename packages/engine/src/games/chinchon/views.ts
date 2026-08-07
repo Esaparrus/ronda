@@ -57,6 +57,7 @@ function buildCommon(state: ChinchonState): ChinchonCommonView {
     players: buildPublicPlayers(state),
     turnPlayerId,
     turnPhase: state.turnPhase,
+    turnDeadlineAt: state.turnDeadlineAt ?? null,
     deckCount: state.deck.length,
     discardTop: state.discard.length > 0 ? (state.discard[state.discard.length - 1] ?? null) : null,
     discardCount: state.discard.length,
@@ -115,7 +116,13 @@ function buildMe(state: ChinchonState, playerId: PlayerId): ChinchonPlayerViewMe
   const sol = solveHand(hand);
 
   // canClose: ¿existe alguna carta cuyo descarte permita cerrar?
-  const closable = hand.length === 8 ? closableDiscards(hand, state.config) : [];
+  // La carta robada del descarte queda bloqueada durante este turno: no debe
+  // aparecer como opción de cierre aunque la combinación matemática fuese
+  // válida, porque el reducer la rechazaría igualmente.
+  const closable =
+    hand.length === 8
+      ? closableDiscards(hand, state.config).filter((id) => id !== player.lockedCardId)
+      : [];
   const canClose = closable.length > 0;
 
   // Acciones disponibles según fase y turno.

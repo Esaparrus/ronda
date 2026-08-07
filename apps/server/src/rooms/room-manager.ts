@@ -30,6 +30,7 @@ import {
   type RoomHooks,
 } from './room.ts';
 import { randomUUID } from 'node:crypto';
+import { decideChinchonTimeoutDiscard } from './bot-policy.ts';
 
 /** Mínimo de jugadores por juego (§9.2 Pocha: "fijo, no configurable"; §12.2
  * Mus: exactamente 4, "no hay Mus sin cuatro"; §2.1 Chinchón: MIN_PLAYERS
@@ -60,6 +61,8 @@ export class RoomManager {
   private hooksFactory: () => RoomHooks;
   /** io inyectado (P8) para que los hooks puedan difundir. Opcional. */
   private io: unknown = null;
+  /** Un único temporizador de turno por sala; no existe para partidas sin tiempo. */
+  private turnTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(hooksFactory: () => RoomHooks = () => ({})) {
     this.hooksFactory = hooksFactory;
@@ -348,9 +351,11 @@ export class RoomManager {
     const module = GAMES[room.gameId];
     if (!module) return err('GAME_NOT_FOUND');
 
-    room.state = module.createInitialState(dealInput(room)) as EngineState;
+    const initialState = module.createInitialState(dealInput(room)) as EngineState;
+    room.state = this.withTurnDeadline(null, initialState, input.now);
     room.status = 'playing';
     room.touch(input.now);
+    this.syncTurnTimer(room, null);
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'game_started', { players: actives.length });
     return ok(null);
@@ -439,6 +444,7 @@ export class RoomManager {
       const connected = [...room.players.values()].filter((p) => p.connected);
       if (connected.length < minPlayersFor(room.gameId)) {
         room.status = 'gameEnd';
+        this.clearTurnTimer(room.code);
         const state = room.state;
         if (state?.gameId === 'mus') {
           // Mus, decisión 6 de P28 (§12.11): la partida se ANULA. No hay
@@ -509,10 +515,12 @@ export class RoomManager {
     if (!r.ok) return r;
     // El módulo devuelve estado tipado como `unknown` (AnyGameModule). Aquí
     // recuperamos el tipo concreto (Chinchón o Pocha).
-    const newState = r.value.state as EngineState;
+    const rawState = r.value.state as EngineState;
+    const newState = this.withTurnDeadline(currentState, rawState, input.now);
     room.state = newState;
     room.processedActions.set(input.clientActionId, newState.version);
     room.touch(input.now);
+    this.syncTurnTimer(room, currentState);
 
     // Eventos cosméticos (una sola vez por acción).
     if (r.value.events.length > 0) {
@@ -579,8 +587,11 @@ export class RoomManager {
       const module = GAMES[room.gameId];
       if (!module) return err('GAME_NOT_FOUND');
       room.seed = randomSeed();
-      room.state = module.createInitialState(dealInput(room)) as EngineState;
+      const previousState = room.state;
+      const initialState = module.createInitialState(dealInput(room)) as EngineState;
+      room.state = this.withTurnDeadline(previousState, initialState, input.now);
       room.status = 'playing';
+      this.syncTurnTimer(room, previousState);
       room.hooks.onTrack?.(room, 'rematch', {});
     }
     room.hooks.onSnapshot?.(room);
@@ -696,6 +707,106 @@ export class RoomManager {
 
   // --- sweep (caducidades) -------------------------------------------------
 
+  /** Añade el límite al estado público sin meter el reloj dentro del motor. */
+  private withTurnDeadline(
+    previous: EngineState | null,
+    state: EngineState,
+    now: number,
+  ): EngineState {
+    if (state.gameId !== 'chinchon') return state;
+
+    const seconds = state.config.turnTimeSeconds;
+    if (state.status !== 'playing' || state.turnSeat === null || seconds === 0) {
+      return { ...state, turnDeadlineAt: null };
+    }
+
+    const sameTurn =
+      previous?.gameId === 'chinchon' &&
+      previous.status === 'playing' &&
+      previous.turnSeat === state.turnSeat;
+    const deadlineAt = sameTurn
+      ? (state.turnDeadlineAt ?? previous.turnDeadlineAt ?? now + seconds * 1000)
+      : now + seconds * 1000;
+    return { ...state, turnDeadlineAt: deadlineAt };
+  }
+
+  /** Programa solo el comienzo de cada turno; robar no reinicia el reloj. */
+  private syncTurnTimer(room: Room, previous: EngineState | null): void {
+    const state = room.state;
+    if (
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'chinchon' ||
+      state.config.turnTimeSeconds === 0 ||
+      state.turnSeat === null
+    ) {
+      this.clearTurnTimer(room.code);
+      return;
+    }
+
+    const sameTurn =
+      previous?.gameId === 'chinchon' &&
+      previous.status === 'playing' &&
+      previous.turnSeat === state.turnSeat;
+    if (sameTurn && this.turnTimers.has(room.code)) return;
+
+    this.clearTurnTimer(room.code);
+    const timer = setTimeout(() => {
+      this.turnTimers.delete(room.code);
+      this.handleTurnTimeout(room.code);
+    }, state.config.turnTimeSeconds * 1000);
+    // Los temporizadores de una sala no deben impedir apagar el servidor.
+    timer.unref?.();
+    this.turnTimers.set(room.code, timer);
+  }
+
+  private clearTurnTimer(roomCode: string): void {
+    const timer = this.turnTimers.get(roomCode);
+    if (timer) clearTimeout(timer);
+    this.turnTimers.delete(roomCode);
+  }
+
+  /**
+   * El tiempo agotado no cierra por el jugador: roba del mazo y tira una carta
+   * suelta legal. Así el cierre sigue siendo una decisión explícita y la mano
+   * nunca se queda bloqueada en mitad del turno.
+   */
+  private handleTurnTimeout(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    const state = room?.state;
+    if (!room || !state || room.status !== 'playing' || state.gameId !== 'chinchon') return;
+    const seat = state.turnSeat;
+    const player = seat === null ? undefined : state.players[seat];
+    if (!player) return;
+
+    const timedAction = (action: GameAction): boolean => {
+      const current = room.state;
+      if (!current || current.gameId !== 'chinchon') return false;
+      const result = this.applyAction({
+        roomCode,
+        playerId: player.playerId,
+        clientActionId: `timeout:${roomCode}:${current.version}:${randomUUID()}`,
+        expectedVersion: current.version,
+        action,
+        now: Date.now(),
+      });
+      return result.ok;
+    };
+
+    if (state.turnPhase === 'draw' && !timedAction({ type: 'drawDeck' })) return;
+
+    const afterDraw = room.state;
+    if (!afterDraw || afterDraw.gameId !== 'chinchon' || afterDraw.status !== 'playing') return;
+    const module = GAMES.chinchon;
+    if (!module) return;
+    const view = module.getPlayerView(afterDraw, player.playerId);
+    if (view.kind !== 'player' || view.gameId !== 'chinchon') return;
+    const action = decideChinchonTimeoutDiscard(view);
+    if (!action || !timedAction(action)) return;
+    room.hooks.onToast?.(room, 'warn', `${player.nick} se quedó sin tiempo. Jugada automática.`);
+  }
+
   /** Cierra salas caducadas: lobby inactivo >2h, partida sin conectados >6h. */
   sweep(now: number): number {
     let closed = 0;
@@ -719,6 +830,7 @@ export class RoomManager {
 
   /** Marca la sala como cerrada y la quita del mapa. */
   closeRoom(room: Room, reason: 'host_left' | 'empty' | 'expired'): void {
+    this.clearTurnTimer(room.code);
     room.status = 'closed';
     room.hooks.onClosed?.(room, reason);
     this.rooms.delete(room.code);

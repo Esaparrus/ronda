@@ -13,7 +13,7 @@
 // para Pocha, que reparte hasta 6 asientos y no cabe en el borde de la mesa.
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CardId, ChinchonPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { CommonArea } from './CommonArea';
@@ -45,6 +45,7 @@ export interface GameScreenProps {
 
 export function GameScreen({ view }: GameScreenProps) {
   const [selected, setSelected] = useState<CardId | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   // Carta descartable que también cerraría la ronda, pendiente de que el
   // jugador confirme: cerrar (o chinchón) termina la ronda/partida, así que
   // no se dispara solo porque la carta lo permita -- puede preferir seguir
@@ -56,6 +57,22 @@ export function GameScreen({ view }: GameScreenProps) {
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
     : null;
+
+  useEffect(() => {
+    if (!view.turnDeadlineAt || view.config.turnTimeSeconds === 0) return;
+    setNow(Date.now());
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [view.turnDeadlineAt, view.config.turnTimeSeconds]);
+
+  const secondsLeft =
+    view.turnDeadlineAt && view.config.turnTimeSeconds > 0
+      ? Math.max(0, Math.ceil((view.turnDeadlineAt - now) / 1000))
+      : null;
+  const timerLabel =
+    secondsLeft === null
+      ? null
+      : `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`;
 
   function handleSelect(cardId: CardId) {
     setSelected(cardId);
@@ -103,7 +120,12 @@ export function GameScreen({ view }: GameScreenProps) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <TableHeader left={`Mano ${view.round}`} turnNick={turnPlayer?.nick ?? null} />
+      <TableHeader
+        left={`Mano ${view.round}`}
+        turnNick={turnPlayer?.nick ?? null}
+        timerLabel={timerLabel}
+        timerUrgent={secondsLeft !== null && secondsLeft <= 10}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[6px] px-1 py-2">
         <div className="flex min-h-[60px] items-end justify-center gap-4">

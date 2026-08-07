@@ -28,6 +28,13 @@ const CLOSE_THRESHOLD = z.union([z.literal(0), z.literal(3), z.literal(5), z.lit
 const DRY_CLOSE_BONUS = z.union([z.literal(-10), z.literal(0)]);
 /** Puntos a partir de los cuales un jugador queda eliminado (se elimina al SUPERARLO). */
 const ELIMINATION_SCORE = z.union([z.literal(50), z.literal(100), z.literal(150)]);
+/** Tiempo máximo por turno en segundos; 0 significa sin límite. */
+const TURN_TIME_SECONDS = z.union([
+  z.literal(0),
+  z.literal(30),
+  z.literal(60),
+  z.literal(90),
+]);
 
 // P31: `jokers`, `jokerPoints` y `maxJokersPerMeld` ya no existen. Los tres
 // tenían sentido cuando la baraja de Chinchón era de 48 + 2 comodines; ahora
@@ -42,6 +49,7 @@ export const ChinchonConfigSchema = CommonGameConfigSchema.extend({
   eliminationScore: ELIMINATION_SCORE.default(100),
   chinchonEndsGame: z.boolean().default(true),
   forbidDiscardDrawnCard: z.boolean().default(true),
+  turnTimeSeconds: TURN_TIME_SECONDS.default(60),
 });
 
 export type ChinchonConfig = z.infer<typeof ChinchonConfigSchema>;
