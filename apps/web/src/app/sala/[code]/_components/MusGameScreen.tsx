@@ -224,6 +224,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
       <MusEnvitePicker
         open={envidando && me.minEnvite !== null}
         minEnvite={me.minEnvite ?? 2}
+        currentBet={view.bet?.piedras ?? null}
         onConfirm={handleEnvidar}
         onCancel={() => setEnvidando(false)}
       />

@@ -329,9 +329,11 @@ describe('§12.13.9 — el recuento se corta al llegar a 40', () => {
 
     // Declaraciones: solo el asiento 0 tiene pares, y solo él tiene juego (31).
     expect(s.phase).toBe('declararPares');
-    for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'declararPares', tiene: turn(s) === 0 });
+    for (let i = 0; i < 4; i++)
+      s = apply(s, turn(s), { type: 'declararPares', tiene: turn(s) === 0 });
     expect(s.phase).toBe('declararJuego');
-    for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'declararJuego', tiene: turn(s) === 0 });
+    for (let i = 0; i < 4; i++)
+      s = apply(s, turn(s), { type: 'declararJuego', tiene: turn(s) === 0 });
 
     return s;
   }
@@ -503,9 +505,33 @@ describe('declaraciones de pares y juego (§12.6)', () => {
     for (const _lance of ['grande', 'chica']) {
       for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'paso' });
     }
-    for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'declararPares', tiene: turn(s) === 0 });
+    for (let i = 0; i < 4; i++)
+      s = apply(s, turn(s), { type: 'declararPares', tiene: turn(s) === 0 });
     for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'declararJuego', tiene: false });
     expect(s.lance).toBe('punto');
+  });
+
+  it('solo ofrece envite en pares a quien ha declarado que tiene', () => {
+    let s = withHands([
+      ['oros-12', 'copas-12', 'espadas-10', 'bastos-1'],
+      ['oros-11', 'copas-11', 'espadas-6', 'bastos-2'],
+      ['oros-4', 'copas-5', 'espadas-6', 'bastos-7'],
+      ['copas-4', 'espadas-5', 'bastos-6', 'oros-7'],
+    ]);
+    s = apply(s, 0, { type: 'noMus' });
+    for (const _lance of ['grande', 'chica']) {
+      for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'paso' });
+    }
+    for (let i = 0; i < 4; i++) {
+      const seat = turn(s);
+      s = apply(s, seat, { type: 'declararPares', tiene: seat === 0 || seat === 1 });
+    }
+
+    expect(s.lance).toBe('pares');
+    expect(getPlayerView(s, 'p0').me.availableActions).toContain('envidar');
+
+    const turnoSinPares: MusState = { ...s, turnSeat: 2 };
+    expect(getPlayerView(turnoSinPares, 'p2').me.availableActions).not.toContain('envidar');
   });
 });
 

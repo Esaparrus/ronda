@@ -1,8 +1,4 @@
-// Cuántas piedras envidar (§12.7): mínimo 2 sobre la mesa limpia, y al menos
-// una más que el envite vivo si estás subiendo. El mínimo lo da el servidor
-// en `me.minEnvite` -- aquí no se calcula, solo se ofrece a partir de él.
-//
-// Mismo patrón que PochaBidPicker: una hoja con números grandes tocables.
+// Selector de cantidad para abrir o subir un envite de Mus.
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -13,19 +9,25 @@ export interface MusEnvitePickerProps {
   open: boolean;
   /** Piedras mínimas que se pueden envidar ahora mismo. */
   minEnvite: number;
+  /** Apuesta anterior, si estamos subiendo. */
+  currentBet: number | null;
   onConfirm: (piedras: number) => void;
   onCancel: () => void;
 }
 
-/** Cuántas opciones se ofrecen a partir del mínimo. Más allá de esto está el
- * órdago, que tiene su propio botón. */
+/** Cuántas opciones se ofrecen antes de dejar el órdago como acción aparte. */
 const OPCIONES = 8;
 
-export function MusEnvitePicker({ open, minEnvite, onConfirm, onCancel }: MusEnvitePickerProps) {
+export function MusEnvitePicker({
+  open,
+  minEnvite,
+  currentBet,
+  onConfirm,
+  onCancel,
+}: MusEnvitePickerProps) {
   const [selected, setSelected] = useState(minEnvite);
+  const isRaise = currentBet !== null;
 
-  // Al abrirse con otro mínimo (una subida sobre un envite mayor), el número
-  // preseleccionado tiene que moverse con él.
   useEffect(() => {
     setSelected(minEnvite);
   }, [minEnvite, open]);
@@ -35,23 +37,44 @@ export function MusEnvitePicker({ open, minEnvite, onConfirm, onCancel }: MusEnv
   return (
     <Sheet open={open} onClose={onCancel}>
       <div className="flex flex-col gap-4">
-        <p className="text-16 text-hueso">¿Cuántas piedras envidas?</p>
-        <div className="flex flex-wrap gap-2">
-          {options.map((n) => (
+        <div>
+          <p className="text-20 font-semibold text-hueso">
+            {isRaise ? 'Subir el envite' : 'Abrir el envite'}
+          </p>
+          <p className="mt-1 text-14 text-humo">
+            {isRaise
+              ? `Ahora hay ${currentBet} ${currentBet === 1 ? 'piedra' : 'piedras'}. Elige cuánto quieres subir.`
+              : 'La apuesta mínima es de 2 piedras.'}
+          </p>
+        </div>
+
+        <div role="group" aria-label="Cantidad de piedras" className="grid grid-cols-4 gap-2">
+          {options.map((amount) => (
             <button
-              key={n}
+              key={amount}
               type="button"
-              onClick={() => setSelected(n)}
-              className={`flex h-12 w-12 items-center justify-center rounded-full border font-mono text-16 ${
-                n === selected ? 'border-brasa bg-brasa text-hueso' : 'border-linea text-hueso'
+              aria-pressed={amount === selected}
+              onClick={() => setSelected(amount)}
+              className={`min-h-14 rounded-lg border font-mono text-18 font-semibold transition-colors ${
+                amount === selected
+                  ? 'border-brasa bg-brasa text-hueso'
+                  : 'border-linea bg-mesa text-hueso'
               }`}
             >
-              {n}
+              {amount}
             </button>
           ))}
         </div>
-        <Button onClick={() => onConfirm(selected)}>Envidar {selected}</Button>
-        <Button variant="ghost" onClick={onCancel}>
+
+        <p className="text-center text-14 text-humo">
+          Seleccionado:{' '}
+          <span className="font-mono font-semibold text-hueso">{selected} piedras</span>
+        </p>
+
+        <Button onClick={() => onConfirm(selected)} className="w-full">
+          {isRaise ? `Subir a ${selected}` : `Envidar ${selected}`}
+        </Button>
+        <Button variant="ghost" onClick={onCancel} className="w-full">
           Cancelar
         </Button>
       </div>

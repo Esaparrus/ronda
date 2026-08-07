@@ -110,7 +110,10 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
   }
 
   const isMyTurn =
-    state.status === 'playing' && state.turnSeat !== null && state.turnSeat === player.seat && !player.left;
+    state.status === 'playing' &&
+    state.turnSeat !== null &&
+    state.turnSeat === player.seat &&
+    !player.left;
 
   const available: MusAvailableAction[] = [];
   let minEnvite: number | null = null;
@@ -131,13 +134,21 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
         break;
       case 'lance': {
         const bet = state.bet;
+        const canBid = state.lance !== 'pares' || player.paresDeclared === true;
+        const canBidJuego = state.lance !== 'juego' || player.juegoDeclared === true;
+        const canRaise = bet === null || bet.byTeam !== player.teamIndex;
+        const canEnvido = canBid && canBidJuego && canRaise;
         if (bet === null) {
-          available.push('paso', 'envidar', 'ordago');
-          minEnvite = 2; // mínimo del contrato (§12.7)
+          available.push('paso');
+          if (canEnvido) {
+            available.push('envidar');
+            minEnvite = 2; // mínimo del contrato (§12.7)
+          }
+          available.push('ordago');
         } else {
           available.push('querer', 'noQuerer');
           // Sobre un órdago solo se puede querer o no querer (§12.8).
-          if (!bet.isOrdago) {
+          if (!bet.isOrdago && canEnvido) {
             available.push('envidar', 'ordago');
             minEnvite = bet.piedras + 1;
           }
