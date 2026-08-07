@@ -20,6 +20,7 @@ import { isValidNick, normalizeNick } from '@/lib/nick';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
+import { BackToGames } from '@/components/ui/BackToGames';
 
 export interface CrearFormProps {
   gameId: GameId;
@@ -52,8 +53,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
     }
     setNickError(null);
     setSubmitting(true);
-    const config =
-      gameId === 'mus' ? musConfig : gameId === 'pocha' ? pochaConfig : chinchonConfig;
+    const config = gameId === 'mus' ? musConfig : gameId === 'pocha' ? pochaConfig : chinchonConfig;
     const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
     setSubmitting(false);
     if (created) {
@@ -64,6 +64,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 py-10">
+      <BackToGames />
       <h1 className="font-display text-40 leading-display text-hueso">{title}</h1>
 
       <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
@@ -225,8 +226,8 @@ function MusVariants({ config, setConfig }: MusVariantsProps) {
   return (
     <>
       <p className="text-14 text-humo">
-        El Mus se juega siempre entre cuatro, en dos parejas. Podrás decidir quién va con quién en la
-        sala, antes de empezar.
+        El Mus se juega siempre entre cuatro, en dos parejas. Podrás decidir quién va con quién en
+        la sala, antes de empezar.
       </p>
 
       <SegmentedControl

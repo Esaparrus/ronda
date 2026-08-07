@@ -1,5 +1,6 @@
 // Ficha de Pocha. Mismo patrón que /juegos/chinchon (contrato P13 / §7).
 import Link from 'next/link';
+import { BackToGames } from '@/components/ui/BackToGames';
 
 const HOW_TO_PLAY = [
   'Se reparten cartas siguiendo una pirámide: 1, 2, 3... hasta un máximo, y vuelta a bajar.',
@@ -12,6 +13,7 @@ const HOW_TO_PLAY = [
 export default function PochaPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-6 py-10">
+      <BackToGames />
       <header className="flex flex-col gap-2">
         <h1 className="font-display text-40 leading-display text-hueso">Pocha</h1>
         <p className="text-16 text-humo">3–6 jugadores · 20–45 min</p>
