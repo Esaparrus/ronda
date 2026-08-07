@@ -27,7 +27,8 @@
 'use client';
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import type { CardId } from '@ronda/protocol';
+import { createPortal } from 'react-dom';
+import { parseCardId, rankPosition, type CardId, type Suit } from '@ronda/protocol';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
@@ -37,7 +38,6 @@ import type { DropTarget } from './CommonArea';
 
 export interface HandProps {
   hand: CardId[];
-  bestMelds: CardId[][];
   lockedCardId: CardId | null;
   selected: CardId | null;
   /** Primer toque sobre una carta no seleccionada: la selecciona. */
@@ -46,7 +46,6 @@ export interface HandProps {
   onCommit: (cardId: CardId, target: DropTarget) => void;
   onDropTargetChange: (target: DropTarget | null) => void;
   closableDiscards: CardId[];
-  myColorIndex: 0 | 1 | 2 | 3;
 }
 
 // Fracción de cada carta que tapa la siguiente (0.35 = se ve un 65% de
@@ -68,27 +67,44 @@ interface DragState {
   dropTarget: DropTarget | null;
 }
 
-function meldedSet(bestMelds: CardId[][]): Set<CardId> {
-  return new Set(bestMelds.flat());
+type SortMode = 'suit' | 'rank';
+
+const SUIT_ORDER: readonly Suit[] = ['oros', 'copas', 'espadas', 'bastos'];
+
+function sortCards(cards: CardId[], mode: SortMode): CardId[] {
+  return [...cards].sort((a, b) => {
+    const parsedA = parseCardId(a);
+    const parsedB = parseCardId(b);
+    if (!parsedA.ok || !parsedB.ok) return a.localeCompare(b);
+
+    const suitA = SUIT_ORDER.indexOf(parsedA.value.suit);
+    const suitB = SUIT_ORDER.indexOf(parsedB.value.suit);
+    const rankA = rankPosition(parsedA.value.rank);
+    const rankB = rankPosition(parsedB.value.rank);
+    const primary = mode === 'suit' ? suitA - suitB : rankA - rankB;
+    if (primary !== 0) return primary;
+    const secondary = mode === 'suit' ? rankA - rankB : suitA - suitB;
+    return secondary !== 0 ? secondary : a.localeCompare(b);
+  });
 }
 
 export function Hand({
   hand,
-  bestMelds,
   lockedCardId,
   selected,
   onSelect,
   onCommit,
   onDropTargetChange,
   closableDiscards,
-  myColorIndex,
 }: HandProps) {
   const [order, setOrder] = useState<CardId[]>(hand);
   const [containerWidth, setContainerWidth] = useState(360);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<DragState | null>(null);
   const [draggingCardId, setDraggingCardId] = useState<CardId | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [dragLift, setDragLift] = useState(0);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   // La mano solo la resincronizamos cuando cambia el *contenido* real que
   // manda el servidor (nueva carta robada, descartada...), no en cada
@@ -108,8 +124,6 @@ export function Hand({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  const melded = meldedSet(bestMelds);
 
   // Ancho de carta continuo: llena SIEMPRE el ancho disponible entre
   // MIN_CARD_WIDTH y MAX_CARD_WIDTH, repartido entre las cartas de la mano
@@ -155,12 +169,14 @@ export function Hand({
 
     const deltaX = e.clientX - drag.startClientX;
     const deltaY = e.clientY - drag.startClientY;
-    if (Math.abs(deltaX) > TAP_THRESHOLD_PX || Math.abs(deltaY) > TAP_THRESHOLD_PX) drag.moved = true;
+    if (Math.abs(deltaX) > TAP_THRESHOLD_PX || Math.abs(deltaY) > TAP_THRESHOLD_PX)
+      drag.moved = true;
 
     const dropTarget = findDropTarget(e.clientX, e.clientY, drag.cardId);
     drag.dropTarget = dropTarget;
     onDropTargetChange(dropTarget);
     setDraggingCardId(drag.cardId);
+    setDragPosition({ x: e.clientX, y: e.clientY });
     setDragLift(dropTarget ? Math.min(-24, deltaY / 2) : Math.min(0, deltaY / 3));
 
     // Mientras la carta estÃ¡ sobre un cajÃ³n, el destino explÃ­cito manda
@@ -191,6 +207,7 @@ export function Hand({
     const dropTarget = findDropTarget(e.clientX, e.clientY, drag.cardId) ?? drag.dropTarget;
     dragState.current = null;
     setDraggingCardId(null);
+    setDragPosition(null);
     setDragLift(0);
     onDropTargetChange(null);
 
@@ -212,13 +229,36 @@ export function Hand({
     void useRondaStore.getState().sendAction({ type: 'sortHand', order });
   }
 
-  function handleAutoSort() {
-    const grouped = bestMelds.flat();
-    const loose = order.filter((id) => !melded.has(id));
-    const next = [...grouped, ...loose];
+  function handleSort(mode: SortMode) {
+    const next = sortCards(order, mode);
     setOrder(next);
+    setSortMenuOpen(false);
     void useRondaStore.getState().sendAction({ type: 'sortHand', order: next });
   }
+
+  const dragPreview =
+    typeof document !== 'undefined' && draggingCardId && dragPosition
+      ? createPortal(
+          <div
+            aria-hidden="true"
+            className="pointer-events-none fixed z-[10000]"
+            style={{
+              left: dragPosition.x,
+              top: dragPosition.y,
+              transform: 'translate(-50%, -88%) rotate(-3deg) scale(1.06)',
+              filter: 'drop-shadow(0 16px 18px rgb(0 0 0 / 0.48))',
+            }}
+          >
+            <div
+              className="[&_svg]:h-full [&_svg]:w-full"
+              style={{ width: cardWidth, height: cardWidth * CARD_ASPECT }}
+            >
+              <PlayingCard cardId={draggingCardId} size="md" />
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="flex flex-col gap-2 border-t border-linea px-4 pb-4 pt-3">
@@ -227,14 +267,38 @@ export function Hand({
         {/* Contrato §8.5.2 / P18: zona táctil mínima 56px -- se mantiene el
          * min-h-14 por defecto del Button (sin min-h-0), solo se recorta el
          * padding horizontal para que quepa junto al título "Tu mano". */}
-        <Button variant="ghost" onClick={handleAutoSort} className="px-4 text-14">
-          Ordenar
-        </Button>
+        <div className="relative">
+          <Button
+            variant="ghost"
+            onClick={() => setSortMenuOpen((open) => !open)}
+            aria-expanded={sortMenuOpen}
+            className="min-h-10 px-3 text-12"
+          >
+            Ordenar
+          </Button>
+          {sortMenuOpen ? (
+            <div className="absolute right-0 top-full z-30 mt-1 flex gap-1 rounded-lg border border-linea bg-mesa p-1 shadow-lg">
+              <button
+                type="button"
+                onClick={() => handleSort('suit')}
+                className="min-h-10 rounded-md px-3 text-12 text-hueso hover:bg-linea"
+              >
+                Por palo
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSort('rank')}
+                className="min-h-10 rounded-md px-3 text-12 text-hueso hover:bg-linea"
+              >
+                Por número
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div ref={containerRef} className="flex touch-pan-y items-end overflow-x-auto">
         {order.map((cardId, i) => {
-          const isMelded = melded.has(cardId);
           const isLocked = cardId === lockedCardId;
           const isDragging = cardId === draggingCardId;
           return (
@@ -254,6 +318,7 @@ export function Hand({
                 WebkitTouchCallout: 'none',
                 WebkitUserSelect: 'none',
                 userSelect: 'none',
+                opacity: isDragging ? 0.18 : 1,
                 transform: isDragging ? `translateY(${dragLift}px)` : undefined,
                 transition: isDragging ? 'none' : 'transform 150ms ease',
                 // La carta seleccionada (o la que se está arrastrando) se
@@ -269,22 +334,15 @@ export function Hand({
                 className="[&_svg]:h-full [&_svg]:w-full"
                 style={{ width: cardWidth, height: cardWidth * CARD_ASPECT }}
               >
-                <PlayingCard
-                  cardId={cardId}
-                  size="md"
-                  selected={cardId === selected}
-                  dimmed={!isMelded}
-                  meldColor={isMelded ? myColorIndex : undefined}
-                />
+                <PlayingCard cardId={cardId} size="md" selected={cardId === selected} />
               </div>
-              {!isMelded ? (
-                <span className="font-mono text-12 text-humo">{pointsFor(cardId)}</span>
-              ) : null}
+              <span className="font-mono text-12 text-humo">{pointsFor(cardId)}</span>
               {isLocked ? <Pill className="text-12">Bloqueada</Pill> : null}
             </div>
           );
         })}
       </div>
+      {dragPreview}
     </div>
   );
 }

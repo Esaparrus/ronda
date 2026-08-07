@@ -52,11 +52,6 @@ export function GameScreen({ view }: GameScreenProps) {
   const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
 
   const { me } = view;
-  const myPlayer = view.players.find((p) => p.playerId === me.playerId);
-  // Chinchón nunca pasa de 4 jugadores (colorIndex 0-3): el color de combinación
-  // (meldColor, PlayingCard.tsx) es deliberadamente solo esos 4 colores de palo,
-  // aunque colorIndex esté ensanchado a 0-5 para Pocha (§10.7).
-  const myColorIndex = ((myPlayer?.colorIndex ?? 0) % 4) as 0 | 1 | 2 | 3;
   const isMyTurn = view.turnPlayerId === me.playerId;
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
@@ -154,14 +149,12 @@ export function GameScreen({ view }: GameScreenProps) {
       <div className="flex flex-col">
         <Hand
           hand={me.hand}
-          bestMelds={me.bestMelds}
           lockedCardId={me.lockedCardId}
           selected={selected}
           onSelect={handleSelect}
           onCommit={handleCommit}
           onDropTargetChange={setActiveDropTarget}
           closableDiscards={me.closableDiscards}
-          myColorIndex={myColorIndex}
         />
 
         <ActionBar
@@ -172,7 +165,6 @@ export function GameScreen({ view }: GameScreenProps) {
           turnPlayerConnected={turnPlayer?.connected ?? true}
         />
       </div>
-
     </div>
   );
 }
