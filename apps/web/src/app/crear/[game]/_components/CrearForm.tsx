@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
 import { BackToGames } from '@/components/ui/BackToGames';
+import { CardStylePicker } from '@/components/cards/CardStylePicker';
 
 export interface CrearFormProps {
   gameId: GameId;
@@ -85,6 +86,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
           <NickLegalNote />
           {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
         </div>
+
+        <CardStylePicker />
 
         {gameId === 'mus' ? (
           <MusVariants config={musConfig} setConfig={setMusConfig} />
