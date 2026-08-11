@@ -779,6 +779,10 @@ export class RoomManager {
     const seat = state.turnSeat;
     const player = seat === null ? undefined : state.players[seat];
     if (!player) return;
+    let changed = false;
+    const publish = () => {
+      if (changed) room.hooks.onTurnTimeout?.(room);
+    };
 
     const timedAction = (action: GameAction): boolean => {
       const current = room.state;
@@ -791,20 +795,40 @@ export class RoomManager {
         action,
         now: Date.now(),
       });
+      if (result.ok) changed = true;
       return result.ok;
     };
 
-    if (state.turnPhase === 'draw' && !timedAction({ type: 'drawDeck' })) return;
+    if (state.turnPhase === 'draw' && !timedAction({ type: 'drawDeck' })) {
+      publish();
+      return;
+    }
 
     const afterDraw = room.state;
-    if (!afterDraw || afterDraw.gameId !== 'chinchon' || afterDraw.status !== 'playing') return;
+    if (!afterDraw || afterDraw.gameId !== 'chinchon' || afterDraw.status !== 'playing') {
+      publish();
+      return;
+    }
     const module = GAMES.chinchon;
-    if (!module) return;
+    if (!module) {
+      publish();
+      return;
+    }
     const view = module.getPlayerView(afterDraw, player.playerId);
-    if (view.kind !== 'player' || view.gameId !== 'chinchon') return;
+    if (view.kind !== 'player' || view.gameId !== 'chinchon') {
+      publish();
+      return;
+    }
     const action = decideChinchonTimeoutDiscard(view);
-    if (!action || !timedAction(action)) return;
+    if (!action || !timedAction(action)) {
+      publish();
+      return;
+    }
     room.hooks.onToast?.(room, 'warn', `${player.nick} se quedó sin tiempo. Jugada automática.`);
+    // Los temporizadores no pasan por un socket, así que no existe un handler
+    // que pueda hacer el rebroadcast habitual. Sin esto, el servidor avanza
+    // internamente pero los clientes siguen viendo el turno antiguo.
+    publish();
   }
 
   /** Cierra salas caducadas: lobby inactivo >2h, partida sin conectados >6h. */
@@ -814,10 +838,10 @@ export class RoomManager {
       let shouldClose = false;
       if (room.status === 'closed') continue;
       if (room.status === 'lobby') {
-        if (now - room.lastActivityAt > LOBBY_TTL_MS) shouldClose = true;
+        if (now - room.lastActivityAt >= LOBBY_TTL_MS) shouldClose = true;
       } else {
         const anyConnected = [...room.players.values()].some((p) => p.connected);
-        if (!anyConnected && now - room.lastActivityAt > PLAYING_TTL_MS) shouldClose = true;
+        if (!anyConnected && now - room.lastActivityAt >= PLAYING_TTL_MS) shouldClose = true;
       }
       if (shouldClose) {
         this.closeRoom(room, 'expired');

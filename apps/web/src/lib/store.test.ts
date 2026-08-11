@@ -122,6 +122,7 @@ function startFakeServer(opts: {
   notEnoughPlayers?: boolean;
   attachFails?: boolean;
   rematchInvalid?: boolean;
+  resumeError?: 'ROOM_NOT_FOUND' | 'ROOM_CLOSED' | 'INVALID_TOKEN';
 }): Promise<FakeServer> {
   return new Promise((resolve) => {
     const httpServer = createServer();
@@ -155,6 +156,10 @@ function startFakeServer(opts: {
           payload: { playerToken: string },
           ack: (res: Result<{ roomCode: string; playerId: string; seat: number }>) => void,
         ) => {
+          if (opts.resumeError) {
+            ack(err(opts.resumeError));
+            return;
+          }
           const found = Array.from(tokensByRoom.entries()).find(
             ([, tok]) => tok === payload.playerToken,
           );
@@ -326,6 +331,26 @@ describe('store.ts', () => {
     expect(resumed).toBe(true);
     expect(second.useRondaStore.getState().roomCode).toBe('ABCD');
 
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('borra el token local cuando la sala ya caducó mientras estábamos fuera', async () => {
+    const server = await startFakeServer({
+      staleOnFirstAction: false,
+      resumeError: 'ROOM_NOT_FOUND',
+    });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+    const { getToken } = await import('./token.ts');
+
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+    expect(getToken('ABCD')).not.toBeNull();
+
+    const resumed = await useRondaStore.getState().resume('ABCD');
+
+    expect(resumed).toBe(false);
+    expect(getToken('ABCD')).toBeNull();
     await stopFakeServer(server);
   }, 15000);
 

@@ -9,7 +9,7 @@ import { createLogger } from './logger.ts';
 import { loadConfig, type ServerConfig } from './config.ts';
 import { RoomManager } from './rooms/room-manager.ts';
 import { Persistence } from './rooms/persistence.ts';
-import { broadcastRoom } from './socket/broadcast.ts';
+import { broadcastClosed, broadcastRoom, broadcastToast } from './socket/broadcast.ts';
 import { track } from './db/playtest-repo.ts';
 import { saveRoomStats } from './db/stats-repo.ts';
 import '@ronda/engine'; // registra los módulos de juego en GAMES (side effect).
@@ -50,14 +50,15 @@ export async function startServer(opts: {
       void room;
     },
     onToast: (room, level, text) => {
-      // El toast se difunde cuando el io esté disponible; lo aplazamos.
-      void room;
-      void level;
-      void text;
+      // También puede originarlo una tarea del servidor (por ejemplo, un
+      // turno agotado), así que no puede depender de un handler de socket.
+      broadcastToast(io, room, level, text);
     },
     onClosed: (room, reason) => {
+      // El sweep cierra salas fuera de un handler de socket. Avisa a quienes
+      // sigan conectados antes de que RoomManager retire la sala del mapa.
+      broadcastClosed(io, room, reason);
       void persistence.onClose(room);
-      void reason;
     },
     onPersist: (room) => {
       void persistence.flushNow(room);
@@ -66,6 +67,11 @@ export async function startServer(opts: {
       // saveRoomStats() nunca lanza (ver stats-repo.ts): la copia viva de
       // las estadísticas está en memoria, esto es solo el histórico.
       void saveRoomStats(dbConfig, room.code, room.getStats().rows);
+    },
+    onTurnTimeout: (room) => {
+      // El temporizador muta el estado sin pasar por `game:action`; difundir
+      // aquí evita que la mesa se quede mostrando el turno anterior.
+      broadcastRoom(io, room);
     },
     onTrack: (room, kind, payload) => {
       // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría

@@ -303,7 +303,8 @@ describe('temporizador de Chinchón', () => {
   it('al agotarse roba y descarta una carta legal, sin cerrar', () => {
     vi.useFakeTimers();
     try {
-      const m = mgr();
+      let timeoutSnapshots = 0;
+      const m = new RoomManager(() => ({ onTurnTimeout: () => timeoutSnapshots++ }));
       const config = { ...DEFAULT_CONFIG, turnTimeSeconds: 30 as const };
       const c = m.createRoom({ gameId: 'chinchon', config, nick: 'A1', now: NOW });
       if (!c.ok) throw new Error();
@@ -324,6 +325,7 @@ describe('temporizador de Chinchón', () => {
       expect(after.turnPhase).toBe('draw');
       expect(after.discard.length).toBe(2);
       expect(after.turnDeadlineAt).toBe(Date.now() + 30_000);
+      expect(timeoutSnapshots).toBe(1);
     } finally {
       vi.useRealTimers();
     }
@@ -522,8 +524,8 @@ describe('sweep', () => {
     const m = mgr();
     const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
     if (!c.ok) throw new Error();
-    // 3h después, sin actividad.
-    const closed = m.sweep(NOW + 3 * 60 * 60 * 1000);
+    // Exactamente al cumplir las 2h, sin actividad.
+    const closed = m.sweep(NOW + 2 * 60 * 60 * 1000);
     expect(closed).toBe(1);
     expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
@@ -535,6 +537,30 @@ describe('sweep', () => {
     const closed = m.sweep(NOW + 60_000);
     expect(closed).toBe(0);
     expect(m.getRoomByCode(c.value.roomCode)).toBeDefined();
+  });
+
+  it('cierra una partida sin jugadores conectados al cumplir 6h', () => {
+    const m = mgr();
+    const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
+    if (!c.ok) throw new Error();
+    const j = m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+    if (!j.ok) throw new Error();
+    const started = m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+    expect(started.ok).toBe(true);
+
+    for (const playerId of [c.value.playerId, j.value.playerId]) {
+      m.setConnected({
+        roomCode: c.value.roomCode,
+        playerId,
+        connected: false,
+        socketId: null,
+        now: NOW,
+      });
+    }
+
+    expect(m.sweep(NOW + 6 * 60 * 60 * 1000 - 1)).toBe(0);
+    expect(m.sweep(NOW + 6 * 60 * 60 * 1000)).toBe(1);
+    expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
 });
 
