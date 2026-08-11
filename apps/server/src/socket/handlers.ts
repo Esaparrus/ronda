@@ -17,7 +17,7 @@ import {
   type Err,
   type GameConfig,
 } from '@ronda/protocol';
-import { broadcastRoom, broadcastClosed, broadcastReaction, broadcastToast } from './broadcast.ts';
+import { broadcastRoom, broadcastReaction, broadcastToast } from './broadcast.ts';
 import { scheduleBotTurn } from '../rooms/bot-driver.ts';
 
 /** Estado por socket: a qué sala/jugador está ligado. */
@@ -203,11 +203,7 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     if (!guard(deps, sid, 'room:close', payload, respond)) return;
     const st = requirePlayer(deps, sid, respond);
     if (!st) return;
-    // La sala se lee ANTES de cerrarla: closeByHost la borra de RoomManager,
-    // así que después ya no habría por dónde difundir a sus miembros.
-    const room = deps.mgr.getRoomByCode(st.roomCode);
     const r = deps.mgr.closeByHost({ roomCode: st.roomCode, playerId: st.playerId, now: deps.now() });
-    if (r.ok && room) broadcastClosed(deps.io, room, 'host_left');
     ack(r);
   });
 
@@ -384,4 +380,4 @@ function requirePlayer(
   return { roomCode: st.roomCode, playerId: st.playerId };
 }
 
-export { broadcastClosed, broadcastToast };
+export { broadcastToast };
