@@ -21,6 +21,7 @@
 // mecanismo de escalado de /mesa.
 import { memo, useId } from 'react';
 import { parseCardId, type CardId, type Suit } from '@ronda/protocol';
+import { useCardStyle, type CardStyle } from '@/lib/card-style';
 import { CardBack } from './CardBack';
 import { cardImageSrc } from './cardImages';
 
@@ -62,6 +63,7 @@ export interface PlayingCardProps {
   selected?: boolean;
   /** Atenúa la carta (opacidad reducida) — p.ej. no jugable en este turno. */
   dimmed?: boolean;
+  cardStyle?: CardStyle;
   /** Pinta una barra de color bajo la carta indicando a qué combinación pertenece. */
   meldColor?: 0 | 1 | 2 | 3;
   className?: string;
@@ -83,6 +85,7 @@ function PlayingCardComponent({
   faceDown = false,
   selected = false,
   dimmed = false,
+  cardStyle,
   meldColor,
   className,
 }: PlayingCardProps) {
@@ -92,6 +95,7 @@ function PlayingCardComponent({
   // instancia: dos <PlayingCard> en la misma página no pueden compartir
   // `<clipPath id>` sin que el segundo herede el recorte del primero.
   const clipId = useId();
+  const preferredCardStyle = useCardStyle();
 
   if (faceDown) {
     return (
@@ -122,7 +126,7 @@ function PlayingCardComponent({
 
   const card = parsed.value;
   const suitColor = SUIT_COLOR_VAR[card.suit];
-  const imageSrc = cardImageSrc(card.suit, card.rank);
+  const imageSrc = cardImageSrc(card.suit, card.rank, cardStyle ?? preferredCardStyle);
 
   return (
     <svg

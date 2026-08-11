@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { RoomCode } from '@/components/ui/RoomCode';
 import { RoomCodeInput } from '@/components/ui/RoomCodeInput';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
+import { CardStylePicker } from '@/components/cards/CardStylePicker';
 
 export interface JoinFormProps {
   /** Si llega (enlace/QR, /unirse/[code]), el código va bloqueado. */
@@ -88,6 +89,8 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
         <NickLegalNote />
         {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
       </div>
+
+      <CardStylePicker />
 
       {lastError ? <p className="text-14 text-brasa">{lastError}</p> : null}
 
