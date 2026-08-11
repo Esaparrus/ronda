@@ -307,6 +307,12 @@ export const useRondaStore = create<RondaState>((set, get) => {
       connectIfNeeded(socket);
       const res = await emitWithAck(socket, 'room:resume', { playerToken: token });
       if (!res.ok) {
+        // El token puede sobrevivir en localStorage aunque el servidor haya
+        // caducado la sala mientras esta pestaña estaba cerrada. No debemos
+        // seguir mostrando una partida que ya no se puede retomar.
+        if (res.code === 'ROOM_NOT_FOUND' || res.code === 'ROOM_CLOSED' || res.code === 'INVALID_TOKEN') {
+          clearToken(roomCode);
+        }
         set({ lastError: messageFor(res.code) });
         return false;
       }

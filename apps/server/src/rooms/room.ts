@@ -58,6 +58,8 @@ export interface RoomHooks {
   onPersist?: (room: Room) => void;
   /** Estadísticas de la sala actualizadas (una partida acaba de terminar). */
   onStats?: (room: Room) => void;
+  /** Un temporizador de turno ha ejecutado una jugada automática. */
+  onTurnTimeout?: (room: Room) => void;
   /** Evento de telemetría (P18). */
   onTrack?: (room: Room, kind: string, payload?: Record<string, unknown>) => void;
 }
