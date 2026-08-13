@@ -11,7 +11,7 @@ import type {
 } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
-import { NumberCard } from '@/components/cards/NumberCard';
+import { NumberCard, NumberCardFace } from '@/components/cards/NumberCard';
 import { TableHeader } from './TableHeader';
 import { PlayerStrip } from './PlayerStrip';
 
@@ -30,6 +30,7 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const { party, me } = view;
+  const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
 
   function playNumber(value: number) {
     void useRondaStore.getState().sendAction({ type: 'playNumber', value });
@@ -37,6 +38,10 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
 
   function nextLevel() {
     void useRondaStore.getState().sendAction({ type: 'nextRound' });
+  }
+
+  function endOrder() {
+    void useRondaStore.getState().sendAction({ type: 'endOrder' });
   }
 
   return (
@@ -59,19 +64,18 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
           <span className="text-12 uppercase tracking-wider text-humo">
             Centro · quedan {party.deckCount} cartas sin repartir
           </span>
-          <div className="flex min-h-28 flex-wrap items-center justify-center gap-2">
+          <div className="flex min-h-36 flex-wrap items-center justify-center gap-3">
             {party.played.length > 0 ? (
               party.played.map((played, index) => (
-                <span
+                <NumberCardFace
                   key={`${played.playerId}-${played.value}-${index}`}
-                  className={`flex h-14 w-12 items-center justify-center rounded-lg border font-mono text-20 font-semibold ${
+                  value={played.value}
+                  className={
                     party.failure?.value === played.value && party.failure.playerId === played.playerId
-                      ? 'border-brasa bg-brasa text-hueso'
-                      : 'border-oro bg-tinta text-hueso'
-                  }`}
-                >
-                  {played.value}
-                </span>
+                      ? 'number-card-played number-card-failed'
+                      : 'number-card-played'
+                  }
+                />
               ))
             ) : (
               <span className="text-16 text-humo">Aún no hay cartas</span>
@@ -81,10 +85,20 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
         </section>
 
         {party.failure ? (
-          <p role="status" className="max-w-md text-center text-16 text-brasa">
-            {playerNick(view, party.failure.playerId)} jugó {party.failure.value}, pero la última válida era{' '}
-            {party.failure.highest}. La carta queda descartada y seguimos sin vidas.
-          </p>
+          <section role="status" className="flex w-full max-w-md flex-col gap-2 rounded-xl border border-brasa bg-mesa p-4 text-center">
+            <p className="text-16 text-brasa">
+              {playerNick(view, party.failure.playerId)} jugó {party.failure.value}, pero la última válida era{' '}
+              {party.failure.highest}.
+            </p>
+            <p className="text-14 text-humo">
+              La ronda se detiene aquí. La carta se descarta y no hay vidas: decidid si queréis repartir de nuevo.
+            </p>
+            {isHost ? (
+              <p className="text-14 font-semibold text-hueso">Puedes cambiar el número de cartas o terminar la partida.</p>
+            ) : (
+              <p className="text-14 text-humo">Esperando a que el anfitrión decida.</p>
+            )}
+          </section>
         ) : null}
 
         <section className="flex w-full max-w-md flex-col gap-3">
@@ -130,10 +144,24 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
             </select>
           </label>
         ) : null}
-        {view.phase === 'reveal' && view.status === 'playing' ? (
+        {view.phase === 'reveal' && view.status === 'playing' && me.availableActions.includes('nextRound') ? (
           <Button onClick={nextLevel} loading={pendingAction}>
-            Repartir {party.nextCardsPerPlayer} carta{party.nextCardsPerPlayer === 1 ? '' : 's'}
+            {party.failure ? (
+              'Repartir de nuevo'
+            ) : (
+              <>
+                Repartir {party.nextCardsPerPlayer} carta{party.nextCardsPerPlayer === 1 ? '' : 's'}
+              </>
+            )}
           </Button>
+        ) : null}
+        {party.failure && view.status === 'playing' && me.availableActions.includes('endOrder') ? (
+          <Button variant="danger" onClick={endOrder} loading={pendingAction}>
+            Terminar partida
+          </Button>
+        ) : null}
+        {view.phase === 'reveal' && view.status === 'playing' && !isHost ? (
+          <p className="text-center text-14 text-humo">Esperando al anfitrión para el siguiente reparto.</p>
         ) : null}
       </main>
     </div>

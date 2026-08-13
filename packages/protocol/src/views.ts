@@ -312,6 +312,7 @@ export type PartyAvailableAction =
   | 'submitMajority'
   | 'submitScale'
   | 'setOrderCards'
+  | 'endOrder'
   | 'nextRound';
 
 export interface PartyPlayedNumber {

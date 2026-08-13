@@ -8,6 +8,28 @@ export interface NumberCardProps {
   onPlay: (value: number) => void;
 }
 
+export interface NumberCardFaceProps {
+  value: number;
+  className?: string;
+}
+
+function NumberCardContent({ value }: { value: number }) {
+  return (
+    <>
+      <span className="number-card-corner number-card-corner-top" aria-hidden="true">
+        {value}
+      </span>
+      <span className="number-card-mark" aria-hidden="true">
+        ✦
+      </span>
+      <span className="number-card-value">{value}</span>
+      <span className="number-card-corner number-card-corner-bottom" aria-hidden="true">
+        {value}
+      </span>
+    </>
+  );
+}
+
 /**
  * Carta numérica de Orden. Acepta toque/clic y un gesto de arrastre hacia el
  * centro; el gesto se resuelve en el cliente y solo se envía una acción.
@@ -55,13 +77,15 @@ export function NumberCard({ value, disabled = false, onPlay }: NumberCardProps)
       className="number-card"
       aria-label={'Jugar carta ' + value}
     >
-      <span className="number-card-corner number-card-corner-top" aria-hidden="true">
-        {value}
-      </span>
-      <span className="number-card-value">{value}</span>
-      <span className="number-card-corner number-card-corner-bottom" aria-hidden="true">
-        {value}
-      </span>
+      <NumberCardContent value={value} />
     </button>
+  );
+}
+
+export function NumberCardFace({ value, className = '' }: NumberCardFaceProps) {
+  return (
+    <div className={'number-card number-card-static ' + className} aria-label={'Carta ' + value}>
+      <NumberCardContent value={value} />
+    </div>
   );
 }

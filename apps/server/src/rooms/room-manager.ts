@@ -542,7 +542,10 @@ export class RoomManager {
       return err('STALE_VERSION');
     }
 
-    if (input.action.type === 'setOrderCards' && !player.isHost) {
+    if (
+      (input.action.type === 'setOrderCards' || input.action.type === 'endOrder') &&
+      !player.isHost
+    ) {
       return err('NOT_HOST');
     }
 

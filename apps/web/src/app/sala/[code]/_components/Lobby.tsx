@@ -8,7 +8,6 @@ import type {
   ChinchonConfig,
   GameConfig,
   MusConfig,
-  PartyConfig,
   PlayerView,
   PochaConfig,
 } from '@ronda/protocol';
@@ -95,14 +94,6 @@ export function Lobby({ view }: LobbyProps) {
   function setMusField<K extends keyof MusConfig>(key: K, value: MusConfig[K]) {
     setConfig((prev) => ({ ...(prev as MusConfig), [key]: value }));
     void useRondaStore.getState().updateConfig({ [key]: value } as Partial<MusConfig>);
-  }
-
-  function setPartyField(
-    key: 'maxPlayers' | 'rounds' | 'cardsPerPlayer' | 'pointsToWin',
-    value: number,
-  ) {
-    setConfig((prev) => ({ ...(prev as PartyConfig), [key]: value }) as GameConfig);
-    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<GameConfig>);
   }
 
   /** Mus: marca a un jugador, o lo intercambia con el ya marcado. */
@@ -247,13 +238,35 @@ export function Lobby({ view }: LobbyProps) {
         </button>
       </section>
 
-      {isHost ? (
+      {isParty ? (
+        <section className="flex flex-col gap-2 rounded-xl border border-linea bg-mesa p-4">
+          <h2 className="text-20 font-semibold text-hueso">Configuración de la partida</h2>
+          <p className="text-14 text-humo">
+            Estos ajustes se eligieron al crear la sala. Aquí solo gestionáis jugadores e invitaciones.
+          </p>
+          <p className="text-14 text-oro">
+            {view.config.maxPlayers} jugadores como máximo
+            {view.gameId === 'orden' ? (
+              <>
+                {' · '}
+                {view.config.cardsPerPlayer} carta{view.config.cardsPerPlayer === 1 ? '' : 's'} inicial
+                {view.config.cardsPerPlayer === 1 ? '' : 'es'} por persona
+              </>
+            ) : (
+              <>
+                {' · '}
+                {view.config.rounds} rondas · {view.config.pointsToWin} puntos para ganar
+              </>
+            )}
+          </p>
+        </section>
+      ) : null}
+
+      {isHost && !isParty ? (
         <section className="flex flex-col gap-6">
           <h2 className="text-20 font-semibold text-hueso">Variantes</h2>
           {isMus ? (
             <MusVariantsSection config={config as MusConfig} setField={setMusField} />
-          ) : isParty ? (
-            <PartyVariantsSection config={config as PartyConfig} setField={setPartyField} />
           ) : view.gameId === 'pocha' ? (
             <PochaVariantsSection config={config as PochaConfig} setField={setPochaField} />
           ) : (
@@ -452,68 +465,6 @@ function PochaVariantsSection({ config, setField }: PochaVariantsSectionProps) {
           { value: 'brisca', label: 'Brisca' },
         ]}
       />
-    </>
-  );
-}
-
-interface PartyVariantsSectionProps {
-  config: PartyConfig;
-  setField: (
-    key: 'maxPlayers' | 'rounds' | 'cardsPerPlayer' | 'pointsToWin',
-    value: number,
-  ) => void;
-}
-
-function PartyVariantsSection({ config, setField }: PartyVariantsSectionProps) {
-  const minimum = config.gameId === 'orden' ? 2 : 3;
-  const playerOptions = [2, 3, 4, 5, 6, 7]
-    .filter((value) => value >= minimum)
-    .map((value) => ({ value, label: String(value) }));
-  return (
-    <>
-      <p className="text-14 text-humo">
-        Se juega hablando en la misma mesa. Cada móvil guarda sus respuestas privadas y la pantalla
-        central solo enseña lo que ya se ha revelado.
-      </p>
-      <SegmentedControl
-        legend="Jugadores"
-        helperText="Tamaño máximo de la cuadrilla."
-        value={config.maxPlayers}
-        onChange={(value) => setField('maxPlayers', value)}
-        options={playerOptions}
-      />
-      {config.gameId === 'orden' ? (
-        <SegmentedControl
-          legend="Cartas iniciales por persona"
-          helperText="El anfitrión podrá cambiarlo en cada reparto."
-          value={config.cardsPerPlayer}
-          onChange={(value) => setField('cardsPerPlayer', value)}
-          options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => ({
-            value,
-            label: String(value),
-          }))}
-        />
-      ) : (
-        <>
-          <SegmentedControl
-            legend="Rondas máximas"
-            helperText="Preguntas antes de ver el resultado."
-            value={config.rounds}
-            onChange={(value) => setField('rounds', value)}
-            options={[5, 7, 10, 12].map((value) => ({ value, label: String(value) }))}
-          />
-          <SegmentedControl
-            legend="Puntos para ganar"
-            helperText="La primera persona que llegue a este marcador gana."
-            value={config.pointsToWin}
-            onChange={(value) => setField('pointsToWin', value)}
-            options={[5, 10, 15, 20, 25, 30, 40].map((value) => ({
-              value,
-              label: String(value),
-            }))}
-          />
-        </>
-      )}
     </>
   );
 }

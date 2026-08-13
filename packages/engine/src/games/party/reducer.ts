@@ -220,6 +220,8 @@ export function applyAction(
       return applyPlayNumber(state, playerId, action.value);
     case 'setOrderCards':
       return applySetOrderCards(state, playerId, action.count);
+    case 'endOrder':
+      return applyEndOrder(state, playerId);
     case 'submitColors':
       return applySubmitColors(state, playerId, action.colors);
     case 'submitMajority':
@@ -270,14 +272,16 @@ function applyPlayNumber(
   const events: GameEvent[] = [{ t: 'numberPlayed', playerId, value }];
   if (value < order.highest) {
     order.failure = { playerId, value, highest: order.highest };
-  } else {
-    order.highest = value;
-  }
-
-  const cleared = activePlayers(next).every((active) => active.hand.length === 0);
-  if (cleared) {
+    order.nextCardsPerPlayer = order.cardsPerPlayer;
     next.phase = 'reveal';
     events.push({ t: 'partyRevealed', gameId: 'orden', round: next.round });
+  } else {
+    order.highest = value;
+    const cleared = activePlayers(next).every((active) => active.hand.length === 0);
+    if (cleared) {
+      next.phase = 'reveal';
+      events.push({ t: 'partyRevealed', gameId: 'orden', round: next.round });
+    }
   }
 
   return ok({ state: next, events });
@@ -291,12 +295,29 @@ function applySetOrderCards(
   if (state.gameId !== 'orden' || !state.order) return err('INVALID_ACTION');
   const player = findPlayer(state, playerId);
   if (!player || player.left) return err('PLAYER_NOT_IN_ROOM');
+  if (player.seat !== 0) return err('NOT_HOST');
   if (state.status !== 'playing' || state.phase !== 'reveal') return err('INVALID_ACTION');
   if (!Number.isInteger(count) || count < 1 || count > 10) return err('INVALID_ACTION');
 
   const next = bump(state);
   if (!next.order) return err('INVALID_ACTION');
   next.order.nextCardsPerPlayer = count;
+  return ok({ state: next, events: [] });
+}
+
+function applyEndOrder(state: PartyState, playerId: PlayerId): PartyActionResult {
+  if (state.gameId !== 'orden' || !state.order) return err('INVALID_ACTION');
+  const player = findPlayer(state, playerId);
+  if (!player || player.left) return err('PLAYER_NOT_IN_ROOM');
+  if (player.seat !== 0) return err('NOT_HOST');
+  if (state.status !== 'playing' || state.phase !== 'reveal' || !state.order.failure) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  next.status = 'gameEnd';
+  next.winnerId = null;
+  next.rematchVotes = [];
   return ok({ state: next, events: [] });
 }
 
@@ -503,6 +524,7 @@ function applyNextRound(state: PartyState, playerId: PlayerId): PartyActionResul
   if (next.gameId === 'orden') {
     const current = next.order;
     if (!current) return err('INVALID_ACTION');
+    if (player.seat !== 0) return err('NOT_HOST');
     const activeCount = activePlayers(next).length;
     const cardsPerPlayer = current.nextCardsPerPlayer;
     if (current.numberDeck.length < activeCount * cardsPerPlayer) {

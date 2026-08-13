@@ -48,6 +48,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   // gana la carrera. `expectedVersion` ya hace de árbitro de simultaneidad.
   z.object({ type: z.literal('playNumber'), value: z.number().int().min(1).max(100) }),
   z.object({ type: z.literal('setOrderCards'), count: z.number().int().min(1).max(10) }),
+  z.object({ type: z.literal('endOrder') }),
   z.object({
     type: z.literal('submitColors'),
     colors: z.array(z.string().min(1).max(24)).min(1).max(4),

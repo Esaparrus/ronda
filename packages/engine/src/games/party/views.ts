@@ -177,6 +177,8 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
     player.seat === 0
   ) {
     availableActions.push('setOrderCards');
+    availableActions.push('nextRound');
+    if (state.order?.failure) availableActions.push('endOrder');
   }
   if (state.status === 'playing' && state.phase === 'input') {
     if (state.gameId === 'orden' && player.hand.length > 0) {
@@ -194,7 +196,13 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
       availableActions.push('submitScale');
     }
   }
-  if (state.status === 'playing' && state.phase === 'reveal') availableActions.push('nextRound');
+  if (
+    state.status === 'playing' &&
+    state.phase === 'reveal' &&
+    state.gameId !== 'orden'
+  ) {
+    availableActions.push('nextRound');
+  }
 
   const submitted =
     state.gameId === 'colores'

@@ -77,7 +77,7 @@ describe('modos sociales', () => {
     expect(publicView.party.played.some((played) => played.value === p1Card)).toBe(true);
   });
 
-  it('descarta fallos de Orden sin vidas y permite configurar el siguiente reparto', () => {
+  it('detiene Orden en el primer fallo y permite repartir de nuevo o terminar', () => {
     const state = createOrder();
     const cards = state.players.map((player) => ({ playerId: player.playerId, value: Number(player.hand[0]) }));
     const high = cards.reduce((best, card) => (card.value > best.value ? card : best));
@@ -85,22 +85,30 @@ describe('modos sociales', () => {
 
     const afterHigh = apply(state, high.playerId, { type: 'playNumber', value: high.value });
     const failed = apply(afterHigh, low.playerId, { type: 'playNumber', value: low.value });
-    expect(failed.phase).toBe('input');
+    expect(failed.phase).toBe('reveal');
     expect(failed.order?.failure?.value).toBe(low.value);
+    expect(failed.order?.nextCardsPerPlayer).toBe(1);
 
     const remaining = failed.players.find((player) => player.hand.length > 0);
     if (!remaining) throw new Error('faltaba una carta por jugar');
-    const revealed = apply(failed, remaining.playerId, {
+    const stopped = applyAction(failed, remaining.playerId, {
       type: 'playNumber',
       value: Number(remaining.hand[0]),
-    });
-    expect(revealed.phase).toBe('reveal');
-    const configured = apply(revealed, 'p1', { type: 'setOrderCards', count: 2 });
+    }, 0);
+    expect(stopped).toEqual({ ok: false, code: 'INVALID_ACTION' });
+
+    const nonHostRestart = applyAction(failed, 'p2', { type: 'nextRound' }, 0);
+    expect(nonHostRestart).toEqual({ ok: false, code: 'NOT_HOST' });
+    const configured = apply(failed, 'p1', { type: 'setOrderCards', count: 2 });
     expect(configured.order?.nextCardsPerPlayer).toBe(2);
     const nextLevel = apply(configured, 'p1', { type: 'nextRound' });
     expect(nextLevel.phase).toBe('input');
     expect(nextLevel.order?.cardsPerPlayer).toBe(2);
     expect(nextLevel.players.every((player) => player.hand.length === 2)).toBe(true);
+
+    const ended = apply(failed, 'p1', { type: 'endOrder' });
+    expect(ended.status).toBe('gameEnd');
+    expect(ended.winnerId).toBeNull();
   });
 
   it('revela Colores cuando todos han enviado su selección', () => {
