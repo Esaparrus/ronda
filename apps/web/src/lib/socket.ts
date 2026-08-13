@@ -10,6 +10,9 @@ import { resolveServerUrl } from './server-url';
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+/** Evita que un móvil se quede con un botón bloqueado si el servidor no responde. */
+const ACK_TIMEOUT_MS = 12_000;
+
 function serverUrl(): string {
   // Next puede prerenderizar rutas que importan el store, aunque el socket
   // solo se use en el navegador. Durante ese prerender no debemos exigir la
@@ -57,7 +60,13 @@ export function emitWithAck<E extends keyof ClientToServerEvents>(
   type AckResult = Parameters<Ack>[0];
 
   return new Promise<AckResult>((resolve) => {
-    const ack = ((res: AckResult) => resolve(res)) as Ack;
+    const timeout = setTimeout(() => {
+      resolve({ ok: false, code: 'INTERNAL' } as AckResult);
+    }, ACK_TIMEOUT_MS);
+    const ack = ((res: AckResult) => {
+      clearTimeout(timeout);
+      resolve(res);
+    }) as Ack;
     // El despacho genérico por `E` impide que tsc correlacione el tipo
     // exacto de `payload`/`ack` con el overload concreto de `emit` (cada
     // evento tiene una firma distinta): el emisor público de arriba sigue

@@ -102,7 +102,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
           {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
         </div>
 
-        <CardStylePicker />
+        {!isPartyGame(gameId) ? <CardStylePicker /> : null}
 
         {gameId === 'mus' ? (
           <MusVariants config={musConfig} setConfig={setMusConfig} />
@@ -391,31 +391,49 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
   }
 
   const minimum = config.gameId === 'orden' ? 2 : 3;
+  const playerOptions = [2, 3, 4, 5, 6, 7]
+    .filter((value) => value >= minimum)
+    .map((value) => ({ value, label: String(value) }));
+
   return (
     <section className="flex flex-col gap-6">
-      <p className="text-14 text-humo">
-        Pensado para jugar juntos en la misma mesa: hablais en voz alta y cada movil guarda lo que
-        los demas no deben ver.
-      </p>
-      <SegmentedControl
+      <div className="rounded-2xl border border-oro/50 bg-mesa p-4">
+        <div className="flex items-center gap-4">
+          <div className="flex shrink-0 -space-x-3" aria-hidden="true">
+            <span className="number-card-preview rotate-[-8deg]">1</span>
+            <span className="number-card-preview rotate-[8deg]">100</span>
+          </div>
+          <div>
+            <p className="text-16 font-semibold text-hueso">
+              {config.gameId === 'orden' ? 'Baraja numérica 1–100' : 'Juego para hablar en la mesa'}
+            </p>
+            <p className="mt-1 text-14 text-humo">
+              Cada móvil guarda su información privada. No necesitas cartas físicas.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <PartyOptionGrid
         legend="Jugadores"
-        helperText="Maximo de personas en la sala."
+        helperText="Máximo de personas en la sala."
         value={config.maxPlayers}
         onChange={(value) => setField('maxPlayers', value)}
-        options={[2, 3, 4, 5, 6, 7]
-          .filter((value) => value >= minimum)
-          .map((value) => ({ value, label: String(value) }))}
+        options={playerOptions}
+        columns="three"
       />
+
       {config.gameId === 'orden' ? (
-        <SegmentedControl
+        <PartyOptionGrid
           legend="Cartas iniciales por persona"
-          helperText="El anfitrión podrá cambiarlo en cada reparto."
+          helperText="El anfitrión puede cambiarlo en cada reparto."
           value={config.cardsPerPlayer}
           onChange={(value) => setField('cardsPerPlayer', value)}
           options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => ({
             value,
             label: String(value),
           }))}
+          columns="five"
         />
       ) : (
         <>
@@ -439,5 +457,50 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
         </>
       )}
     </section>
+  );
+}
+
+interface PartyOptionGridProps<T extends string | number | boolean> {
+  legend: string;
+  helperText: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
+  columns: 'three' | 'five';
+}
+
+function PartyOptionGrid<T extends string | number | boolean>({
+  legend,
+  helperText,
+  options,
+  value,
+  onChange,
+  columns,
+}: PartyOptionGridProps<T>) {
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-16 font-semibold text-hueso">{legend}</legend>
+      <p className="text-12 text-humo">{helperText}</p>
+      <div className={`grid gap-2 ${columns === 'five' ? 'grid-cols-5' : 'grid-cols-3'}`}>
+        {options.map((option) => {
+          const selected = option.value === value;
+          return (
+            <button
+              key={String(option.value)}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(option.value)}
+              className={`min-h-14 rounded-xl border px-2 text-16 font-semibold transition-colors ${
+                selected
+                  ? 'border-brasa bg-brasa text-hueso'
+                  : 'border-linea bg-transparent text-hueso active:bg-mesa'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

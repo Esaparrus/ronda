@@ -5,7 +5,7 @@ const HOW_TO_PLAY = [
   'Cada persona recibe una o varias cartas numeradas en secreto.',
   'Habláis si queréis y jugáis las cartas al centro cuando creáis que toca.',
   'Las cartas deben aparecer de menor a mayor.',
-  'Un fallo cuesta una vida; si superáis el nivel, pasáis al siguiente.',
+  'Si os equivocáis, la carta se descarta y seguís jugando sin vidas.',
 ];
 
 export default function OrdenPage() {
