@@ -466,6 +466,9 @@ interface PartyVariantsSectionProps {
 
 function PartyVariantsSection({ config, setField }: PartyVariantsSectionProps) {
   const minimum = config.gameId === 'orden' ? 2 : 3;
+  const playerOptions = [2, 3, 4, 5, 6, 7]
+    .filter((value) => value >= minimum)
+    .map((value) => ({ value, label: String(value) }));
   return (
     <>
       <p className="text-14 text-humo">
@@ -477,9 +480,7 @@ function PartyVariantsSection({ config, setField }: PartyVariantsSectionProps) {
         helperText="Tamaño máximo de la cuadrilla."
         value={config.maxPlayers}
         onChange={(value) => setField('maxPlayers', value)}
-        options={([2, 3, 4, 5, 6, 7] as const)
-          .filter((value) => value >= minimum)
-          .map((value) => ({ value, label: String(value) }))}
+        options={playerOptions}
       />
       {config.gameId === 'orden' ? (
         <SegmentedControl

@@ -49,7 +49,7 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
         players={view.players}
         turnPlayerId={null}
         myPlayerId={me.playerId}
-        renderInfo={(player) => `${player.handCount} cartas`}
+        renderInfo={(player) => `${player.handCount} ${player.handCount === 1 ? 'carta' : 'cartas'}`}
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-5">
         <p className="max-w-md text-center text-14 text-humo">
