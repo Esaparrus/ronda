@@ -7,12 +7,17 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import {
   DEFAULT_CONFIG,
+  DEFAULT_COLORES_CONFIG,
+  DEFAULT_ESCALA_CONFIG,
+  DEFAULT_MAYORIA_CONFIG,
   DEFAULT_MUS_CONFIG,
+  DEFAULT_ORDEN_CONFIG,
   DEFAULT_POCHA_CONFIG,
   messageFor,
   type ChinchonConfig,
   type GameId,
   type MusConfig,
+  type PartyConfig,
   type PochaConfig,
 } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
@@ -36,6 +41,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [chinchonConfig, setChinchonConfig] = useState<ChinchonConfig>(DEFAULT_CONFIG);
   const [pochaConfig, setPochaConfig] = useState<PochaConfig>(DEFAULT_POCHA_CONFIG);
   const [musConfig, setMusConfig] = useState<MusConfig>(DEFAULT_MUS_CONFIG);
+  const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
   const [submitting, setSubmitting] = useState(false);
 
   const title =
@@ -54,7 +60,14 @@ export function CrearForm({ gameId }: CrearFormProps) {
     }
     setNickError(null);
     setSubmitting(true);
-    const config = gameId === 'mus' ? musConfig : gameId === 'pocha' ? pochaConfig : chinchonConfig;
+    const config =
+      gameId === 'mus'
+        ? musConfig
+        : gameId === 'pocha'
+          ? pochaConfig
+          : isPartyGame(gameId)
+            ? partyConfig
+            : chinchonConfig;
     const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
     setSubmitting(false);
     if (created) {
@@ -66,7 +79,9 @@ export function CrearForm({ gameId }: CrearFormProps) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 py-10">
       <BackToGames />
-      <h1 className="font-display text-40 leading-display text-hueso">{title}</h1>
+      <h1 className="font-display text-40 leading-display text-hueso">
+        {isPartyGame(gameId) ? gameTitle(gameId) : title}
+      </h1>
 
       <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-2">
@@ -93,6 +108,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
           <MusVariants config={musConfig} setConfig={setMusConfig} />
         ) : gameId === 'pocha' ? (
           <PochaVariants config={pochaConfig} setConfig={setPochaConfig} />
+        ) : isPartyGame(gameId) ? (
+          <PartyVariants config={partyConfig} setConfig={setPartyConfig} />
         ) : (
           <ChinchonVariants config={chinchonConfig} setConfig={setChinchonConfig} />
         )}
@@ -338,5 +355,89 @@ function PochaVariants({ config, setConfig }: PochaVariantsProps) {
         ]}
       />
     </>
+  );
+}
+
+function isPartyGame(gameId: GameId): gameId is PartyConfig['gameId'] {
+  return gameId === 'orden' || gameId === 'colores' || gameId === 'mayoria' || gameId === 'escala';
+}
+
+function partyDefaults(gameId: GameId): PartyConfig {
+  if (gameId === 'colores') return DEFAULT_COLORES_CONFIG;
+  if (gameId === 'mayoria') return DEFAULT_MAYORIA_CONFIG;
+  if (gameId === 'escala') return DEFAULT_ESCALA_CONFIG;
+  return DEFAULT_ORDEN_CONFIG;
+}
+
+function gameTitle(gameId: GameId): string {
+  if (gameId === 'orden') return 'Crear partida de Orden';
+  if (gameId === 'colores') return 'Crear partida de Colores';
+  if (gameId === 'mayoria') return 'Crear partida de Mayoria';
+  if (gameId === 'escala') return 'Crear partida de Escala';
+  return gameId === 'mus' ? 'Crear partida de Mus' : gameId === 'pocha' ? 'Crear partida de Pocha' : 'Crear partida de Chinchon';
+}
+
+interface PartyVariantsProps {
+  config: PartyConfig;
+  setConfig: (fn: (prev: PartyConfig) => PartyConfig) => void;
+}
+
+function PartyVariants({ config, setConfig }: PartyVariantsProps) {
+  function setField(
+    key: 'maxPlayers' | 'rounds' | 'cardsPerPlayer' | 'pointsToWin',
+    value: number,
+  ) {
+    setConfig((previous) => ({ ...previous, [key]: value }) as PartyConfig);
+  }
+
+  const minimum = config.gameId === 'orden' ? 2 : 3;
+  return (
+    <section className="flex flex-col gap-6">
+      <p className="text-14 text-humo">
+        Pensado para jugar juntos en la misma mesa: hablais en voz alta y cada movil guarda lo que
+        los demas no deben ver.
+      </p>
+      <SegmentedControl
+        legend="Jugadores"
+        helperText="Maximo de personas en la sala."
+        value={config.maxPlayers}
+        onChange={(value) => setField('maxPlayers', value)}
+        options={[2, 3, 4, 5, 6, 7]
+          .filter((value) => value >= minimum)
+          .map((value) => ({ value, label: String(value) }))}
+      />
+      {config.gameId === 'orden' ? (
+        <SegmentedControl
+          legend="Cartas iniciales por persona"
+          helperText="El anfitrión podrá cambiarlo en cada reparto."
+          value={config.cardsPerPlayer}
+          onChange={(value) => setField('cardsPerPlayer', value)}
+          options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => ({
+            value,
+            label: String(value),
+          }))}
+        />
+      ) : (
+        <>
+          <SegmentedControl
+            legend="Rondas máximas"
+            helperText="Preguntas antes de revelar."
+            value={config.rounds}
+            onChange={(value) => setField('rounds', value)}
+            options={[5, 7, 10, 12].map((value) => ({ value, label: String(value) }))}
+          />
+          <SegmentedControl
+            legend="Puntos para ganar"
+            helperText="La primera persona que llegue a este marcador gana."
+            value={config.pointsToWin}
+            onChange={(value) => setField('pointsToWin', value)}
+            options={[5, 10, 15, 20, 25, 30, 40].map((value) => ({
+              value,
+              label: String(value),
+            }))}
+          />
+        </>
+      )}
+    </section>
   );
 }

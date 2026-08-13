@@ -7,7 +7,13 @@
 // sabe de sockets ni de salas, así que la reutilizan tanto el simulador
 // (sim/bot.ts, contra un servidor real por socket) como el modo "contra la
 // máquina" en vivo (bot-driver.ts, contra el RoomManager directamente).
-import type { CardId, ChinchonPlayerView, GameAction, PochaPlayerView } from '@ronda/protocol';
+import type {
+  CardId,
+  ChinchonPlayerView,
+  GameAction,
+  PartyPlayerView,
+  PochaPlayerView,
+} from '@ronda/protocol';
 import { cardPoints, parseCardId } from '@ronda/protocol';
 import { fuerza } from '@ronda/engine';
 
@@ -76,6 +82,22 @@ export function decidePochaAction(view: PochaPlayerView): GameAction | null {
     if (cardId) return { type: 'playCard', cardId };
   }
   return null;
+}
+
+/** Política mínima para poder probar los modos sociales con jugadores IA. */
+export function decidePartyAction(view: PartyPlayerView): GameAction | null {
+  if (view.gameId === 'orden') {
+    const value = [...view.me.hand].sort((a, b) => a - b)[0];
+    return value === undefined ? null : { type: 'playNumber', value };
+  }
+  if (view.gameId === 'colores') {
+    return { type: 'submitColors', colors: view.party.allowMultiple ? ['rojo', 'amarillo'] : ['rojo'] };
+  }
+  if (view.gameId === 'mayoria') {
+    return { type: 'submitMajority', answer: 'pizza' };
+  }
+  if (view.party.cluePlayerId === view.me.playerId) return null;
+  return { type: 'submitScale', value: 50 };
 }
 
 /**

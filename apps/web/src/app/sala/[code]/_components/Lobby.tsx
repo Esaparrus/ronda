@@ -8,6 +8,7 @@ import type {
   ChinchonConfig,
   GameConfig,
   MusConfig,
+  PartyConfig,
   PlayerView,
   PochaConfig,
 } from '@ronda/protocol';
@@ -96,6 +97,14 @@ export function Lobby({ view }: LobbyProps) {
     void useRondaStore.getState().updateConfig({ [key]: value } as Partial<MusConfig>);
   }
 
+  function setPartyField(
+    key: 'maxPlayers' | 'rounds' | 'cardsPerPlayer' | 'pointsToWin',
+    value: number,
+  ) {
+    setConfig((prev) => ({ ...(prev as PartyConfig), [key]: value }) as GameConfig);
+    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<GameConfig>);
+  }
+
   /** Mus: marca a un jugador, o lo intercambia con el ya marcado. */
   async function handleSeatTap(playerId: string) {
     if (swapFrom === null) {
@@ -132,7 +141,16 @@ export function Lobby({ view }: LobbyProps) {
   // criterio que `minPlayersFor` del servidor
   // (apps/server/src/rooms/room-manager.ts).
   const isMus = view.gameId === 'mus';
-  const minPlayers = isMus ? 4 : view.gameId === 'pocha' ? 3 : 2;
+  const isParty =
+    view.gameId === 'orden' ||
+    view.gameId === 'colores' ||
+    view.gameId === 'mayoria' ||
+    view.gameId === 'escala';
+  const minPlayers = isMus
+    ? 4
+    : view.gameId === 'pocha' || view.gameId === 'colores' || view.gameId === 'mayoria' || view.gameId === 'escala'
+      ? 3
+      : 2;
   const canStart = view.players.length >= minPlayers;
   // Mus no tiene bots (§12.11): el servidor rechaza `room:addBot` en sus
   // salas, así que aquí ni se ofrece.
@@ -234,6 +252,8 @@ export function Lobby({ view }: LobbyProps) {
           <h2 className="text-20 font-semibold text-hueso">Variantes</h2>
           {isMus ? (
             <MusVariantsSection config={config as MusConfig} setField={setMusField} />
+          ) : isParty ? (
+            <PartyVariantsSection config={config as PartyConfig} setField={setPartyField} />
           ) : view.gameId === 'pocha' ? (
             <PochaVariantsSection config={config as PochaConfig} setField={setPochaField} />
           ) : (
@@ -328,9 +348,10 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
         onChange={(v) => setField('turnTimeSeconds', v)}
         options={[
           { value: 0, label: 'Sin tiempo' },
+          { value: 10, label: '10 s' },
+          { value: 20, label: '20 s' },
           { value: 30, label: '30 s' },
-          { value: 60, label: '60 s' },
-          { value: 90, label: '90 s' },
+          { value: 60, label: '1 min' },
         ]}
       />
       <SegmentedControl
@@ -431,6 +452,67 @@ function PochaVariantsSection({ config, setField }: PochaVariantsSectionProps) {
           { value: 'brisca', label: 'Brisca' },
         ]}
       />
+    </>
+  );
+}
+
+interface PartyVariantsSectionProps {
+  config: PartyConfig;
+  setField: (
+    key: 'maxPlayers' | 'rounds' | 'cardsPerPlayer' | 'pointsToWin',
+    value: number,
+  ) => void;
+}
+
+function PartyVariantsSection({ config, setField }: PartyVariantsSectionProps) {
+  const minimum = config.gameId === 'orden' ? 2 : 3;
+  return (
+    <>
+      <p className="text-14 text-humo">
+        Se juega hablando en la misma mesa. Cada móvil guarda sus respuestas privadas y la pantalla
+        central solo enseña lo que ya se ha revelado.
+      </p>
+      <SegmentedControl
+        legend="Jugadores"
+        helperText="Tamaño máximo de la cuadrilla."
+        value={config.maxPlayers}
+        onChange={(value) => setField('maxPlayers', value)}
+        options={([2, 3, 4, 5, 6, 7] as const)
+          .filter((value) => value >= minimum)
+          .map((value) => ({ value, label: String(value) }))}
+      />
+      {config.gameId === 'orden' ? (
+        <SegmentedControl
+          legend="Cartas iniciales por persona"
+          helperText="El anfitrión podrá cambiarlo en cada reparto."
+          value={config.cardsPerPlayer}
+          onChange={(value) => setField('cardsPerPlayer', value)}
+          options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => ({
+            value,
+            label: String(value),
+          }))}
+        />
+      ) : (
+        <>
+          <SegmentedControl
+            legend="Rondas máximas"
+            helperText="Preguntas antes de ver el resultado."
+            value={config.rounds}
+            onChange={(value) => setField('rounds', value)}
+            options={[5, 7, 10, 12].map((value) => ({ value, label: String(value) }))}
+          />
+          <SegmentedControl
+            legend="Puntos para ganar"
+            helperText="La primera persona que llegue a este marcador gana."
+            value={config.pointsToWin}
+            onChange={(value) => setField('pointsToWin', value)}
+            options={[5, 10, 15, 20, 25, 30, 40].map((value) => ({
+              value,
+              label: String(value),
+            }))}
+          />
+        </>
+      )}
     </>
   );
 }

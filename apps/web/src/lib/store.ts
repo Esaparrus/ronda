@@ -349,6 +349,14 @@ export const useRondaStore = create<RondaState>((set, get) => {
       }
 
       if (res.code === 'STALE_VERSION') {
+        // Orden es la excepción deliberada: si dos cartas salen a la vez,
+        // solo cuenta la petición que el servidor procesó primero. No
+        // reintentamos la segunda con la versión nueva, porque eso convertiría
+        // una carrera en dos cartas aceptadas de forma secuencial.
+        if (action.type === 'playNumber') {
+          set({ pendingAction: false, lastError: null });
+          return;
+        }
         // Espera al siguiente state:view (la versión fresca) y reintenta
         // UNA sola vez, tal cual el contrato. Si el reintento también falla
         // (incluso con otro STALE_VERSION), no se vuelve a intentar.

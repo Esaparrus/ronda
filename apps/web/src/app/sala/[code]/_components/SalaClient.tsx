@@ -28,6 +28,7 @@ import { PochaRoundEndScreen } from './PochaRoundEndScreen';
 import { MusGameScreen } from './MusGameScreen';
 import { MusRoundEndScreen } from './MusRoundEndScreen';
 import { MusGameEndScreen } from './MusGameEndScreen';
+import { PartyGameScreen } from './PartyGameScreen';
 
 export interface SalaClientProps {
   code: string;
@@ -163,7 +164,7 @@ export function SalaClient({ code }: SalaClientProps) {
           principal visible" (00-MASTER.md §8). */}
       <div className="flex items-center justify-between gap-2 px-4 py-1">
         <ReactionBar />
-        {isHost ? (
+        {isHost && view.status === 'lobby' ? (
           <button
             type="button"
             onClick={() => setConfirmClose(true)}
@@ -180,6 +181,13 @@ export function SalaClient({ code }: SalaClientProps) {
         <PochaGameScreen view={view} />
       ) : null}
       {view.status === 'playing' && view.gameId === 'mus' ? <MusGameScreen view={view} /> : null}
+      {view.status === 'playing' &&
+      (view.gameId === 'orden' ||
+        view.gameId === 'colores' ||
+        view.gameId === 'mayoria' ||
+        view.gameId === 'escala') ? (
+        <PartyGameScreen view={view} />
+      ) : null}
       {view.status === 'roundEnd' && view.gameId === 'chinchon' ? (
         <RoundEndScreen view={view} />
       ) : null}

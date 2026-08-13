@@ -10,6 +10,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Domine, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
+import { InstallAppPrompt } from '@/components/InstallAppPrompt';
 import { COLOR_TOKENS } from '@/lib/tokens';
 import '../styles/globals.css';
 
@@ -35,15 +36,23 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Ronda',
+  title: { default: 'Ronda', template: '%s · Ronda' },
   description:
     'Web-app instalable para jugar a juegos de cartas en grupo. Cada móvil es tu mano privada; una tele o tablet opcional hace de tablero público.',
+  applicationName: 'Ronda',
+  formatDetection: { telephone: false },
   manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Ronda',
+    statusBarStyle: 'black-translucent',
+  },
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
+    apple: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
   },
 };
 
@@ -52,6 +61,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: COLOR_TOKENS.tinta,
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -62,6 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="bg-tinta font-sans text-hueso">
         <RegisterServiceWorker />
+        <InstallAppPrompt />
         {children}
       </body>
     </html>

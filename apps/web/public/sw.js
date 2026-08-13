@@ -5,7 +5,7 @@
 // incluso con la red inestable; TODO lo demás pasa siempre por red
 // (NetworkOnly), porque una partida es en tiempo real y nunca debe servirse
 // una vista de caché ni una respuesta de socket.
-const CACHE_NAME = 'ronda-shell-v2';
+const CACHE_NAME = 'ronda-shell-v3';
 
 // Caché aparte para la baraja (`/cards/*.webp`). No entra en el precache del
 // shell: son 40 ficheros que no hacen falta hasta que empieza una partida.

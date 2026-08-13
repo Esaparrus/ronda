@@ -19,7 +19,15 @@
 import { z } from 'zod';
 import type { CardId, PlayerId, RoomCode } from './ids.ts';
 import type { Suit } from './cards.ts';
-import type { ChinchonConfig, MusConfig, PochaConfig } from './config.ts';
+import type {
+  ChinchonConfig,
+  ColoresConfig,
+  EscalaConfig,
+  MayoriaConfig,
+  MusConfig,
+  OrdenConfig,
+  PochaConfig,
+} from './config.ts';
 
 export type ViewStatus = 'lobby' | 'playing' | 'roundEnd' | 'gameEnd';
 export type TurnPhase = 'draw' | 'discard' | null;
@@ -41,7 +49,7 @@ export interface PublicPlayer {
   playerId: PlayerId;
   nick: string;
   seat: number; // 0..3 en Chinchón y Mus; 0..5 en Pocha
-  colorIndex: 0 | 1 | 2 | 3 | 4 | 5; // color de asiento, asignado por asiento
+  colorIndex: 0 | 1 | 2 | 3 | 4 | 5 | 6; // color de asiento, asignado por asiento
   score: number; // acumulado de la partida
   handCount: number; // nº de cartas, nunca cuáles
   connected: boolean;
@@ -294,11 +302,167 @@ export interface MusHandResult {
   byOrdago: boolean;
 }
 
-// --- Uniones públicas (§2.5, ensanchadas en P22 y P28) -----------------------
+// --- Modos sociales ---------------------------------------------------------
 
-export type CommonView = ChinchonCommonView | PochaCommonView | MusCommonView;
-export type PlayerView = ChinchonPlayerView | PochaPlayerView | MusPlayerView;
-export type TableView = ChinchonTableView | PochaTableView | MusTableView;
+export type PartyGameId = 'orden' | 'colores' | 'mayoria' | 'escala';
+export type PartyPhase = 'input' | 'reveal';
+export type PartyAvailableAction =
+  | 'playNumber'
+  | 'submitColors'
+  | 'submitMajority'
+  | 'submitScale'
+  | 'setOrderCards'
+  | 'nextRound';
+
+export interface PartyPlayedNumber {
+  playerId: PlayerId;
+  value: number;
+}
+
+export interface OrdenPublic {
+  gameId: 'orden';
+  phase: PartyPhase;
+  round: number;
+  cardsPerPlayer: number;
+  nextCardsPerPlayer: number;
+  deckCount: number;
+  highest: number;
+  played: PartyPlayedNumber[];
+  failure: { playerId: PlayerId; value: number; highest: number } | null;
+}
+
+export interface ColoresPublic {
+  gameId: 'colores';
+  phase: PartyPhase;
+  questionId: string;
+  prompt: string;
+  allowMultiple: boolean;
+  submittedPlayerIds: PlayerId[];
+  correctColors: string[] | null;
+  answers: Record<PlayerId, string[]> | null;
+}
+
+export interface MayoriaPublic {
+  gameId: 'mayoria';
+  phase: PartyPhase;
+  questionId: string;
+  prompt: string;
+  submittedPlayerIds: PlayerId[];
+  answers: Record<PlayerId, string> | null;
+  majorityAnswers: string[] | null;
+}
+
+export interface EscalaPublic {
+  gameId: 'escala';
+  phase: PartyPhase;
+  questionId: string;
+  leftLabel: string;
+  rightLabel: string;
+  cluePlayerId: PlayerId;
+  target: number | null;
+  guesses: Record<PlayerId, number> | null;
+}
+
+export type PartyPublic = OrdenPublic | ColoresPublic | MayoriaPublic | EscalaPublic;
+
+export interface PartyPlayerViewMe {
+  playerId: PlayerId;
+  /** Solo contiene números en Orden; en los otros modos queda vacío. */
+  hand: number[];
+  submitted: boolean;
+  /** Solo se rellena para quien da la pista en Escala. */
+  scaleTarget: number | null;
+  availableActions: PartyAvailableAction[];
+}
+
+interface PartyCommonViewBase extends CommonViewBase {
+  phase: PartyPhase;
+  party: PartyPublic;
+}
+
+export interface OrdenCommonView extends PartyCommonViewBase {
+  gameId: 'orden';
+  config: OrdenConfig;
+  party: OrdenPublic;
+}
+
+export interface ColoresCommonView extends PartyCommonViewBase {
+  gameId: 'colores';
+  config: ColoresConfig;
+  party: ColoresPublic;
+}
+
+export interface MayoriaCommonView extends PartyCommonViewBase {
+  gameId: 'mayoria';
+  config: MayoriaConfig;
+  party: MayoriaPublic;
+}
+
+export interface EscalaCommonView extends PartyCommonViewBase {
+  gameId: 'escala';
+  config: EscalaConfig;
+  party: EscalaPublic;
+}
+
+export type PartyCommonView =
+  | OrdenCommonView
+  | ColoresCommonView
+  | MayoriaCommonView
+  | EscalaCommonView;
+
+export interface OrdenPlayerView extends OrdenCommonView {
+  kind: 'player';
+  me: PartyPlayerViewMe;
+}
+
+export interface ColoresPlayerView extends ColoresCommonView {
+  kind: 'player';
+  me: PartyPlayerViewMe;
+}
+
+export interface MayoriaPlayerView extends MayoriaCommonView {
+  kind: 'player';
+  me: PartyPlayerViewMe;
+}
+
+export interface EscalaPlayerView extends EscalaCommonView {
+  kind: 'player';
+  me: PartyPlayerViewMe;
+}
+
+export type PartyPlayerView =
+  | OrdenPlayerView
+  | ColoresPlayerView
+  | MayoriaPlayerView
+  | EscalaPlayerView;
+
+export interface OrdenTableView extends OrdenCommonView {
+  kind: 'table';
+}
+
+export interface ColoresTableView extends ColoresCommonView {
+  kind: 'table';
+}
+
+export interface MayoriaTableView extends MayoriaCommonView {
+  kind: 'table';
+}
+
+export interface EscalaTableView extends EscalaCommonView {
+  kind: 'table';
+}
+
+export type PartyTableView =
+  | OrdenTableView
+  | ColoresTableView
+  | MayoriaTableView
+  | EscalaTableView;
+
+// --- Uniones públicas (§2.5, ensanchadas en P22, P28 y modos sociales) ------
+
+export type CommonView = ChinchonCommonView | PochaCommonView | MusCommonView | PartyCommonView;
+export type PlayerView = ChinchonPlayerView | PochaPlayerView | MusPlayerView | PartyPlayerView;
+export type TableView = ChinchonTableView | PochaTableView | MusTableView | PartyTableView;
 
 // --- Esquemas zod (tipo derivado por z.infer donde coincide) -----------------
 // Nota: no había (ni hay) un PlayerViewSchema/TableViewSchema en zod -- las
@@ -309,7 +473,7 @@ export type TableView = ChinchonTableView | PochaTableView | MusTableView;
 export const PublicPlayerSchema = z.object({
   playerId: z.string(),
   nick: z.string(),
-  seat: z.number().int().min(0).max(5),
+  seat: z.number().int().min(0).max(6),
   colorIndex: z.union([
     z.literal(0),
     z.literal(1),
@@ -317,6 +481,7 @@ export const PublicPlayerSchema = z.object({
     z.literal(3),
     z.literal(4),
     z.literal(5),
+    z.literal(6),
   ]),
   score: z.number().int(),
   handCount: z.number().int().min(0),

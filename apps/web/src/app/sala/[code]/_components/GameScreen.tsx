@@ -13,7 +13,7 @@
 // para Pocha, que reparte hasta 6 asientos y no cabe en el borde de la mesa.
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CardId, ChinchonPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { CommonArea } from './CommonArea';
@@ -46,11 +46,8 @@ export interface GameScreenProps {
 export function GameScreen({ view }: GameScreenProps) {
   const [selected, setSelected] = useState<CardId | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  // Carta descartable que también cerraría la ronda, pendiente de que el
-  // jugador confirme: cerrar (o chinchón) termina la ronda/partida, así que
-  // no se dispara solo porque la carta lo permita -- puede preferir seguir
-  // jugando para buscar una jugada mejor (0 puntos, chinchón...).
   const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
+  const fallbackDeadline = useRef<{ playerId: string | null; round: number; at: number } | null>(null);
 
   const { me } = view;
   const isMyTurn = view.turnPlayerId === me.playerId;
@@ -58,21 +55,46 @@ export function GameScreen({ view }: GameScreenProps) {
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
     : null;
 
+  const timerEnabled = view.status === 'playing' && view.config.turnTimeSeconds > 0;
+  if (timerEnabled && !view.turnDeadlineAt) {
+    const previous = fallbackDeadline.current;
+    if (!previous || previous.playerId !== view.turnPlayerId || previous.round !== view.round) {
+      fallbackDeadline.current = {
+        playerId: view.turnPlayerId,
+        round: view.round,
+        at: Date.now() + view.config.turnTimeSeconds * 1000,
+      };
+    }
+  } else if (!timerEnabled || view.turnDeadlineAt) {
+    fallbackDeadline.current = null;
+  }
+  const effectiveDeadlineAt = view.turnDeadlineAt ?? fallbackDeadline.current?.at ?? null;
+
   useEffect(() => {
-    if (!view.turnDeadlineAt || view.config.turnTimeSeconds === 0) return;
+    if (!timerEnabled || !effectiveDeadlineAt) return;
     setNow(Date.now());
-    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    const interval = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(interval);
-  }, [view.turnDeadlineAt, view.config.turnTimeSeconds]);
+  }, [timerEnabled, effectiveDeadlineAt]);
 
   const secondsLeft =
-    view.turnDeadlineAt && view.config.turnTimeSeconds > 0
-      ? Math.max(0, Math.ceil((view.turnDeadlineAt - now) / 1000))
+    effectiveDeadlineAt && timerEnabled
+      ? Math.max(0, Math.ceil((effectiveDeadlineAt - now) / 1000))
       : null;
   const timerLabel =
     secondsLeft === null
       ? null
       : `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`;
+  const timerProgress =
+    effectiveDeadlineAt && timerEnabled
+      ? Math.max(
+          0,
+          Math.min(
+            1,
+            (effectiveDeadlineAt - now) / (view.config.turnTimeSeconds * 1000),
+          ),
+        )
+      : null;
 
   function handleSelect(cardId: CardId) {
     setSelected(cardId);
@@ -86,26 +108,19 @@ export function GameScreen({ view }: GameScreenProps) {
     void useRondaStore.getState().sendAction({ type: 'drawDiscard' });
   }
 
-  // Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la
-  // mesa (Hand.tsx): descarta directamente, salvo que esa carta también
-  // permita cerrar -- en ese caso se pregunta antes de decidir por el
-  // jugador, porque cerrar es irreversible (termina la ronda o, si es
-  // chinchón, la partida entera) y quizá prefiera seguir buscando mejor
-  // jugada.
+  // Segundo toque sobre la carta ya seleccionada, o arrastrarla al montón:
+  // es un único gesto. El servidor decide si esa carta cierra la ronda o se
+  // descarta normalmente; no se muestra un menú adicional.
   function handleCommit(cardId: CardId, target: DropTarget) {
     setSelected(null);
     if (!isMyTurn || view.turnPhase !== 'discard') return;
-    if (target === 'close') {
-      if (!me.closableDiscards.includes(cardId)) return;
-      void useRondaStore.getState().sendAction({ type: 'close', cardId });
-      return;
-    }
-    void useRondaStore.getState().sendAction({ type: 'discard', cardId });
+    if (target !== 'discard') return;
+    void useRondaStore.getState().sendAction({
+      type: me.closableDiscards.includes(cardId) ? 'close' : 'discard',
+      cardId,
+    });
   }
 
-  // "Seguir jugando": la misma carta se descarta normal, sin cerrar -- la
-  // ronda continúa y la carta que cerraba se queda disponible por si
-  // aparece una jugada mejor más adelante.
   const canDrawDeck =
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDeck');
   const canDrawDiscard =
@@ -125,6 +140,7 @@ export function GameScreen({ view }: GameScreenProps) {
         turnNick={turnPlayer?.nick ?? null}
         timerLabel={timerLabel}
         timerUrgent={secondsLeft !== null && secondsLeft <= 10}
+        timerProgress={timerProgress}
       />
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[6px] px-1 py-2">
@@ -141,18 +157,26 @@ export function GameScreen({ view }: GameScreenProps) {
           ))}
         </div>
 
-        <BarTable>
-          <CommonArea
-            deckCount={view.deckCount}
-            discardTop={view.discardTop}
-            discardCount={view.discardCount}
-            onDrawDeck={canDrawDeck ? handleDrawDeck : undefined}
-            onDrawDiscard={canDrawDiscard ? handleDrawDiscard : undefined}
-            showDropTargets={isMyTurn && view.turnPhase === 'discard'}
-            activeDropTarget={activeDropTarget}
-            canClose={me.canClose}
-          />
-        </BarTable>
+        <div
+          data-drop-target={isMyTurn && view.turnPhase === 'discard' ? 'discard' : undefined}
+          className={`w-full max-w-[340px] rounded-[12px] transition-all ${
+            activeDropTarget === 'discard'
+              ? 'ring-2 ring-brasa ring-offset-2 ring-offset-mesa'
+              : ''
+          }`}
+        >
+          <BarTable>
+            <CommonArea
+              deckCount={view.deckCount}
+              discardTop={view.discardTop}
+              discardCount={view.discardCount}
+              onDrawDeck={canDrawDeck ? handleDrawDeck : undefined}
+              onDrawDiscard={canDrawDiscard ? handleDrawDiscard : undefined}
+              showDropTargets={isMyTurn && view.turnPhase === 'discard'}
+              activeDropTarget={activeDropTarget}
+            />
+          </BarTable>
+        </div>
 
         <div className="flex min-h-[46px] items-start justify-center">
           {mySeat ? (
@@ -176,7 +200,6 @@ export function GameScreen({ view }: GameScreenProps) {
           onSelect={handleSelect}
           onCommit={handleCommit}
           onDropTargetChange={setActiveDropTarget}
-          closableDiscards={me.closableDiscards}
         />
 
         <ActionBar

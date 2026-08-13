@@ -15,30 +15,59 @@ export interface TableHeaderProps {
   timerLabel?: string | null;
   /** Cuando quedan pocos segundos, se resalta para llamar la atención. */
   timerUrgent?: boolean;
+  /** Fracción de tiempo que queda, entre 0 y 1, para la barra visual. */
+  timerProgress?: number | null;
 }
 
-export function TableHeader({ left, turnNick, timerLabel, timerUrgent = false }: TableHeaderProps) {
+export function TableHeader({
+  left,
+  turnNick,
+  timerLabel,
+  timerUrgent = false,
+  timerProgress = null,
+}: TableHeaderProps) {
   return (
-    <div className="flex items-center justify-between border-b-2 border-linea bg-mesa px-4 py-2">
-      <span className="font-mono text-12 uppercase leading-none tracking-wider text-humo">
-        {left}
-      </span>
-      <div className="flex items-center gap-3">
-        {timerLabel ? (
-          <span
-            className={`font-mono text-12 uppercase leading-none tracking-wider ${
-              timerUrgent ? 'text-brasa' : 'text-humo'
-            }`}
-          >
-            Tiempo {timerLabel}
-          </span>
-        ) : null}
-        {turnNick ? (
-          <span className="font-mono text-12 uppercase leading-none tracking-wider text-oro">
-            Turno de {turnNick}
-          </span>
-        ) : null}
+    <header className="border-b-2 border-linea bg-mesa px-4 py-2">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <span className="shrink-0 font-mono text-12 uppercase leading-none tracking-wider text-humo">
+          {left}
+        </span>
+        <div className="flex min-w-0 items-center justify-end gap-3">
+          {timerLabel ? (
+            <div className="shrink-0" aria-label={`Tiempo restante: ${timerLabel}`}>
+              <span
+                className={`font-mono text-12 uppercase leading-none tracking-wider ${
+                  timerUrgent ? 'text-brasa' : 'text-humo'
+                }`}
+              >
+                Tiempo {timerLabel}
+              </span>
+            </div>
+          ) : null}
+          {turnNick ? (
+            <span className="truncate font-mono text-12 uppercase leading-none tracking-wider text-oro">
+              Turno de {turnNick}
+            </span>
+          ) : null}
+        </div>
       </div>
-    </div>
+      {timerLabel ? (
+        <div
+          role="progressbar"
+          aria-label={`Tiempo restante: ${timerLabel}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round((timerProgress ?? 0) * 100)}
+          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-linea"
+        >
+          <div
+            className={`h-full rounded-full transition-[width] duration-200 ease-linear ${
+              timerUrgent ? 'bg-brasa' : 'bg-oro'
+            }`}
+            style={{ width: `${Math.max(0, Math.min(1, timerProgress ?? 0)) * 100}%` }}
+          />
+        </div>
+      ) : null}
+    </header>
   );
 }

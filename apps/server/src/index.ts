@@ -12,6 +12,7 @@ import { Persistence } from './rooms/persistence.ts';
 import { broadcastClosed, broadcastRoom, broadcastToast } from './socket/broadcast.ts';
 import { track } from './db/playtest-repo.ts';
 import { saveRoomStats } from './db/stats-repo.ts';
+import { scheduleBotTurn, type BotDriverDeps } from './rooms/bot-driver.ts';
 import '@ronda/engine'; // registra los módulos de juego en GAMES (side effect).
 
 export type SnapshotHook = () => Promise<void>;
@@ -30,6 +31,10 @@ export async function startServer(opts: {
   const config = opts.config ?? loadConfig();
   const logger = createLogger(config, { service: 'ronda-server' });
   const snapshot = opts.snapshotOnShutdown ?? (async () => undefined);
+  // Se inicializa justo después de crear Socket.IO. Los hooks de la sala se
+  // ejecutan más tarde, pero mantener las dependencias en un solo objeto evita
+  // que una ruta interna del servidor se olvide de despertar al bot.
+  let botDeps: BotDriverDeps | null = null;
 
   // Persistencia (null si no hay BD disponible en tests).
   const dbConfig = { connectionString: config.DATABASE_URL };
@@ -57,6 +62,8 @@ export async function startServer(opts: {
     onClosed: (room, reason) => {
       // El sweep cierra salas fuera de un handler de socket. Avisa a quienes
       // sigan conectados antes de que RoomManager retire la sala del mapa.
+      // Las caducidades del sweep no pasan por un handler de socket; avisa a
+      // jugadores y pantallas antes de retirar la sala del mapa.
       broadcastClosed(io, room, reason);
       void persistence.onClose(room);
     },
@@ -71,7 +78,14 @@ export async function startServer(opts: {
     onTurnTimeout: (room) => {
       // El temporizador muta el estado sin pasar por `game:action`; difundir
       // aquí evita que la mesa se quede mostrando el turno anterior.
+      // Este cambio de estado lo origina un timer del servidor, no un socket;
+      // difundirlo aquí evita que las pantallas se queden mostrando el turno
+      // que ya ha expirado.
       broadcastRoom(io, room);
+      // El timeout también puede entregar el turno a un robot. En ese caso no
+      // existe un handler de socket que pase por `rebroadcast`, así que hay que
+      // agendarlo aquí o la sala queda esperando indefinidamente.
+      if (botDeps) scheduleBotTurn(botDeps, room.code);
     },
     onTrack: (room, kind, payload) => {
       // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
@@ -79,12 +93,15 @@ export async function startServer(opts: {
       // manager.ts) tampoco espera esta promesa.
       void track(dbConfig, kind, payload, room.code);
     },
-  }));
+  }), {
+    inactivityTimeoutMs: config.ROOM_INACTIVITY_MINUTES * 60_000,
+  });
 
   const { server } = createHttpServer({ countRooms: () => manager.countRooms() });
   const { io, stopPeriodic } = createIoServer({ server, config, logger, manager });
   // El manager puede usar io para difundir toasts/closed desde sus hooks.
   manager.setIo(io);
+  botDeps = { io, mgr: manager, now: () => Date.now() };
 
   await new Promise<void>((resolve) => {
     server.listen(config.PORT, () => resolve());

@@ -13,17 +13,17 @@ import type {
   RoomStats,
   RoomStatsRow,
 } from '@ronda/protocol';
-import type { ChinchonState, MusState, PochaState } from '@ronda/engine';
+import type { ChinchonState, MusState, PartyState, PochaState } from '@ronda/engine';
 
 /** Estado del motor de cualquier juego registrado (§10.8: GameModule<S,A>
  * ya era genérico de verdad; esta unión es lo único que faltaba en el lado
  * del servidor para dejar de asumir Chinchón a mano). */
-export type EngineState = ChinchonState | PochaState | MusState;
+export type EngineState = ChinchonState | PochaState | MusState | PartyState;
 
 /** Estado de los juegos "un jugador, una puntuación" (§12.12): todos menos
  * Mus. Se usa donde el servidor lee `winnerId`, `round` o `player.score`,
  * que en Mus no existen porque el marcador es de la pareja. */
-export type ScoredEngineState = ChinchonState | PochaState;
+export type ScoredEngineState = ChinchonState | PochaState | PartyState;
 
 /** Estado runtime de un jugador en la sala. */
 export interface PlayerRuntime {
@@ -65,8 +65,9 @@ export interface RoomHooks {
 }
 
 export const HOST_GRACE_MS = 45_000; // §6 traspaso de anfitrión
-export const LOBBY_TTL_MS = 2 * 60 * 60 * 1000; // 2 h
-export const PLAYING_TTL_MS = 6 * 60 * 60 * 1000; // 6 h sin nadie conectado
+export const DEFAULT_ROOM_INACTIVITY_MS = 30 * 60 * 1000; // 30 min
+export const LOBBY_TTL_MS = 2 * 60 * 60 * 1000;
+export const PLAYING_TTL_MS = 6 * 60 * 60 * 1000;
 
 export class Room {
   readonly code: RoomCode;
@@ -79,6 +80,7 @@ export class Room {
   /** socketIds de pantallas centrales conectadas. */
   screens: Set<string> = new Set();
   hostPlayerId: PlayerId | null = null;
+  /** ms epoch de la última mutación válida de sala o partida (no presencia). */
   lastActivityAt: number;
   /** Ids de acción ya procesados (idempotencia). Acotado por el servidor. */
   processedActions: Map<string, number> = new Map();

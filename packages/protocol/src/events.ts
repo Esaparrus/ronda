@@ -48,6 +48,29 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   // Equivalente por parejas de `gameOver`: en Mus gana un equipo, no un
   // jugador, y `winnerId` no sirve (§12.12).
   z.object({ t: z.literal('gameOverTeam'), teamIndex: z.number().int() }),
+  // --- Modos sociales -------------------------------------------------------
+  // El número solo aparece aquí después de que el jugador lo haya jugado:
+  // antes sigue siendo información privada de su mano.
+  z.object({ t: z.literal('numberPlayed'), playerId: z.string(), value: z.number().int() }),
+  z.object({
+    t: z.literal('partyAnswerSubmitted'),
+    playerId: z.string(),
+    gameId: z.union([
+      z.literal('colores'),
+      z.literal('mayoria'),
+      z.literal('escala'),
+    ]),
+  }),
+  z.object({
+    t: z.literal('partyRevealed'),
+    gameId: z.union([
+      z.literal('orden'),
+      z.literal('colores'),
+      z.literal('mayoria'),
+      z.literal('escala'),
+    ]),
+    round: z.number().int(),
+  }),
 ]);
 
 export type GameEvent = z.infer<typeof GameEventSchema>;

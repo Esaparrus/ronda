@@ -53,7 +53,7 @@ export function ActionBar({
   const myTurnHint =
     turnPhase === 'draw'
       ? 'Toca el mazo o el descarte para robar.'
-      : 'Arrastra una carta a Descartar o a Cerrar ronda.';
+      : 'Suelta una carta sobre el montón.';
 
   // Anuncio de cambio de turno para lectores de pantalla (contrato P18:
   // "aria-live para el cambio de turno"). Región siempre presente y visible

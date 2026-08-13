@@ -31,3 +31,5 @@ Thumbs.db
 # bases de datos locales
 *.sqlite
 *.db
+.vercel
+.env*

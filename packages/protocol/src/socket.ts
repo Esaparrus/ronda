@@ -4,8 +4,12 @@ import { z } from 'zod';
 import { GameActionSchema } from './actions.ts';
 import {
   ChinchonConfigSchema,
+  ColoresConfigSchema,
+  EscalaConfigSchema,
   GameConfigSchema,
+  MayoriaConfigSchema,
   MusConfigSchema,
+  OrdenConfigSchema,
   PochaConfigSchema,
 } from './config.ts';
 import type { GameEvent } from './events.ts';
@@ -161,10 +165,19 @@ export interface ServerToClientEvents {
 
 const roomCreateSchema = z.object({
   // Contrato §10.1 (P21/P22) y §12.12 (P27/P28): GameId es
-  // 'chinchon' | 'pocha' | 'mus'. Los tres están cableados de punta a punta
+  // 'chinchon' | 'pocha' | 'mus' | modos sociales. Todos están cableados de
+  // punta a punta
   // (motor, servidor e interfaz); `room-manager.ts` sigue siendo quien
   // rechaza con GAME_NOT_FOUND cualquier gameId sin módulo registrado.
-  gameId: z.union([z.literal('chinchon'), z.literal('pocha'), z.literal('mus')]),
+  gameId: z.union([
+    z.literal('chinchon'),
+    z.literal('pocha'),
+    z.literal('mus'),
+    z.literal('orden'),
+    z.literal('colores'),
+    z.literal('mayoria'),
+    z.literal('escala'),
+  ]),
   config: GameConfigSchema,
   nick: z.string(),
 });
@@ -189,6 +202,10 @@ const roomConfigSchema = z.object({
     ChinchonConfigSchema.partial(),
     PochaConfigSchema.partial(),
     MusConfigSchema.partial(),
+    OrdenConfigSchema.partial(),
+    ColoresConfigSchema.partial(),
+    MayoriaConfigSchema.partial(),
+    EscalaConfigSchema.partial(),
   ]),
 });
 

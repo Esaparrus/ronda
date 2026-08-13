@@ -10,7 +10,14 @@ export type PlayerId = string;
  * Identificador de partida/juego. Contrato §10.1 (P21/P22): ensanchado para
  * Pocha; §12.12 (P27/P28): ensanchado para Mus, mismo patrón.
  */
-export type GameId = 'chinchon' | 'pocha' | 'mus';
+export type GameId =
+  | 'chinchon'
+  | 'pocha'
+  | 'mus'
+  | 'orden'
+  | 'colores'
+  | 'mayoria'
+  | 'escala';
 
 /**
  * Identificador de carta: '<suit>-<rank>' con suit ∈ {oros,copas,espadas,
@@ -34,5 +41,5 @@ export const ROOM_CODE_LENGTH = 4;
  * límite de un juego concreto. Contrato §10.6 (P21/P22). El límite real de
  * cada partida lo pone `config.maxPlayers` del `GameConfig` de ese juego.
  */
-export const MAX_PLAYERS = 6; // antes 4 (límite de Chinchón únicamente)
+export const MAX_PLAYERS = 7; // los modos sociales admiten una cuadrilla de 7
 export const MIN_PLAYERS = 2; // sin cambio -- Chinchón lo sigue necesitando

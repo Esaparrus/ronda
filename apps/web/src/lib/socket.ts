@@ -6,13 +6,16 @@
 // 250ms -> 8s, tal cual pide el contrato.
 import { io, type Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents } from '@ronda/protocol';
+import { resolveServerUrl } from './server-url';
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-const DEFAULT_SERVER_URL = 'http://localhost:8787';
-
 function serverUrl(): string {
-  return process.env.NEXT_PUBLIC_SERVER_URL ?? DEFAULT_SERVER_URL;
+  // Next puede prerenderizar rutas que importan el store, aunque el socket
+  // solo se use en el navegador. Durante ese prerender no debemos exigir la
+  // URL HTTPS final; la comprobación estricta se aplica al runtime publicado.
+  const runtimeEnv = typeof window === 'undefined' ? 'development' : process.env.NODE_ENV;
+  return resolveServerUrl(process.env.NEXT_PUBLIC_SERVER_URL, runtimeEnv);
 }
 
 let socketInstance: AppSocket | null = null;

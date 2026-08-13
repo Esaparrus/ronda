@@ -42,10 +42,9 @@ export interface HandProps {
   selected: CardId | null;
   /** Primer toque sobre una carta no seleccionada: la selecciona. */
   onSelect: (cardId: CardId) => void;
-  /** Segundo toque sobre la carta ya seleccionada, o arrastrarla hacia la mesa: descarta (GameScreen.tsx decide si además pregunta por el cierre). */
+  /** Segundo toque o arrastre al montón: confirma la carta con un único gesto. */
   onCommit: (cardId: CardId, target: DropTarget) => void;
   onDropTargetChange: (target: DropTarget | null) => void;
-  closableDiscards: CardId[];
 }
 
 // Fracción de cada carta que tapa la siguiente (0.35 = se ve un 65% de
@@ -62,9 +61,17 @@ interface DragState {
   pointerId: number;
   startClientX: number;
   startClientY: number;
-  startIndex: number;
+  originIndex: number;
+  initialOrder: CardId[];
   moved: boolean;
   dropTarget: DropTarget | null;
+}
+
+interface DragVisual {
+  cardId: CardId;
+  x: number;
+  y: number;
+  lift: number;
 }
 
 type SortMode = 'suit' | 'rank';
@@ -95,12 +102,14 @@ export function Hand({
   onSelect,
   onCommit,
   onDropTargetChange,
-  closableDiscards,
 }: HandProps) {
   const [order, setOrder] = useState<CardId[]>(hand);
+  const orderRef = useRef<CardId[]>(hand);
   const [containerWidth, setContainerWidth] = useState(360);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<DragState | null>(null);
+  const visualFrame = useRef<number | null>(null);
+  const pendingVisual = useRef<DragVisual | null>(null);
   const [draggingCardId, setDraggingCardId] = useState<CardId | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [dragLift, setDragLift] = useState(0);
@@ -111,8 +120,15 @@ export function Hand({
   // render: así un reordenamiento local a medio arrastre no se pisa solo.
   const handKey = hand.join('|');
   useEffect(() => {
+    orderRef.current = hand;
     setOrder(hand);
   }, [handKey]);
+
+  useEffect(() => {
+    return () => {
+      if (visualFrame.current !== null) window.cancelAnimationFrame(visualFrame.current);
+    };
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -146,20 +162,40 @@ export function Hand({
       pointerId: e.pointerId,
       startClientX: e.clientX,
       startClientY: e.clientY,
-      startIndex: index,
+      originIndex: index,
+      initialOrder: [...orderRef.current],
       moved: false,
       dropTarget: null,
     };
     onDropTargetChange(null);
   }
 
-  function findDropTarget(clientX: number, clientY: number, cardId: CardId): DropTarget | null {
+  function queueDragVisual(visual: DragVisual) {
+    pendingVisual.current = visual;
+    if (visualFrame.current !== null) return;
+    visualFrame.current = window.requestAnimationFrame(() => {
+      visualFrame.current = null;
+      const next = pendingVisual.current;
+      if (!next) return;
+      setDraggingCardId(next.cardId);
+      setDragPosition({ x: next.x, y: next.y });
+      setDragLift(next.lift);
+    });
+  }
+
+  function cancelDragVisual() {
+    pendingVisual.current = null;
+    if (visualFrame.current !== null) {
+      window.cancelAnimationFrame(visualFrame.current);
+      visualFrame.current = null;
+    }
+  }
+
+  function findDropTarget(clientX: number, clientY: number): DropTarget | null {
     const element = document.elementFromPoint(clientX, clientY);
     const zone = element?.closest<HTMLElement>('[data-drop-target]');
     const target = zone?.dataset.dropTarget;
-    if (target === 'discard') return 'discard';
-    if (target === 'close' && closableDiscards.includes(cardId)) return 'close';
-    return null;
+    return target === 'discard' ? 'discard' : null;
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -172,44 +208,60 @@ export function Hand({
     if (Math.abs(deltaX) > TAP_THRESHOLD_PX || Math.abs(deltaY) > TAP_THRESHOLD_PX)
       drag.moved = true;
 
-    const dropTarget = findDropTarget(e.clientX, e.clientY, drag.cardId);
-    drag.dropTarget = dropTarget;
-    onDropTargetChange(dropTarget);
-    setDraggingCardId(drag.cardId);
-    setDragPosition({ x: e.clientX, y: e.clientY });
-    setDragLift(dropTarget ? Math.min(-24, deltaY / 2) : Math.min(0, deltaY / 3));
+    const dropTarget = findDropTarget(e.clientX, e.clientY);
+    if (dropTarget !== drag.dropTarget) {
+      drag.dropTarget = dropTarget;
+      onDropTargetChange(dropTarget);
+    }
+    queueDragVisual({
+      cardId: drag.cardId,
+      x: e.clientX,
+      y: e.clientY,
+      lift: dropTarget ? Math.min(-24, deltaY / 2) : Math.min(0, deltaY / 3),
+    });
 
     // Mientras la carta estÃ¡ sobre un cajÃ³n, el destino explÃ­cito manda
     // sobre el arrastre horizontal de reordenaciÃ³n.
     if (dropTarget) return;
 
-    const currentIndex = order.indexOf(drag.cardId);
+    const currentOrder = orderRef.current;
+    const currentIndex = currentOrder.indexOf(drag.cardId);
     if (currentIndex === -1) return;
 
     const shift = Math.round(deltaX / slot);
-    const targetIndex = Math.min(Math.max(drag.startIndex + shift, 0), order.length - 1);
+    const targetIndex = Math.min(Math.max(drag.originIndex + shift, 0), currentOrder.length - 1);
     if (targetIndex === currentIndex) return;
 
-    const next = [...order];
+    const next = [...currentOrder];
     next.splice(currentIndex, 1);
     next.splice(targetIndex, 0, drag.cardId);
+    orderRef.current = next;
     setOrder(next);
-    // El origen de referencia para el siguiente delta pasa a ser la
-    // posición actual: así el arrastre se siente continuo en vez de dar
-    // saltos cuando se mueve varias casillas seguidas.
-    drag.startIndex = targetIndex;
-    drag.startClientX = e.clientX;
   }
 
-  function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+  function finishPointer(e: ReactPointerEvent<HTMLDivElement>, cancelled: boolean) {
     const drag = dragState.current;
     if (!drag || e.pointerId !== drag.pointerId) return;
-    const dropTarget = findDropTarget(e.clientX, e.clientY, drag.cardId) ?? drag.dropTarget;
+    const dropTarget = cancelled ? null : findDropTarget(e.clientX, e.clientY) ?? drag.dropTarget;
+    const finalOrder = orderRef.current;
+    cancelDragVisual();
     dragState.current = null;
     setDraggingCardId(null);
     setDragPosition(null);
     setDragLift(0);
     onDropTargetChange(null);
+
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Algunos WebViews liberan la captura antes de emitir pointerup/cancel.
+    }
+
+    if (cancelled) {
+      orderRef.current = drag.initialOrder;
+      setOrder(drag.initialOrder);
+      return;
+    }
 
     if (!drag.moved) {
       // Toque simple: la primera vez selecciona; si ya estaba seleccionada,
@@ -226,11 +278,22 @@ export function Hand({
 
     // El arrastre ya reordenó `order` en vivo; ahora se confirma al
     // servidor. `sortHand` no consume turno (contrato §2.6).
-    void useRondaStore.getState().sendAction({ type: 'sortHand', order });
+    if (finalOrder.join('|') !== drag.initialOrder.join('|')) {
+      void useRondaStore.getState().sendAction({ type: 'sortHand', order: finalOrder });
+    }
+  }
+
+  function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    finishPointer(e, false);
+  }
+
+  function handlePointerCancel(e: ReactPointerEvent<HTMLDivElement>) {
+    finishPointer(e, true);
   }
 
   function handleSort(mode: SortMode) {
     const next = sortCards(order, mode);
+    orderRef.current = next;
     setOrder(next);
     setSortMenuOpen(false);
     void useRondaStore.getState().sendAction({ type: 'sortHand', order: next });
@@ -307,7 +370,7 @@ export function Hand({
               onPointerDown={(e) => handlePointerDown(cardId, i, e)}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
               onContextMenu={(e) => e.preventDefault()}
               style={{
                 marginLeft: i === 0 ? 0 : -(cardWidth - slot),

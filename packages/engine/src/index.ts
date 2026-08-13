@@ -84,3 +84,28 @@ export {
   type Pares,
   type ParesKind,
 } from './games/mus/index.ts';
+
+// Registro de los modos sociales (Orden, Colores, Mayoría y Escala).
+import './games/party/index.ts';
+export {
+  ordenModule,
+  coloresModule,
+  mayoriaModule,
+  escalaModule,
+  createPartyState,
+  applyAction as partyApplyAction,
+  getPlayerView as partyGetPlayerView,
+  getTableView as partyGetTableView,
+  COLOR_NAMES,
+  COLOR_QUESTIONS,
+  MAJORITY_QUESTIONS,
+  SCALE_QUESTIONS,
+  type PartyState,
+  type PartyPlayer,
+  type PartyStatus,
+  type PartyPhase,
+  type OrdenRoundState,
+  type ColorsRoundState,
+  type MajorityRoundState,
+  type ScaleRoundState,
+} from './games/party/index.ts';

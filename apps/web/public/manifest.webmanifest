@@ -1,10 +1,12 @@
 {
   "name": "Ronda",
   "short_name": "Ronda",
+  "id": "/",
   "description": "Web-app instalable para jugar a juegos de cartas en grupo. Cada móvil es tu mano privada.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone"],
   "background_color": "#14161F",
   "theme_color": "#14161F",
   "lang": "es",

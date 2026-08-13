@@ -4,11 +4,19 @@
 // defaults razonables.
 import { z } from 'zod';
 
+/** Una sala sin mutaciones durante media hora se considera abandonada. */
+export const DEFAULT_ROOM_INACTIVITY_MINUTES = 30;
+
 const ConfigSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es obligatoria'),
   PORT: z.coerce.number().int().positive().default(8787),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  ROOM_INACTIVITY_MINUTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_ROOM_INACTIVITY_MINUTES),
 });
 
 export type ServerConfig = z.infer<typeof ConfigSchema>;

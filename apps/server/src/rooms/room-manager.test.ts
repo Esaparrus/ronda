@@ -520,12 +520,13 @@ describe('revancha', () => {
 });
 
 describe('sweep', () => {
-  it('cierra una sala en lobby con 2h+ de inactividad', () => {
+  it('cierra una sala en lobby con 30 min+ de inactividad', () => {
     const m = mgr();
     const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
     if (!c.ok) throw new Error();
     // Exactamente al cumplir las 2h, sin actividad.
     const closed = m.sweep(NOW + 2 * 60 * 60 * 1000);
+    // 31 min después, sin actividad.
     expect(closed).toBe(1);
     expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
@@ -560,6 +561,35 @@ describe('sweep', () => {
 
     expect(m.sweep(NOW + 6 * 60 * 60 * 1000 - 1)).toBe(0);
     expect(m.sweep(NOW + 6 * 60 * 60 * 1000)).toBe(1);
+    expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
+  });
+
+  it('usa el límite configurado y también cierra una partida inactiva con jugadores conectados', () => {
+    const m = new RoomManager(undefined, { inactivityTimeoutMs: 15 * 60_000 });
+    const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
+    if (!c.ok) throw new Error();
+    m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+    const started = m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+    expect(started.ok).toBe(true);
+
+    expect(m.sweep(NOW + 15 * 60_000 - 1)).toBe(0);
+    expect(m.sweep(NOW + 15 * 60_000)).toBe(1);
+    expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
+  });
+
+  it('no permite reanimar una sala caducada al reanudar con su token', () => {
+    const m = new RoomManager(undefined, { inactivityTimeoutMs: 15 * 60_000 });
+    const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
+    if (!c.ok) throw new Error();
+
+    const resumed = m.resumeByToken({
+      roomCode: c.value.roomCode,
+      playerToken: c.value.playerToken,
+      now: NOW + 15 * 60_000,
+    });
+
+    expect(resumed.ok).toBe(false);
+    if (!resumed.ok) expect(resumed.code).toBe('ROOM_NOT_FOUND');
     expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
 });

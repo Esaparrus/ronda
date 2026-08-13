@@ -40,6 +40,7 @@ import { decideChinchonTimeoutDiscard } from './bot-policy.ts';
 export function minPlayersFor(gameId: GameId): number {
   if (gameId === 'pocha') return 3;
   if (gameId === 'mus') return 4;
+  if (gameId === 'colores' || gameId === 'mayoria' || gameId === 'escala') return 3;
   return 2;
 }
 
@@ -48,6 +49,11 @@ export interface JoinResult {
   playerId: PlayerId;
   playerToken: string;
   seat: number;
+}
+
+export interface RoomManagerOptions {
+  /** Tiempo sin mutaciones válidas antes de cerrar una sala. */
+  inactivityTimeoutMs?: number;
 }
 
 /**
@@ -63,9 +69,11 @@ export class RoomManager {
   private io: unknown = null;
   /** Un único temporizador de turno por sala; no existe para partidas sin tiempo. */
   private turnTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private inactivityTimeoutMs: number | undefined;
 
-  constructor(hooksFactory: () => RoomHooks = () => ({})) {
+  constructor(hooksFactory: () => RoomHooks = () => ({}), options: RoomManagerOptions = {}) {
     this.hooksFactory = hooksFactory;
+    this.inactivityTimeoutMs = options.inactivityTimeoutMs;
   }
 
   /** Inyecta el servidor io (para que hooks difundan toasts/closed). P8. */
@@ -95,6 +103,10 @@ export class RoomManager {
     nick: string;
     now: number;
   }): Result<JoinResult> {
+    // El intervalo periódico mantiene limpia una sala sin tráfico, pero esta
+    // comprobación también evita conservar cadáveres si el proceso estuvo
+    // suspendido o el barrido se retrasó.
+    this.sweep(input.now);
     if (!GAMES[input.gameId]) return err('GAME_NOT_FOUND');
     if (!isValidNick(input.nick)) return err('NICK_INVALID');
 
@@ -142,6 +154,7 @@ export class RoomManager {
     nick: string;
     now: number;
   }): Result<JoinResult> {
+    this.sweep(input.now);
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
     if (room.status === 'closed') return err('ROOM_CLOSED');
@@ -192,7 +205,9 @@ export class RoomManager {
     // los dejó fuera a propósito). Se rechaza aquí y no solo escondiendo el
     // botón: un bot en una mesa de Mus dejaría la partida colgada en su
     // turno para siempre, porque bot-driver.ts no lo va a mover.
-    if (room.gameId === 'mus') return err('INVALID_ACTION');
+      if (room.gameId === 'mus') {
+        return err('INVALID_ACTION');
+      }
 
     const seat = room.nextFreeSeat();
     if (seat === null) return err('ROOM_FULL');
@@ -261,6 +276,7 @@ export class RoomManager {
     playerToken: string;
     now: number;
   }): Result<{ roomCode: string; playerId: PlayerId; seat: number }> {
+    this.sweep(input.now);
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
     if (room.status === 'closed') return err('ROOM_CLOSED');
@@ -288,6 +304,7 @@ export class RoomManager {
     playerId: PlayerId;
     seat: number;
   }> {
+    this.sweep(input.now);
     const hash = hashToken(input.playerToken);
     for (const room of this.rooms.values()) {
       if (room.status === 'closed') continue;
@@ -406,6 +423,24 @@ export class RoomManager {
     room.players.delete(player.playerId);
 
     if (room.status === 'playing' || room.status === 'roundEnd') {
+      const state = room.state;
+      if (
+        state &&
+        (state.gameId === 'orden' ||
+          state.gameId === 'colores' ||
+          state.gameId === 'mayoria' ||
+          state.gameId === 'escala')
+      ) {
+        // Los modos sociales esperan a todos los jugadores activos para
+        // revelar. Marcar la salida en el estado evita dejar una ronda
+        // bloqueada esperando una respuesta que ya no llegará.
+        room.state = {
+          ...state,
+          players: state.players.map((candidate) =>
+            candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
+          ),
+        };
+      }
       // El motor no gestiona abandonos directamente: marcamos el jugador como
       // eliminado congelando su marcador. Simplificación aceptable para el MVP.
       // (Una implementación más fina movería sus cartas al descarte; aquí
@@ -505,6 +540,10 @@ export class RoomManager {
     // STALE_VERSION: expectedVersion debe coincidir con la versión actual.
     if (input.expectedVersion !== room.state.version) {
       return err('STALE_VERSION');
+    }
+
+    if (input.action.type === 'setOrderCards' && !player.isHost) {
+      return err('NOT_HOST');
     }
 
     const module = GAMES[room.gameId];
@@ -647,6 +686,7 @@ export class RoomManager {
   // --- screen --------------------------------------------------------------
 
   attachScreen(input: { roomCode: string; socketId: string; now: number }): Result<{ roomCode: string }> {
+    this.sweep(input.now);
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
     if (room.status === 'closed') return err('ROOM_CLOSED');
@@ -682,6 +722,8 @@ export class RoomManager {
     p.socketId = input.socketId;
     p.lastSeenAt = input.now;
     p.disconnectedAt = input.connected ? null : input.now;
+    // La presencia no cuenta como actividad de juego: dejar una pestaña
+    // conectada no debe mantener viva una sala abandonada indefinidamente.
   }
 
   /** Traspaso de anfitrión si lleva HOST_GRACE_MS desconectado. */
@@ -828,25 +870,28 @@ export class RoomManager {
     // Los temporizadores no pasan por un socket, así que no existe un handler
     // que pueda hacer el rebroadcast habitual. Sin esto, el servidor avanza
     // internamente pero los clientes siguen viendo el turno antiguo.
+    // internamente pero los clientes siguen viendo el turno antiguo y la mesa
+    // parece bloqueada.
     publish();
   }
 
-  /** Cierra salas caducadas: lobby inactivo >2h, partida sin conectados >6h. */
+  /** Cierra cualquier sala que lleve demasiado tiempo sin mutación válida. */
   sweep(now: number): number {
     let closed = 0;
-    for (const [code, room] of this.rooms) {
-      let shouldClose = false;
+    for (const room of this.rooms.values()) {
       if (room.status === 'closed') continue;
-      if (room.status === 'lobby') {
-        if (now - room.lastActivityAt >= LOBBY_TTL_MS) shouldClose = true;
+      let shouldClose = false;
+      if (this.inactivityTimeoutMs !== undefined) {
+        shouldClose = now - room.lastActivityAt >= this.inactivityTimeoutMs;
+      } else if (room.status === 'lobby') {
+        shouldClose = now - room.lastActivityAt >= LOBBY_TTL_MS;
       } else {
         const anyConnected = [...room.players.values()].some((p) => p.connected);
-        if (!anyConnected && now - room.lastActivityAt >= PLAYING_TTL_MS) shouldClose = true;
+        shouldClose = !anyConnected && now - room.lastActivityAt >= PLAYING_TTL_MS;
       }
       if (shouldClose) {
         this.closeRoom(room, 'expired');
         closed++;
-        void code;
       }
     }
     return closed;

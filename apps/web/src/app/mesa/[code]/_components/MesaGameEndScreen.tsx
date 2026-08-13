@@ -19,7 +19,7 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
   const winner = view.players.find((p) => p.playerId === view.winnerId);
   const rest = view.players
     .filter((p) => p.playerId !== view.winnerId)
-    .sort((a, b) => a.score - b.score);
+    .sort((a, b) => (view.gameId === 'chinchon' ? a.score - b.score : b.score - a.score));
   const standings = winner ? [winner, ...rest] : rest;
   const waitingFor = pendingConfirmations(view.players, view.rematchVotes);
   const votedNicks = view.players
@@ -32,7 +32,11 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
         <h1 className="font-display text-[clamp(2.25rem,5vw,4rem)] leading-display text-hueso">
           Partida terminada
         </h1>
-        {winner ? (
+        {view.gameId === 'orden' ? (
+          <p className="text-[clamp(1.5rem,3vw,2.25rem)] text-hueso">
+            La cuadrilla ha completado {view.round} rondas
+          </p>
+        ) : winner ? (
           <p className="text-[clamp(1.5rem,3vw,2.25rem)] text-hueso">Gana {winner.nick}</p>
         ) : null}
         <p className="text-[clamp(0.9rem,1.5vw,1.15rem)] text-humo">

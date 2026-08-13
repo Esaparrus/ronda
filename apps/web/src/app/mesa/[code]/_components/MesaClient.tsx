@@ -30,6 +30,7 @@ import { PochaMesaRoundEndScreen } from './PochaMesaRoundEndScreen';
 import { MusMesaGameBoard } from './MusMesaGameBoard';
 import { MusMesaRoundEndScreen } from './MusMesaRoundEndScreen';
 import { MusMesaGameEndScreen } from './MusMesaGameEndScreen';
+import { PartyMesaGameBoard } from './PartyMesaGameBoard';
 
 export interface MesaClientProps {
   code: string;
@@ -124,6 +125,13 @@ export function MesaClient({ code }: MesaClientProps) {
       ) : null}
       {tableView.status === 'playing' && tableView.gameId === 'mus' ? (
         <MusMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'playing' &&
+      (tableView.gameId === 'orden' ||
+        tableView.gameId === 'colores' ||
+        tableView.gameId === 'mayoria' ||
+        tableView.gameId === 'escala') ? (
+        <PartyMesaGameBoard view={tableView} />
       ) : null}
       {tableView.status === 'roundEnd' && tableView.gameId === 'mus' ? (
         <MusMesaRoundEndScreen view={tableView} />

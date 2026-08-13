@@ -45,6 +45,13 @@ describe('GameConfigSchema', () => {
     expect(() => GameConfigSchema.parse({ gameId: 'chinchon', closeThreshold: 7 })).toThrow();
   });
 
+  it('acepta los tiempos predefinidos por turno y rechaza otros', () => {
+    for (const seconds of [0, 10, 20, 30, 60]) {
+      expect(ChinchonConfigSchema.parse({ turnTimeSeconds: seconds }).turnTimeSeconds).toBe(seconds);
+    }
+    expect(() => ChinchonConfigSchema.parse({ turnTimeSeconds: 45 })).toThrow();
+  });
+
   it('acepta una config personalizada válida', () => {
     // ChinchonConfigSchema (no el GameConfigSchema ensanchado, P22): el test
     // comprueba campos exclusivos de Chinchón, así que se tipa directamente

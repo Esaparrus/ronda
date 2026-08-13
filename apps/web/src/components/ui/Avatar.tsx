@@ -1,7 +1,7 @@
 // Avatar de jugador: inicial sobre el color de su asiento. Contrato P11 /
 // §8.1 (colores de asiento: brasa, azul, verde, oro para colorIndex 0..3);
 // §10.7 añade violeta/rosa para colorIndex 4..5 (Pocha, hasta 6 jugadores).
-export type SeatColorIndex = 0 | 1 | 2 | 3 | 4 | 5;
+export type SeatColorIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface AvatarProps {
   /** Nombre del jugador; se muestra solo su primera letra, en mayúscula. */
@@ -18,6 +18,7 @@ const SEAT_COLOR_VAR: Record<SeatColorIndex, string> = {
   3: 'var(--seat-3)',
   4: 'var(--seat-4)',
   5: 'var(--seat-5)',
+  6: 'var(--seat-6)',
 };
 
 export function Avatar({ name, colorIndex, size = 40, className = '' }: AvatarProps) {

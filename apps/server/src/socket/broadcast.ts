@@ -20,6 +20,9 @@ import type {
   MusCommonView,
   MusPlayerView,
   MusTableView,
+  PartyCommonView,
+  PartyPlayerView,
+  PartyTableView,
   PlayerView,
   PochaCommonView,
   PochaPlayerView,
@@ -130,8 +133,116 @@ function buildMusLobbyCommon(room: Room): MusCommonView {
   };
 }
 
+/** Vista pública mínima de lobby para los cuatro modos sociales. */
+function buildPartyLobbyCommon(room: Room): PartyCommonView {
+  const base = {
+    roomCode: room.code,
+    status: room.status === 'closed' ? ('gameEnd' as const) : room.status,
+    round: 0,
+    players: buildLobbyPlayers(room),
+    winnerId: null,
+    rematchVotes: [],
+    phase: 'input' as const,
+  };
+
+  if (room.gameId === 'orden') {
+    const config = room.config as Extract<PartyCommonView, { gameId: 'orden' }>['config'];
+    return {
+      ...base,
+      gameId: 'orden',
+      config,
+      turnPlayerId: null,
+      party: {
+        gameId: 'orden',
+        phase: 'input',
+        round: 0,
+        cardsPerPlayer: config.cardsPerPlayer,
+        nextCardsPerPlayer: Math.min(config.cardsPerPlayer + 1, 10),
+        deckCount: 100,
+        highest: 0,
+        played: [],
+        failure: null,
+      },
+    };
+  }
+  if (room.gameId === 'colores') {
+    const config = room.config as Extract<PartyCommonView, { gameId: 'colores' }>['config'];
+    return {
+      ...base,
+      gameId: 'colores',
+      config,
+      turnPlayerId: null,
+      party: {
+        gameId: 'colores',
+        phase: 'input',
+        questionId: '',
+        prompt: 'La pregunta aparecerá al empezar.',
+        allowMultiple: true,
+        submittedPlayerIds: [],
+        correctColors: null,
+        answers: null,
+      },
+    };
+  }
+  if (room.gameId === 'mayoria') {
+    const config = room.config as Extract<PartyCommonView, { gameId: 'mayoria' }>['config'];
+    return {
+      ...base,
+      gameId: 'mayoria',
+      config,
+      turnPlayerId: null,
+      party: {
+        gameId: 'mayoria',
+        phase: 'input',
+        questionId: '',
+        prompt: 'La pregunta aparecerá al empezar.',
+        submittedPlayerIds: [],
+        answers: null,
+        majorityAnswers: null,
+      },
+    };
+  }
+  const config = room.config as Extract<PartyCommonView, { gameId: 'escala' }>['config'];
+  const firstPlayerId = room.playersBySeat()[0]?.playerId ?? '';
+  return {
+    ...base,
+    gameId: 'escala',
+    config,
+    turnPlayerId: firstPlayerId || null,
+    party: {
+      gameId: 'escala',
+      phase: 'input',
+      questionId: '',
+      leftLabel: 'extremo A',
+      rightLabel: 'extremo B',
+      cluePlayerId: firstPlayerId,
+      target: null,
+      guesses: null,
+    },
+  };
+}
+
 /** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
 function lobbyPlayerView(room: Room, playerId: string): PlayerView {
+  if (
+    room.gameId === 'orden' ||
+    room.gameId === 'colores' ||
+    room.gameId === 'mayoria' ||
+    room.gameId === 'escala'
+  ) {
+    const view: PartyPlayerView = {
+      kind: 'player',
+      ...buildPartyLobbyCommon(room),
+      me: {
+        playerId,
+        hand: [],
+        submitted: false,
+        scaleTarget: null,
+        availableActions: [],
+      },
+    };
+    return view;
+  }
   if (room.gameId === 'mus') {
     // Su pareja sale de su asiento, igual que en `buildLobbyPlayers`: es la
     // misma fórmula que aplicará el motor al empezar (§12.2).
@@ -177,6 +288,15 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
 }
 
 function lobbyTableView(room: Room): TableView {
+  if (
+    room.gameId === 'orden' ||
+    room.gameId === 'colores' ||
+    room.gameId === 'mayoria' ||
+    room.gameId === 'escala'
+  ) {
+    const view: PartyTableView = { kind: 'table', ...buildPartyLobbyCommon(room) };
+    return view;
+  }
   if (room.gameId === 'mus') {
     const view: MusTableView = { kind: 'table', ...buildMusLobbyCommon(room) };
     return view;

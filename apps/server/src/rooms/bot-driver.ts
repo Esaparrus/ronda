@@ -9,13 +9,13 @@
 // simulador de P9 (bot-policy.ts): legal y rápida, no necesariamente buena.
 import { randomUUID } from 'node:crypto';
 import { GAMES } from '@ronda/engine';
-import type { PlayerId } from '@ronda/protocol';
+import type { PartyPlayerView, PlayerId } from '@ronda/protocol';
 import type { TypedIoServer } from '../io.ts';
 import type { RoomManager } from './room-manager.ts';
 import type { EngineState } from './room.ts';
 import type { Room } from './room.ts';
 import { broadcastRoom } from '../socket/broadcast.ts';
-import { decideChinchonAction, decidePochaAction } from './bot-policy.ts';
+import { decideChinchonAction, decidePartyAction, decidePochaAction } from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
 
@@ -72,6 +72,43 @@ function nextBotTurn(room: Room): BotTurn | null {
   const state = room.state;
   if (!state) return null;
 
+  // Los modos sociales dependen de la conversación de la mesa y no admiten
+  // bots en esta primera versión. Esta guarda también mantiene el acceso a
+  // `turnSeat` seguro para los estados que sí tienen turnos.
+  if (
+    state.gameId === 'orden' ||
+    state.gameId === 'colores' ||
+    state.gameId === 'mayoria' ||
+    state.gameId === 'escala'
+  ) {
+    if (room.status !== 'playing' || state.status !== 'playing') return null;
+    const bots = room.playersBySeat().filter((player) => player.isBot);
+    if (state.phase === 'reveal') {
+      // En Orden el anfitrión puede cambiar el reparto antes de continuar;
+      // dejamos la decisión en la pantalla humana para que la IA no se la
+      // salte a los pocos cientos de milisegundos.
+      if (state.gameId === 'orden') return null;
+      const next = bots[0];
+      return next ? { playerId: next.playerId, kind: 'nextRound' } : null;
+    }
+    const module = GAMES[room.gameId];
+    if (!module) return null;
+    for (const bot of bots) {
+      const view = module.getPlayerView(state, bot.playerId);
+      if (view.kind !== 'player') continue;
+      const partyView = view as PartyPlayerView;
+      if (partyView.me.availableActions.some((action) =>
+        action === 'playNumber' ||
+        action === 'submitColors' ||
+        action === 'submitMajority' ||
+        action === 'submitScale'
+      )) {
+        return { playerId: bot.playerId, kind: 'action' };
+      }
+    }
+    return null;
+  }
+
   if (room.status === 'playing') {
     const seat = state.turnSeat;
     if (seat === null) return null;
@@ -109,45 +146,67 @@ function nextBotTurn(room: Room): BotTurn | null {
 }
 
 function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void {
-  const room = deps.mgr.getRoomByCode(roomCode);
-  const state = room?.state;
-  if (!room || !state) return;
+  try {
+    const room = deps.mgr.getRoomByCode(roomCode);
+    const state = room?.state;
+    if (!room || !state) return;
 
-  if (turn.kind === 'action') {
-    const module = GAMES[room.gameId];
-    if (!module) return;
-    const view = module.getPlayerView(state, turn.playerId);
-    if (view.kind !== 'player') return;
-    // Mus no tiene bots: envidar y farolear es un problema muy distinto al de
-    // los bots actuales y §12.11 lo deja explícitamente fuera del contrato.
-    if (view.gameId === 'mus') return;
-    const action = view.gameId === 'pocha' ? decidePochaAction(view) : decideChinchonAction(view);
-    if (!action) return;
-    const r = deps.mgr.applyAction({
-      roomCode,
-      playerId: turn.playerId,
-      clientActionId: randomUUID(),
-      expectedVersion: state.version,
-      action,
-      now: deps.now(),
-    });
-    if (r.ok) broadcastRoom(deps.io, room);
-  } else if (turn.kind === 'nextRound') {
-    const r = deps.mgr.applyAction({
-      roomCode,
-      playerId: turn.playerId,
-      clientActionId: randomUUID(),
-      expectedVersion: state.version,
-      action: { type: 'nextRound' },
-      now: deps.now(),
-    });
-    if (r.ok) broadcastRoom(deps.io, room);
-  } else {
-    const r = deps.mgr.voteRematch({ roomCode, playerId: turn.playerId, value: true, now: deps.now() });
-    if (r.ok) broadcastRoom(deps.io, room);
+    if (turn.kind === 'action') {
+      const module = GAMES[room.gameId];
+      if (!module) return;
+      const view = module.getPlayerView(state, turn.playerId);
+      if (view.kind !== 'player') return;
+      // Mus no tiene bots: envidar y farolear es un problema muy distinto al de
+      // los bots actuales y §12.11 lo deja explícitamente fuera del contrato.
+      if (
+        view.gameId === 'orden' ||
+        view.gameId === 'colores' ||
+        view.gameId === 'mayoria' ||
+        view.gameId === 'escala'
+      ) {
+        const action = decidePartyAction(view as PartyPlayerView);
+        if (!action) return;
+        const r = deps.mgr.applyAction({
+          roomCode,
+          playerId: turn.playerId,
+          clientActionId: randomUUID(),
+          expectedVersion: state.version,
+          action,
+          now: deps.now(),
+        });
+        if (r.ok) broadcastRoom(deps.io, room);
+        return;
+      }
+      if (view.gameId === 'mus') return;
+      const action = view.gameId === 'pocha' ? decidePochaAction(view) : decideChinchonAction(view);
+      if (!action) return;
+      const r = deps.mgr.applyAction({
+        roomCode,
+        playerId: turn.playerId,
+        clientActionId: randomUUID(),
+        expectedVersion: state.version,
+        action,
+        now: deps.now(),
+      });
+      if (r.ok) broadcastRoom(deps.io, room);
+    } else if (turn.kind === 'nextRound') {
+      const r = deps.mgr.applyAction({
+        roomCode,
+        playerId: turn.playerId,
+        clientActionId: randomUUID(),
+        expectedVersion: state.version,
+        action: { type: 'nextRound' },
+        now: deps.now(),
+      });
+      if (r.ok) broadcastRoom(deps.io, room);
+    } else {
+      const r = deps.mgr.voteRematch({ roomCode, playerId: turn.playerId, value: true, now: deps.now() });
+      if (r.ok) broadcastRoom(deps.io, room);
+    }
+  } finally {
+    // No dejemos el mapa de timers vacío cuando una vista todavía no tiene una
+    // acción, o cuando una acción pierde una carrera de versión. En ambos casos
+    // el estado puede seguir esperando al mismo bot y hay que reintentarlo.
+    scheduleBotTurn(deps, roomCode);
   }
-
-  // El propio movimiento del bot puede dejarle otra vez en turno (robar →
-  // descartar) o pasarle el turno a otro bot: se reevalúa tras cada jugada.
-  scheduleBotTurn(deps, roomCode);
 }

@@ -31,9 +31,10 @@ const ELIMINATION_SCORE = z.union([z.literal(50), z.literal(100), z.literal(150)
 /** Tiempo máximo por turno en segundos; 0 significa sin límite. */
 const TURN_TIME_SECONDS = z.union([
   z.literal(0),
+  z.literal(10),
+  z.literal(20),
   z.literal(30),
   z.literal(60),
-  z.literal(90),
 ]);
 
 // P31: `jokers`, `jokerPoints` y `maxJokersPerMeld` ya no existen. Los tres
@@ -89,18 +90,94 @@ export const MusConfigSchema = CommonGameConfigSchema.extend({
 
 export type MusConfig = z.infer<typeof MusConfigSchema>;
 
+// --- Modos sociales ---------------------------------------------------------
+
+/** Los modos de mesa están pensados para una cuadrilla, no para una partida
+ * por turnos: todos pueden participar a la vez. */
+const PARTY_MAX_PLAYERS = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+const PARTY_ROUNDS = z.union([z.literal(5), z.literal(7), z.literal(10), z.literal(12)]);
+const PARTY_POINTS = z.union([
+  z.literal(5),
+  z.literal(10),
+  z.literal(15),
+  z.literal(20),
+  z.literal(25),
+  z.literal(30),
+  z.literal(40),
+]);
+const PARTY_CARDS_PER_PLAYER = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+  z.literal(8),
+  z.literal(9),
+  z.literal(10),
+]);
+
+export const OrdenConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('orden' satisfies GameId).default('orden'),
+  maxPlayers: PARTY_MAX_PLAYERS.default(7),
+  cardsPerPlayer: PARTY_CARDS_PER_PLAYER.default(1),
+});
+
+export type OrdenConfig = z.infer<typeof OrdenConfigSchema>;
+
+export const ColoresConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('colores' satisfies GameId).default('colores'),
+  maxPlayers: PARTY_MAX_PLAYERS.default(7),
+  rounds: PARTY_ROUNDS.default(10),
+  pointsToWin: PARTY_POINTS.default(10),
+});
+
+export type ColoresConfig = z.infer<typeof ColoresConfigSchema>;
+
+export const MayoriaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('mayoria' satisfies GameId).default('mayoria'),
+  maxPlayers: PARTY_MAX_PLAYERS.default(7),
+  rounds: PARTY_ROUNDS.default(10),
+  pointsToWin: PARTY_POINTS.default(10),
+});
+
+export type MayoriaConfig = z.infer<typeof MayoriaConfigSchema>;
+
+export const EscalaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('escala' satisfies GameId).default('escala'),
+  maxPlayers: PARTY_MAX_PLAYERS.default(7),
+  rounds: PARTY_ROUNDS.default(10),
+  pointsToWin: PARTY_POINTS.default(10),
+});
+
+export type EscalaConfig = z.infer<typeof EscalaConfigSchema>;
+
+export type PartyConfig = OrdenConfig | ColoresConfig | MayoriaConfig | EscalaConfig;
+
 // --- Unión discriminada ------------------------------------------------------
 
 /**
  * Config válida para cualquier juego. Unión discriminada por `gameId`
  * (§10.2). Antes de P22 era, en la práctica, un alias de `ChinchonConfig`.
  */
-export type GameConfig = ChinchonConfig | PochaConfig | MusConfig;
+export type GameConfig = ChinchonConfig | PochaConfig | MusConfig | PartyConfig;
 
 export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ChinchonConfigSchema,
   PochaConfigSchema,
   MusConfigSchema,
+  OrdenConfigSchema,
+  ColoresConfigSchema,
+  MayoriaConfigSchema,
+  EscalaConfigSchema,
 ]);
 
 /**
@@ -118,3 +195,8 @@ export const DEFAULT_POCHA_CONFIG: PochaConfig = PochaConfigSchema.parse({});
 
 /** Config de Mus por defecto, mismo patrón que `DEFAULT_CONFIG` de arriba. */
 export const DEFAULT_MUS_CONFIG: MusConfig = MusConfigSchema.parse({});
+
+export const DEFAULT_ORDEN_CONFIG: OrdenConfig = OrdenConfigSchema.parse({});
+export const DEFAULT_COLORES_CONFIG: ColoresConfig = ColoresConfigSchema.parse({});
+export const DEFAULT_MAYORIA_CONFIG: MayoriaConfig = MayoriaConfigSchema.parse({});
+export const DEFAULT_ESCALA_CONFIG: EscalaConfig = EscalaConfigSchema.parse({});

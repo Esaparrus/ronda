@@ -147,12 +147,11 @@ export default function DesignShowcasePage() {
         </div>
       </Section>
 
-      <Section title="Estados de carta (selected, dimmed, meldColor)">
+      <Section title="Estados de carta (selected, dimmed)">
         <div className="flex flex-wrap gap-4">
           <PlayingCard cardId="oros-7" />
           <PlayingCard cardId="oros-7" selected />
           <PlayingCard cardId="oros-7" dimmed />
-          <PlayingCard cardId="oros-7" meldColor={1} />
           <PlayingCard cardId="oros-7" faceDown />
         </div>
       </Section>

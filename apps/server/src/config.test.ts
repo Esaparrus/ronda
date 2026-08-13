@@ -17,6 +17,7 @@ describe('loadConfig', () => {
     expect(cfg.PORT).toBe(8787);
     expect(cfg.CORS_ORIGIN).toBe('http://localhost:3000');
     expect(cfg.NODE_ENV).toBe('development');
+    expect(cfg.ROOM_INACTIVITY_MINUTES).toBe(30);
   });
 
   it('aplica PORT, CORS_ORIGIN y NODE_ENV si se pasan', () => {
@@ -35,6 +36,17 @@ describe('loadConfig', () => {
     const cfg = loadConfig({ DATABASE_URL: 'x', PORT: '1234' });
     expect(typeof cfg.PORT).toBe('number');
     expect(cfg.PORT).toBe(1234);
+  });
+
+  it('acepta un límite de inactividad configurable en minutos', () => {
+    const cfg = loadConfig({ DATABASE_URL: 'x', ROOM_INACTIVITY_MINUTES: '15' });
+    expect(cfg.ROOM_INACTIVITY_MINUTES).toBe(15);
+  });
+
+  it('rechaza un límite de inactividad no positivo', () => {
+    expect(() => loadConfig({ DATABASE_URL: 'x', ROOM_INACTIVITY_MINUTES: '0' })).toThrow(
+      /ROOM_INACTIVITY_MINUTES/,
+    );
   });
 
   it('rechaza NODE_ENV inválido', () => {

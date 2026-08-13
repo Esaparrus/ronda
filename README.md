@@ -13,6 +13,8 @@ o tablet opcional hace de tablero público.
 - `DEPLOY.md` — cómo desplegar: base de datos, servidor (Fly.io) y web (Vercel).
 - `PLAYTEST.md` — guion de las tres sesiones de playtest con grupos reales.
 
+El roadmap para web, Google Play y App Store está en `MOBILE-MIGRATION.md`.
+
 ## Monorepo
 
 ```

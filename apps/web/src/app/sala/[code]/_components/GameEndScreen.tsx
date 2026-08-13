@@ -27,7 +27,7 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
   const winner = view.players.find((p) => p.playerId === view.winnerId);
   const rest = view.players
     .filter((p) => p.playerId !== view.winnerId)
-    .sort((a, b) => a.score - b.score);
+    .sort((a, b) => (view.gameId === 'chinchon' ? a.score - b.score : b.score - a.score));
   const standings = winner ? [winner, ...rest] : rest;
 
   const iVoted = view.rematchVotes.includes(view.me.playerId);
@@ -48,7 +48,11 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-6 py-8">
       <header className="flex flex-col items-center gap-2 text-center">
         <h1 className="font-display text-28 leading-display text-hueso">Partida terminada</h1>
-        {winner ? <p className="text-20 text-hueso">Gana {winner.nick}</p> : null}
+        {view.gameId === 'orden' ? (
+          <p className="text-20 text-hueso">La cuadrilla ha completado {view.round} rondas</p>
+        ) : winner ? (
+          <p className="text-20 text-hueso">Gana {winner.nick}</p>
+        ) : null}
         <p className="text-14 text-humo">
           {view.round} {view.round === 1 ? 'ronda' : 'rondas'}
         </p>

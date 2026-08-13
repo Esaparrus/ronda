@@ -6,6 +6,10 @@ const GAMES = [
   { slug: 'chinchon', name: 'Chinchón', players: '2–4 jugadores', duration: '15–30 min' },
   { slug: 'pocha', name: 'Pocha', players: '3–6 jugadores', duration: '20–45 min' },
   { slug: 'mus', name: 'Mus', players: '4 jugadores, por parejas', duration: '30–60 min' },
+  { slug: 'orden', name: 'Orden', players: '2-7 jugadores', duration: '10-20 min' },
+  { slug: 'colores', name: 'Colores', players: '3-7 jugadores', duration: '10-20 min' },
+  { slug: 'mayoria', name: 'Mayoria', players: '3-7 jugadores', duration: '10-20 min' },
+  { slug: 'escala', name: 'Escala', players: '3-7 jugadores', duration: '15-25 min' },
 ] as const;
 
 export default function JuegosPage() {

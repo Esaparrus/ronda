@@ -30,6 +30,7 @@
   --color-azul: #5b6b7a; /* asiento 4 (gris pizarra) */
   --color-violeta: #7a5a8c; /* asiento 5 (Pocha, hasta 6 jugadores) */
   --color-rosa: #9c4f5e; /* asiento 6 (Pocha, hasta 6 jugadores) */
+  --color-gris: #707070; /* asiento 7 (modos sociales) */
 
   /* --- Mesa de bar (P32) -------------------------------------------------
    * La mesa es un mueble, no un rectángulo de color: tablero de madera con
@@ -101,6 +102,7 @@
   --seat-3: var(--color-azul);
   --seat-4: var(--color-violeta);
   --seat-5: var(--color-rosa);
+  --seat-6: var(--color-gris);
 
   color-scheme: dark;
 }

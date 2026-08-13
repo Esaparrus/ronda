@@ -6,7 +6,7 @@
 // `public/cards/` (ver `cardImages.ts`). El dibujo SVG propio que vivía aquí
 // —pips, figuras y comodín— se retira con el mismo commit: dejaba de tener
 // camino, porque ya no existe carta repartible sin imagen. El marco (fondo,
-// contorno de tinta, barra de combinación y velo de atenuado) sigue siendo
+// contorno de tinta y velo de atenuado) sigue siendo
 // SVG, y es lo que le da al naipe su silueta dentro de la app.
 //
 // El viewBox (0 0 72 108) se mantiene: es la proporción 2:3 de la que depende
@@ -46,13 +46,6 @@ const SUIT_COLOR_VAR: Record<Suit, string> = {
   bastos: 'var(--card-bastos)',
 };
 
-const MELD_COLOR_VAR: Record<0 | 1 | 2 | 3, string> = {
-  0: 'var(--card-copas)',
-  1: 'var(--card-espadas)',
-  2: 'var(--card-bastos)',
-  3: 'var(--card-oros)',
-};
-
 export interface PlayingCardProps {
   /** Id canónico de la carta, p.ej. 'oros-7' o 'joker-1'. */
   cardId: CardId;
@@ -63,9 +56,9 @@ export interface PlayingCardProps {
   selected?: boolean;
   /** Atenúa la carta (opacidad reducida) — p.ej. no jugable en este turno. */
   dimmed?: boolean;
+  /** Estilo concreto para una vista previa; la partida usa la preferencia local. */
   cardStyle?: CardStyle;
   /** Pinta una barra de color bajo la carta indicando a qué combinación pertenece. */
-  meldColor?: 0 | 1 | 2 | 3;
   className?: string;
 }
 
@@ -86,7 +79,6 @@ function PlayingCardComponent({
   selected = false,
   dimmed = false,
   cardStyle,
-  meldColor,
   className,
 }: PlayingCardProps) {
   const { width, height } = SIZE_PX[size];
@@ -204,8 +196,6 @@ function PlayingCardComponent({
         stroke="var(--card-ink)"
         strokeWidth={3.25}
       />
-      {meldColor !== undefined ? <MeldBar color={MELD_COLOR_VAR[meldColor]} /> : null}
-
       {/* Velo de atenuado: mismo contorno redondeado que el fondo, pintado
           ENCIMA de toda la carta en vez de bajar la opacidad del <svg>
           entero (ver nota de más arriba). Siempre montado -- solo cambia su
@@ -228,17 +218,3 @@ export const PlayingCard = memo(PlayingCardComponent);
 PlayingCard.displayName = 'PlayingCard';
 
 /** Barra de color de combinación, bajo la carta. */
-function MeldBar({ color }: { color: string }) {
-  return (
-    <rect
-      x={9}
-      y={VIEWBOX_HEIGHT - 9}
-      width={54}
-      height={5}
-      rx={2.5}
-      fill={color}
-      stroke="var(--card-ink)"
-      strokeWidth={1}
-    />
-  );
-}
