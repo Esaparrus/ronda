@@ -42,7 +42,7 @@ export function MusGameEndScreen({ view }: MusGameEndScreenProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-6 py-8">
+    <main className="app-page safe-page mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-5">
       <header className="flex flex-col items-center gap-2 text-center">
         <h1 className="font-display text-28 leading-display text-hueso">Partida terminada</h1>
         {winnerTeam !== null ? (

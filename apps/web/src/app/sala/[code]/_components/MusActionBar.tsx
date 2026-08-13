@@ -94,7 +94,7 @@ export function MusActionBar({
 
   if (!isMyTurn) {
     return (
-      <div className="flex flex-col gap-3 px-6 py-4 text-center">
+      <div className="action-dock flex flex-col gap-3 px-6 py-4 text-center">
         {liveRegion}
         <p className="text-16 text-hueso">
           {turnPlayerNick
@@ -121,7 +121,7 @@ export function MusActionBar({
   }
 
   return (
-    <div className="flex flex-col gap-3 px-4 py-4">
+    <div className="action-dock flex flex-col gap-3 px-4 py-4">
       {liveRegion}
       <div className="text-center">
         <p className="text-12 font-semibold uppercase tracking-wider text-oro">Tu turno</p>

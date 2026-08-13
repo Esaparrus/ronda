@@ -90,7 +90,7 @@ export function RoomCodeInput({ value, onChange, className = '' }: RoomCodeInput
           spellCheck={false}
           maxLength={1}
           aria-label={`Carácter ${i + 1} de ${ROOM_CODE_LENGTH}`}
-          className="h-14 w-11 rounded-lg border border-linea bg-mesa text-center font-mono text-28 font-medium uppercase text-hueso focus-visible:border-brasa"
+          className="form-control h-14 w-12 text-center font-mono text-28 font-medium uppercase"
         />
       ))}
     </div>

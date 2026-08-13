@@ -51,7 +51,7 @@ export default function ReglasPochaPage() {
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-2">
         <h1 className="font-display text-40 leading-display text-hueso">Reglas de la Pocha</h1>
-        <p className="text-16 text-humo">3–6 jugadores · 20–45 min</p>
+        <p className="text-16 text-humo">2–6 jugadores · 20–45 min</p>
       </header>
 
       <div className="flex flex-col gap-6">

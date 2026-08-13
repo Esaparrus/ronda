@@ -34,8 +34,9 @@ export function MesaLobbyBoard({ view }: MesaLobbyBoardProps) {
   }, [view.roomCode]);
 
   return (
-    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-10 px-10 py-8">
-      <div className="flex flex-col items-center gap-6">
+    <main className="app-page flex min-h-dvh flex-1 flex-col items-center justify-center gap-10 px-10 py-8">
+      <div className="surface-panel flex flex-col items-center gap-6 px-12 py-8">
+        <span className="eyebrow">Mesa abierta</span>
         <p className="text-[clamp(1.25rem,2.2vw,1.75rem)] text-humo">Uniros desde el móvil</p>
         <RoomCode code={view.roomCode} className="scale-[1.8]" />
         {qrDataUrl ? (

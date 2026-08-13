@@ -34,6 +34,13 @@ import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
 import { useRondaStore } from '@/lib/store';
 import { pointsFor } from '@/lib/cardPoints';
+import {
+  CARD_DRAG_ACTIVATION_PX,
+  cardDragIntent,
+  isUpwardCardFling,
+  pointInsideExpandedRect,
+  type CardDragIntent,
+} from '@/lib/card-gesture';
 import type { DropTarget } from './CommonArea';
 
 export interface HandProps {
@@ -54,7 +61,6 @@ const OVERLAP_FRACTION = 0.35;
 const MIN_CARD_WIDTH = 48;
 const MAX_CARD_WIDTH = 112;
 const CARD_ASPECT = 108 / 72; // alto/ancho del viewBox de PlayingCard (2:3)
-const TAP_THRESHOLD_PX = 6;
 
 interface DragState {
   cardId: CardId;
@@ -64,6 +70,7 @@ interface DragState {
   originIndex: number;
   initialOrder: CardId[];
   moved: boolean;
+  intent: CardDragIntent;
   dropTarget: DropTarget | null;
 }
 
@@ -165,6 +172,7 @@ export function Hand({
       originIndex: index,
       initialOrder: [...orderRef.current],
       moved: false,
+      intent: 'pending',
       dropTarget: null,
     };
     onDropTargetChange(null);
@@ -195,7 +203,16 @@ export function Hand({
     const element = document.elementFromPoint(clientX, clientY);
     const zone = element?.closest<HTMLElement>('[data-drop-target]');
     const target = zone?.dataset.dropTarget;
-    return target === 'discard' ? 'discard' : null;
+    if (target === 'discard') return 'discard';
+
+    const discardZone = document.querySelector<HTMLElement>('[data-drop-target="discard"]');
+    if (
+      discardZone &&
+      pointInsideExpandedRect(clientX, clientY, discardZone.getBoundingClientRect())
+    ) {
+      return 'discard';
+    }
+    return null;
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -205,10 +222,20 @@ export function Hand({
 
     const deltaX = e.clientX - drag.startClientX;
     const deltaY = e.clientY - drag.startClientY;
-    if (Math.abs(deltaX) > TAP_THRESHOLD_PX || Math.abs(deltaY) > TAP_THRESHOLD_PX)
-      drag.moved = true;
+    if (Math.hypot(deltaX, deltaY) >= CARD_DRAG_ACTIVATION_PX) drag.moved = true;
+    if (drag.intent === 'pending') drag.intent = cardDragIntent(deltaX, deltaY);
 
-    const dropTarget = findDropTarget(e.clientX, e.clientY);
+    const dropTarget =
+      findDropTarget(e.clientX, e.clientY) ??
+      (drag.intent === 'play' &&
+      isUpwardCardFling(
+        drag.startClientX,
+        drag.startClientY,
+        e.clientX,
+        e.clientY,
+      )
+        ? 'discard'
+        : null);
     if (dropTarget !== drag.dropTarget) {
       drag.dropTarget = dropTarget;
       onDropTargetChange(dropTarget);
@@ -222,7 +249,7 @@ export function Hand({
 
     // Mientras la carta estÃ¡ sobre un cajÃ³n, el destino explÃ­cito manda
     // sobre el arrastre horizontal de reordenaciÃ³n.
-    if (dropTarget) return;
+    if (dropTarget || drag.intent === 'play') return;
 
     const currentOrder = orderRef.current;
     const currentIndex = currentOrder.indexOf(drag.cardId);
@@ -242,7 +269,17 @@ export function Hand({
   function finishPointer(e: ReactPointerEvent<HTMLDivElement>, cancelled: boolean) {
     const drag = dragState.current;
     if (!drag || e.pointerId !== drag.pointerId) return;
-    const dropTarget = cancelled ? null : findDropTarget(e.clientX, e.clientY) ?? drag.dropTarget;
+    const dropTarget = cancelled
+      ? null
+      : findDropTarget(e.clientX, e.clientY) ??
+        (isUpwardCardFling(
+          drag.startClientX,
+          drag.startClientY,
+          e.clientX,
+          e.clientY,
+        )
+          ? 'discard'
+          : drag.dropTarget);
     const finalOrder = orderRef.current;
     cancelDragVisual();
     dragState.current = null;
@@ -280,7 +317,12 @@ export function Hand({
     // servidor. `sortHand` no consume turno (contrato §2.6).
     if (finalOrder.join('|') !== drag.initialOrder.join('|')) {
       void useRondaStore.getState().sendAction({ type: 'sortHand', order: finalOrder });
+      return;
     }
+
+    // Un desplazamiento corto hacia arriba no debe sentirse como un toque
+    // perdido: si no alcanzó el umbral de lanzamiento, deja la carta elegida.
+    onSelect(drag.cardId);
   }
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
@@ -289,6 +331,12 @@ export function Hand({
 
   function handlePointerCancel(e: ReactPointerEvent<HTMLDivElement>) {
     finishPointer(e, true);
+  }
+
+  function handleLostPointerCapture(e: ReactPointerEvent<HTMLDivElement>) {
+    // Salvaguarda para WebViews que pierden la captura sin enviar pointerup:
+    // si el gesto seguía vivo, se resuelve con la última posición disponible.
+    if (dragState.current) finishPointer(e, false);
   }
 
   function handleSort(mode: SortMode) {
@@ -324,9 +372,12 @@ export function Hand({
       : null;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-linea px-4 pb-4 pt-3">
+    <div className="game-hand flex flex-col gap-2 px-4 pb-4 pt-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
+          <span className="drag-instruction">Desliza para jugar</span>
+        </div>
         {/* Contrato §8.5.2 / P18: zona táctil mínima 56px -- se mantiene el
          * min-h-14 por defecto del Button (sin min-h-0), solo se recorta el
          * padding horizontal para que quepa junto al título "Tu mano". */}
@@ -371,6 +422,7 @@ export function Hand({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerCancel}
+              onLostPointerCapture={handleLostPointerCapture}
               onContextMenu={(e) => e.preventDefault()}
               style={{
                 marginLeft: i === 0 ? 0 : -(cardWidth - slot),

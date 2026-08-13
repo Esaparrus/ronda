@@ -41,7 +41,7 @@ export function MusHand({ hand, selectable, selected, onToggle, pares, juego }: 
   const ordered = [...hand].sort((a, b) => sortKey(a) - sortKey(b));
 
   return (
-    <div className="flex flex-col gap-2 border-t border-linea px-4 pb-4 pt-3">
+    <div className="game-hand flex flex-col gap-2 px-4 pb-4 pt-3">
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
         <p className="font-mono text-12 text-humo">
@@ -61,8 +61,8 @@ export function MusHand({ hand, selectable, selected, onToggle, pares, juego }: 
               aria-label={isMarked ? 'Quitar del descarte' : 'Descartar esta carta'}
               onClick={() => onToggle(cardId)}
               style={{ transform: isMarked ? 'translateY(-10px)' : undefined }}
-              className={`flex flex-shrink-0 flex-col items-center rounded-md transition-transform disabled:cursor-default ${
-                isMarked ? 'ring-2 ring-brasa' : ''
+              className={`flex flex-shrink-0 flex-col items-center rounded-xl transition-[transform,filter] disabled:cursor-default ${
+                isMarked ? 'ring-2 ring-oro drop-shadow-lg' : ''
               }`}
             >
               <div

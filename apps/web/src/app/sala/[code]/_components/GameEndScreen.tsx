@@ -45,7 +45,7 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-6 py-8">
+    <main className="app-page safe-page mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-5">
       <header className="flex flex-col items-center gap-2 text-center">
         <h1 className="font-display text-28 leading-display text-hueso">Partida terminada</h1>
         {view.gameId === 'orden' ? (
@@ -62,7 +62,7 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
         {standings.map((p, i) => (
           <li
             key={p.playerId}
-            className="flex items-center gap-3 rounded-lg border border-linea bg-mesa px-3 py-2"
+            className="interactive-surface flex items-center gap-3 px-3 py-2"
           >
             <span className="w-5 text-center font-mono text-14 text-humo">{i + 1}</span>
             <Avatar name={p.nick} colorIndex={p.colorIndex} size={32} />

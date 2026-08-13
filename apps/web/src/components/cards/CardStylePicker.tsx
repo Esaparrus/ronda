@@ -25,10 +25,10 @@ export function CardStylePicker() {
               aria-label={`Usar cartas ${option.label}`}
               aria-pressed={isSelected}
               onClick={() => setCardStyle(option.id)}
-              className={`flex min-h-40 flex-col items-center gap-2 rounded-lg border p-3 text-center transition-colors ${
+              className={`interactive-surface flex min-h-40 flex-col items-center gap-2 p-3 text-center transition-colors ${
                 isSelected
-                  ? 'border-brasa bg-brasa/10 text-hueso'
-                  : 'border-linea bg-mesa text-humo hover:border-hueso'
+                  ? 'border-oro bg-oro/10 text-hueso ring-1 ring-oro/50'
+                  : 'text-humo hover:border-oro/60 hover:text-hueso'
               }`}
             >
               <span className="flex h-20 items-end justify-center gap-1" aria-hidden="true">

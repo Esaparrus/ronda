@@ -45,7 +45,7 @@ export function MusRoundEndScreen({ view }: MusRoundEndScreenProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-6 py-8">
+    <main className="app-page safe-page mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-5">
       <header className="flex flex-col items-center gap-2 text-center">
         <h1 className="font-display text-28 leading-display text-hueso">Fin de la mano {view.round}</h1>
         {result?.byOrdago ? <p className="text-16 text-brasa">Órdago querido</p> : null}
@@ -84,7 +84,7 @@ export function MusRoundEndScreen({ view }: MusRoundEndScreenProps) {
             {result.rows.map((row) => (
               <li
                 key={row.lance}
-                className={`flex items-center justify-between gap-2 rounded-lg border border-linea bg-mesa p-3 ${
+                className={`interactive-surface flex items-center justify-between gap-2 p-3 ${
                   row.counted ? '' : 'opacity-40'
                 }`}
               >

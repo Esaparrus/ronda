@@ -31,9 +31,14 @@ export function PlayerStrip({
   const turnIndex = turnPlayerId ? ordered.findIndex((p) => p.playerId === turnPlayerId) : -1;
 
   return (
-    <div className="relative flex gap-1 border-b border-linea px-2 py-2">
+    <div className="relative flex gap-1 border-b border-linea bg-tinta/30 px-2 py-2 shadow-inner">
       {ordered.map((p) => (
-        <div key={p.playerId} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+        <div
+          key={p.playerId}
+          className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-1.5 transition-colors ${
+            p.playerId === turnPlayerId ? 'bg-mesa/75' : ''
+          }`}
+        >
           <Avatar
             name={p.nick}
             colorIndex={p.colorIndex}
@@ -52,7 +57,7 @@ export function PlayerStrip({
       {turnIndex >= 0 ? (
         <div
           aria-hidden="true"
-          className="absolute bottom-0 h-0.5 bg-brasa"
+          className="absolute bottom-0 h-1 rounded-full bg-oro shadow-md"
           style={{
             width: `${100 / seatCount}%`,
             left: `${(turnIndex / seatCount) * 100}%`,

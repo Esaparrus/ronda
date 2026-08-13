@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
 import { BackToGames } from '@/components/ui/BackToGames';
-import { PartyOptionGrid } from '@/components/ui/PartyOptionGrid';
+import { QuantityStepper } from '@/components/ui/QuantityStepper';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
 
 export interface CrearFormProps {
@@ -78,13 +78,19 @@ export function CrearForm({ gameId }: CrearFormProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 py-10">
+    <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-5">
       <BackToGames />
-      <h1 className="font-display text-40 leading-display text-hueso">
-        {isPartyGame(gameId) ? gameTitle(gameId) : title}
-      </h1>
+      <header className="flex flex-col gap-2">
+        <span className="eyebrow">Nueva mesa</span>
+        <h1 className="font-display text-40 leading-display text-hueso">
+          {isPartyGame(gameId) ? gameTitle(gameId) : title}
+        </h1>
+        <p className="text-14 text-humo">
+          Deja la partida a vuestro gusto. Podrás revisar los ajustes en la sala.
+        </p>
+      </header>
 
-      <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-7" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-2">
           <label htmlFor="nick" className="text-16 font-semibold text-hueso">
             Tu apodo
@@ -96,7 +102,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
             onChange={(e) => setNick(e.target.value)}
             maxLength={12}
             autoComplete="off"
-            className="min-h-14 rounded-lg border border-linea bg-mesa px-4 text-16 text-hueso"
+            className="form-control px-4 text-16"
             placeholder="Cómo te van a ver los demás"
           />
           <NickLegalNote />
@@ -144,7 +150,7 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
 
   return (
     <>
-      <SegmentedControl
+      <QuantityStepper
         legend="Jugadores"
         helperText="Cuántos jugadores puede tener la sala."
         value={config.maxPlayers}
@@ -154,9 +160,10 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
           { value: 3, label: '3' },
           { value: 4, label: '4' },
         ]}
+        valueSuffix="personas"
       />
 
-      <SegmentedControl
+      <QuantityStepper
         legend="Umbral de cierre"
         helperText="Puntos sueltos máximos para poder cerrar."
         value={config.closeThreshold}
@@ -167,9 +174,10 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
           { value: 5, label: '5' },
           { value: 10, label: '10' },
         ]}
+        valueSuffix="puntos"
       />
 
-      <SegmentedControl
+      <QuantityStepper
         legend="Puntuación de eliminación"
         helperText="Puntos para quedar eliminado de la partida."
         value={config.eliminationScore}
@@ -178,6 +186,21 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
           { value: 50, label: '50' },
           { value: 100, label: '100' },
           { value: 150, label: '150' },
+        ]}
+        valueSuffix="puntos"
+      />
+
+      <SegmentedControl
+        legend="Tiempo por turno"
+        helperText="Al agotarse, se completa una jugada legal."
+        value={config.turnTimeSeconds}
+        onChange={(v) => set('turnTimeSeconds', v)}
+        options={[
+          { value: 0, label: 'Sin tiempo' },
+          { value: 10, label: '10 s' },
+          { value: 20, label: '20 s' },
+          { value: 30, label: '30 s' },
+          { value: 60, label: '1 min' },
         ]}
       />
 
@@ -192,7 +215,7 @@ function ChinchonVariants({ config, setConfig }: ChinchonVariantsProps) {
         ]}
       />
 
-      <details className="rounded-lg border border-linea px-4 py-3">
+      <details className="surface-panel px-4 py-3">
         <summary className="cursor-pointer text-16 font-semibold text-hueso">Más variantes</summary>
         <div className="mt-4 flex flex-col gap-6">
           <SegmentedControl
@@ -262,7 +285,7 @@ function MusVariants({ config, setConfig }: MusVariantsProps) {
         ]}
       />
 
-      <SegmentedControl
+      <QuantityStepper
         legend="Juegos para ganar"
         helperText="Cuántos juegos (vacas) hay que ganar para llevarse la partida."
         value={config.juegos}
@@ -272,9 +295,10 @@ function MusVariants({ config, setConfig }: MusVariantsProps) {
           { value: 2, label: '2' },
           { value: 3, label: '3' },
         ]}
+        valueSuffix="juegos"
       />
 
-      <SegmentedControl
+      <QuantityStepper
         legend="El punto vale"
         helperText="Piedras que paga el punto cuando nadie tiene juego."
         value={config.puntoVale}
@@ -283,6 +307,7 @@ function MusVariants({ config, setConfig }: MusVariantsProps) {
           { value: 1, label: '1 piedra' },
           { value: 2, label: '2 piedras' },
         ]}
+        valueSuffix="en el lance"
       />
 
       <SegmentedControl
@@ -310,17 +335,19 @@ function PochaVariants({ config, setConfig }: PochaVariantsProps) {
 
   return (
     <>
-      <SegmentedControl
+      <QuantityStepper
         legend="Jugadores"
         helperText="Cuántos jugadores puede tener la sala."
         value={config.maxPlayers}
         onChange={(v) => set('maxPlayers', v)}
         options={[
+          { value: 2, label: '2' },
           { value: 3, label: '3' },
           { value: 4, label: '4' },
           { value: 5, label: '5' },
           { value: 6, label: '6' },
         ]}
+        valueSuffix="personas"
       />
 
       <SegmentedControl
@@ -391,14 +418,14 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
     setConfig((previous) => ({ ...previous, [key]: value }) as PartyConfig);
   }
 
-  const minimum = config.gameId === 'orden' ? 2 : 3;
-  const playerOptions = [2, 3, 4, 5, 6, 7]
-    .filter((value) => value >= minimum)
-    .map((value) => ({ value, label: String(value) }));
+  const playerOptions = [2, 3, 4, 5, 6, 7].map((value) => ({
+    value,
+    label: String(value),
+  }));
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="rounded-2xl border border-oro/50 bg-mesa p-4">
+      <div className="surface-panel p-4">
         <div className="flex items-center gap-4">
           <div className="flex shrink-0 -space-x-3" aria-hidden="true">
             <span className="number-card-preview rotate-[-8deg]">1</span>
@@ -415,17 +442,17 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
         </div>
       </div>
 
-      <PartyOptionGrid
+      <QuantityStepper
         legend="Jugadores"
         helperText="Máximo de personas en la sala."
         value={config.maxPlayers}
         onChange={(value) => setField('maxPlayers', value)}
         options={playerOptions}
-        columns="three"
+        valueSuffix="personas"
       />
 
       {config.gameId === 'orden' ? (
-        <PartyOptionGrid
+        <QuantityStepper
           legend="Cartas iniciales por persona"
           helperText="El anfitrión puede cambiarlo en cada reparto."
           value={config.cardsPerPlayer}
@@ -434,18 +461,19 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
             value,
             label: String(value),
           }))}
-          columns="five"
+          valueSuffix="cartas"
         />
       ) : (
         <>
-          <SegmentedControl
+          <QuantityStepper
             legend="Rondas máximas"
             helperText="Preguntas antes de revelar."
             value={config.rounds}
             onChange={(value) => setField('rounds', value)}
             options={[5, 7, 10, 12].map((value) => ({ value, label: String(value) }))}
+            valueSuffix="rondas"
           />
-          <SegmentedControl
+          <QuantityStepper
             legend="Puntos para ganar"
             helperText="La primera persona que llegue a este marcador gana."
             value={config.pointsToWin}
@@ -454,6 +482,7 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
               value,
               label: String(value),
             }))}
+            valueSuffix="puntos"
           />
         </>
       )}

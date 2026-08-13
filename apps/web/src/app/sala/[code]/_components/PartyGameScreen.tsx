@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type {
   ColoresPlayerView,
   EscalaPlayerView,
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { NumberCard, NumberCardFace } from '@/components/cards/NumberCard';
 import { TableHeader } from './TableHeader';
 import { PlayerStrip } from './PlayerStrip';
+import { QuantityStepper } from '@/components/ui/QuantityStepper';
 
 export interface PartyGameScreenProps {
   view: PartyPlayerView;
@@ -30,6 +31,7 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const { party, me } = view;
+  const [numberDrag, setNumberDrag] = useState({ active: false, ready: false });
   const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
 
   function playNumber(value: number) {
@@ -45,7 +47,7 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-dvh flex-col">
       <TableHeader
         left={`Ronda ${party.round} · ${party.cardsPerPlayer} carta${party.cardsPerPlayer === 1 ? '' : 's'} por persona`}
         turnNick={null}
@@ -57,12 +59,21 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
         renderInfo={(player) => `${player.handCount} ${player.handCount === 1 ? 'carta' : 'cartas'}`}
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-5">
-        <p className="max-w-md text-center text-14 text-humo">
-          Habláis si queréis. Toca una carta o arrástrala hacia arriba cuando creas que es la siguiente.
+        <p className="drag-instruction max-w-md text-center">
+          Toca o desliza una carta hacia el centro
         </p>
-        <section className="flex w-full max-w-md flex-col items-center gap-3 rounded-xl border border-linea bg-mesa p-5">
+        <section
+          data-card-drop-target="number"
+          className={`surface-panel drop-zone flex w-full max-w-md flex-col items-center gap-3 p-5 ${
+            numberDrag.ready ? 'drop-zone-active' : ''
+          }`}
+        >
           <span className="text-12 uppercase tracking-wider text-humo">
-            Centro · quedan {party.deckCount} cartas sin repartir
+            {numberDrag.active
+              ? numberDrag.ready
+                ? 'Suelta para jugarla'
+                : 'Lleva la carta hasta aquí'
+              : `Centro · quedan ${party.deckCount} cartas sin repartir`}
           </span>
           <div className="flex min-h-36 flex-wrap items-center justify-center gap-3">
             {party.played.length > 0 ? (
@@ -113,6 +124,7 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
                 value={value}
                 disabled={pendingAction || view.phase !== 'input'}
                 onPlay={playNumber}
+                onDragStateChange={(active, ready) => setNumberDrag({ active, ready })}
               />
             ))}
           </div>
@@ -123,26 +135,25 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
 
         {lastError ? <p className="text-14 text-brasa">{lastError}</p> : null}
         {view.phase === 'reveal' && view.status === 'playing' && me.availableActions.includes('setOrderCards') ? (
-          <label className="flex w-full max-w-md flex-col gap-2 text-14 text-humo">
-            <span className="font-semibold text-hueso">Próximo reparto (anfitrión)</span>
-            <select
+          <div className="surface-panel w-full max-w-md p-4">
+            <QuantityStepper
+              legend="Próximo reparto"
+              helperText="Elige cuántas cartas recibe cada persona."
               value={party.nextCardsPerPlayer}
               disabled={pendingAction}
-              onChange={(event) =>
+              onChange={(count) =>
                 void useRondaStore.getState().sendAction({
                   type: 'setOrderCards',
-                  count: Number(event.target.value),
+                  count,
                 })
               }
-              className="min-h-14 rounded-lg border border-linea bg-mesa px-4 text-16 text-hueso"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
-                <option key={count} value={count}>
-                  {count} carta{count === 1 ? '' : 's'} por persona
-                </option>
-              ))}
-            </select>
-          </label>
+              options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => ({
+                value: count,
+                label: String(count),
+              }))}
+              valueSuffix="cartas por persona"
+            />
+          </div>
         ) : null}
         {view.phase === 'reveal' && view.status === 'playing' && me.availableActions.includes('nextRound') ? (
           <Button onClick={nextLevel} loading={pendingAction}>
@@ -208,7 +219,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-dvh flex-col">
       <TableHeader left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`} turnNick={null} />
       <PlayerStrip
         players={view.players}
@@ -217,7 +228,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
         renderInfo={(player) => `${player.score} puntos`}
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-6">
-        <section className="w-full max-w-md rounded-xl border border-linea bg-mesa p-5 text-center">
+        <section className="surface-panel w-full max-w-md p-5 text-center">
           <span className="text-12 uppercase tracking-wider text-humo">Colores</span>
           <h1 className="mt-3 text-20 font-semibold text-hueso">{party.prompt}</h1>
           <p className="mt-2 text-14 text-humo">
@@ -236,7 +247,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
                   aria-pressed={checked}
                   disabled={me.submitted || pendingAction}
                   onClick={() => toggleColor(color.name)}
-                  className={`min-h-20 rounded-xl border-2 px-2 text-14 font-semibold transition-transform active:scale-95 ${
+                  className={`min-h-20 rounded-2xl border-2 px-2 text-14 font-semibold shadow-md transition-[transform,filter,border-color] active:scale-95 ${
                     color.className
                   } ${color.name === 'blanco' ? 'text-tinta' : 'text-hueso'} ${
                     checked ? 'border-oro ring-2 ring-oro ring-offset-2 ring-offset-tinta' : 'border-linea'
@@ -270,7 +281,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
 function ColorsReveal({ view }: { view: ColoresPlayerView }) {
   const answers = view.party.answers;
   return (
-    <section className="flex w-full max-w-md flex-col gap-3 rounded-xl border border-linea bg-mesa p-4">
+    <section className="surface-panel flex w-full max-w-md flex-col gap-3 p-4">
       <p className="text-16 text-hueso">Correctos: {view.party.correctColors?.join(', ')}</p>
       {answers
         ? Object.entries(answers).map(([playerId, colors]) => (
@@ -298,7 +309,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-dvh flex-col">
       <TableHeader left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`} turnNick={null} />
       <PlayerStrip
         players={view.players}
@@ -307,7 +318,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
         renderInfo={(player) => `${player.score} puntos`}
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6">
-        <section className="w-full max-w-md rounded-xl border border-linea bg-mesa p-5 text-center">
+        <section className="surface-panel w-full max-w-md p-5 text-center">
           <span className="text-12 uppercase tracking-wider text-humo">Mayoría</span>
           <h1 className="mt-3 text-20 font-semibold text-hueso">{party.prompt}</h1>
         </section>
@@ -322,7 +333,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
               maxLength={80}
               autoComplete="off"
               onChange={(event) => setAnswer(event.target.value)}
-              className="min-h-14 rounded-lg border border-linea bg-mesa px-4 text-16 text-hueso"
+              className="form-control px-4 text-16"
             />
             <Button onClick={submit} disabled={!answer.trim()} loading={pendingAction}>
               Guardar respuesta
@@ -346,7 +357,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
 function MajorityReveal({ view }: { view: MayoriaPlayerView }) {
   const answers = view.party.answers;
   return (
-    <section className="flex w-full max-w-md flex-col gap-3 rounded-xl border border-linea bg-mesa p-4">
+    <section className="surface-panel flex w-full max-w-md flex-col gap-3 p-4">
       <p className="text-16 font-semibold text-oro">
         {view.party.majorityAnswers?.length
           ? `Mayoría: ${view.party.majorityAnswers.join(', ')}`
@@ -378,7 +389,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-dvh flex-col">
       <TableHeader
         left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
         turnNick={view.players.find((player) => player.playerId === party.cluePlayerId)?.nick ?? null}
@@ -390,7 +401,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
         renderInfo={(player) => `${player.score} puntos`}
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6">
-        <section className="w-full max-w-md rounded-xl border border-linea bg-mesa p-5 text-center">
+        <section className="surface-panel w-full max-w-md p-5 text-center">
           <span className="text-12 uppercase tracking-wider text-humo">Escala</span>
           <div className="mt-3 flex items-center justify-between gap-3 text-16 font-semibold text-hueso">
             <span>{party.leftLabel}</span>
@@ -419,7 +430,8 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
               max={100}
               value={guess}
               onChange={(event) => setGuess(Number(event.target.value))}
-              className="w-full accent-oro"
+              className="ronda-range my-3"
+              style={{ '--range-value': `${guess}%` } as CSSProperties}
             />
             <div className="flex justify-between text-12 text-humo">
               <span>0</span>
@@ -447,7 +459,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
 function ScaleReveal({ view }: { view: EscalaPlayerView }) {
   const guesses = view.party.guesses;
   return (
-    <section className="flex w-full max-w-md flex-col gap-3 rounded-xl border border-linea bg-mesa p-4">
+    <section className="surface-panel flex w-full max-w-md flex-col gap-3 p-4">
       <p className="text-16 font-semibold text-oro">Objetivo: {view.party.target}</p>
       {guesses
         ? Object.entries(guesses).map(([playerId, value]) => (

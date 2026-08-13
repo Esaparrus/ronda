@@ -17,6 +17,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { QuantityStepper } from '@/components/ui/QuantityStepper';
 import { Sheet } from '@/components/ui/Sheet';
 import { StatsPanel } from '@/components/ui/StatsPanel';
 
@@ -127,9 +128,8 @@ export function Lobby({ view }: LobbyProps) {
     setAddingBot(false);
   }
 
-  // Mínimo de jugadores por juego: 2 en Chinchón, 3 en Pocha (§9.2, "fijo,
-  // no configurable") y 4 en Mus (§12.2, "no hay Mus sin cuatro") -- mismo
-  // criterio que `minPlayersFor` del servidor
+  // Mínimo de jugadores por juego: 2 salvo Mus, que necesita 4 para formar
+  // las dos parejas. Mismo criterio que `minPlayersFor` del servidor
   // (apps/server/src/rooms/room-manager.ts).
   const isMus = view.gameId === 'mus';
   const isParty =
@@ -137,20 +137,17 @@ export function Lobby({ view }: LobbyProps) {
     view.gameId === 'colores' ||
     view.gameId === 'mayoria' ||
     view.gameId === 'escala';
-  const minPlayers = isMus
-    ? 4
-    : view.gameId === 'pocha' || view.gameId === 'colores' || view.gameId === 'mayoria' || view.gameId === 'escala'
-      ? 3
-      : 2;
+  const minPlayers = isMus ? 4 : 2;
   const canStart = view.players.length >= minPlayers;
   // Mus no tiene bots (§12.11): el servidor rechaza `room:addBot` en sus
   // salas, así que aquí ni se ofrece.
   const hasFreeSeat = !isMus && view.players.length < config.maxPlayers;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-6 py-8">
+    <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-5">
       <header className="flex flex-col items-center gap-4">
-        <h1 className="font-display text-28 leading-display text-hueso">Sala</h1>
+        <span className="eyebrow">Mesa abierta</span>
+        <h1 className="font-display text-28 leading-display text-hueso">Todo listo para jugar</h1>
         <RoomCode code={view.roomCode} />
       </header>
 
@@ -185,7 +182,7 @@ export function Lobby({ view }: LobbyProps) {
           {view.players.map((p) => (
             <li
               key={p.playerId}
-              className={`flex flex-wrap items-center gap-2 rounded-lg border bg-mesa px-3 py-2 ${
+              className={`interactive-surface flex flex-wrap items-center gap-2 px-3 py-2 ${
                 swapFrom === p.playerId ? 'border-brasa' : 'border-linea'
               }`}
             >
@@ -239,7 +236,7 @@ export function Lobby({ view }: LobbyProps) {
       </section>
 
       {isParty ? (
-        <section className="flex flex-col gap-2 rounded-xl border border-linea bg-mesa p-4">
+        <section className="surface-panel flex flex-col gap-2 p-4">
           <h2 className="text-20 font-semibold text-hueso">Configuración de la partida</h2>
           <p className="text-14 text-humo">
             Estos ajustes se eligieron al crear la sala. Aquí solo gestionáis jugadores e invitaciones.
@@ -287,7 +284,7 @@ export function Lobby({ view }: LobbyProps) {
             // servidor y dice "al menos dos", que es el mínimo de Chinchón.
             // Aquí se sabe el juego, así que se dice el número de verdad.
             <p className="text-12 text-humo">
-              {`Hacen falta ${minPlayers === 4 ? 'cuatro' : minPlayers === 3 ? 'tres' : 'dos'} jugadores${
+              {`Hacen falta ${minPlayers === 4 ? 'cuatro' : 'dos'} jugadores${
                 isMus ? '' : ' como mínimo'
               }.`}
             </p>
@@ -320,7 +317,7 @@ interface ChinchonVariantsSectionProps {
 function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionProps) {
   return (
     <>
-      <SegmentedControl
+      <QuantityStepper
         legend="Jugadores"
         helperText="Cuántos jugadores puede tener la sala."
         value={config.maxPlayers}
@@ -330,8 +327,9 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
           { value: 3, label: '3' },
           { value: 4, label: '4' },
         ]}
+        valueSuffix="personas"
       />
-      <SegmentedControl
+      <QuantityStepper
         legend="Umbral de cierre"
         helperText="Puntos sueltos máximos para poder cerrar."
         value={config.closeThreshold}
@@ -342,8 +340,9 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
           { value: 5, label: '5' },
           { value: 10, label: '10' },
         ]}
+        valueSuffix="puntos"
       />
-      <SegmentedControl
+      <QuantityStepper
         legend="Puntuación de eliminación"
         helperText="Puntos para quedar eliminado de la partida."
         value={config.eliminationScore}
@@ -353,6 +352,7 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
           { value: 100, label: '100' },
           { value: 150, label: '150' },
         ]}
+        valueSuffix="puntos"
       />
       <SegmentedControl
         legend="Tiempo por turno"
@@ -400,7 +400,7 @@ function MusVariantsSection({ config, setField }: MusVariantsSectionProps) {
           { value: false, label: 'No' },
         ]}
       />
-      <SegmentedControl
+      <QuantityStepper
         legend="Juegos para ganar"
         helperText="Cuántos juegos (vacas) hay que ganar para llevarse la partida."
         value={config.juegos}
@@ -410,8 +410,9 @@ function MusVariantsSection({ config, setField }: MusVariantsSectionProps) {
           { value: 2, label: '2' },
           { value: 3, label: '3' },
         ]}
+        valueSuffix="juegos"
       />
-      <SegmentedControl
+      <QuantityStepper
         legend="El punto vale"
         helperText="Piedras que paga el punto cuando nadie tiene juego."
         value={config.puntoVale}
@@ -420,6 +421,7 @@ function MusVariantsSection({ config, setField }: MusVariantsSectionProps) {
           { value: 1, label: '1 piedra' },
           { value: 2, label: '2 piedras' },
         ]}
+        valueSuffix="en el lance"
       />
     </>
   );
@@ -433,17 +435,19 @@ interface PochaVariantsSectionProps {
 function PochaVariantsSection({ config, setField }: PochaVariantsSectionProps) {
   return (
     <>
-      <SegmentedControl
+      <QuantityStepper
         legend="Jugadores"
         helperText="Cuántos jugadores puede tener la sala."
         value={config.maxPlayers}
         onChange={(v) => setField('maxPlayers', v)}
         options={[
+          { value: 2, label: '2' },
           { value: 3, label: '3' },
           { value: 4, label: '4' },
           { value: 5, label: '5' },
           { value: 6, label: '6' },
         ]}
+        valueSuffix="personas"
       />
       <SegmentedControl
         legend="Triunfo"

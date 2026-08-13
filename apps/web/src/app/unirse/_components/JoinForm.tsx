@@ -59,7 +59,7 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
   }
 
   return (
-    <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+    <form className="surface-panel flex flex-col gap-6 p-5" onSubmit={handleSubmit}>
       <div className="flex flex-col gap-2">
         <span className="text-16 font-semibold text-hueso">Código de la sala</span>
         {lockedCode ? (
@@ -83,7 +83,7 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
           onChange={(e) => setNick(e.target.value)}
           maxLength={12}
           autoComplete="off"
-          className="min-h-14 rounded-lg border border-linea bg-mesa px-4 text-16 text-hueso"
+          className="form-control px-4 text-16"
           placeholder="Cómo te van a ver los demás"
         />
         <NickLegalNote />

@@ -32,15 +32,12 @@ import {
 import { randomUUID } from 'node:crypto';
 import { decideChinchonTimeoutDiscard } from './bot-policy.ts';
 
-/** Mínimo de jugadores por juego (§9.2 Pocha: "fijo, no configurable"; §12.2
- * Mus: exactamente 4, "no hay Mus sin cuatro"; §2.1 Chinchón: MIN_PLAYERS
- * general). No hay una constante de contrato por juego para esto
+/** Mínimo de jugadores por juego. Mus necesita exactamente 4 porque se juega
+ * por parejas; el resto puede comenzar con 2 personas. No hay una constante de contrato por juego para esto
  * (MIN_PLAYERS/MAX_PLAYERS de @ronda/protocol son el límite ABSOLUTO de sala,
  * §10.6, no el de un juego concreto). */
 export function minPlayersFor(gameId: GameId): number {
-  if (gameId === 'pocha') return 3;
   if (gameId === 'mus') return 4;
-  if (gameId === 'colores' || gameId === 'mayoria' || gameId === 'escala') return 3;
   return 2;
 }
 
@@ -467,8 +464,8 @@ export class RoomManager {
       return ok(null);
     }
 
-    // Si en partida quedan menos del mínimo del juego (2 en Chinchón, 3 en
-    // Pocha, §9.2), termina la partida y gana quien quede con más puntos.
+    // Si en partida quedan menos del mínimo del juego, termina la partida y
+    // gana quien quede con más puntos.
     // Simplificación del mismo nivel que ya tenía Chinchón (comentario de
     // arriba): no implementa la propuesta completa de §9.9 para Pocha
     // (anular la ronda en curso sin puntuar) -- esa nota del contrato está

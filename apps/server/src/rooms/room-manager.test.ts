@@ -623,15 +623,14 @@ describe('Pocha', () => {
     expect(state.turnSeat).not.toBeNull();
   });
 
-  it('start() con 2 jugadores -> NOT_ENOUGH_PLAYERS (Pocha exige mínimo 3, §9.2)', () => {
+  it('start() con 2 jugadores inicia una partida de Pocha', () => {
     const m = mgr();
     const c = m.createRoom({ gameId: 'pocha', config: DEFAULT_POCHA_CONFIG, nick: 'A1', now: NOW });
     if (!c.ok) throw new Error();
     m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
     const r = m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
-    expect(r.ok).toBe(false);
-    if (r.ok) throw new Error();
-    expect(r.code).toBe('NOT_ENOUGH_PLAYERS');
+    expect(r.ok).toBe(true);
+    expect(room(m, c.value.roomCode).status).toBe('playing');
   });
 
   it('rematch reinicia una partida de Pocha con gameId y marcador a cero', () => {

@@ -13,7 +13,7 @@
 // para Pocha, que reparte hasta 6 asientos y no cabe en el borde de la mesa.
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CardId, ChinchonPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { CommonArea } from './CommonArea';
@@ -43,36 +43,29 @@ export interface GameScreenProps {
   view: ChinchonPlayerView;
 }
 
-export function GameScreen({ view }: GameScreenProps) {
-  const [selected, setSelected] = useState<CardId | null>(null);
+interface TurnTimerHeaderProps {
+  left: string;
+  turnNick: string | null;
+  deadlineAt: number | null;
+  durationSeconds: number;
+}
+
+/** Aísla el reloj para no repintar mesa, asientos y mano cuatro veces/segundo. */
+function TurnTimerHeader({
+  left,
+  turnNick,
+  deadlineAt,
+  durationSeconds,
+}: TurnTimerHeaderProps) {
+  const timerEnabled = durationSeconds > 0;
+  const [fallbackDeadline] = useState(() =>
+    timerEnabled && !deadlineAt ? Date.now() + durationSeconds * 1000 : null,
+  );
+  const effectiveDeadlineAt = deadlineAt ?? fallbackDeadline;
   const [now, setNow] = useState(() => Date.now());
-  const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
-  const fallbackDeadline = useRef<{ playerId: string | null; round: number; at: number } | null>(null);
-
-  const { me } = view;
-  const isMyTurn = view.turnPlayerId === me.playerId;
-  const turnPlayer = view.turnPlayerId
-    ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
-    : null;
-
-  const timerEnabled = view.status === 'playing' && view.config.turnTimeSeconds > 0;
-  if (timerEnabled && !view.turnDeadlineAt) {
-    const previous = fallbackDeadline.current;
-    if (!previous || previous.playerId !== view.turnPlayerId || previous.round !== view.round) {
-      fallbackDeadline.current = {
-        playerId: view.turnPlayerId,
-        round: view.round,
-        at: Date.now() + view.config.turnTimeSeconds * 1000,
-      };
-    }
-  } else if (!timerEnabled || view.turnDeadlineAt) {
-    fallbackDeadline.current = null;
-  }
-  const effectiveDeadlineAt = view.turnDeadlineAt ?? fallbackDeadline.current?.at ?? null;
 
   useEffect(() => {
     if (!timerEnabled || !effectiveDeadlineAt) return;
-    setNow(Date.now());
     const interval = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(interval);
   }, [timerEnabled, effectiveDeadlineAt]);
@@ -87,14 +80,30 @@ export function GameScreen({ view }: GameScreenProps) {
       : `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`;
   const timerProgress =
     effectiveDeadlineAt && timerEnabled
-      ? Math.max(
-          0,
-          Math.min(
-            1,
-            (effectiveDeadlineAt - now) / (view.config.turnTimeSeconds * 1000),
-          ),
-        )
+      ? Math.max(0, Math.min(1, (effectiveDeadlineAt - now) / (durationSeconds * 1000)))
       : null;
+  const urgentAt = Math.min(10, Math.max(3, Math.ceil(durationSeconds * 0.2)));
+
+  return (
+    <TableHeader
+      left={left}
+      turnNick={turnNick}
+      timerLabel={timerLabel}
+      timerUrgent={secondsLeft !== null && secondsLeft <= urgentAt}
+      timerProgress={timerProgress}
+    />
+  );
+}
+
+export function GameScreen({ view }: GameScreenProps) {
+  const [selected, setSelected] = useState<CardId | null>(null);
+  const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
+
+  const { me } = view;
+  const isMyTurn = view.turnPlayerId === me.playerId;
+  const turnPlayer = view.turnPlayerId
+    ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
+    : null;
 
   function handleSelect(cardId: CardId) {
     setSelected(cardId);
@@ -134,13 +143,13 @@ export function GameScreen({ view }: GameScreenProps) {
   });
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <TableHeader
+    <div className="game-shell flex min-h-dvh flex-col">
+      <TurnTimerHeader
+        key={`${view.turnPlayerId ?? 'sin-turno'}:${view.round}:${view.turnPhase}`}
         left={`Mano ${view.round}`}
         turnNick={turnPlayer?.nick ?? null}
-        timerLabel={timerLabel}
-        timerUrgent={secondsLeft !== null && secondsLeft <= 10}
-        timerProgress={timerProgress}
+        deadlineAt={view.turnDeadlineAt}
+        durationSeconds={view.config.turnTimeSeconds}
       />
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[6px] px-1 py-2">
@@ -159,10 +168,8 @@ export function GameScreen({ view }: GameScreenProps) {
 
         <div
           data-drop-target={isMyTurn && view.turnPhase === 'discard' ? 'discard' : undefined}
-          className={`w-full max-w-[340px] rounded-[12px] transition-all ${
-            activeDropTarget === 'discard'
-              ? 'ring-2 ring-brasa ring-offset-2 ring-offset-mesa'
-              : ''
+          className={`drop-zone w-full max-w-[340px] rounded-[18px] ${
+            activeDropTarget === 'discard' ? 'drop-zone-active' : ''
           }`}
         >
           <BarTable>

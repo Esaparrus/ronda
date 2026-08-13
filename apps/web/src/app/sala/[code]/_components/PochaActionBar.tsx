@@ -62,12 +62,12 @@ export function PochaActionBar({
   );
 
   if (!isMyTurn) {
-    if (!turnPlayerId || !turnPlayerNick) return <div className="px-6 py-4" />;
+    if (!turnPlayerId || !turnPlayerNick) return <div className="action-dock px-6 py-4" />;
     if (!turnPlayerConnected) {
       const since = disconnectedSince.current.get(turnPlayerId) ?? Date.now();
       const seconds = Math.max(0, Math.floor((Date.now() - since) / 1000));
       return (
-        <div className="px-6 py-4 text-center">
+        <div className="action-dock px-6 py-4 text-center">
           {liveRegion}
           <p className="text-16 text-hueso">
             Esperando a {turnPlayerNick}, {seconds} s
@@ -76,7 +76,7 @@ export function PochaActionBar({
       );
     }
     return (
-      <div className="px-6 py-4 text-center">
+      <div className="action-dock px-6 py-4 text-center">
         {liveRegion}
         <p className="text-16 text-hueso">Le toca a {turnPlayerNick}</p>
       </div>
@@ -84,7 +84,7 @@ export function PochaActionBar({
   }
 
   return (
-    <div className="px-6 py-4 text-center">
+    <div className="action-dock px-6 py-4 text-center">
       {liveRegion}
       <p className="text-16 text-hueso">{myTurnHint}</p>
     </div>

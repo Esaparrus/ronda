@@ -7,8 +7,15 @@
 // segundo toque de confirmación.
 'use client';
 
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { SUITS, parseCardId, type CardId } from '@ronda/protocol';
 import { PlayingCard } from '@/components/cards/PlayingCard';
+import {
+  CARD_DRAG_ACTIVATION_PX,
+  isUpwardCardFling,
+  pointInsideExpandedRect,
+} from '@/lib/card-gesture';
 
 export interface PochaHandProps {
   hand: CardId[];
@@ -17,6 +24,7 @@ export interface PochaHandProps {
   /** Si es mi turno de baza: tocar una carta legal la juega. */
   canPlay: boolean;
   onPlay: (cardId: CardId) => void;
+  onDropTargetChange?: (active: boolean) => void;
 }
 
 const OVERLAP_FRACTION = 0.35;
@@ -31,17 +39,119 @@ function sortKey(id: CardId): number {
   return suitIndex * 100 + parsed.value.rank;
 }
 
-export function PochaHand({ hand, legalCardIds, canPlay, onPlay }: PochaHandProps) {
+interface PochaDrag {
+  cardId: CardId;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  moved: boolean;
+  ready: boolean;
+}
+
+export function PochaHand({
+  hand,
+  legalCardIds,
+  canPlay,
+  onPlay,
+  onDropTargetChange,
+}: PochaHandProps) {
   const legal = new Set(legalCardIds);
   const ordered = [...hand].sort((a, b) => sortKey(a) - sortKey(b));
+  const dragRef = useRef<PochaDrag | null>(null);
+  const suppressClick = useRef(false);
+  const [dragVisual, setDragVisual] = useState<{
+    cardId: CardId;
+    x: number;
+    y: number;
+    ready: boolean;
+  } | null>(null);
   const n = Math.max(ordered.length, 1);
   const rawWidth = 360 / (1 + (n - 1) * (1 - OVERLAP_FRACTION));
   const cardWidth = Math.min(MAX_CARD_WIDTH, Math.max(MIN_CARD_WIDTH, rawWidth));
   const slot = cardWidth * (1 - OVERLAP_FRACTION);
 
+  function isOverTable(x: number, y: number): boolean {
+    const zone = document.querySelector<HTMLElement>('[data-card-drop-target="pocha"]');
+    return zone ? pointInsideExpandedRect(x, y, zone.getBoundingClientRect(), 24) : false;
+  }
+
+  function handlePointerDown(cardId: CardId, event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!canPlay || !legal.has(cardId)) return;
+    event.preventDefault();
+    suppressClick.current = false;
+    dragRef.current = {
+      cardId,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      ready: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < CARD_DRAG_ACTIVATION_PX) return;
+    drag.moved = true;
+    event.preventDefault();
+    const ready =
+      isOverTable(event.clientX, event.clientY) ||
+      isUpwardCardFling(drag.startX, drag.startY, event.clientX, event.clientY);
+    drag.ready = ready;
+    setDragVisual({ cardId: drag.cardId, x: event.clientX, y: event.clientY, ready });
+    onDropTargetChange?.(ready);
+  }
+
+  function handlePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const shouldPlay =
+      !drag.moved ||
+      isOverTable(event.clientX, event.clientY) ||
+      isUpwardCardFling(drag.startX, drag.startY, event.clientX, event.clientY);
+    // El navegador emitirá `click` después de pointerup; la jugada ya se
+    // resuelve aquí para poder distinguir toque, arrastre válido y cancelado.
+    suppressClick.current = true;
+    dragRef.current = null;
+    setDragVisual(null);
+    onDropTargetChange?.(false);
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Algunos WebViews liberan la captura antes de pointerup.
+    }
+    if (shouldPlay) onPlay(drag.cardId);
+  }
+
+  function handlePointerCancel() {
+    suppressClick.current = true;
+    dragRef.current = null;
+    setDragVisual(null);
+    onDropTargetChange?.(false);
+  }
+
+  function handleLostPointerCapture() {
+    const drag = dragRef.current;
+    if (!drag) return;
+    suppressClick.current = true;
+    dragRef.current = null;
+    setDragVisual(null);
+    onDropTargetChange?.(false);
+    if (drag.moved && drag.ready) onPlay(drag.cardId);
+  }
+
   return (
-    <div className="flex flex-col gap-2 border-t border-linea px-4 pb-4 pt-3">
-      <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
+    <div className="game-hand flex flex-col gap-2 px-4 pb-4 pt-3">
+      <div className="flex items-center gap-2">
+        <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
+        {canPlay ? <span className="drag-instruction">Toca o desliza</span> : null}
+      </div>
       <div className="flex touch-pan-y items-end overflow-x-auto">
         {ordered.map((cardId, i) => {
           const isLegal = canPlay && legal.has(cardId);
@@ -50,9 +160,23 @@ export function PochaHand({ hand, legalCardIds, canPlay, onPlay }: PochaHandProp
               key={cardId}
               type="button"
               disabled={!isLegal}
-              onClick={() => onPlay(cardId)}
+              onPointerDown={(event) => handlePointerDown(cardId, event)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+              onLostPointerCapture={handleLostPointerCapture}
+              onContextMenu={(event) => event.preventDefault()}
+              onClick={() => {
+                if (suppressClick.current) {
+                  suppressClick.current = false;
+                  return;
+                }
+                if (!dragRef.current) onPlay(cardId);
+              }}
               style={{ marginLeft: i === 0 ? 0 : -(cardWidth - slot) }}
-              className="relative flex flex-shrink-0 flex-col items-center disabled:cursor-default"
+              className={`relative flex flex-shrink-0 touch-none flex-col items-center disabled:cursor-default ${
+                dragVisual?.cardId === cardId ? 'opacity-20' : ''
+              }`}
             >
               <div
                 className="[&_svg]:h-full [&_svg]:w-full"
@@ -64,6 +188,23 @@ export function PochaHand({ hand, legalCardIds, canPlay, onPlay }: PochaHandProp
           );
         })}
       </div>
+      {typeof document !== 'undefined' && dragVisual
+        ? createPortal(
+            <div
+              aria-hidden="true"
+              className="pointer-events-none fixed z-[10000] transition-transform"
+              style={{
+                left: dragVisual.x,
+                top: dragVisual.y,
+                transform: `translate(-50%, -88%) rotate(-3deg) scale(${dragVisual.ready ? 1.1 : 1.05})`,
+                filter: 'drop-shadow(0 16px 18px rgb(0 0 0 / 0.48))',
+              }}
+            >
+              <PlayingCard cardId={dragVisual.cardId} size="md" />
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

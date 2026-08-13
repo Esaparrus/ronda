@@ -54,6 +54,11 @@ export function CommonArea({
 
   return (
     <div className="flex flex-col items-center gap-2">
+      {showDropTargets ? (
+        <span className={`drag-instruction ${activeDropTarget === 'discard' ? 'border-oro text-hueso' : ''}`}>
+          {activeDropTarget === 'discard' ? 'Suelta para jugar' : 'Lanza aquí tu carta'}
+        </span>
+      ) : null}
       <div className="flex items-center justify-center gap-4">
         <div className="flex flex-col items-center gap-[6px]">
           <button
@@ -73,7 +78,7 @@ export function CommonArea({
             data-drop-target={showDropTargets ? 'discard' : undefined}
             className={`rounded-xl transition-all ${
               activeDropTarget === 'discard'
-                ? 'ring-2 ring-brasa ring-offset-2 ring-offset-mesa'
+                ? 'ring-2 ring-oro ring-offset-2 ring-offset-mesa'
                 : ''
             }`}
           >

@@ -17,6 +17,9 @@ import { Avatar } from '@/components/ui/Avatar';
 import { RoomCode } from '@/components/ui/RoomCode';
 import { Garbanzos } from '@/components/ui/Garbanzos';
 import { BarTable } from '@/components/ui/BarTable';
+import { QuantityStepper } from '@/components/ui/QuantityStepper';
+import { NumberCard } from '@/components/cards/NumberCard';
+import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
 
 // Las 40 cartas: 4 palos x 10 rangos. Generado localmente
 // (no se importa @ronda/engine desde el escaparate web: es cosmético, no
@@ -52,6 +55,9 @@ export default function DesignShowcasePage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toastOpen, setToastOpen] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
+  const [quantityDemo, setQuantityDemo] = useState(4);
+  const [dragDemo, setDragDemo] = useState({ active: false, ready: false });
+  const [playedNumber, setPlayedNumber] = useState<number | null>(null);
 
   return (
     <main className="flex flex-col gap-10 px-4 py-8">
@@ -80,6 +86,59 @@ export default function DesignShowcasePage() {
           >
             {loadingDemo ? 'Enviando…' : 'Probar loading'}
           </Button>
+        </div>
+      </Section>
+
+      <Section title="Cantidad móvil (− / +)">
+        <div className="max-w-sm">
+          <QuantityStepper
+            legend="Jugadores"
+            helperText="Control táctil para cantidades discretas."
+            value={quantityDemo}
+            onChange={setQuantityDemo}
+            options={[2, 3, 4, 5, 6, 7].map((value) => ({ value }))}
+            valueSuffix="personas"
+          />
+        </div>
+      </Section>
+
+      <Section title="Temporizador">
+        <div className="max-w-md overflow-hidden rounded-2xl border border-linea">
+          <TableHeader
+            left="Mano 3"
+            turnNick="Marta"
+            timerLabel="00:08"
+            timerProgress={0.16}
+            timerUrgent
+          />
+        </div>
+      </Section>
+
+      <Section title="Deslizar carta al centro">
+        <div id="gesture-demo" className="flex max-w-md flex-col items-center gap-5 scroll-mt-4">
+          <div
+            data-card-drop-target="number"
+            className={`surface-panel drop-zone flex min-h-36 w-full items-center justify-center p-5 text-center ${
+              dragDemo.ready ? 'drop-zone-active' : ''
+            }`}
+          >
+            <span className="text-16 text-hueso">
+              {playedNumber !== null
+                ? `Carta ${playedNumber} jugada`
+                : dragDemo.active
+                  ? dragDemo.ready
+                    ? 'Suelta para jugar'
+                    : 'Acércala al centro'
+                  : 'Centro de la mesa'}
+            </span>
+          </div>
+          <div className="w-28">
+            <NumberCard
+              value={42}
+              onPlay={setPlayedNumber}
+              onDragStateChange={(active, ready) => setDragDemo({ active, ready })}
+            />
+          </div>
         </div>
       </Section>
 

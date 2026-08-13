@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { ChinchonConfigSchema, GameConfigSchema, DEFAULT_CONFIG } from './config.ts';
+import {
+  ChinchonConfigSchema,
+  GameConfigSchema,
+  PochaConfigSchema,
+  DEFAULT_CONFIG,
+} from './config.ts';
 
 describe('GameConfigSchema', () => {
   it('parse({ gameId }) devuelve exactamente DEFAULT_CONFIG', () => {
@@ -66,5 +71,9 @@ describe('GameConfigSchema', () => {
     // y respeta los defaults de lo no indicado
     expect(custom.handSize).toBe(7);
     expect(custom.chinchonEndsGame).toBe(true);
+  });
+
+  it('acepta partidas de Pocha para dos personas', () => {
+    expect(PochaConfigSchema.parse({ maxPlayers: 2 }).maxPlayers).toBe(2);
   });
 });

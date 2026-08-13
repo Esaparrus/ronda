@@ -38,6 +38,7 @@ export function Sheet({ open, onClose, children, className = '' }: SheetProps) {
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     dragStartY.current = e.clientY;
+    e.currentTarget.setPointerCapture(e.pointerId);
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -54,6 +55,11 @@ export function Sheet({ open, onClose, children, className = '' }: SheetProps) {
     dragStartY.current = null;
   }
 
+  function handlePointerCancel() {
+    setDragOffset(0);
+    dragStartY.current = null;
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <button
@@ -65,16 +71,22 @@ export function Sheet({ open, onClose, children, className = '' }: SheetProps) {
       <div
         role="dialog"
         aria-modal="true"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
         style={{
           transform: `translateY(${dragOffset}px)`,
           transition: dragOffset === 0 ? 'transform 200ms ease-out' : 'none',
         }}
-        className={`relative z-10 rounded-t-2xl border-t border-linea bg-mesa px-6 pb-8 pt-3 ${className}`}
+        className={`relative z-10 rounded-t-[28px] border-t border-oro/40 bg-mesa px-5 pb-[max(28px,env(safe-area-inset-bottom))] pt-2 shadow-2xl ${className}`}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-linea" aria-hidden="true" />
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          className="mx-auto mb-3 flex h-10 w-20 touch-none items-center justify-center"
+          aria-hidden="true"
+        >
+          <span className="h-1.5 w-11 rounded-full bg-linea" />
+        </div>
         {children}
       </div>
     </div>

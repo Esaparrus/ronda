@@ -57,8 +57,14 @@ export type ChinchonConfig = z.infer<typeof ChinchonConfigSchema>;
 
 // --- Pocha (§9.10, §10.2) ----------------------------------------------------
 
-/** Nº de jugadores de Pocha: 3 a 6 (mínimo de partida 3, fijo, no configurable). */
-const POCHA_MAX_PLAYERS = z.union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)]);
+/** Nº de jugadores de Pocha: 2 a 6. */
+const POCHA_MAX_PLAYERS = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+]);
 /** Orden de fuerza para ganar bazas. Contrato §9.6. */
 const RANK_ORDER = z.union([z.literal('numerico'), z.literal('brisca')]);
 

@@ -9,6 +9,7 @@
 // entra: el tapete de <BarTable> es donde se juega la baza.
 'use client';
 
+import { useState } from 'react';
 import type { PochaPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { PlayerStrip } from './PlayerStrip';
@@ -25,6 +26,7 @@ export interface PochaGameScreenProps {
 }
 
 export function PochaGameScreen({ view }: PochaGameScreenProps) {
+  const [cardOverTable, setCardOverTable] = useState(false);
   const { me } = view;
   const isMyTurn = view.turnPlayerId === me.playerId;
   const turnPlayer = view.turnPlayerId
@@ -48,7 +50,7 @@ export function PochaGameScreen({ view }: PochaGameScreenProps) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-dvh flex-col">
       <TableHeader
         left={`Ronda ${view.round} · ${view.roundSize}`}
         turnNick={turnPlayer?.nick ?? null}
@@ -58,17 +60,37 @@ export function PochaGameScreen({ view }: PochaGameScreenProps) {
       <PochaBidRow players={view.players} bids={view.bids} tricksWon={view.tricksWon} />
 
       <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-2">
-        <BarTable>
-          <PochaTrickArea
-            trumpCardId={view.trumpCardId}
-            currentTrick={view.currentTrick}
-            players={view.players}
-          />
-        </BarTable>
+        <div
+          data-card-drop-target={canPlay ? 'pocha' : undefined}
+          className={`drop-zone w-full max-w-[340px] rounded-[18px] ${
+            cardOverTable ? 'drop-zone-active' : ''
+          }`}
+        >
+          <BarTable>
+            <div className="flex flex-col items-center gap-2">
+              {canPlay ? (
+                <span className="drag-instruction">
+                  {cardOverTable ? 'Suelta para jugar' : 'Juega aquí tu carta'}
+                </span>
+              ) : null}
+              <PochaTrickArea
+                trumpCardId={view.trumpCardId}
+                currentTrick={view.currentTrick}
+                players={view.players}
+              />
+            </div>
+          </BarTable>
+        </div>
       </div>
 
       <div className="flex flex-col">
-        <PochaHand hand={me.hand} legalCardIds={me.legalCardIds} canPlay={canPlay} onPlay={handlePlay} />
+        <PochaHand
+          hand={me.hand}
+          legalCardIds={me.legalCardIds}
+          canPlay={canPlay}
+          onPlay={handlePlay}
+          onDropTargetChange={setCardOverTable}
+        />
 
         <PochaActionBar
           isMyTurn={isMyTurn}

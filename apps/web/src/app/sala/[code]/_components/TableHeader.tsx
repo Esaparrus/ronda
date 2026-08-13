@@ -26,21 +26,50 @@ export function TableHeader({
   timerUrgent = false,
   timerProgress = null,
 }: TableHeaderProps) {
+  const timerTone = timerUrgent
+    ? 'critical'
+    : timerProgress !== null && timerProgress <= 0.4
+      ? 'warning'
+      : 'calm';
+
   return (
-    <header className="border-b-2 border-linea bg-mesa px-4 py-2">
+    <header className="border-b border-linea bg-mesa/95 px-4 py-2.5 shadow-md backdrop-blur-sm">
       <div className="flex min-w-0 items-center justify-between gap-3">
         <span className="shrink-0 font-mono text-12 uppercase leading-none tracking-wider text-humo">
           {left}
         </span>
         <div className="flex min-w-0 items-center justify-end gap-3">
           {timerLabel ? (
-            <div className="shrink-0" aria-label={`Tiempo restante: ${timerLabel}`}>
+            <div
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 ${
+                timerTone === 'critical'
+                  ? 'border-brasa bg-brasa/15'
+                  : timerTone === 'warning'
+                    ? 'border-alerta/70 bg-alerta/10'
+                    : 'border-linea bg-tinta/30'
+              }`}
+              aria-label={`Tiempo restante: ${timerLabel}`}
+            >
+              <span
+                aria-hidden="true"
+                className={`h-1.5 w-1.5 rounded-full ${
+                  timerTone === 'critical'
+                    ? 'bg-brasa'
+                    : timerTone === 'warning'
+                      ? 'bg-alerta'
+                      : 'bg-oro'
+                }`}
+              />
               <span
                 className={`font-mono text-12 uppercase leading-none tracking-wider ${
-                  timerUrgent ? 'text-brasa' : 'text-humo'
+                  timerTone === 'critical'
+                    ? 'text-brasa'
+                    : timerTone === 'warning'
+                      ? 'text-alerta'
+                      : 'text-humo'
                 }`}
               >
-                Tiempo {timerLabel}
+                {timerLabel}
               </span>
             </div>
           ) : null}
@@ -58,11 +87,15 @@ export function TableHeader({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round((timerProgress ?? 0) * 100)}
-          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-linea"
+          className="timer-track mt-2 h-2 w-full overflow-hidden rounded-full"
         >
           <div
-            className={`h-full rounded-full transition-[width] duration-200 ease-linear ${
-              timerUrgent ? 'bg-brasa' : 'bg-oro'
+            className={`h-full rounded-full transition-[width] duration-300 ease-linear ${
+              timerTone === 'critical'
+                ? 'timer-fill-critical'
+                : timerTone === 'warning'
+                  ? 'timer-fill-warning'
+                  : 'timer-fill'
             }`}
             style={{ width: `${Math.max(0, Math.min(1, timerProgress ?? 0)) * 100}%` }}
           />

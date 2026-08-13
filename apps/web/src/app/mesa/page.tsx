@@ -24,13 +24,18 @@ export default function MesaPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 px-6 text-center">
-      <h1 className="font-display text-40 leading-display text-hueso">Pantalla central</h1>
-      <p className="text-16 text-humo">Escribe el código de la sala para mostrarla aquí.</p>
-      <form className="flex flex-col items-center gap-4" onSubmit={handleSubmit}>
+    <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-7 px-5 text-center">
+      <div className="hero-mark" aria-hidden="true">M</div>
+      <header className="flex flex-col gap-2">
+        <span className="eyebrow">Modo tablero</span>
+        <h1 className="font-display text-40 leading-display text-crema">Pantalla central</h1>
+        <p className="text-16 text-humo">Convierte una tablet o tele en la mesa compartida.</p>
+      </header>
+      <form className="surface-panel flex w-full flex-col items-center gap-4 p-5" onSubmit={handleSubmit}>
+        <p className="text-14 text-humo">Escribe el código de la sala</p>
         <RoomCodeInput value={code} onChange={setCode} />
         {error ? <p className="text-14 text-brasa">{error}</p> : null}
-        <Button type="submit">Mostrar sala</Button>
+        <Button type="submit" className="w-full">Mostrar sala</Button>
       </form>
     </main>
   );
