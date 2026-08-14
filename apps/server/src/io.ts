@@ -12,6 +12,7 @@ import type { RoomManager } from './rooms/room-manager.ts';
 import { RateLimiter } from './socket/rate-limit.ts';
 import { registerHandlers, type SocketState } from './socket/handlers.ts';
 import { unbindSocket, startPeriodicTasks } from './socket/presence.ts';
+import type { IncidentInput } from './db/incidents-repo.ts';
 
 export type TypedIoServer = IoServer<ClientToServerEvents, ServerToClientEvents>;
 
@@ -21,6 +22,7 @@ export interface IoDeps {
   logger: Logger;
   /** Si se pasa, se registran handlers y presencia completos (P8). */
   manager?: RoomManager;
+  saveIncident?: (incident: IncidentInput) => Promise<void>;
 }
 
 export interface IoRuntime {
@@ -54,6 +56,7 @@ export function createIoServer(deps: IoDeps): IoRuntime {
         rateLimiter,
         states,
         logger: deps.logger,
+        saveIncident: deps.saveIncident,
         now: () => Date.now(),
       });
       socket.on('disconnect', (reason) => {

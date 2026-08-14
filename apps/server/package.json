@@ -9,9 +9,10 @@
     "typecheck": "tsc --noEmit",
     "start": "node src/index.ts",
     "sim": "node src/sim/run.ts",
-    "db:migrate": "node src/db/migrate-cli.ts",
+    "db:migrate": "node --env-file-if-exists=../../.env.local src/db/migrate-cli.ts",
     "report": "node src/scripts/report.ts",
-    "incident": "node src/scripts/incident.ts"
+    "incident": "node --env-file-if-exists=../../.env.local src/scripts/incident.ts",
+    "incidents": "node --env-file-if-exists=../../.env.local src/scripts/incidents.ts"
   },
   "dependencies": {
     "@ronda/engine": "workspace:*",

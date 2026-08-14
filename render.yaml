@@ -13,7 +13,7 @@ services:
         value: '10000'
       - key: CORS_ORIGIN
         value: https://ronda-web-psi.vercel.app
-      # Placeholder para la prueba gratuita. Se sustituye por Postgres
-      # gestionado cuando activemos persistencia real.
       - key: DATABASE_URL
-        value: postgres://local-test/no-db
+        # Secreto de Neon PostgreSQL configurado en Render. Nunca se guarda la
+        # cadena de conexión en el repositorio.
+        sync: false

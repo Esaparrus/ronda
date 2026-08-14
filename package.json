@@ -19,7 +19,8 @@
     "sim": "pnpm --filter @ronda/server sim",
     "db:migrate": "pnpm --filter @ronda/server db:migrate",
     "report": "pnpm --filter @ronda/server report",
-    "incident": "pnpm --filter @ronda/server incident"
+    "incident": "pnpm --filter @ronda/server incident",
+    "incidents": "pnpm --filter @ronda/server incidents"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
