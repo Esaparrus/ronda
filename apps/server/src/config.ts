@@ -4,7 +4,7 @@
 // defaults razonables.
 import { z } from 'zod';
 
-/** Una sala sin mutaciones durante media hora se considera abandonada. */
+/** Una sala sin jugadores conectados ni mutaciones durante media hora se considera abandonada. */
 export const DEFAULT_ROOM_INACTIVITY_MINUTES = 30;
 
 const ConfigSchema = z.object({

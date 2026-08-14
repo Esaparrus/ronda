@@ -3,7 +3,13 @@ import { RoomManager } from './room-manager.ts';
 import { isValidNick, normalizeNick, nickKey } from './nick.ts';
 import { createToken, hashToken } from './tokens.ts';
 import { generateRoomCode } from './codes.ts';
-import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, DEFAULT_CONFIG, DEFAULT_POCHA_CONFIG } from '@ronda/protocol';
+import {
+  ROOM_CODE_ALPHABET,
+  ROOM_CODE_LENGTH,
+  DEFAULT_CONFIG,
+  DEFAULT_COLORES_CONFIG,
+  DEFAULT_POCHA_CONFIG,
+} from '@ronda/protocol';
 
 const NOW = 1_000_000;
 
@@ -297,11 +303,75 @@ describe('RoomManager applyAction', () => {
     if (r.ok) return;
     expect(r.code).toBe('STALE_VERSION');
   });
+
+  it('solo el anfitrión puede avanzar tras ver el resultado de Colores', () => {
+    const m = mgr();
+    const host = m.createRoom({
+      gameId: 'colores',
+      config: DEFAULT_COLORES_CONFIG,
+      nick: 'Ana',
+      now: NOW,
+    });
+    if (!host.ok) throw new Error('no se pudo crear la sala');
+    const guest = m.joinRoom({ roomCode: host.value.roomCode, nick: 'Beto', now: NOW });
+    if (!guest.ok) throw new Error('no se pudo unir el invitado');
+    const started = m.start({
+      roomCode: host.value.roomCode,
+      playerId: host.value.playerId,
+      now: NOW,
+    });
+    if (!started.ok) throw new Error('no se pudo empezar la partida');
+
+    for (const [index, playerId] of [host.value.playerId, guest.value.playerId].entries()) {
+      const before = stateOf(room(m, host.value.roomCode));
+      const submitted = m.applyAction({
+        roomCode: host.value.roomCode,
+        playerId,
+        clientActionId: `color-answer-${index}`,
+        expectedVersion: before.version,
+        action: { type: 'submitColors', colors: ['rojo'] },
+        now: NOW,
+      });
+      if (!submitted.ok) throw new Error(`respuesta falló: ${submitted.code}`);
+    }
+
+    const reveal = stateOf(room(m, host.value.roomCode));
+    if (reveal.gameId !== 'colores') throw new Error('estado incorrecto');
+    expect(reveal.phase).toBe('reveal');
+
+    const unauthorized = m.applyAction({
+      roomCode: host.value.roomCode,
+      playerId: guest.value.playerId,
+      clientActionId: 'guest-next-round',
+      expectedVersion: reveal.version,
+      action: { type: 'nextRound' },
+      now: NOW,
+    });
+    expect(unauthorized.ok).toBe(false);
+    if (unauthorized.ok) return;
+    expect(unauthorized.code).toBe('NOT_HOST');
+
+    const afterGuest = stateOf(room(m, host.value.roomCode));
+    const advanced = m.applyAction({
+      roomCode: host.value.roomCode,
+      playerId: host.value.playerId,
+      clientActionId: 'host-next-round',
+      expectedVersion: afterGuest.version,
+      action: { type: 'nextRound' },
+      now: NOW,
+    });
+    expect(advanced.ok).toBe(true);
+    const next = stateOf(room(m, host.value.roomCode));
+    if (next.gameId !== 'colores') throw new Error('estado incorrecto');
+    expect(next.phase).toBe('input');
+    expect(next.round).toBe(2);
+  });
 });
 
 describe('temporizador de Chinchón', () => {
   it('al agotarse roba y descarta una carta legal, sin cerrar', () => {
     vi.useFakeTimers();
+    vi.setSystemTime(NOW);
     try {
       let timeoutSnapshots = 0;
       const m = new RoomManager(() => ({ onTurnTimeout: () => timeoutSnapshots++ }));
@@ -325,6 +395,38 @@ describe('temporizador de Chinchón', () => {
       expect(after.turnPhase).toBe('draw');
       expect(after.discard.length).toBe(2);
       expect(after.turnDeadlineAt).toBe(Date.now() + 30_000);
+      expect(timeoutSnapshots).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('el vigilante recupera un turno vencido aunque su callback no se haya ejecutado', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+      let timeoutSnapshots = 0;
+      const m = new RoomManager(() => ({ onTurnTimeout: () => timeoutSnapshots++ }));
+      const config = { ...DEFAULT_CONFIG, turnTimeSeconds: 30 as const };
+      const c = m.createRoom({ gameId: 'chinchon', config, nick: 'A1', now: NOW });
+      if (!c.ok) throw new Error();
+      const j = m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+      if (!j.ok) throw new Error();
+      m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
+
+      const before = stateOf(room(m, c.value.roomCode));
+      if (before.gameId !== 'chinchon') throw new Error('esperaba Chinchón');
+      const timedSeat = before.turnSeat;
+
+      // No avanzamos los fake timers: simulamos que setTimeout se perdió o
+      // que el proceso estuvo suspendido, pero el watchdog sí observa la hora.
+      expect(m.expireOverdueTurns(NOW + 30_000)).toBe(1);
+
+      const after = stateOf(room(m, c.value.roomCode));
+      if (after.gameId !== 'chinchon') throw new Error('esperaba Chinchón');
+      expect(after.turnSeat).not.toBe(timedSeat);
+      expect(after.turnPhase).toBe('draw');
+      expect(after.turnDeadlineAt).toBe(NOW + 60_000);
       expect(timeoutSnapshots).toBe(1);
     } finally {
       vi.useRealTimers();
@@ -524,9 +626,15 @@ describe('sweep', () => {
     const m = mgr();
     const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
     if (!c.ok) throw new Error();
+    m.setConnected({
+      roomCode: c.value.roomCode,
+      playerId: c.value.playerId,
+      connected: false,
+      socketId: null,
+      now: NOW,
+    });
     // Exactamente al cumplir las 2h, sin actividad.
     const closed = m.sweep(NOW + 2 * 60 * 60 * 1000);
-    // 31 min después, sin actividad.
     expect(closed).toBe(1);
     expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
@@ -564,15 +672,26 @@ describe('sweep', () => {
     expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
 
-  it('usa el límite configurado y también cierra una partida inactiva con jugadores conectados', () => {
+  it('mantiene una partida inactiva mientras haya alguien conectado y la cierra al quedar vacía', () => {
     const m = new RoomManager(undefined, { inactivityTimeoutMs: 15 * 60_000 });
     const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
     if (!c.ok) throw new Error();
-    m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+    const j = m.joinRoom({ roomCode: c.value.roomCode, nick: 'A2', now: NOW });
+    if (!j.ok) throw new Error();
     const started = m.start({ roomCode: c.value.roomCode, playerId: c.value.playerId, now: NOW });
     expect(started.ok).toBe(true);
 
     expect(m.sweep(NOW + 15 * 60_000 - 1)).toBe(0);
+    expect(m.sweep(NOW + 15 * 60_000)).toBe(0);
+    for (const playerId of [c.value.playerId, j.value.playerId]) {
+      m.setConnected({
+        roomCode: c.value.roomCode,
+        playerId,
+        connected: false,
+        socketId: null,
+        now: NOW + 15 * 60_000,
+      });
+    }
     expect(m.sweep(NOW + 15 * 60_000)).toBe(1);
     expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
@@ -581,6 +700,13 @@ describe('sweep', () => {
     const m = new RoomManager(undefined, { inactivityTimeoutMs: 15 * 60_000 });
     const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
     if (!c.ok) throw new Error();
+    m.setConnected({
+      roomCode: c.value.roomCode,
+      playerId: c.value.playerId,
+      connected: false,
+      socketId: null,
+      now: NOW,
+    });
 
     const resumed = m.resumeByToken({
       roomCode: c.value.roomCode,

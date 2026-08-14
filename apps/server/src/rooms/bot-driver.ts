@@ -72,9 +72,9 @@ function nextBotTurn(room: Room): BotTurn | null {
   const state = room.state;
   if (!state) return null;
 
-  // Los modos sociales dependen de la conversación de la mesa y no admiten
-  // bots en esta primera versión. Esta guarda también mantiene el acceso a
-  // `turnSeat` seguro para los estados que sí tienen turnos.
+  // En los modos sociales los bots pueden responder para facilitar pruebas,
+  // pero nunca deciden cuándo abandonar la pantalla de resultados: esa
+  // transición pertenece al anfitrión humano.
   if (
     state.gameId === 'orden' ||
     state.gameId === 'colores' ||
@@ -83,26 +83,22 @@ function nextBotTurn(room: Room): BotTurn | null {
   ) {
     if (room.status !== 'playing' || state.status !== 'playing') return null;
     const bots = room.playersBySeat().filter((player) => player.isBot);
-    if (state.phase === 'reveal') {
-      // En Orden el anfitrión puede cambiar el reparto antes de continuar;
-      // dejamos la decisión en la pantalla humana para que la IA no se la
-      // salte a los pocos cientos de milisegundos.
-      if (state.gameId === 'orden') return null;
-      const next = bots[0];
-      return next ? { playerId: next.playerId, kind: 'nextRound' } : null;
-    }
+    if (state.phase === 'reveal') return null;
     const module = GAMES[room.gameId];
     if (!module) return null;
     for (const bot of bots) {
       const view = module.getPlayerView(state, bot.playerId);
       if (view.kind !== 'player') continue;
       const partyView = view as PartyPlayerView;
-      if (partyView.me.availableActions.some((action) =>
-        action === 'playNumber' ||
-        action === 'submitColors' ||
-        action === 'submitMajority' ||
-        action === 'submitScale'
-      )) {
+      if (
+        partyView.me.availableActions.some(
+          (action) =>
+            action === 'playNumber' ||
+            action === 'submitColors' ||
+            action === 'submitMajority' ||
+            action === 'submitScale',
+        )
+      ) {
         return { playerId: bot.playerId, kind: 'action' };
       }
     }
@@ -137,7 +133,9 @@ function nextBotTurn(room: Room): BotTurn | null {
     // bot que no haya votado todavía vale, se recorren de uno en uno porque
     // `scheduleBotTurn` se vuelve a llamar tras cada difusión.
     const votes = state.rematchVotes;
-    const next = room.playersBySeat().find((p) => p.isBot && p.connected && !votes.includes(p.playerId));
+    const next = room
+      .playersBySeat()
+      .find((p) => p.isBot && p.connected && !votes.includes(p.playerId));
     if (!next) return null;
     return { playerId: next.playerId, kind: 'rematch' };
   }
@@ -200,7 +198,12 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
       });
       if (r.ok) broadcastRoom(deps.io, room);
     } else {
-      const r = deps.mgr.voteRematch({ roomCode, playerId: turn.playerId, value: true, now: deps.now() });
+      const r = deps.mgr.voteRematch({
+        roomCode,
+        playerId: turn.playerId,
+        value: true,
+        now: deps.now(),
+      });
       if (r.ok) broadcastRoom(deps.io, room);
     }
   } finally {

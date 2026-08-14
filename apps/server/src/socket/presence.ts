@@ -2,7 +2,7 @@
 //
 // - Marca `connected` al conectar/desconectar y difunde `connection`.
 // - Llama a maybeTransferHost() para traspasar anfitrión tras el grace.
-// - Ejecuta sweep() cada 30s para cerrar salas caducadas.
+// - Vigila cada segundo los turnos vencidos y ejecuta sweep() cada 30s.
 import type { TypedIoServer } from '../io.ts';
 import type { RoomManager } from '../rooms/room-manager.ts';
 import { broadcastConnection, broadcastRoom } from './broadcast.ts';
@@ -10,6 +10,7 @@ import type { RateLimiter } from './rate-limit.ts';
 import type { SocketState } from './handlers.ts';
 
 const SWEEP_INTERVAL_MS = 30_000;
+const TURN_WATCHDOG_INTERVAL_MS = 1_000;
 
 /**
  * Desconexión de un socket: marca al jugador desconectado, limpia el binding y
@@ -52,13 +53,18 @@ export function unbindSocket(
   }
 }
 
-/** Arranca el bucle de tareas periódicas: transferHost + sweep cada 30s. */
-export function startPeriodicTasks(
-  mgr: RoomManager,
-  now: () => number,
-): ReturnType<typeof setInterval> {
-  return setInterval(() => {
+/** Arranca los bucles de presencia/caducidad y respaldo del reloj de turno. */
+export function startPeriodicTasks(mgr: RoomManager, now: () => number): () => void {
+  const sweepHandle = setInterval(() => {
     mgr.maybeTransferHost(now());
     mgr.sweep(now());
   }, SWEEP_INTERVAL_MS);
+  const turnHandle = setInterval(() => {
+    mgr.expireOverdueTurns(now());
+  }, TURN_WATCHDOG_INTERVAL_MS);
+
+  return () => {
+    clearInterval(sweepHandle);
+    clearInterval(turnHandle);
+  };
 }

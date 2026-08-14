@@ -56,7 +56,9 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
         players={view.players}
         turnPlayerId={null}
         myPlayerId={me.playerId}
-        renderInfo={(player) => `${player.handCount} ${player.handCount === 1 ? 'carta' : 'cartas'}`}
+        renderInfo={(player) =>
+          `${player.handCount} ${player.handCount === 1 ? 'carta' : 'cartas'}`
+        }
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-5">
         <p className="drag-instruction max-w-md text-center">
@@ -82,7 +84,8 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
                   key={`${played.playerId}-${played.value}-${index}`}
                   value={played.value}
                   className={
-                    party.failure?.value === played.value && party.failure.playerId === played.playerId
+                    party.failure?.value === played.value &&
+                    party.failure.playerId === played.playerId
                       ? 'number-card-played number-card-failed'
                       : 'number-card-played'
                   }
@@ -96,16 +99,22 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
         </section>
 
         {party.failure ? (
-          <section role="status" className="flex w-full max-w-md flex-col gap-2 rounded-xl border border-brasa bg-mesa p-4 text-center">
+          <section
+            role="status"
+            className="flex w-full max-w-md flex-col gap-2 rounded-xl border border-brasa bg-mesa p-4 text-center"
+          >
             <p className="text-16 text-brasa">
-              {playerNick(view, party.failure.playerId)} jugó {party.failure.value}, pero la última válida era{' '}
-              {party.failure.highest}.
+              {playerNick(view, party.failure.playerId)} jugó {party.failure.value}, pero la última
+              válida era {party.failure.highest}.
             </p>
             <p className="text-14 text-humo">
-              La ronda se detiene aquí. La carta se descarta y no hay vidas: decidid si queréis repartir de nuevo.
+              La ronda se detiene aquí. La carta se descarta y no hay vidas: decidid si queréis
+              repartir de nuevo.
             </p>
             {isHost ? (
-              <p className="text-14 font-semibold text-hueso">Puedes cambiar el número de cartas o terminar la partida.</p>
+              <p className="text-14 font-semibold text-hueso">
+                Puedes cambiar el número de cartas o terminar la partida.
+              </p>
             ) : (
               <p className="text-14 text-humo">Esperando a que el anfitrión decida.</p>
             )}
@@ -129,12 +138,16 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
             ))}
           </div>
           {me.hand.length === 0 && view.phase === 'input' ? (
-            <p className="text-center text-14 text-humo">Ya has jugado todas tus cartas. Espera al resto.</p>
+            <p className="text-center text-14 text-humo">
+              Ya has jugado todas tus cartas. Espera al resto.
+            </p>
           ) : null}
         </section>
 
         {lastError ? <p className="text-14 text-brasa">{lastError}</p> : null}
-        {view.phase === 'reveal' && view.status === 'playing' && me.availableActions.includes('setOrderCards') ? (
+        {view.phase === 'reveal' &&
+        view.status === 'playing' &&
+        me.availableActions.includes('setOrderCards') ? (
           <div className="surface-panel w-full max-w-md p-4">
             <QuantityStepper
               legend="Próximo reparto"
@@ -155,7 +168,9 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
             />
           </div>
         ) : null}
-        {view.phase === 'reveal' && view.status === 'playing' && me.availableActions.includes('nextRound') ? (
+        {view.phase === 'reveal' &&
+        view.status === 'playing' &&
+        me.availableActions.includes('nextRound') ? (
           <Button onClick={nextLevel} loading={pendingAction}>
             {party.failure ? (
               'Repartir de nuevo'
@@ -172,7 +187,9 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
           </Button>
         ) : null}
         {view.phase === 'reveal' && view.status === 'playing' && !isHost ? (
-          <p className="text-center text-14 text-humo">Esperando al anfitrión para el siguiente reparto.</p>
+          <p className="text-center text-14 text-humo">
+            Esperando al anfitrión para el siguiente reparto.
+          </p>
         ) : null}
       </main>
     </div>
@@ -197,6 +214,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const [selected, setSelected] = useState<string[]>([]);
   const { party, me } = view;
+  const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
 
   useEffect(() => {
     setSelected([]);
@@ -220,7 +238,10 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
 
   return (
     <div className="game-shell flex min-h-dvh flex-col">
-      <TableHeader left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`} turnNick={null} />
+      <TableHeader
+        left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
+        turnNick={null}
+      />
       <PlayerStrip
         players={view.players}
         turnPlayerId={null}
@@ -250,7 +271,9 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
                   className={`min-h-20 rounded-2xl border-2 px-2 text-14 font-semibold shadow-md transition-[transform,filter,border-color] active:scale-95 ${
                     color.className
                   } ${color.name === 'blanco' ? 'text-tinta' : 'text-hueso'} ${
-                    checked ? 'border-oro ring-2 ring-oro ring-offset-2 ring-offset-tinta' : 'border-linea'
+                    checked
+                      ? 'border-oro ring-2 ring-oro ring-offset-2 ring-offset-tinta'
+                      : 'border-linea'
                   }`}
                 >
                   {color.name}
@@ -268,10 +291,16 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
         ) : (
           <ColorsReveal view={view} />
         )}
-        {party.phase === 'reveal' && view.status === 'playing' ? (
-          <Button onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })} loading={pendingAction}>
+        {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
+          <Button
+            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            loading={pendingAction}
+          >
             Siguiente ronda
           </Button>
+        ) : null}
+        {party.phase === 'reveal' && view.status === 'playing' && !isHost ? (
+          <p className="text-center text-14 text-humo">Esperando al anfitrión.</p>
         ) : null}
       </main>
     </div>
@@ -298,6 +327,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const [answer, setAnswer] = useState('');
   const { party, me } = view;
+  const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
 
   useEffect(() => {
     setAnswer('');
@@ -310,7 +340,10 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
 
   return (
     <div className="game-shell flex min-h-dvh flex-col">
-      <TableHeader left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`} turnNick={null} />
+      <TableHeader
+        left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
+        turnNick={null}
+      />
       <PlayerStrip
         players={view.players}
         turnPlayerId={null}
@@ -344,10 +377,16 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
         ) : (
           <MajorityReveal view={view} />
         )}
-        {party.phase === 'reveal' && view.status === 'playing' ? (
-          <Button onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })} loading={pendingAction}>
+        {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
+          <Button
+            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            loading={pendingAction}
+          >
             Siguiente ronda
           </Button>
+        ) : null}
+        {party.phase === 'reveal' && view.status === 'playing' && !isHost ? (
+          <p className="text-center text-14 text-humo">Esperando al anfitrión.</p>
         ) : null}
       </main>
     </div>
@@ -379,6 +418,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
   const [guess, setGuess] = useState(50);
   const { party, me } = view;
   const isGuide = party.cluePlayerId === me.playerId;
+  const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
 
   useEffect(() => {
     setGuess(50);
@@ -392,7 +432,9 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
     <div className="game-shell flex min-h-dvh flex-col">
       <TableHeader
         left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
-        turnNick={view.players.find((player) => player.playerId === party.cluePlayerId)?.nick ?? null}
+        turnNick={
+          view.players.find((player) => player.playerId === party.cluePlayerId)?.nick ?? null
+        }
       />
       <PlayerStrip
         players={view.players}
@@ -409,7 +451,9 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
             <span>{party.rightLabel}</span>
           </div>
           <p className="mt-3 text-14 text-humo">
-            {isGuide ? 'Tienes el objetivo. Da una pista hablando, sin decir el número.' : 'Coloca tu estimación.'}
+            {isGuide
+              ? 'Tienes el objetivo. Da una pista hablando, sin decir el número.'
+              : 'Coloca tu estimación.'}
           </p>
         </section>
         {party.phase === 'input' && isGuide ? (
@@ -446,10 +490,16 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
           <p className="text-16 text-oro">Estimación guardada. Espera a los demás.</p>
         ) : null}
         {party.phase === 'reveal' ? <ScaleReveal view={view} /> : null}
-        {party.phase === 'reveal' && view.status === 'playing' ? (
-          <Button onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })} loading={pendingAction}>
+        {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
+          <Button
+            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            loading={pendingAction}
+          >
             Siguiente ronda
           </Button>
+        ) : null}
+        {party.phase === 'reveal' && view.status === 'playing' && !isHost ? (
+          <p className="text-center text-14 text-humo">Esperando al anfitrión.</p>
         ) : null}
       </main>
     </div>
@@ -472,6 +522,9 @@ function ScaleReveal({ view }: { view: EscalaPlayerView }) {
   );
 }
 
-function playerNick(view: { players: { playerId: PlayerId; nick: string }[] }, playerId: string): string {
+function playerNick(
+  view: { players: { playerId: PlayerId; nick: string }[] },
+  playerId: string,
+): string {
   return view.players.find((player) => player.playerId === playerId)?.nick ?? 'Alguien';
 }

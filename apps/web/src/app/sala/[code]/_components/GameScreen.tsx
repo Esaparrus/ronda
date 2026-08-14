@@ -23,6 +23,8 @@ import { ActionBar } from './ActionBar';
 import { TableHeader } from './TableHeader';
 import { TableSeat, orderAroundMe } from './TableSeat';
 import { BarTable } from '@/components/ui/BarTable';
+import { Button } from '@/components/ui/Button';
+import { Sheet } from '@/components/ui/Sheet';
 
 // Huecos de garbanzo bajo cada asiento. En Chinchón el garbanzo cuenta lo
 // que te ACERCA a quedarte fuera: los puntos acumulados, medidos contra
@@ -51,12 +53,7 @@ interface TurnTimerHeaderProps {
 }
 
 /** Aísla el reloj para no repintar mesa, asientos y mano cuatro veces/segundo. */
-function TurnTimerHeader({
-  left,
-  turnNick,
-  deadlineAt,
-  durationSeconds,
-}: TurnTimerHeaderProps) {
+function TurnTimerHeader({ left, turnNick, deadlineAt, durationSeconds }: TurnTimerHeaderProps) {
   const timerEnabled = durationSeconds > 0;
   const [fallbackDeadline] = useState(() =>
     timerEnabled && !deadlineAt ? Date.now() + durationSeconds * 1000 : null,
@@ -98,12 +95,20 @@ function TurnTimerHeader({
 export function GameScreen({ view }: GameScreenProps) {
   const [selected, setSelected] = useState<CardId | null>(null);
   const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
+  const [pendingCloseCard, setPendingCloseCard] = useState<CardId | null>(null);
 
   const { me } = view;
   const isMyTurn = view.turnPlayerId === me.playerId;
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
     : null;
+
+  // Si el servidor avanza el turno (incluido un timeout) no debe quedar
+  // abierta una confirmación perteneciente al estado anterior.
+  useEffect(() => {
+    setSelected(null);
+    setPendingCloseCard(null);
+  }, [view.round, view.turnPhase, view.turnPlayerId]);
 
   function handleSelect(cardId: CardId) {
     setSelected(cardId);
@@ -117,15 +122,30 @@ export function GameScreen({ view }: GameScreenProps) {
     void useRondaStore.getState().sendAction({ type: 'drawDiscard' });
   }
 
-  // Segundo toque sobre la carta ya seleccionada, o arrastrarla al montón:
-  // es un único gesto. El servidor decide si esa carta cierra la ronda o se
-  // descarta normalmente; no se muestra un menú adicional.
+  // Segundo toque sobre la carta ya seleccionada, o arrastrarla al montón.
+  // Si ese descarte permite cerrar, la decisión sigue siendo del jugador:
+  // puede cerrar ahora o descartar normalmente para buscar una mano mejor.
   function handleCommit(cardId: CardId, target: DropTarget) {
-    setSelected(null);
     if (!isMyTurn || view.turnPhase !== 'discard') return;
     if (target !== 'discard') return;
+    if (me.closableDiscards.includes(cardId)) {
+      setPendingCloseCard(cardId);
+      return;
+    }
+    setSelected(null);
     void useRondaStore.getState().sendAction({
-      type: me.closableDiscards.includes(cardId) ? 'close' : 'discard',
+      type: 'discard',
+      cardId,
+    });
+  }
+
+  function resolveCloseChoice(closeRound: boolean) {
+    if (!pendingCloseCard) return;
+    const cardId = pendingCloseCard;
+    setPendingCloseCard(null);
+    setSelected(null);
+    void useRondaStore.getState().sendAction({
+      type: closeRound ? 'close' : 'discard',
       cardId,
     });
   }
@@ -217,6 +237,19 @@ export function GameScreen({ view }: GameScreenProps) {
           turnPlayerConnected={turnPlayer?.connected ?? true}
         />
       </div>
+
+      <Sheet open={pendingCloseCard !== null} onClose={() => setPendingCloseCard(null)}>
+        <div className="flex flex-col gap-4 pb-2 text-center">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-display text-24 text-hueso">Ya puedes cerrar</h2>
+            <p className="text-14 text-humo">¿Cierras la ronda o descartas y sigues jugando?</p>
+          </div>
+          <Button onClick={() => resolveCloseChoice(true)}>Cerrar la ronda</Button>
+          <Button variant="ghost" onClick={() => resolveCloseChoice(false)}>
+            Descartar y seguir
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

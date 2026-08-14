@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_CONFIG, DEFAULT_ORDEN_CONFIG } from '@ronda/protocol';
+import { DEFAULT_COLORES_CONFIG, DEFAULT_CONFIG, DEFAULT_ORDEN_CONFIG } from '@ronda/protocol';
 import { RoomManager } from './room-manager.ts';
 import { scheduleBotTurn, type BotDriverDeps } from './bot-driver.ts';
 import type { TypedIoServer } from '../io.ts';
@@ -91,6 +91,66 @@ describe('BotDriver', () => {
       expect(state?.gameId).toBe('orden');
       expect(state?.version).toBe(1);
       expect(state?.players.filter((player) => player.hand.length === 0)).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('deja visible el resultado de Colores hasta que avance el anfitrión', () => {
+    vi.useFakeTimers();
+    try {
+      const manager = new RoomManager();
+      const created = manager.createRoom({
+        gameId: 'colores',
+        config: DEFAULT_COLORES_CONFIG,
+        nick: 'Ana',
+        now: NOW,
+      });
+      if (!created.ok) throw new Error('no se pudo crear la sala');
+      const bot = manager.addBot({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!bot.ok) throw new Error('no se pudo añadir el robot');
+      const started = manager.start({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!started.ok) throw new Error('no se pudo empezar la partida');
+
+      const deps: BotDriverDeps = {
+        io: { to: vi.fn() } as unknown as TypedIoServer,
+        mgr: manager,
+        now: () => NOW,
+      };
+      scheduleBotTurn(deps, created.value.roomCode);
+      vi.advanceTimersByTime(700);
+
+      const room = manager.getRoomByCode(created.value.roomCode);
+      const state = room?.state;
+      if (!state || state.gameId !== 'colores') throw new Error('estado incorrecto');
+      const answered = manager.applyAction({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        clientActionId: 'human-color',
+        expectedVersion: state.version,
+        action: { type: 'submitColors', colors: ['rojo'] },
+        now: NOW,
+      });
+      if (!answered.ok) throw new Error('no se pudo responder');
+      const revealState = room.state;
+      if (!revealState || revealState.gameId !== 'colores') throw new Error('estado incorrecto');
+      expect(revealState.phase).toBe('reveal');
+      const revealVersion = revealState.version;
+
+      scheduleBotTurn(deps, created.value.roomCode);
+      vi.advanceTimersByTime(5_000);
+      const afterWait = room.state;
+      if (!afterWait || afterWait.gameId !== 'colores') throw new Error('estado incorrecto');
+      expect(afterWait.phase).toBe('reveal');
+      expect(afterWait.version).toBe(revealVersion);
     } finally {
       vi.useRealTimers();
     }

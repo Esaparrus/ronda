@@ -539,8 +539,16 @@ export class RoomManager {
       return err('STALE_VERSION');
     }
 
+    const partyNextRound =
+      input.action.type === 'nextRound' &&
+      (room.gameId === 'orden' ||
+        room.gameId === 'colores' ||
+        room.gameId === 'mayoria' ||
+        room.gameId === 'escala');
     if (
-      (input.action.type === 'setOrderCards' || input.action.type === 'endOrder') &&
+      (input.action.type === 'setOrderCards' ||
+        input.action.type === 'endOrder' ||
+        partyNextRound) &&
       !player.isHost
     ) {
       return err('NOT_HOST');
@@ -794,10 +802,16 @@ export class RoomManager {
     if (sameTurn && this.turnTimers.has(room.code)) return;
 
     this.clearTurnTimer(room.code);
+    const deadlineAt = state.turnDeadlineAt ?? Date.now() + state.config.turnTimeSeconds * 1000;
+    const delayMs = Math.max(0, deadlineAt - Date.now());
     const timer = setTimeout(() => {
-      this.turnTimers.delete(room.code);
-      this.handleTurnTimeout(room.code);
-    }, state.config.turnTimeSeconds * 1000);
+      // Conservamos el handle mientras se ejecuta la jugada automática. Esta
+      // consta de dos acciones (robar y descartar): si se borrase antes, la
+      // primera volvería a programar un reloj completo para el mismo turno.
+      if (this.turnTimers.get(room.code) !== timer) return;
+      this.handleTurnTimeout(room.code, deadlineAt, Date.now());
+      if (this.turnTimers.get(room.code) === timer) this.turnTimers.delete(room.code);
+    }, delayMs);
     // Los temporizadores de una sala no deben impedir apagar el servidor.
     timer.unref?.();
     this.turnTimers.set(room.code, timer);
@@ -814,10 +828,17 @@ export class RoomManager {
    * suelta legal. Así el cierre sigue siendo una decisión explícita y la mano
    * nunca se queda bloqueada en mitad del turno.
    */
-  private handleTurnTimeout(roomCode: string): void {
+  private handleTurnTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
     const room = this.rooms.get(roomCode);
     const state = room?.state;
     if (!room || !state || room.status !== 'playing' || state.gameId !== 'chinchon') return;
+    // Un callback antiguo nunca puede jugar el turno nuevo. También cubre
+    // ajustes hacia atrás del reloj del sistema reprogramando lo que reste.
+    if (state.turnDeadlineAt !== expectedDeadlineAt) return;
+    if (expectedDeadlineAt > now) {
+      this.syncTurnTimer(room, null);
+      return;
+    }
     const seat = state.turnSeat;
     const player = seat === null ? undefined : state.players[seat];
     if (!player) return;
@@ -835,7 +856,7 @@ export class RoomManager {
         clientActionId: `timeout:${roomCode}:${current.version}:${randomUUID()}`,
         expectedVersion: current.version,
         action,
-        now: Date.now(),
+        now,
       });
       if (result.ok) changed = true;
       return result.ok;
@@ -875,19 +896,53 @@ export class RoomManager {
     publish();
   }
 
+  /**
+   * Red de seguridad para procesos suspendidos o callbacks perdidos. El bucle
+   * periódico llama a este método cada segundo; el deadline esperado evita
+   * que pueda ejecutar dos veces un turno si coincide con su setTimeout.
+   */
+  expireOverdueTurns(now: number): number {
+    let advanced = 0;
+    for (const room of this.rooms.values()) {
+      const state = room.state;
+      if (
+        room.status !== 'playing' ||
+        !state ||
+        state.gameId !== 'chinchon' ||
+        state.status !== 'playing' ||
+        state.turnDeadlineAt === null ||
+        state.turnDeadlineAt === undefined ||
+        state.turnDeadlineAt > now
+      ) {
+        continue;
+      }
+
+      const deadlineAt = state.turnDeadlineAt;
+      const versionBefore = state.version;
+      this.clearTurnTimer(room.code);
+      this.handleTurnTimeout(room.code, deadlineAt, now);
+      if (room.state?.version !== versionBefore) advanced += 1;
+    }
+    return advanced;
+  }
+
   /** Cierra cualquier sala que lleve demasiado tiempo sin mutación válida. */
   sweep(now: number): number {
     let closed = 0;
     for (const room of this.rooms.values()) {
       if (room.status === 'closed') continue;
+      const anyConnected = [...room.players.values()].some((p) => p.connected);
       let shouldClose = false;
-      if (this.inactivityTimeoutMs !== undefined) {
+      if (anyConnected) {
+        // Una sala abierta en algún móvil sigue viva aunque el grupo se
+        // tome un descanso o esté leyendo una pantalla sin enviar acciones.
+        shouldClose = false;
+      } else if (this.inactivityTimeoutMs !== undefined) {
         shouldClose = now - room.lastActivityAt >= this.inactivityTimeoutMs;
       } else if (room.status === 'lobby') {
         shouldClose = now - room.lastActivityAt >= LOBBY_TTL_MS;
       } else {
-        const anyConnected = [...room.players.values()].some((p) => p.connected);
-        shouldClose = !anyConnected && now - room.lastActivityAt >= PLAYING_TTL_MS;
+        shouldClose = now - room.lastActivityAt >= PLAYING_TTL_MS;
       }
       if (shouldClose) {
         this.closeRoom(room, 'expired');

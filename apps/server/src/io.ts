@@ -70,8 +70,7 @@ export function createIoServer(deps: IoDeps): IoRuntime {
 
   let stopPeriodic: (() => void) | undefined;
   if (deps.manager) {
-    const handle = startPeriodicTasks(deps.manager, () => Date.now());
-    stopPeriodic = () => clearInterval(handle);
+    stopPeriodic = startPeriodicTasks(deps.manager, () => Date.now());
   }
 
   return { io, states, rateLimiter, stopPeriodic };
