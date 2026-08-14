@@ -14,13 +14,14 @@ export interface SheetProps {
   onClose: () => void;
   children: ReactNode;
   className?: string;
+  ariaLabel?: string;
 }
 
 // Distancia de arrastre hacia abajo (px) a partir de la cual soltar cierra
 // el panel, además del propio gesto de "lanzarlo" (velocidad).
 const DRAG_CLOSE_THRESHOLD_PX = 80;
 
-export function Sheet({ open, onClose, children, className = '' }: SheetProps) {
+export function Sheet({ open, onClose, children, className = '', ariaLabel }: SheetProps) {
   const [dragOffset, setDragOffset] = useState(0);
   const dragStartY = useRef<number | null>(null);
 
@@ -71,6 +72,7 @@ export function Sheet({ open, onClose, children, className = '' }: SheetProps) {
       <div
         role="dialog"
         aria-modal="true"
+        aria-label={ariaLabel}
         style={{
           transform: `translateY(${dragOffset}px)`,
           transition: dragOffset === 0 ? 'transform 200ms ease-out' : 'none',

@@ -6,6 +6,7 @@
 import type {
   CardId,
   GameConfig,
+  GameAction,
   GameEvent,
   GameId,
   PlayerId,
@@ -43,6 +44,35 @@ export interface PlayerRuntime {
 }
 
 export type RoomStatus = 'lobby' | 'playing' | 'roundEnd' | 'gameEnd' | 'closed';
+
+export interface DiagnosticActionTrailEntry {
+  at: number;
+  playerId: PlayerId;
+  clientActionId: string;
+  expectedVersion: number;
+  beforeVersion: number | null;
+  afterVersion: number | null;
+  result: 'ok' | string;
+  action: Record<string, string | number | boolean | null>;
+}
+
+const MAX_DIAGNOSTIC_ACTIONS = 50;
+
+function summarizeAction(action: GameAction): Record<string, string | number | boolean | null> {
+  const raw = action as unknown as Record<string, unknown>;
+  const summary: Record<string, string | number | boolean | null> = { type: action.type };
+  for (const key of ['cardId', 'amount', 'count', 'value', 'piedras', 'tiene'] as const) {
+    const field = raw[key];
+    if (typeof field === 'string' || typeof field === 'number' || typeof field === 'boolean') {
+      summary[key] = field;
+    }
+  }
+  if (Array.isArray(raw.cardIds)) summary.cardCount = raw.cardIds.length;
+  if (Array.isArray(raw.order)) summary.cardCount = raw.order.length;
+  if (Array.isArray(raw.colors)) summary.choiceCount = raw.colors.length;
+  if (typeof raw.answer === 'string') summary.answerLength = raw.answer.length;
+  return summary;
+}
 
 /** Callbacks de difusión inyectados (P8 los rellena con sockets reales). */
 export interface RoomHooks {
@@ -98,6 +128,12 @@ export class Room {
   /** Partidas TERMINADAS en esta sala. */
   matchesPlayed = 0;
   /**
+   * Preguntas de Colores ya mostradas durante esta sesión de sala. Se conserva
+   * entre revanchas para que una tarde de varias partidas no repita contenido
+   * hasta agotar el banco completo.
+   */
+  seenColorQuestionIds: Set<string> = new Set();
+  /**
    * Semilla de la última partida ya contada en `stats`. Cada partida tiene
    * su propia semilla (el rematch genera una nueva), así que basta para no
    * contar dos veces la misma: `applyAction` puede volver a pasar por el
@@ -107,6 +143,8 @@ export class Room {
   private statsSeed: string | null = null;
   /** ms epoch de la última reacción de cada jugador (enfriamiento, §reacciones). */
   lastReactionAt: Map<PlayerId, number> = new Map();
+  /** Últimas acciones aceptadas o rechazadas; nunca guarda texto libre ni tokens. */
+  private diagnosticActions: DiagnosticActionTrailEntry[] = [];
 
   constructor(init: {
     code: RoomCode;
@@ -152,6 +190,26 @@ export class Room {
   /** Marca actividad (cualquier mutación válida). */
   touch(now: number): void {
     this.lastActivityAt = now;
+  }
+
+  recordDiagnosticAction(input: {
+    at: number;
+    playerId: PlayerId;
+    clientActionId: string;
+    expectedVersion: number;
+    beforeVersion: number | null;
+    afterVersion: number | null;
+    result: 'ok' | string;
+    action: GameAction;
+  }): void {
+    this.diagnosticActions = [
+      ...this.diagnosticActions,
+      { ...input, action: summarizeAction(input.action) },
+    ].slice(-MAX_DIAGNOSTIC_ACTIONS);
+  }
+
+  getDiagnosticActions(): DiagnosticActionTrailEntry[] {
+    return this.diagnosticActions.map((entry) => ({ ...entry, action: { ...entry.action } }));
   }
 
   /** Snapshot censurado (delega al motor). Lanza si state es null. */
@@ -221,7 +279,8 @@ export class Room {
     if (match.won) row.wins += 1;
     row.rounds += match.rounds;
     row.totalScore += match.score;
-    row.bestScore = row.bestScore === null ? match.score : this.pickBest(row.bestScore, match.score);
+    row.bestScore =
+      row.bestScore === null ? match.score : this.pickBest(row.bestScore, match.score);
     row.worstScore =
       row.worstScore === null ? match.score : this.pickWorst(row.worstScore, match.score);
     this.stats.set(player.playerId, row);

@@ -31,7 +31,9 @@ function stateOf(r: ReturnType<RoomManager['getRoomByCode']>) {
 }
 
 /** playerId del turno actual (lanza si no hay). */
-function turnPlayerId(s: NonNullable<NonNullable<ReturnType<RoomManager['getRoomByCode']>>['state']>) {
+function turnPlayerId(
+  s: NonNullable<NonNullable<ReturnType<RoomManager['getRoomByCode']>>['state']>,
+) {
   const seat = s.turnSeat;
   if (seat === null) throw new Error('no hay turno');
   const p = s.players[seat];
@@ -621,6 +623,83 @@ describe('revancha', () => {
   });
 });
 
+describe('historial de preguntas de Colores', () => {
+  it('no repite ninguna pregunta en diez partidas de diez rondas de la misma sala', () => {
+    const m = mgr();
+    const created = m.createRoom({
+      gameId: 'colores',
+      config: { ...DEFAULT_COLORES_CONFIG, rounds: 10, pointsToWin: 40 },
+      nick: 'Ana',
+      now: NOW,
+    });
+    if (!created.ok) throw new Error(`crear falló: ${created.code}`);
+
+    const joinedB = m.joinRoom({ roomCode: created.value.roomCode, nick: 'Beto', now: NOW });
+    const joinedC = m.joinRoom({ roomCode: created.value.roomCode, nick: 'Carla', now: NOW });
+    if (!joinedB.ok || !joinedC.ok) throw new Error('no se pudieron unir tres jugadores');
+
+    const playerIds = [created.value.playerId, joinedB.value.playerId, joinedC.value.playerId];
+    const started = m.start({
+      roomCode: created.value.roomCode,
+      playerId: created.value.playerId,
+      now: NOW,
+    });
+    if (!started.ok) throw new Error(`inicio falló: ${started.code}`);
+
+    const seen = new Set<string>();
+    let actionNumber = 0;
+    for (let match = 0; match < 10; match += 1) {
+      for (let round = 0; round < 10; round += 1) {
+        const current = stateOf(room(m, created.value.roomCode));
+        if (current.gameId !== 'colores' || !current.colors) throw new Error('estado incorrecto');
+        expect(seen.has(current.colors.questionId), current.colors.questionId).toBe(false);
+        seen.add(current.colors.questionId);
+
+        for (const playerId of playerIds) {
+          const before = stateOf(room(m, created.value.roomCode));
+          const submitted = m.applyAction({
+            roomCode: created.value.roomCode,
+            playerId,
+            clientActionId: `color-${actionNumber++}`,
+            expectedVersion: before.version,
+            action: { type: 'submitColors', colors: ['rojo'] },
+            now: NOW,
+          });
+          if (!submitted.ok) throw new Error(`respuesta falló: ${submitted.code}`);
+        }
+
+        if (round < 9) {
+          const before = stateOf(room(m, created.value.roomCode));
+          const advanced = m.applyAction({
+            roomCode: created.value.roomCode,
+            playerId: created.value.playerId,
+            clientActionId: `color-${actionNumber++}`,
+            expectedVersion: before.version,
+            action: { type: 'nextRound' },
+            now: NOW,
+          });
+          if (!advanced.ok) throw new Error(`siguiente ronda falló: ${advanced.code}`);
+        }
+      }
+
+      expect(stateOf(room(m, created.value.roomCode)).status).toBe('gameEnd');
+      if (match < 9) {
+        for (const playerId of playerIds) {
+          const vote = m.voteRematch({
+            roomCode: created.value.roomCode,
+            playerId,
+            value: true,
+            now: NOW,
+          });
+          if (!vote.ok) throw new Error(`revancha falló: ${vote.code}`);
+        }
+      }
+    }
+
+    expect(seen.size).toBe(100);
+  });
+});
+
 describe('sweep', () => {
   it('cierra una sala en lobby con 30 min+ de inactividad', () => {
     const m = mgr();
@@ -729,7 +808,12 @@ describe('sweep', () => {
 describe('Pocha', () => {
   it('crea una sala de Pocha', () => {
     const m = mgr();
-    const r = m.createRoom({ gameId: 'pocha', config: DEFAULT_POCHA_CONFIG, nick: 'Ana', now: NOW });
+    const r = m.createRoom({
+      gameId: 'pocha',
+      config: DEFAULT_POCHA_CONFIG,
+      nick: 'Ana',
+      now: NOW,
+    });
     expect(r.ok).toBe(true);
   });
 
@@ -779,7 +863,12 @@ describe('Pocha', () => {
     before.status = 'gameEnd';
 
     for (const p of [c.value, j2.value, j3.value]) {
-      const v = m.voteRematch({ roomCode: c.value.roomCode, playerId: p.playerId, value: true, now: NOW });
+      const v = m.voteRematch({
+        roomCode: c.value.roomCode,
+        playerId: p.playerId,
+        value: true,
+        now: NOW,
+      });
       expect(v.ok).toBe(true);
     }
 

@@ -10,7 +10,8 @@
     "start": "node src/index.ts",
     "sim": "node src/sim/run.ts",
     "db:migrate": "node src/db/migrate-cli.ts",
-    "report": "node src/scripts/report.ts"
+    "report": "node src/scripts/report.ts",
+    "incident": "node src/scripts/incident.ts"
   },
   "dependencies": {
     "@ronda/engine": "workspace:*",

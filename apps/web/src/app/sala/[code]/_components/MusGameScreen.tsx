@@ -115,7 +115,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
     // pantalla entera y encima lleva la banda de conexión y las reacciones.
     // Pedir aquí otra pantalla completa empujaría la barra de acción fuera
     // del móvil, y en Mus la barra de acción ES el juego.
-    <div className="game-shell flex flex-1 flex-col">
+    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <MusScoreboard
         teams={view.teams}
         myTeamIndex={me.teamIndex}
@@ -189,7 +189,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
         </div>
       </div>
 
-      <div className="flex flex-col">
+      <div className="flex shrink-0 flex-col">
         <MusHand
           hand={me.hand}
           selectable={isMyTurn && view.phase === 'descarte'}

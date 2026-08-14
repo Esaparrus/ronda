@@ -115,6 +115,17 @@ body {
   height: 100%;
 }
 
+/* Durante una partida la aplicación se comporta como una mesa a pantalla
+ * completa. El scroll vuelve a habilitarse al salir de `playing`; la clase la
+ * gestiona SalaClient para no afectar al lobby ni a las pantallas de cierre. */
+html.game-active,
+body.game-active {
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* El fondo es la propia madera de la mesa: una veta de 6px (P32). El
  * `background-attachment: fixed` evita que la veta se mueva al hacer scroll,
  * que es lo que la delataría como rayas en vez de como madera. */
@@ -326,6 +337,16 @@ summary {
   border-top: 1px solid color-mix(in srgb, var(--color-oro) 24%, var(--color-linea));
   background: linear-gradient(180deg, color-mix(in srgb, var(--color-mesa) 68%, transparent), var(--color-tinta));
   box-shadow: 0 -10px 24px rgb(0 0 0 / 0.18);
+}
+
+/* `overflow-x: auto` también crea un recorte vertical por especificación.
+ * La carta seleccionada sube y escala unos 21px, así que reservamos 24px
+ * dentro del scrollport. El margen negativo recupera ese espacio: la mano no
+ * crece ni obliga a hacer las cartas más pequeñas. */
+.game-hand-scroll {
+  margin-top: -24px;
+  padding-top: 24px;
+  overscroll-behavior-x: contain;
 }
 
 .action-dock {

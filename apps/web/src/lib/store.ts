@@ -22,6 +22,9 @@ import { clearToken, getToken, saveToken } from './token.ts';
 import { connectIfNeeded, emitWithAck, getSocket } from './socket.ts';
 import { createServerDownWatcher } from './serverDown.ts';
 import { createUuid } from './uuid.ts';
+import { recordDiagnostic } from './diagnostic-recorder.ts';
+import { diagnosticContextFromState, reportClientIssue } from './diagnostics.ts';
+import { waitForVersionChange } from './state-sync.ts';
 
 export type ConnectionStatus = 'online' | 'reconnecting' | 'offline';
 
@@ -49,6 +52,8 @@ export interface RondaState {
   connection: ConnectionStatus;
   /** true mientras hay una `game:action` en vuelo: bloquea la interfaz. */
   pendingAction: boolean;
+  /** Instante en que empezó la acción pendiente; permite detectar bloqueos lógicos. */
+  pendingSince: number | null;
   /** Texto ya traducido (messages.ts) del último error, o null. */
   lastError: string | null;
   events: GameEvent[];
@@ -157,10 +162,36 @@ export const useRondaStore = create<RondaState>((set, get) => {
 
   socket.on('state:view', (payload) => {
     set({ view: payload.view, version: payload.version });
+    const view = payload.view as unknown as Record<string, unknown>;
+    const me = view.me as Record<string, unknown> | undefined;
+    const party = view.party as Record<string, unknown> | undefined;
+    recordDiagnostic('state:view', {
+      version: payload.version,
+      viewKind: typeof view.kind === 'string' ? view.kind : null,
+      gameId: typeof view.gameId === 'string' ? view.gameId : null,
+      status: typeof view.status === 'string' ? view.status : null,
+      phase:
+        typeof view.phase === 'string'
+          ? view.phase
+          : typeof party?.phase === 'string'
+            ? party.phase
+            : typeof view.turnPhase === 'string'
+              ? view.turnPhase
+              : null,
+      availableActions: Array.isArray(me?.availableActions)
+        ? me.availableActions
+            .filter((item): item is string => typeof item === 'string')
+            .slice(0, 20)
+        : [],
+    });
   });
 
   socket.on('events', (payload) => {
     set((s) => ({ events: [...s.events, ...payload.items] }));
+    recordDiagnostic('game:events', {
+      version: payload.version,
+      types: payload.items.map((item) => item.t).slice(0, 20),
+    });
   });
 
   socket.on('reaction', (payload) => {
@@ -174,6 +205,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
   });
 
   socket.on('room:closed', (payload) => {
+    recordDiagnostic('room:closed', { reason: payload.reason });
     const code = get().roomCode;
     if (code) clearToken(code);
     set({
@@ -197,11 +229,13 @@ export const useRondaStore = create<RondaState>((set, get) => {
   const serverDownWatcher = createServerDownWatcher((down) => set({ serverDown: down }));
 
   socket.on('connect', () => {
+    recordDiagnostic('socket:connect', { socketId: socket.id ?? null });
     serverDownWatcher.reconnected();
     set({ connection: 'online' });
   });
 
   socket.on('disconnect', (reason) => {
+    recordDiagnostic('socket:disconnect', { reason });
     if (reason === 'io server disconnect') {
       // El servidor ha cerrado el socket a propósito: hoy, solo lo hace al
       // expulsar a alguien (ver comentario de `kickedOut` en RondaState).
@@ -234,9 +268,16 @@ export const useRondaStore = create<RondaState>((set, get) => {
     set({ connection: 'reconnecting' });
   });
 
-  socket.io.on('reconnect_attempt', () => set({ connection: 'reconnecting' }));
-  socket.io.on('reconnect_failed', () => set({ connection: 'offline' }));
+  socket.io.on('reconnect_attempt', (attempt) => {
+    recordDiagnostic('socket:reconnect_attempt', { attempt });
+    set({ connection: 'reconnecting' });
+  });
+  socket.io.on('reconnect_failed', () => {
+    recordDiagnostic('socket:reconnect_failed');
+    set({ connection: 'offline' });
+  });
   socket.io.on('reconnect', () => {
+    recordDiagnostic('socket:reconnect');
     serverDownWatcher.reconnected();
     set({ connection: 'online' });
     // Reconexión (no la primera conexión): si hay token guardado para la
@@ -253,6 +294,7 @@ export const useRondaStore = create<RondaState>((set, get) => {
     version: 0,
     connection: 'offline',
     pendingAction: false,
+    pendingSince: null,
     lastError: null,
     events: [],
     roomCode: null,
@@ -310,7 +352,11 @@ export const useRondaStore = create<RondaState>((set, get) => {
         // El token puede sobrevivir en localStorage aunque el servidor haya
         // caducado la sala mientras esta pestaña estaba cerrada. No debemos
         // seguir mostrando una partida que ya no se puede retomar.
-        if (res.code === 'ROOM_NOT_FOUND' || res.code === 'ROOM_CLOSED' || res.code === 'INVALID_TOKEN') {
+        if (
+          res.code === 'ROOM_NOT_FOUND' ||
+          res.code === 'ROOM_CLOSED' ||
+          res.code === 'INVALID_TOKEN'
+        ) {
           clearToken(roomCode);
         }
         set({ lastError: messageFor(res.code) });
@@ -332,41 +378,77 @@ export const useRondaStore = create<RondaState>((set, get) => {
       // -- igual de silencioso que el bloqueo por pendingAction: la señal
       // visible ya la da el Banner (banda + cartel) y los botones
       // deshabilitados, no hace falta un lastError adicional aquí.
-      if (get().pendingAction || get().connection !== 'online') return;
-      set({ pendingAction: true, lastError: null });
+      if (get().pendingAction || get().connection !== 'online') {
+        recordDiagnostic('action:ignored', {
+          actionType: action.type,
+          pendingAction: get().pendingAction,
+          connection: get().connection,
+        });
+        return;
+      }
+      set({ pendingAction: true, pendingSince: Date.now(), lastError: null });
 
-      const attempt = () => {
+      const attempt = async () => {
         const clientActionId = createUuid();
         const expectedVersion = get().version;
-        return emitWithAck(socket, 'game:action', { clientActionId, expectedVersion, action });
+        const result = await emitWithAck(socket, 'game:action', {
+          clientActionId,
+          expectedVersion,
+          action,
+        });
+        return { result, expectedVersion };
       };
 
-      const res = await attempt();
+      try {
+        const first = await attempt();
+        if (first.result.ok) return;
 
-      if (res.ok) {
-        set({ pendingAction: false });
-        return;
-      }
+        if (first.result.code === 'STALE_VERSION') {
+          // Orden es la excepción deliberada: si dos cartas salen a la vez,
+          // solo cuenta la petición que el servidor procesó primero.
+          if (action.type === 'playNumber') return;
 
-      if (res.code === 'STALE_VERSION') {
-        // Orden es la excepción deliberada: si dos cartas salen a la vez,
-        // solo cuenta la petición que el servidor procesó primero. No
-        // reintentamos la segunda con la versión nueva, porque eso convertiría
-        // una carrera en dos cartas aceptadas de forma secuencial.
-        if (action.type === 'playNumber') {
-          set({ pendingAction: false, lastError: null });
+          const synchronized = await waitForVersionChange(
+            socket,
+            first.expectedVersion,
+            () => get().version,
+          );
+          if (!synchronized) {
+            recordDiagnostic('state:sync_timeout', {
+              expectedVersion: first.expectedVersion,
+              currentVersion: get().version,
+              actionType: action.type,
+            });
+            const state = get();
+            void reportClientIssue('state_sync_timeout', diagnosticContextFromState(state));
+
+            // Pide un snapshot fresco con la sesión ya guardada. Aunque esta
+            // recuperación también falle, el finally libera siempre la interfaz.
+            const code = state.roomCode;
+            const token = code ? getToken(code) : null;
+            if (token && socket.connected) {
+              const resync = await emitWithAck(socket, 'room:resume', { playerToken: token });
+              recordDiagnostic('state:resync', { ok: resync.ok });
+            }
+            set({ lastError: messageFor('INTERNAL') });
+            return;
+          }
+
+          // Una sola repetición con la versión fresca.
+          const retry = await attempt();
+          set({ lastError: retry.result.ok ? null : messageFor(retry.result.code) });
           return;
         }
-        // Espera al siguiente state:view (la versión fresca) y reintenta
-        // UNA sola vez, tal cual el contrato. Si el reintento también falla
-        // (incluso con otro STALE_VERSION), no se vuelve a intentar.
-        await new Promise<void>((resolve) => socket.once('state:view', () => resolve()));
-        const retry = await attempt();
-        set({ pendingAction: false, lastError: retry.ok ? null : messageFor(retry.code) });
-        return;
-      }
 
-      set({ pendingAction: false, lastError: messageFor(res.code) });
+        set({ lastError: messageFor(first.result.code) });
+      } catch (error) {
+        recordDiagnostic('action:exception', { actionType: action.type });
+        const state = get();
+        void reportClientIssue('client_error', diagnosticContextFromState(state), error);
+        set({ lastError: messageFor('INTERNAL') });
+      } finally {
+        set({ pendingAction: false, pendingSince: null });
+      }
     },
 
     async attachScreen(roomCode) {

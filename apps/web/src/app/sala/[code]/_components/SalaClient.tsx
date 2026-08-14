@@ -71,6 +71,25 @@ export function SalaClient({ code }: SalaClientProps) {
       });
   }, [code]);
 
+  const isPlaying = view?.status === 'playing';
+
+  // Una partida es una superficie de juego, no una página desplazable. Se
+  // bloquea el scroll de la raíz solo mientras se juega; lobby, fin de ronda
+  // y fin de partida conservan su scroll normal. `100dvh` sigue la altura
+  // realmente visible cuando aparece o desaparece la barra del navegador.
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    root.classList.toggle('game-active', isPlaying);
+    body.classList.toggle('game-active', isPlaying);
+    if (isPlaying) window.scrollTo(0, 0);
+
+    return () => {
+      root.classList.remove('game-active');
+      body.classList.remove('game-active');
+    };
+  }, [isPlaying]);
+
   // Contrato P17: "socket caído más de 30s -> pantalla de error con botón
   // de reintento". Se comprueba antes que nada más: si el servidor lleva
   // caído tanto tiempo, ninguna otra pantalla (ni siquiera la de "entrando
@@ -155,14 +174,20 @@ export function SalaClient({ code }: SalaClientProps) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <Banner status={connection} />
+    <div
+      className={
+        isPlaying
+          ? 'flex h-dvh min-h-0 max-h-dvh flex-col overflow-hidden overscroll-none'
+          : 'flex min-h-dvh flex-col'
+      }
+    >
+      <Banner status={connection} className="shrink-0" />
       {/* Barra superior: reacciones rápidas a la izquierda (roadmap
           "Después del MVP" §2) y el cierre de sala del anfitrión a la
           derecha. Las reacciones van AQUÍ, y no flotando sobre la mesa,
           para no competir con la regla de "en tu turno solo hay una acción
           principal visible" (00-MASTER.md §8). */}
-      <div className="flex items-center justify-between gap-2 px-4 py-1">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-1">
         <ReactionBar />
         {isHost && view.status === 'lobby' ? (
           <button

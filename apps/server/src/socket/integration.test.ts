@@ -169,4 +169,53 @@ describe('integración socket', () => {
     expect(results.some((ok) => !ok)).toBe(true);
     c1.close();
   }, 15000);
+
+  it('diagnostic:report correlaciona el incidente y conserva la acción previa', async () => {
+    const c1 = client();
+    await connect(c1);
+    const { ack: createdAck } = await emitAndListen(c1, 'room:create', {
+      gameId: 'chinchon',
+      config: { gameId: 'chinchon' },
+      nick: 'Ana',
+    });
+    const code = (createdAck as { value: { roomCode: string } }).value.roomCode;
+
+    // En lobby la jugada se rechaza, pero también interesa en el registrador:
+    // explica qué intentó hacer el cliente inmediatamente antes del fallo.
+    await emitAck(c1, 'game:action', {
+      clientActionId: 'action-before-report',
+      expectedVersion: 0,
+      action: { type: 'drawDeck' },
+    });
+
+    const result = (await emitAck(c1, 'diagnostic:report', {
+      incidentId: 'RND-A1B2C3D4',
+      reason: 'manual_block',
+      occurredAt: Date.now(),
+      path: `/sala/${code}`,
+      release: 'test',
+      userAgent: 'vitest',
+      context: {
+        roomCode: code,
+        playerId: 'p1',
+        gameId: 'chinchon',
+        viewKind: 'player',
+        status: 'lobby',
+        phase: null,
+        version: 0,
+        connection: 'online',
+        pendingAction: false,
+        pendingSince: null,
+      },
+      entries: [],
+      error: null,
+    })) as { ok: boolean; value?: { incidentId: string } };
+
+    expect(result.ok).toBe(true);
+    expect(result.value?.incidentId).toBe('RND-A1B2C3D4');
+    expect(mgr.getRoomByCode(code)?.getDiagnosticActions()).toMatchObject([
+      { clientActionId: 'action-before-report', result: 'INVALID_ACTION' },
+    ]);
+    c1.close();
+  }, 15000);
 });
