@@ -684,31 +684,6 @@ summary {
   }
 }
 
-/* Reacción rápida flotando (roadmap "Después del MVP" §2). Es la única
- * animación que no estaba en la lista cerrada de §8.4, porque la función
- * tampoco existía cuando se escribió: se mantiene dentro del mismo espíritu
- * (un movimiento corto, sin rebotes ni giros) y la duración la marca
- * REACTION_TTL_MS desde el componente, no esta regla. Como el resto,
- * prefers-reduced-motion la neutraliza en el bloque de abajo. */
-@keyframes reaction-float {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  15% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  75% {
-    opacity: 1;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-}
-
 /* Animaciones: solo las permitidas por el contrato (§8.4), y respetando
  * prefers-reduced-motion en todas ellas (lo aplican los componentes que las
  * usan; esta regla es la red de seguridad global). */

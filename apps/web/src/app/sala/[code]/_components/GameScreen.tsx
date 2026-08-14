@@ -2,7 +2,7 @@
 // estructura vertical fija -- Banda de conexión (la monta <SalaClient>, no
 // aquí), encabezado con el turno, la MESA con los jugadores sentados
 // alrededor (rivales arriba, tú abajo) y el mazo y el descarte encima del
-// tapete, Mano en el tercio inferior, Barra de acción. Todo el estado de
+// tapete y Mano en el tercio inferior. Todo el estado de
 // reglas viene ya resuelto del servidor en `view`; aquí solo se traduce a
 // interacción.
 //
@@ -19,25 +19,11 @@ import { useRondaStore } from '@/lib/store';
 import { CommonArea } from './CommonArea';
 import type { DropTarget } from './CommonArea';
 import { Hand } from './Hand';
-import { ActionBar } from './ActionBar';
 import { TableHeader } from './TableHeader';
 import { TableSeat, orderAroundMe } from './TableSeat';
 import { BarTable } from '@/components/ui/BarTable';
 import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
-
-// Huecos de garbanzo bajo cada asiento. En Chinchón el garbanzo cuenta lo
-// que te ACERCA a quedarte fuera: los puntos acumulados, medidos contra
-// `config.eliminationScore`. Ocho huecos porque es el mismo puñado que los
-// amarrakos de Mus (§12.3), y así la fila significa lo mismo en los tres
-// juegos: cuántos te faltan para que pase algo.
-const BEAN_SLOTS = 8;
-
-function beansForScore(score: number, eliminationScore: number): number {
-  if (eliminationScore <= 0) return 0;
-  const perBean = eliminationScore / BEAN_SLOTS;
-  return Math.max(0, Math.min(BEAN_SLOTS, Math.ceil(score / perBean)));
-}
 
 // Vocabulario de Chinchón (mazo/descarte, comodines, bestMelds...): el
 // dispatcher (SalaClient.tsx) ya estrecha `PlayerView` antes de llegar aquí.
@@ -156,11 +142,6 @@ export function GameScreen({ view }: GameScreenProps) {
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDiscard');
 
   const { top, me: mySeat } = orderAroundMe(view.players, me.playerId);
-  const beansFor = (score: number) => ({
-    count: beansForScore(score, view.config.eliminationScore),
-    total: BEAN_SLOTS,
-    label: 'puntos acumulados',
-  });
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -172,16 +153,15 @@ export function GameScreen({ view }: GameScreenProps) {
         durationSeconds={view.config.turnTimeSeconds}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[6px] px-1 py-2">
-        <div className="flex min-h-[60px] items-end justify-center gap-4">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-1 py-2">
+        <div className="flex w-full max-w-[340px] shrink-0 items-end justify-evenly gap-1">
           {top.map((p) => (
             <TableSeat
               key={p.playerId}
               player={p}
               variant="top"
               isTurn={p.playerId === view.turnPlayerId}
-              beans={beansFor(p.score)}
-              info={`${p.handCount} · ${p.score}`}
+              stats={{ handCount: p.handCount, score: p.score }}
             />
           ))}
         </div>
@@ -205,19 +185,19 @@ export function GameScreen({ view }: GameScreenProps) {
           </BarTable>
         </div>
 
-        <div className="flex min-h-[46px] items-start justify-center">
-          {mySeat ? (
-            <TableSeat
-              player={mySeat}
-              variant="plate"
-              isYou
-              isTurn={isMyTurn}
-              beans={beansFor(mySeat.score)}
-              info={`${me.hand.length} · ${mySeat.score}`}
-            />
-          ) : null}
-        </div>
       </div>
+
+      {mySeat ? (
+        <div className="flex shrink-0 justify-center px-3 py-1.5">
+          <TableSeat
+            player={mySeat}
+            variant="plate"
+            isYou
+            isTurn={isMyTurn}
+            stats={{ handCount: me.hand.length, score: mySeat.score }}
+          />
+        </div>
+      ) : null}
 
       <div className="flex shrink-0 flex-col">
         <Hand
@@ -227,14 +207,6 @@ export function GameScreen({ view }: GameScreenProps) {
           onSelect={handleSelect}
           onCommit={handleCommit}
           onDropTargetChange={setActiveDropTarget}
-        />
-
-        <ActionBar
-          isMyTurn={isMyTurn}
-          turnPhase={view.turnPhase}
-          turnPlayerId={view.turnPlayerId}
-          turnPlayerNick={turnPlayer?.nick ?? null}
-          turnPlayerConnected={turnPlayer?.connected ?? true}
         />
       </div>
 

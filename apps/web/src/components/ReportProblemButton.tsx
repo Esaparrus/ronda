@@ -12,10 +12,11 @@ interface ReportResult {
 
 export function ReportProblemButton() {
   const roomCode = useRondaStore((state) => state.roomCode);
+  const isPlaying = useRondaStore((state) => state.view?.status === 'playing');
   const [reporting, setReporting] = useState(false);
   const [result, setResult] = useState<ReportResult | null>(null);
 
-  if (!roomCode) return null;
+  if (!roomCode || isPlaying) return null;
 
   async function handleReport() {
     if (reporting || result) return;
