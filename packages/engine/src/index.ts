@@ -98,6 +98,7 @@ export {
   getTableView as partyGetTableView,
   COLOR_NAMES,
   COLOR_QUESTIONS,
+  colorQuestionById,
   MAJORITY_QUESTIONS,
   SCALE_QUESTIONS,
   type PartyState,

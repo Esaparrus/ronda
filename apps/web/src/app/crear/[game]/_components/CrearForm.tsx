@@ -497,10 +497,16 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
           ) : null}
           <QuantityStepper
             legend="Rondas máximas"
-            helperText="Preguntas antes de revelar."
+            helperText={
+              config.gameId === 'colores'
+                ? 'Límite de seguridad si nadie alcanza antes los puntos para ganar.'
+                : 'Número máximo de preguntas de la partida.'
+            }
             value={config.rounds}
             onChange={(value) => setField('rounds', value)}
-            options={[5, 7, 10, 12].map((value) => ({ value, label: String(value) }))}
+            options={(config.gameId === 'colores' ? [10, 15, 20] : [5, 7, 10, 12]).map(
+              (value) => ({ value, label: String(value) }),
+            )}
             valueSuffix="rondas"
           />
           <QuantityStepper

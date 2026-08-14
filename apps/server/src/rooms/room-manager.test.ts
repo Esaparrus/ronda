@@ -10,6 +10,7 @@ import {
   DEFAULT_COLORES_CONFIG,
   DEFAULT_POCHA_CONFIG,
 } from '@ronda/protocol';
+import { colorQuestionById } from '@ronda/engine';
 
 const NOW = 1_000_000;
 
@@ -324,6 +325,10 @@ describe('RoomManager applyAction', () => {
     });
     if (!started.ok) throw new Error('no se pudo empezar la partida');
 
+    const initial = stateOf(room(m, host.value.roomCode));
+    if (initial.gameId !== 'colores' || !initial.colors) throw new Error('estado incorrecto');
+    const answer = colorQuestionById(initial.colors.questionId).correctColors;
+
     for (const [index, playerId] of [host.value.playerId, guest.value.playerId].entries()) {
       const before = stateOf(room(m, host.value.roomCode));
       const submitted = m.applyAction({
@@ -331,7 +336,7 @@ describe('RoomManager applyAction', () => {
         playerId,
         clientActionId: `color-answer-${index}`,
         expectedVersion: before.version,
-        action: { type: 'submitColors', colors: ['rojo'] },
+        action: { type: 'submitColors', colors: answer },
         now: NOW,
       });
       if (!submitted.ok) throw new Error(`respuesta falló: ${submitted.code}`);
@@ -659,6 +664,7 @@ describe('historial de preguntas de Colores', () => {
         if (current.gameId !== 'colores' || !current.colors) throw new Error('estado incorrecto');
         expect(seen.has(current.colors.questionId), current.colors.questionId).toBe(false);
         seen.add(current.colors.questionId);
+        const answer = colorQuestionById(current.colors.questionId).correctColors;
 
         for (const playerId of playerIds) {
           const before = stateOf(room(m, created.value.roomCode));
@@ -667,7 +673,7 @@ describe('historial de preguntas de Colores', () => {
             playerId,
             clientActionId: `color-${actionNumber++}`,
             expectedVersion: before.version,
-            action: { type: 'submitColors', colors: ['rojo'] },
+            action: { type: 'submitColors', colors: answer },
             now: NOW,
           });
           if (!submitted.ok) throw new Error(`respuesta falló: ${submitted.code}`);

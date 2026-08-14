@@ -11,14 +11,18 @@ describe('banco de preguntas de Colores', () => {
     expect(new Set(prompts).size).toBe(prompts.length);
   });
 
-  it('solo admite una respuesta disponible en el selector', () => {
+  it('admite de una a cuatro respuestas disponibles en el selector', () => {
     const validColors = new Set<string>(COLOR_NAMES);
 
     for (const question of COLOR_QUESTIONS) {
-      expect(question.allowMultiple, question.id).toBe(false);
-      expect(question.correctColors, question.id).toHaveLength(1);
+      expect(question.correctColors.length, question.id).toBeGreaterThanOrEqual(1);
+      expect(question.correctColors.length, question.id).toBeLessThanOrEqual(4);
+      expect(question.allowMultiple, question.id).toBe(question.correctColors.length > 1);
+      expect(new Set(question.correctColors).size, question.id).toBe(question.correctColors.length);
       expect(question.correctColors.every((color) => validColors.has(color)), question.id).toBe(true);
     }
+
+    expect(COLOR_QUESTIONS.filter((question) => question.allowMultiple).length).toBeGreaterThanOrEqual(80);
   });
 
   it('mantiene bancos temáticos amplios y categorías válidas', () => {

@@ -36,33 +36,6 @@ export const COLOR_NAMES = [
   'gris',
 ] as const;
 
-export type ColorRgb = readonly [number, number, number];
-
-/** Coordenadas sencillas para puntuar colores cercanos, no solo aciertos exactos. */
-export const COLOR_SPECS: Record<string, ColorRgb> = {
-  rojo: [220, 38, 38],
-  azul: [37, 99, 235],
-  verde: [22, 163, 74],
-  amarillo: [234, 179, 8],
-  naranja: [234, 88, 12],
-  morado: [126, 34, 206],
-  rosa: [236, 72, 153],
-  negro: [20, 20, 24],
-  blanco: [245, 245, 245],
-  'marr\u00f3n': [145, 92, 55],
-  gris: [128, 128, 128],
-};
-
-export function colorDistance(first: string, second: string): number {
-  const a = COLOR_SPECS[first];
-  const b = COLOR_SPECS[second];
-  if (!a || !b) return 1;
-  const distance = Math.sqrt(
-    ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) / 3,
-  );
-  return Math.min(1, distance / 255);
-}
-
 export { COLOR_QUESTIONS };
 
 export const MAJORITY_QUESTIONS: readonly MajorityQuestion[] = [

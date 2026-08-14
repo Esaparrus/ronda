@@ -94,6 +94,8 @@ export class RoomManager {
   private io: unknown = null;
   /** Un único temporizador de turno por sala; no existe para partidas sin tiempo. */
   private turnTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Plazo de Colores, creado solo después de la primera respuesta. */
+  private colorTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private inactivityTimeoutMs: number | undefined;
 
   constructor(hooksFactory: () => RoomHooks = () => ({}), options: RoomManagerOptions = {}) {
@@ -394,6 +396,7 @@ export class RoomManager {
     room.status = 'playing';
     room.touch(input.now);
     this.syncTurnTimer(room, null);
+    this.syncColorTimer(room);
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'game_started', { players: actives.length });
     return ok(null);
@@ -497,6 +500,7 @@ export class RoomManager {
       if (connected.length < minPlayersFor(room.gameId)) {
         room.status = 'gameEnd';
         this.clearTurnTimer(room.code);
+        this.clearColorTimer(room.code);
         const state = room.state;
         if (state?.gameId === 'mus') {
           // Mus, decisión 6 de P28 (§12.11): la partida se ANULA. No hay
@@ -589,6 +593,7 @@ export class RoomManager {
     room.processedActions.set(input.clientActionId, newState.version);
     room.touch(input.now);
     this.syncTurnTimer(room, currentState);
+    this.syncColorTimer(room);
 
     // Eventos cosméticos (una sola vez por acción).
     if (r.value.events.length > 0) {
@@ -663,6 +668,7 @@ export class RoomManager {
       rememberCurrentColorQuestion(room, room.state);
       room.status = 'playing';
       this.syncTurnTimer(room, previousState);
+      this.syncColorTimer(room);
       room.hooks.onTrack?.(room, 'rematch', {});
     }
     room.hooks.onSnapshot?.(room);
@@ -851,6 +857,74 @@ export class RoomManager {
     this.turnTimers.delete(roomCode);
   }
 
+  /** Programa la revelación de Colores a partir de la primera respuesta. */
+  private syncColorTimer(room: Room): void {
+    const state = room.state;
+    if (
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'colores' ||
+      state.phase !== 'input' ||
+      !state.colors ||
+      state.colors.deadlineAt === null
+    ) {
+      this.clearColorTimer(room.code);
+      return;
+    }
+    if (this.colorTimers.has(room.code)) return;
+
+    const deadlineAt = state.colors.deadlineAt;
+    const delayMs = Math.max(0, deadlineAt - Date.now());
+    const timer = setTimeout(() => {
+      if (this.colorTimers.get(room.code) !== timer) return;
+      this.handleColorTimeout(room.code, deadlineAt, Date.now());
+      if (this.colorTimers.get(room.code) === timer) this.colorTimers.delete(room.code);
+    }, delayMs);
+    timer.unref?.();
+    this.colorTimers.set(room.code, timer);
+  }
+
+  private clearColorTimer(roomCode: string): void {
+    const timer = this.colorTimers.get(roomCode);
+    if (timer) clearTimeout(timer);
+    this.colorTimers.delete(roomCode);
+  }
+
+  private handleColorTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
+    const room = this.rooms.get(roomCode);
+    const state = room?.state;
+    if (
+      !room ||
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'colores' ||
+      state.phase !== 'input' ||
+      !state.colors ||
+      state.colors.deadlineAt !== expectedDeadlineAt
+    ) {
+      return;
+    }
+    if (expectedDeadlineAt > now) {
+      this.clearColorTimer(room.code);
+      this.syncColorTimer(room);
+      return;
+    }
+
+    const actor = room.playersBySeat()[0];
+    if (!actor) return;
+    const result = this.applyAction({
+      roomCode,
+      playerId: actor.playerId,
+      clientActionId: `color-timeout:${roomCode}:${state.version}:${randomUUID()}`,
+      expectedVersion: state.version,
+      action: { type: 'finishColors' },
+      now,
+    });
+    if (result.ok) room.hooks.onColorTimeout?.(room);
+  }
+
   /**
    * El tiempo agotado no cierra por el jugador: roba del mazo y tira una carta
    * suelta legal. Así el cierre sigue siendo una decisión explícita y la mano
@@ -954,6 +1028,33 @@ export class RoomManager {
     return advanced;
   }
 
+  /** Respaldo para procesos suspendidos o callbacks perdidos del reloj de Colores. */
+  expireOverdueColorAnswers(now: number): number {
+    let revealed = 0;
+    for (const room of this.rooms.values()) {
+      const state = room.state;
+      if (
+        room.status !== 'playing' ||
+        !state ||
+        state.gameId !== 'colores' ||
+        state.status !== 'playing' ||
+        state.phase !== 'input' ||
+        !state.colors ||
+        state.colors.deadlineAt === null ||
+        state.colors.deadlineAt > now
+      ) {
+        continue;
+      }
+
+      const deadlineAt = state.colors.deadlineAt;
+      const versionBefore = state.version;
+      this.clearColorTimer(room.code);
+      this.handleColorTimeout(room.code, deadlineAt, now);
+      if (room.state?.version !== versionBefore) revealed += 1;
+    }
+    return revealed;
+  }
+
   /** Cierra cualquier sala que lleve demasiado tiempo sin mutación válida. */
   sweep(now: number): number {
     let closed = 0;
@@ -983,6 +1084,7 @@ export class RoomManager {
   /** Marca la sala como cerrada y la quita del mapa. */
   closeRoom(room: Room, reason: 'host_left' | 'empty' | 'expired'): void {
     this.clearTurnTimer(room.code);
+    this.clearColorTimer(room.code);
     room.status = 'closed';
     room.hooks.onClosed?.(room, reason);
     this.rooms.delete(room.code);

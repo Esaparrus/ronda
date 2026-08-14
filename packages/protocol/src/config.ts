@@ -108,7 +108,14 @@ const PARTY_MAX_PLAYERS = z.union([
   z.literal(6),
   z.literal(7),
 ]);
-const PARTY_ROUNDS = z.union([z.literal(5), z.literal(7), z.literal(10), z.literal(12)]);
+const PARTY_ROUNDS = z.union([
+  z.literal(5),
+  z.literal(7),
+  z.literal(10),
+  z.literal(12),
+  z.literal(15),
+  z.literal(20),
+]);
 const PARTY_POINTS = z.union([
   z.literal(5),
   z.literal(10),
@@ -157,12 +164,16 @@ export type ColorQuestionCategory = Exclude<ColorTopic, 'todo'>;
 export const ColoresConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('colores' satisfies GameId).default('colores'),
   maxPlayers: PARTY_MAX_PLAYERS.default(7),
-  rounds: PARTY_ROUNDS.default(10),
+  /** Red de seguridad: normalmente la partida termina antes al llegar a 10 puntos. */
+  rounds: PARTY_ROUNDS.default(20),
   pointsToWin: PARTY_POINTS.default(10),
   topic: ColorTopicSchema.default('todo'),
 });
 
 export type ColoresConfig = z.infer<typeof ColoresConfigSchema>;
+
+/** El primer jugador que responde abre este plazo para el resto de la mesa. */
+export const COLOR_ANSWER_SECONDS = 15;
 
 export const MayoriaConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('mayoria' satisfies GameId).default('mayoria'),

@@ -91,7 +91,8 @@ export function decidePartyAction(view: PartyPlayerView): GameAction | null {
     return value === undefined ? null : { type: 'playNumber', value };
   }
   if (view.gameId === 'colores') {
-    return { type: 'submitColors', colors: view.party.allowMultiple ? ['rojo', 'amarillo'] : ['rojo'] };
+    const colors = ['rojo', 'azul', 'verde', 'amarillo'].slice(0, view.party.answerCount);
+    return { type: 'submitColors', colors };
   }
   if (view.gameId === 'mayoria') {
     return { type: 'submitMajority', answer: 'pizza' };

@@ -93,6 +93,10 @@ export async function startServer(opts: {
       // agendarlo aquí o la sala queda esperando indefinidamente.
       if (botDeps) scheduleBotTurn(botDeps, room.code);
     },
+    onColorTimeout: (room) => {
+      // El cierre del plazo no pasa por un socket de jugador.
+      broadcastRoom(io, room);
+    },
     onTrack: (room, kind, payload) => {
       // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
       // no puede tumbar una partida. `void` porque el llamador (room-

@@ -1,6 +1,7 @@
 import type { ColorQuestion } from './content.ts';
 import { FLAG_COLOR_QUESTIONS } from './color-questions-flags.ts';
 import { LOGO_COLOR_QUESTIONS } from './color-questions-logos.ts';
+import { MULTI_COLOR_QUESTIONS } from './color-questions-multi.ts';
 
 type ColorQuestionSeed = Omit<ColorQuestion, 'category'>;
 
@@ -12,8 +13,8 @@ function inCategory(
 }
 
 /**
- * Banco de dificultad alta. Todas las preguntas apuntan a un único detalle
- * visual concreto y admiten exactamente una ficha de color como respuesta.
+ * Banco propio de dificultad media-alta. Las preguntas de detalle se mezclan
+ * con combinaciones de hasta cuatro colores, como exige el ritmo del juego.
  */
 export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   ...inCategory('animacion', [
@@ -687,4 +688,5 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   ]),
   ...LOGO_COLOR_QUESTIONS,
   ...FLAG_COLOR_QUESTIONS,
+  ...MULTI_COLOR_QUESTIONS,
 ];
