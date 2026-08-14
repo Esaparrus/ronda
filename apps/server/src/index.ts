@@ -13,6 +13,8 @@ import { broadcastClosed, broadcastRoom, broadcastToast } from './socket/broadca
 import { track } from './db/playtest-repo.ts';
 import { saveRoomStats } from './db/stats-repo.ts';
 import { scheduleBotTurn, type BotDriverDeps } from './rooms/bot-driver.ts';
+import { saveIncident } from './db/incidents-repo.ts';
+import { runMigrations } from './db/migrate.ts';
 import '@ronda/engine'; // registra los módulos de juego en GAMES (side effect).
 
 export type SnapshotHook = () => Promise<void>;
@@ -38,6 +40,10 @@ export async function startServer(opts: {
 
   // Persistencia (null si no hay BD disponible en tests).
   const dbConfig = { connectionString: config.DATABASE_URL };
+  if (config.NODE_ENV === 'production') {
+    const applied = await runMigrations(dbConfig);
+    logger.info('migraciones de base de datos listas', { applied });
+  }
   const persistence = new Persistence(dbConfig, logger);
 
   // RoomManager con hooks que difunden snapshots y persisten.
@@ -98,7 +104,13 @@ export async function startServer(opts: {
   });
 
   const { server } = createHttpServer({ countRooms: () => manager.countRooms() });
-  const { io, stopPeriodic } = createIoServer({ server, config, logger, manager });
+  const { io, stopPeriodic } = createIoServer({
+    server,
+    config,
+    logger,
+    manager,
+    saveIncident: (incident) => saveIncident(dbConfig, incident),
+  });
   // El manager puede usar io para difundir toasts/closed desde sus hooks.
   manager.setIo(io);
   botDeps = { io, mgr: manager, now: () => Date.now() };

@@ -7,6 +7,7 @@ import { RoomManager } from '../rooms/room-manager.ts';
 import { createIoServer } from '../io.ts';
 import { createLogger } from '../logger.ts';
 import { loadConfig } from '../config.ts';
+import type { IncidentInput } from '../db/incidents-repo.ts';
 import '@ronda/engine';
 
 const cfg = loadConfig({ DATABASE_URL: 'postgres://test', NODE_ENV: 'test' });
@@ -15,11 +16,22 @@ const logger = createLogger(cfg, { service: 'test' });
 let httpServer: Server;
 let port = 0;
 let mgr: RoomManager;
+const savedIncidents: IncidentInput[] = [];
+let rejectIncidentSave = false;
 
 beforeAll(async () => {
   httpServer = createServer();
   mgr = new RoomManager();
-  createIoServer({ server: httpServer, config: cfg, logger, manager: mgr });
+  createIoServer({
+    server: httpServer,
+    config: cfg,
+    logger,
+    manager: mgr,
+    saveIncident: async (incident) => {
+      if (rejectIncidentSave) throw new Error('database unavailable');
+      savedIncidents.push(incident);
+    },
+  });
   await new Promise<void>((resolve) => {
     httpServer.listen(0, () => {
       const addr = httpServer.address();
@@ -171,6 +183,7 @@ describe('integración socket', () => {
   }, 15000);
 
   it('diagnostic:report correlaciona el incidente y conserva la acción previa', async () => {
+    savedIncidents.length = 0;
     const c1 = client();
     await connect(c1);
     const { ack: createdAck } = await emitAndListen(c1, 'room:create', {
@@ -213,9 +226,63 @@ describe('integración socket', () => {
 
     expect(result.ok).toBe(true);
     expect(result.value?.incidentId).toBe('RND-A1B2C3D4');
+    expect(savedIncidents).toMatchObject([
+      {
+        incidentId: 'RND-A1B2C3D4',
+        roomCode: code,
+        gameId: 'chinchon',
+        reason: 'manual_block',
+      },
+    ]);
     expect(mgr.getRoomByCode(code)?.getDiagnosticActions()).toMatchObject([
       { clientActionId: 'action-before-report', result: 'INVALID_ACTION' },
     ]);
     c1.close();
+  }, 15000);
+
+  it('diagnostic:report no confirma el envío si la base de datos falla', async () => {
+    const c1 = client();
+    await connect(c1);
+    const { ack: createdAck } = await emitAndListen(c1, 'room:create', {
+      gameId: 'chinchon',
+      config: { gameId: 'chinchon' },
+      nick: 'Ana',
+    });
+    const code = (createdAck as { value: { roomCode: string } }).value.roomCode;
+
+    rejectIncidentSave = true;
+    try {
+      const result = (await emitAck(c1, 'diagnostic:report', {
+        incidentId: 'RND-DBFAIL01',
+        reason: 'manual_block',
+        occurredAt: Date.now(),
+        path: `/sala/${code}`,
+        release: 'test',
+        userAgent: 'vitest',
+        context: {
+          roomCode: code,
+          playerId: 'p1',
+          gameId: 'chinchon',
+          viewKind: 'player',
+          status: 'lobby',
+          phase: null,
+          version: 0,
+          connection: 'online',
+          pendingAction: false,
+          pendingSince: null,
+        },
+        entries: [],
+        error: null,
+      })) as { ok: boolean; code?: string; detail?: string };
+
+      expect(result).toEqual({
+        ok: false,
+        code: 'INTERNAL',
+        detail: 'INCIDENT_NOT_STORED',
+      });
+    } finally {
+      rejectIncidentSave = false;
+      c1.close();
+    }
   }, 15000);
 });

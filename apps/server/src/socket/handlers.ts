@@ -21,6 +21,7 @@ import {
 } from '@ronda/protocol';
 import { broadcastRoom, broadcastReaction, broadcastToast } from './broadcast.ts';
 import { scheduleBotTurn } from '../rooms/bot-driver.ts';
+import type { IncidentInput } from '../db/incidents-repo.ts';
 
 /** Estado por socket: a qué sala/jugador está ligado. */
 export interface SocketState {
@@ -38,7 +39,8 @@ export interface HandlerDeps {
   mgr: RoomManager;
   rateLimiter: RateLimiter;
   states: Map<string, SocketState>;
-  logger?: Pick<Logger, 'info'>;
+  logger?: Pick<Logger, 'info' | 'error'>;
+  saveIncident?: (incident: IncidentInput) => Promise<void>;
   now: () => number;
 }
 
@@ -314,7 +316,7 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
   });
 
   // --- diagnostic:report ---
-  socket.on('diagnostic:report', (payload, ack) => {
+  socket.on('diagnostic:report', async (payload, ack) => {
     const respond: Respond = (e) => ack(e);
     if (!guard(deps, sid, 'diagnostic:report', payload, respond)) return;
     const st = deps.states.get(sid);
@@ -390,6 +392,34 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
       gameId: room.gameId,
       ...diagnostic,
     });
+
+    try {
+      await deps.saveIncident?.({
+        incidentId: payload.incidentId,
+        roomCode: room.code,
+        gameId: room.gameId,
+        reason: payload.reason,
+        occurredAt: payload.occurredAt,
+        receivedAt,
+        release: payload.release,
+        path: payload.path,
+        clientStatus: payload.context.status,
+        clientPhase: payload.context.phase,
+        pendingAction: payload.context.pendingAction,
+        errorName: payload.error?.name ?? null,
+        errorMessage: payload.error?.message ?? null,
+        payload: diagnostic,
+      });
+    } catch (error) {
+      deps.logger?.error('no se pudo guardar el informe de diagnóstico', {
+        incidentId: payload.incidentId,
+        detail: error instanceof Error ? error.message : String(error),
+      });
+      // El cliente conserva el mismo informe en su cola y lo reintenta al
+      // reconectar. Nunca mostramos “enviado” si PostgreSQL no lo confirmó.
+      ack({ ok: false, code: 'INTERNAL', detail: 'INCIDENT_NOT_STORED' });
+      return;
+    }
     ack(ok({ incidentId: payload.incidentId }));
   });
 

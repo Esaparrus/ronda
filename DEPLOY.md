@@ -1,5 +1,28 @@
 # Despliegue
 
+## Producción actual: Vercel + Render + Neon
+
+- Web: Vercel.
+- Servidor Socket.IO: Render.
+- PostgreSQL duradero: Neon, recurso `ronda-database` enlazado al proyecto de
+  Vercel. La misma `DATABASE_URL` se configura como secreto en Render.
+- En producción el servidor aplica automáticamente las migraciones pendientes
+  antes de empezar a aceptar conexiones. Si la base de datos no está
+  disponible, el despliegue falla en vez de arrancar sin persistencia.
+
+Las alertas de la bandera se guardan en `incidents`. Para revisar el buzón:
+
+```bash
+pnpm incidents                       # grupos nuevos, más recientes primero
+pnpm incidents -- --all              # todos los estados
+pnpm incident -- RND-A1B2C3D4        # detalle de una incidencia
+pnpm incident -- RND-A1B2C3D4 investigating
+pnpm incident -- RND-A1B2C3D4 fixed "corregido en el despliegue abc123"
+```
+
+Los scripts locales leen `.env.local`, generado con `vercel env pull`. Ese
+archivo está ignorado por Git y nunca debe copiarse al repositorio.
+
 Contrato P19 (`02-PAQUETES.md`). Tres piezas, tres plataformas: base de datos
 (Supabase o Neon, solo como Postgres), servidor de partida (Fly.io, `fly.toml`
 y `Dockerfile` en la raíz de este repo) y web (Vercel, raíz `apps/web`). El

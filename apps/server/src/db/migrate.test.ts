@@ -28,7 +28,14 @@ describe.skipIf(!hasDb)('migraciones (Postgres real)', () => {
   });
 
   it('las tablas del contrato existen', async () => {
-    for (const t of ['rooms', 'players', 'matches', 'match_events', 'playtest_events']) {
+    for (const t of [
+      'rooms',
+      'players',
+      'matches',
+      'match_events',
+      'playtest_events',
+      'incidents',
+    ]) {
       const res = await query(config, 'select to_regclass($1) as exists', [`public.${t}`]);
       expect(res.rows[0]?.exists).not.toBeNull();
     }
