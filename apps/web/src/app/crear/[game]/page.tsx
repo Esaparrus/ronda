@@ -5,7 +5,20 @@
 import { notFound } from 'next/navigation';
 import { CrearForm } from './_components/CrearForm';
 
-const GAME_IDS = ['chinchon', 'pocha', 'mus', 'orden', 'colores', 'mayoria', 'escala'] as const;
+const GAME_IDS = [
+  'chinchon',
+  'pocha',
+  'mus',
+  'brisca',
+  'escoba',
+  'sieteymedia',
+  'tute',
+  'cinquillo',
+  'orden',
+  'colores',
+  'mayoria',
+  'escala',
+] as const;
 type SupportedGameId = (typeof GAME_IDS)[number];
 
 function isSupportedGame(g: string): g is SupportedGameId {

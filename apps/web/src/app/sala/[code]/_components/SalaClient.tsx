@@ -29,6 +29,7 @@ import { MusGameScreen } from './MusGameScreen';
 import { MusRoundEndScreen } from './MusRoundEndScreen';
 import { MusGameEndScreen } from './MusGameEndScreen';
 import { PartyGameScreen } from './PartyGameScreen';
+import { ClassicGameScreen } from './ClassicGameScreen';
 
 export interface SalaClientProps {
   code: string;
@@ -206,6 +207,14 @@ export function SalaClient({ code }: SalaClientProps) {
         <PochaGameScreen view={view} />
       ) : null}
       {view.status === 'playing' && view.gameId === 'mus' ? <MusGameScreen view={view} /> : null}
+      {view.status === 'playing' &&
+      (view.gameId === 'brisca' ||
+        view.gameId === 'escoba' ||
+        view.gameId === 'sieteymedia' ||
+        view.gameId === 'tute' ||
+        view.gameId === 'cinquillo') ? (
+        <ClassicGameScreen view={view} />
+      ) : null}
       {view.status === 'playing' &&
       (view.gameId === 'orden' ||
         view.gameId === 'colores' ||

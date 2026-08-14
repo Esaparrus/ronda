@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import type {
   ChinchonConfig,
+  ClassicConfig,
   GameConfig,
   MusConfig,
   PlayerView,
@@ -97,6 +98,11 @@ export function Lobby({ view }: LobbyProps) {
     void useRondaStore.getState().updateConfig({ [key]: value } as Partial<MusConfig>);
   }
 
+  function setClassicMaxPlayers(maxPlayers: number) {
+    setConfig((prev) => ({ ...(prev as ClassicConfig), maxPlayers }) as ClassicConfig);
+    void useRondaStore.getState().updateConfig({ maxPlayers } as Partial<ClassicConfig>);
+  }
+
   /** Mus: marca a un jugador, o lo intercambia con el ya marcado. */
   async function handleSeatTap(playerId: string) {
     if (swapFrom === null) {
@@ -132,6 +138,12 @@ export function Lobby({ view }: LobbyProps) {
   // las dos parejas. Mismo criterio que `minPlayersFor` del servidor
   // (apps/server/src/rooms/room-manager.ts).
   const isMus = view.gameId === 'mus';
+  const isClassic =
+    view.gameId === 'brisca' ||
+    view.gameId === 'escoba' ||
+    view.gameId === 'sieteymedia' ||
+    view.gameId === 'tute' ||
+    view.gameId === 'cinquillo';
   const isParty =
     view.gameId === 'orden' ||
     view.gameId === 'colores' ||
@@ -266,6 +278,11 @@ export function Lobby({ view }: LobbyProps) {
             <MusVariantsSection config={config as MusConfig} setField={setMusField} />
           ) : view.gameId === 'pocha' ? (
             <PochaVariantsSection config={config as PochaConfig} setField={setPochaField} />
+          ) : isClassic ? (
+            <ClassicVariantsSection
+              config={config as ClassicConfig}
+              setMaxPlayers={setClassicMaxPlayers}
+            />
           ) : (
             <ChinchonVariantsSection config={config as ChinchonConfig} setField={setChinchonField} />
           )}
@@ -378,6 +395,40 @@ function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionPr
         ]}
       />
     </>
+  );
+}
+
+function ClassicVariantsSection({
+  config,
+  setMaxPlayers,
+}: {
+  config: ClassicConfig;
+  setMaxPlayers: (value: number) => void;
+}) {
+  const maximum =
+    config.gameId === 'tute'
+      ? 2
+      : config.gameId === 'cinquillo'
+        ? 6
+        : config.gameId === 'sieteymedia'
+          ? 7
+          : 4;
+  return (
+    <QuantityStepper
+      legend="Jugadores"
+      helperText={
+        config.gameId === 'tute'
+          ? 'Esta modalidad inicial de Tute se juega a dos.'
+          : 'Cuántos jugadores puede tener la sala.'
+      }
+      value={config.maxPlayers}
+      onChange={setMaxPlayers}
+      options={Array.from({ length: maximum - 1 }, (_, index) => ({
+        value: index + 2,
+        label: String(index + 2),
+      }))}
+      valueSuffix="personas"
+    />
   );
 }
 

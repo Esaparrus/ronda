@@ -7,14 +7,20 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import {
   DEFAULT_CONFIG,
+  DEFAULT_BRISCA_CONFIG,
+  DEFAULT_CINQUILLO_CONFIG,
   DEFAULT_COLORES_CONFIG,
+  DEFAULT_ESCOBA_CONFIG,
   DEFAULT_ESCALA_CONFIG,
   DEFAULT_MAYORIA_CONFIG,
   DEFAULT_MUS_CONFIG,
   DEFAULT_ORDEN_CONFIG,
   DEFAULT_POCHA_CONFIG,
+  DEFAULT_SIETE_Y_MEDIA_CONFIG,
+  DEFAULT_TUTE_CONFIG,
   messageFor,
   type ChinchonConfig,
+  type ClassicConfig,
   type ColorTopic,
   type GameId,
   type MusConfig,
@@ -43,15 +49,11 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [chinchonConfig, setChinchonConfig] = useState<ChinchonConfig>(DEFAULT_CONFIG);
   const [pochaConfig, setPochaConfig] = useState<PochaConfig>(DEFAULT_POCHA_CONFIG);
   const [musConfig, setMusConfig] = useState<MusConfig>(DEFAULT_MUS_CONFIG);
+  const [classicConfig, setClassicConfig] = useState<ClassicConfig>(() => classicDefaults(gameId));
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
   const [submitting, setSubmitting] = useState(false);
 
-  const title =
-    gameId === 'mus'
-      ? 'Crear partida de Mus'
-      : gameId === 'pocha'
-        ? 'Crear partida de Pocha'
-        : 'Crear partida de Chinchón';
+  const title = `Crear partida de ${gameTitle(gameId)}`;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -67,6 +69,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
         ? musConfig
         : gameId === 'pocha'
           ? pochaConfig
+          : isClassicGame(gameId)
+            ? classicConfig
           : isPartyGame(gameId)
             ? partyConfig
             : chinchonConfig;
@@ -84,7 +88,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
       <header className="flex flex-col gap-2">
         <span className="eyebrow">Nueva mesa</span>
         <h1 className="font-display text-40 leading-display text-hueso">
-          {isPartyGame(gameId) ? gameTitle(gameId) : title}
+          {isPartyGame(gameId) ? `Crear partida de ${gameTitle(gameId)}` : title}
         </h1>
         <p className="text-14 text-humo">
           Deja la partida a vuestro gusto. Podrás revisar los ajustes en la sala.
@@ -116,6 +120,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
           <MusVariants config={musConfig} setConfig={setMusConfig} />
         ) : gameId === 'pocha' ? (
           <PochaVariants config={pochaConfig} setConfig={setPochaConfig} />
+        ) : isClassicGame(gameId) ? (
+          <ClassicVariants config={classicConfig} setConfig={setClassicConfig} />
         ) : isPartyGame(gameId) ? (
           <PartyVariants config={partyConfig} setConfig={setPartyConfig} />
         ) : (
@@ -391,6 +397,24 @@ function isPartyGame(gameId: GameId): gameId is PartyConfig['gameId'] {
   return gameId === 'orden' || gameId === 'colores' || gameId === 'mayoria' || gameId === 'escala';
 }
 
+function isClassicGame(gameId: GameId): gameId is ClassicConfig['gameId'] {
+  return (
+    gameId === 'brisca' ||
+    gameId === 'escoba' ||
+    gameId === 'sieteymedia' ||
+    gameId === 'tute' ||
+    gameId === 'cinquillo'
+  );
+}
+
+function classicDefaults(gameId: GameId): ClassicConfig {
+  if (gameId === 'escoba') return DEFAULT_ESCOBA_CONFIG;
+  if (gameId === 'sieteymedia') return DEFAULT_SIETE_Y_MEDIA_CONFIG;
+  if (gameId === 'tute') return DEFAULT_TUTE_CONFIG;
+  if (gameId === 'cinquillo') return DEFAULT_CINQUILLO_CONFIG;
+  return DEFAULT_BRISCA_CONFIG;
+}
+
 function partyDefaults(gameId: GameId): PartyConfig {
   if (gameId === 'colores') return DEFAULT_COLORES_CONFIG;
   if (gameId === 'mayoria') return DEFAULT_MAYORIA_CONFIG;
@@ -399,11 +423,67 @@ function partyDefaults(gameId: GameId): PartyConfig {
 }
 
 function gameTitle(gameId: GameId): string {
-  if (gameId === 'orden') return 'Crear partida de Orden';
-  if (gameId === 'colores') return 'Crear partida de Colores';
-  if (gameId === 'mayoria') return 'Crear partida de Mayoria';
-  if (gameId === 'escala') return 'Crear partida de Escala';
-  return gameId === 'mus' ? 'Crear partida de Mus' : gameId === 'pocha' ? 'Crear partida de Pocha' : 'Crear partida de Chinchon';
+  if (gameId === 'orden') return 'Orden';
+  if (gameId === 'colores') return 'Colores';
+  if (gameId === 'mayoria') return 'Mayoría';
+  if (gameId === 'escala') return 'Escala';
+  if (gameId === 'brisca') return 'Brisca';
+  if (gameId === 'escoba') return 'Escoba';
+  if (gameId === 'sieteymedia') return 'Siete y media';
+  if (gameId === 'tute') return 'Tute';
+  if (gameId === 'cinquillo') return 'Cinquillo';
+  if (gameId === 'mus') return 'Mus';
+  if (gameId === 'pocha') return 'Pocha';
+  return 'Chinchón';
+}
+
+interface ClassicVariantsProps {
+  config: ClassicConfig;
+  setConfig: (fn: (prev: ClassicConfig) => ClassicConfig) => void;
+}
+
+function ClassicVariants({ config, setConfig }: ClassicVariantsProps) {
+  const maximum =
+    config.gameId === 'tute'
+      ? 2
+      : config.gameId === 'cinquillo'
+        ? 6
+        : config.gameId === 'sieteymedia'
+          ? 7
+          : 4;
+  const options = Array.from({ length: maximum - 1 }, (_, index) => index + 2).map((value) => ({
+    value,
+    label: String(value),
+  }));
+
+  return (
+    <>
+      <QuantityStepper
+        legend="Jugadores"
+        helperText={
+          config.gameId === 'tute'
+            ? 'Esta modalidad inicial de Tute se juega a dos.'
+            : 'Máximo de personas en la sala.'
+        }
+        value={config.maxPlayers}
+        onChange={(maxPlayers) =>
+          setConfig((previous) => ({ ...previous, maxPlayers }) as ClassicConfig)
+        }
+        options={options}
+        valueSuffix="personas"
+      />
+      <SegmentedControl
+        legend="Sonido"
+        helperText="Activa los sonidos de la partida."
+        value={config.soundEnabled}
+        onChange={(soundEnabled) => setConfig((previous) => ({ ...previous, soundEnabled }))}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+    </>
+  );
 }
 
 interface PartyVariantsProps {

@@ -16,6 +16,9 @@ import type {
   ChinchonCommonView,
   ChinchonPlayerView,
   ChinchonTableView,
+  ClassicCommonView,
+  ClassicPlayerView,
+  ClassicTableView,
   GameEvent,
   MusCommonView,
   MusPlayerView,
@@ -102,6 +105,50 @@ function buildPochaLobbyCommon(room: Room): PochaCommonView {
     leadSuit: null,
     roundResult: null,
   };
+}
+
+function buildClassicLobbyCommon(room: Room): ClassicCommonView {
+  return {
+    roomCode: room.code,
+    gameId: room.gameId as ClassicCommonView['gameId'],
+    config: room.config as ClassicCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    phase:
+      room.gameId === 'escoba'
+        ? 'capture'
+        : room.gameId === 'sieteymedia'
+          ? 'draw'
+          : room.gameId === 'cinquillo'
+            ? 'layout'
+            : 'trick',
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    rematchVotes: [],
+    deckCount: 0,
+    trumpCardId: null,
+    trumpSuit: null,
+    currentTrick: [],
+    tableCards: [],
+    capturedCounts: [],
+    escobas: [],
+    bankerPlayerId: null,
+    totals: [],
+    stoodPlayerIds: [],
+    bustPlayerIds: [],
+    revealedHands: [],
+  };
+}
+
+function isClassicGame(gameId: Room['gameId']): boolean {
+  return (
+    gameId === 'brisca' ||
+    gameId === 'escoba' ||
+    gameId === 'sieteymedia' ||
+    gameId === 'tute' ||
+    gameId === 'cinquillo'
+  );
 }
 
 /** Misma idea, con la forma de Mus (§12.12). El marcador de parejas ya
@@ -274,6 +321,14 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
     };
     return view;
   }
+  if (isClassicGame(room.gameId)) {
+    const view: ClassicPlayerView = {
+      kind: 'player',
+      ...buildClassicLobbyCommon(room),
+      me: { playerId, hand: [], legalCardIds: [], total: null, availableActions: [] },
+    };
+    return view;
+  }
   const view: ChinchonPlayerView = {
     kind: 'player',
     ...buildChinchonLobbyCommon(room),
@@ -307,6 +362,10 @@ function lobbyTableView(room: Room): TableView {
   }
   if (room.gameId === 'pocha') {
     const view: PochaTableView = { kind: 'table', ...buildPochaLobbyCommon(room) };
+    return view;
+  }
+  if (isClassicGame(room.gameId)) {
+    const view: ClassicTableView = { kind: 'table', ...buildClassicLobbyCommon(room) };
     return view;
   }
   const view: ChinchonTableView = { kind: 'table', ...buildChinchonLobbyCommon(room) };

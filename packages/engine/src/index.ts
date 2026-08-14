@@ -110,3 +110,24 @@ export {
   type MajorityRoundState,
   type ScaleRoundState,
 } from './games/party/index.ts';
+
+// Registro de Brisca, Escoba, Siete y media, Tute y Cinquillo.
+import './games/classics/index.ts';
+export {
+  briscaModule,
+  escobaModule,
+  sieteYMediaModule,
+  tuteModule,
+  cinquilloModule,
+  createClassicState,
+  applyClassicAction,
+  getClassicPlayerView,
+  getClassicTableView,
+  trickPoints,
+  escobaValue,
+  sevenHalfValue,
+  sevenHalfTotal,
+  cinquilloLegal,
+  type ClassicState,
+  type ClassicPlayer,
+} from './games/classics/index.ts';

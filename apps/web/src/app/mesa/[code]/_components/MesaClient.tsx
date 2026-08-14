@@ -31,6 +31,7 @@ import { MusMesaGameBoard } from './MusMesaGameBoard';
 import { MusMesaRoundEndScreen } from './MusMesaRoundEndScreen';
 import { MusMesaGameEndScreen } from './MusMesaGameEndScreen';
 import { PartyMesaGameBoard } from './PartyMesaGameBoard';
+import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
 
 export interface MesaClientProps {
   code: string;
@@ -125,6 +126,14 @@ export function MesaClient({ code }: MesaClientProps) {
       ) : null}
       {tableView.status === 'playing' && tableView.gameId === 'mus' ? (
         <MusMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'playing' &&
+      (tableView.gameId === 'brisca' ||
+        tableView.gameId === 'escoba' ||
+        tableView.gameId === 'sieteymedia' ||
+        tableView.gameId === 'tute' ||
+        tableView.gameId === 'cinquillo') ? (
+        <ClassicMesaGameBoard view={tableView} />
       ) : null}
       {tableView.status === 'playing' &&
       (tableView.gameId === 'orden' ||

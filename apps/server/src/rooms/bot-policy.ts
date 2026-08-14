@@ -10,12 +10,13 @@
 import type {
   CardId,
   ChinchonPlayerView,
+  ClassicPlayerView,
   GameAction,
   PartyPlayerView,
   PochaPlayerView,
 } from '@ronda/protocol';
 import { cardPoints, parseCardId } from '@ronda/protocol';
-import { fuerza } from '@ronda/engine';
+import { escobaValue, fuerza } from '@ronda/engine';
 
 export function decideChinchonAction(view: ChinchonPlayerView): GameAction | null {
   const me = view.me;
@@ -99,6 +100,43 @@ export function decidePartyAction(view: PartyPlayerView): GameAction | null {
   }
   if (view.party.cluePlayerId === view.me.playerId) return null;
   return { type: 'submitScale', value: 50 };
+}
+
+/** Jugada legal y determinista para los cinco clásicos. */
+export function decideClassicAction(view: ClassicPlayerView): GameAction | null {
+  const actions = new Set(view.me.availableActions);
+  if (actions.has('drawDeck')) {
+    return (view.me.total ?? 0) < 5.5 ? { type: 'drawDeck' } : { type: 'stand' };
+  }
+  if (actions.has('stand')) return { type: 'stand' };
+  if (actions.has('pass')) return { type: 'pass' };
+  if (actions.has('playCapture')) {
+    const cardId = view.me.hand[0];
+    if (!cardId) return null;
+    return {
+      type: 'playCapture',
+      cardId,
+      captureIds: captureCombination(cardId, view.tableCards),
+    };
+  }
+  if (actions.has('playCard')) {
+    const cardId = view.me.legalCardIds[0];
+    return cardId ? { type: 'playCard', cardId } : null;
+  }
+  return null;
+}
+
+function captureCombination(cardId: CardId, table: readonly CardId[]): CardId[] {
+  const target = 15 - escobaValue(cardId);
+  function search(index: number, remaining: number, selected: CardId[]): CardId[] | null {
+    if (remaining === 0) return selected;
+    if (remaining < 0 || index >= table.length) return null;
+    const card = table[index];
+    if (!card) return null;
+    const taking = search(index + 1, remaining - escobaValue(card), [...selected, card]);
+    return taking ?? search(index + 1, remaining, selected);
+  }
+  return search(0, target, []) ?? [];
 }
 
 /**

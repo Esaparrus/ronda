@@ -20,6 +20,7 @@ import { z } from 'zod';
 import type { CardId, PlayerId, RoomCode } from './ids.ts';
 import type { Suit } from './cards.ts';
 import type {
+  ClassicConfig,
   ChinchonConfig,
   ColoresConfig,
   EscalaConfig,
@@ -37,6 +38,16 @@ export type AvailableAction = 'drawDeck' | 'drawDiscard' | 'discard' | 'close';
 
 /** Acción de juego disponible para el jugador en este momento (Pocha). */
 export type PochaAvailableAction = 'bid' | 'playCard' | 'nextRound';
+
+/** Los cinco clásicos añadidos como una familia de vistas homogénea. */
+export type ClassicGameId = 'brisca' | 'escoba' | 'sieteymedia' | 'tute' | 'cinquillo';
+export type ClassicPhase = 'trick' | 'capture' | 'draw' | 'banker' | 'layout';
+export type ClassicAvailableAction =
+  | 'playCard'
+  | 'playCapture'
+  | 'drawDeck'
+  | 'stand'
+  | 'pass';
 
 /**
  * Jugador público (sin mano). Compartido por ambos juegos: los campos son
@@ -179,6 +190,44 @@ export interface PochaRoundResultRow {
 
 export interface PochaRoundResult {
   rows: PochaRoundResultRow[];
+}
+
+// --- Clásicos de baraja española -----------------------------------------
+
+export interface ClassicCommonView extends CommonViewBase {
+  gameId: ClassicGameId;
+  config: ClassicConfig;
+  phase: ClassicPhase;
+  deckCount: number;
+  trumpCardId: CardId | null;
+  trumpSuit: Suit | null;
+  currentTrick: { playerId: PlayerId; cardId: CardId }[];
+  tableCards: CardId[];
+  capturedCounts: number[];
+  escobas: number[];
+  bankerPlayerId: PlayerId | null;
+  totals: (number | null)[];
+  stoodPlayerIds: PlayerId[];
+  bustPlayerIds: PlayerId[];
+  /** Solo contiene manos que ya son públicas; nunca cartas activas ajenas. */
+  revealedHands: { playerId: PlayerId; cards: CardId[] }[];
+}
+
+export interface ClassicPlayerViewMe {
+  playerId: PlayerId;
+  hand: CardId[];
+  legalCardIds: CardId[];
+  total: number | null;
+  availableActions: ClassicAvailableAction[];
+}
+
+export interface ClassicPlayerView extends ClassicCommonView {
+  kind: 'player';
+  me: ClassicPlayerViewMe;
+}
+
+export interface ClassicTableView extends ClassicCommonView {
+  kind: 'table';
 }
 
 // --- Mus (nuevo en P28; §12.12) ---------------------------------------------
@@ -469,9 +518,24 @@ export type PartyTableView =
 
 // --- Uniones públicas (§2.5, ensanchadas en P22, P28 y modos sociales) ------
 
-export type CommonView = ChinchonCommonView | PochaCommonView | MusCommonView | PartyCommonView;
-export type PlayerView = ChinchonPlayerView | PochaPlayerView | MusPlayerView | PartyPlayerView;
-export type TableView = ChinchonTableView | PochaTableView | MusTableView | PartyTableView;
+export type CommonView =
+  | ChinchonCommonView
+  | PochaCommonView
+  | MusCommonView
+  | ClassicCommonView
+  | PartyCommonView;
+export type PlayerView =
+  | ChinchonPlayerView
+  | PochaPlayerView
+  | MusPlayerView
+  | ClassicPlayerView
+  | PartyPlayerView;
+export type TableView =
+  | ChinchonTableView
+  | PochaTableView
+  | MusTableView
+  | ClassicTableView
+  | PartyTableView;
 
 // --- Esquemas zod (tipo derivado por z.infer donde coincide) -----------------
 // Nota: no había (ni hay) un PlayerViewSchema/TableViewSchema en zod -- las

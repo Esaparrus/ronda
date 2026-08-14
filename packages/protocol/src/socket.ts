@@ -4,13 +4,18 @@ import { z } from 'zod';
 import { GameActionSchema } from './actions.ts';
 import {
   ChinchonConfigSchema,
+  BriscaConfigSchema,
+  CinquilloConfigSchema,
   ColoresConfigSchema,
+  EscobaConfigSchema,
   EscalaConfigSchema,
   GameConfigSchema,
   MayoriaConfigSchema,
   MusConfigSchema,
   OrdenConfigSchema,
   PochaConfigSchema,
+  SieteYMediaConfigSchema,
+  TuteConfigSchema,
 } from './config.ts';
 import type { GameEvent } from './events.ts';
 import type { GameId, PlayerId, RoomCode } from './ids.ts';
@@ -258,6 +263,11 @@ const roomCreateSchema = z.object({
     z.literal('chinchon'),
     z.literal('pocha'),
     z.literal('mus'),
+    z.literal('brisca'),
+    z.literal('escoba'),
+    z.literal('sieteymedia'),
+    z.literal('tute'),
+    z.literal('cinquillo'),
     z.literal('orden'),
     z.literal('colores'),
     z.literal('mayoria'),
@@ -287,6 +297,11 @@ const roomConfigSchema = z.object({
     ChinchonConfigSchema.partial(),
     PochaConfigSchema.partial(),
     MusConfigSchema.partial(),
+    BriscaConfigSchema.partial(),
+    EscobaConfigSchema.partial(),
+    SieteYMediaConfigSchema.partial(),
+    TuteConfigSchema.partial(),
+    CinquilloConfigSchema.partial(),
     OrdenConfigSchema.partial(),
     ColoresConfigSchema.partial(),
     MayoriaConfigSchema.partial(),

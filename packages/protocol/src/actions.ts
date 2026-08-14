@@ -25,6 +25,16 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   // simplemente no las acepta. ---
   z.object({ type: z.literal('bid'), amount: z.number().int() }),
   z.object({ type: z.literal('playCard'), cardId: cardIdField }),
+  // --- Clásicos de baraja española ---------------------------------------
+  // Escoba juega una carta y, opcionalmente, recoge un subconjunto de la
+  // mesa. Siete y media reutiliza `drawDeck`; Cinquillo necesita poder pasar.
+  z.object({
+    type: z.literal('playCapture'),
+    cardId: cardIdField,
+    captureIds: z.array(cardIdField),
+  }),
+  z.object({ type: z.literal('stand') }),
+  z.object({ type: z.literal('pass') }),
   // --- Mus (§12.12, P27/P28). De las acciones de arriba solo `nextRound` se
   // reutiliza (confirmar el fin de mano); el resto es vocabulario de Chinchón
   // o de Pocha y `applyAction` de Mus no las acepta. ---

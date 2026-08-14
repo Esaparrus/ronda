@@ -96,6 +96,73 @@ export const MusConfigSchema = CommonGameConfigSchema.extend({
 
 export type MusConfig = z.infer<typeof MusConfigSchema>;
 
+// --- Clásicos de baraja española -----------------------------------------
+
+const CLASSIC_TWO_TO_FOUR = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+]);
+
+const CLASSIC_TWO_TO_SEVEN = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+
+const CLASSIC_TWO_TO_SIX = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+]);
+
+/** Brisca individual. La primera versión prioriza 2–4 sin señas ni parejas. */
+export const BriscaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('brisca' satisfies GameId).default('brisca'),
+  maxPlayers: CLASSIC_TWO_TO_FOUR.default(4),
+});
+export type BriscaConfig = z.infer<typeof BriscaConfigSchema>;
+
+/** Escoba del 15 individual, una baraja y una mano completa por partida. */
+export const EscobaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('escoba' satisfies GameId).default('escoba'),
+  maxPlayers: CLASSIC_TWO_TO_FOUR.default(4),
+});
+export type EscobaConfig = z.infer<typeof EscobaConfigSchema>;
+
+/** Siete y media con banca rotatoria: una ronda de banca por participante. */
+export const SieteYMediaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('sieteymedia' satisfies GameId).default('sieteymedia'),
+  maxPlayers: CLASSIC_TWO_TO_SEVEN.default(7),
+});
+export type SieteYMediaConfig = z.infer<typeof SieteYMediaConfigSchema>;
+
+/** Tute de dos, con baceta, triunfo y obligación de asistir al agotarla. */
+export const TuteConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('tute' satisfies GameId).default('tute'),
+  maxPlayers: z.literal(2).default(2),
+});
+export type TuteConfig = z.infer<typeof TuteConfigSchema>;
+
+/** Cinquillo sobre baraja española de 40 cartas. */
+export const CinquilloConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('cinquillo' satisfies GameId).default('cinquillo'),
+  maxPlayers: CLASSIC_TWO_TO_SIX.default(6),
+});
+export type CinquilloConfig = z.infer<typeof CinquilloConfigSchema>;
+
+export type ClassicConfig =
+  | BriscaConfig
+  | EscobaConfig
+  | SieteYMediaConfig
+  | TuteConfig
+  | CinquilloConfig;
+
 // --- Modos sociales ---------------------------------------------------------
 
 /** Los modos de mesa están pensados para una cuadrilla, no para una partida
@@ -201,12 +268,22 @@ export type PartyConfig = OrdenConfig | ColoresConfig | MayoriaConfig | EscalaCo
  * Config válida para cualquier juego. Unión discriminada por `gameId`
  * (§10.2). Antes de P22 era, en la práctica, un alias de `ChinchonConfig`.
  */
-export type GameConfig = ChinchonConfig | PochaConfig | MusConfig | PartyConfig;
+export type GameConfig =
+  | ChinchonConfig
+  | PochaConfig
+  | MusConfig
+  | ClassicConfig
+  | PartyConfig;
 
 export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ChinchonConfigSchema,
   PochaConfigSchema,
   MusConfigSchema,
+  BriscaConfigSchema,
+  EscobaConfigSchema,
+  SieteYMediaConfigSchema,
+  TuteConfigSchema,
+  CinquilloConfigSchema,
   OrdenConfigSchema,
   ColoresConfigSchema,
   MayoriaConfigSchema,
@@ -228,6 +305,12 @@ export const DEFAULT_POCHA_CONFIG: PochaConfig = PochaConfigSchema.parse({});
 
 /** Config de Mus por defecto, mismo patrón que `DEFAULT_CONFIG` de arriba. */
 export const DEFAULT_MUS_CONFIG: MusConfig = MusConfigSchema.parse({});
+
+export const DEFAULT_BRISCA_CONFIG: BriscaConfig = BriscaConfigSchema.parse({});
+export const DEFAULT_ESCOBA_CONFIG: EscobaConfig = EscobaConfigSchema.parse({});
+export const DEFAULT_SIETE_Y_MEDIA_CONFIG: SieteYMediaConfig = SieteYMediaConfigSchema.parse({});
+export const DEFAULT_TUTE_CONFIG: TuteConfig = TuteConfigSchema.parse({});
+export const DEFAULT_CINQUILLO_CONFIG: CinquilloConfig = CinquilloConfigSchema.parse({});
 
 export const DEFAULT_ORDEN_CONFIG: OrdenConfig = OrdenConfigSchema.parse({});
 export const DEFAULT_COLORES_CONFIG: ColoresConfig = ColoresConfigSchema.parse({});

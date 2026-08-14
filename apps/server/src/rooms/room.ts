@@ -14,17 +14,28 @@ import type {
   RoomStats,
   RoomStatsRow,
 } from '@ronda/protocol';
-import type { ChinchonState, MusState, PartyState, PochaState } from '@ronda/engine';
+import type {
+  ChinchonState,
+  ClassicState,
+  MusState,
+  PartyState,
+  PochaState,
+} from '@ronda/engine';
 
 /** Estado del motor de cualquier juego registrado (§10.8: GameModule<S,A>
  * ya era genérico de verdad; esta unión es lo único que faltaba en el lado
  * del servidor para dejar de asumir Chinchón a mano). */
-export type EngineState = ChinchonState | PochaState | MusState | PartyState;
+export type EngineState =
+  | ChinchonState
+  | PochaState
+  | MusState
+  | ClassicState
+  | PartyState;
 
 /** Estado de los juegos "un jugador, una puntuación" (§12.12): todos menos
  * Mus. Se usa donde el servidor lee `winnerId`, `round` o `player.score`,
  * que en Mus no existen porque el marcador es de la pareja. */
-export type ScoredEngineState = ChinchonState | PochaState | PartyState;
+export type ScoredEngineState = ChinchonState | PochaState | ClassicState | PartyState;
 
 /** Estado runtime de un jugador en la sala. */
 export interface PlayerRuntime {
