@@ -41,6 +41,86 @@ export interface PingAck {
   serverTime: number;
 }
 
+/**
+ * Informe acotado de diagnóstico enviado por un cliente. Deliberadamente no
+ * admite objetos arbitrarios ni texto largo: así un registrador del navegador
+ * no puede acabar enviando tokens, respuestas libres o snapshots privados por
+ * accidente.
+ */
+const diagnosticScalarSchema = z.union([
+  z.string().max(200),
+  z.number().finite(),
+  z.boolean(),
+  z.null(),
+]);
+
+const forbiddenDiagnosticKeys = new Set([
+  'token',
+  'playerToken',
+  'nick',
+  'answer',
+  'text',
+  'prompt',
+  'question',
+  'hand',
+]);
+
+export const DiagnosticEntrySchema = z
+  .object({
+    at: z.number().int().nonnegative(),
+    kind: z.string().min(1).max(40),
+    data: z
+      .record(z.union([diagnosticScalarSchema, z.array(diagnosticScalarSchema).max(20)]))
+      .refine((data) => Object.keys(data).every((key) => !forbiddenDiagnosticKeys.has(key)), {
+        message: 'diagnostic data contains a private field',
+      }),
+  })
+  .strict();
+
+export const DiagnosticContextSchema = z
+  .object({
+    roomCode: z.string().max(12).nullable(),
+    playerId: z.string().max(80).nullable(),
+    gameId: z.string().max(40).nullable(),
+    viewKind: z.enum(['player', 'table']).nullable(),
+    status: z.string().max(40).nullable(),
+    phase: z.string().max(40).nullable(),
+    version: z.number().int().nonnegative(),
+    connection: z.enum(['online', 'reconnecting', 'offline']),
+    pendingAction: z.boolean(),
+    pendingSince: z.number().int().nonnegative().nullable(),
+  })
+  .strict();
+
+export const DiagnosticReportSchema = z
+  .object({
+    incidentId: z.string().regex(/^RND-[A-Z0-9]{8}$/),
+    reason: z.enum(['manual_block', 'client_error', 'unhandled_rejection', 'state_sync_timeout']),
+    occurredAt: z.number().int().nonnegative(),
+    path: z.string().max(240),
+    release: z.string().max(120).nullable(),
+    userAgent: z.string().max(500),
+    context: DiagnosticContextSchema,
+    entries: z.array(DiagnosticEntrySchema).max(50),
+    error: z
+      .object({
+        name: z.string().max(100),
+        message: z.string().max(500),
+        stack: z.string().max(4_000).nullable(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export type DiagnosticEntry = z.infer<typeof DiagnosticEntrySchema>;
+export type DiagnosticContext = z.infer<typeof DiagnosticContextSchema>;
+export type DiagnosticReport = z.infer<typeof DiagnosticReportSchema>;
+
+export interface DiagnosticAck {
+  incidentId: string;
+}
+
 // --- eventos cliente → servidor (con ack tipado) ----------------------------
 //
 // Cada payload de entrada tiene su esquema zod en `clientPayloadSchemas`.
@@ -114,6 +194,11 @@ export interface ClientToServerEvents {
    * solo datos públicos, así que también la puede pedir una pantalla central.
    */
   'room:stats': (payload: Record<string, never>, ack: (res: Result<RoomStats>) => void) => void;
+  /** Registra un fallo de interfaz o bloqueo lógico sin incluir secretos del cliente. */
+  'diagnostic:report': (
+    payload: DiagnosticReport,
+    ack: (res: Result<DiagnosticAck>) => void,
+  ) => void;
   ping: (payload: Record<string, never>, ack: (res: Result<PingAck>) => void) => void;
 }
 
@@ -256,6 +341,7 @@ export const clientPayloadSchemas = {
   'rematch:vote': rematchVoteSchema,
   'reaction:send': reactionSendSchema,
   'room:stats': emptySchema,
+  'diagnostic:report': DiagnosticReportSchema,
   ping: emptySchema,
 } as const;
 

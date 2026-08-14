@@ -7,6 +7,7 @@
 import { io, type Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents } from '@ronda/protocol';
 import { resolveServerUrl } from './server-url';
+import { recordDiagnostic } from './diagnostic-recorder.ts';
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -22,6 +23,45 @@ function serverUrl(): string {
 }
 
 let socketInstance: AppSocket | null = null;
+
+function payloadSummary(
+  event: keyof ClientToServerEvents,
+  payload: unknown,
+): Record<string, string | number | boolean | null> {
+  const value = payload as Record<string, unknown>;
+  if (event === 'game:action') {
+    const action = value.action as Record<string, unknown> | undefined;
+    const summary: Record<string, string | number | boolean | null> = {
+      event,
+      clientActionId: typeof value.clientActionId === 'string' ? value.clientActionId : null,
+      expectedVersion: typeof value.expectedVersion === 'number' ? value.expectedVersion : null,
+      actionType: typeof action?.type === 'string' ? action.type : 'unknown',
+    };
+    for (const key of ['cardId', 'amount', 'count', 'value', 'piedras', 'tiene'] as const) {
+      const field = action?.[key];
+      if (typeof field === 'string' || typeof field === 'number' || typeof field === 'boolean') {
+        summary[key] = field;
+      }
+    }
+    if (Array.isArray(action?.cardIds)) summary.cardCount = action.cardIds.length;
+    if (Array.isArray(action?.order)) summary.cardCount = action.order.length;
+    if (Array.isArray(action?.colors)) summary.choiceCount = action.colors.length;
+    if (typeof action?.answer === 'string') summary.answerLength = action.answer.length;
+    return summary;
+  }
+  if (event === 'room:create') {
+    return { event, gameId: typeof value.gameId === 'string' ? value.gameId : null };
+  }
+  if (event === 'room:join' || event === 'screen:attach') {
+    return { event, roomCode: typeof value.roomCode === 'string' ? value.roomCode : null };
+  }
+  if (event === 'room:config') {
+    const patch = value.patch as Record<string, unknown> | undefined;
+    return { event, fields: patch ? Object.keys(patch).sort().join(',').slice(0, 200) : '' };
+  }
+  if (event === 'diagnostic:report') return { event };
+  return { event };
+}
 
 /**
  * Devuelve el socket único de la app, creándolo (sin conectar) la primera
@@ -60,11 +100,37 @@ export function emitWithAck<E extends keyof ClientToServerEvents>(
   type AckResult = Parameters<Ack>[0];
 
   return new Promise<AckResult>((resolve) => {
+    const startedAt = Date.now();
+    const shouldRecord = event !== 'diagnostic:report';
+    if (shouldRecord) recordDiagnostic('socket:emit', payloadSummary(event, payload));
+    let settled = false;
     const timeout = setTimeout(() => {
+      settled = true;
+      if (shouldRecord) {
+        recordDiagnostic('socket:ack_timeout', {
+          event,
+          elapsedMs: Date.now() - startedAt,
+        });
+      }
       resolve({ ok: false, code: 'INTERNAL' } as AckResult);
     }, ACK_TIMEOUT_MS);
     const ack = ((res: AckResult) => {
+      if (settled) {
+        if (shouldRecord) recordDiagnostic('socket:late_ack', { event });
+        return;
+      }
+      settled = true;
       clearTimeout(timeout);
+      if (shouldRecord) {
+        const result = res as { ok: boolean; code?: string; value?: { version?: number } };
+        recordDiagnostic('socket:ack', {
+          event,
+          ok: result.ok,
+          code: result.code ?? null,
+          version: result.value?.version ?? null,
+          elapsedMs: Date.now() - startedAt,
+        });
+      }
       resolve(res);
     }) as Ack;
     // El despacho genérico por `E` impide que tsc correlacione el tipo

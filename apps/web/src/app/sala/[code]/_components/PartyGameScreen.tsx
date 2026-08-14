@@ -47,7 +47,7 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
   }
 
   return (
-    <div className="game-shell flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TableHeader
         left={`Ronda ${party.round} · ${party.cardsPerPlayer} carta${party.cardsPerPlayer === 1 ? '' : 's'} por persona`}
         turnNick={null}
@@ -237,7 +237,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
   }
 
   return (
-    <div className="game-shell flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TableHeader
         left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
         turnNick={null}
@@ -339,7 +339,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
   }
 
   return (
-    <div className="game-shell flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TableHeader
         left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
         turnNick={null}
@@ -350,7 +350,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
         myPlayerId={me.playerId}
         renderInfo={(player) => `${player.score} puntos`}
       />
-      <main className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6">
+      <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-6">
         <section className="surface-panel w-full max-w-md p-5 text-center">
           <span className="text-12 uppercase tracking-wider text-humo">Mayoría</span>
           <h1 className="mt-3 text-20 font-semibold text-hueso">{party.prompt}</h1>
@@ -429,7 +429,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
   }
 
   return (
-    <div className="game-shell flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TableHeader
         left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
         turnNick={
@@ -442,7 +442,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
         myPlayerId={me.playerId}
         renderInfo={(player) => `${player.score} puntos`}
       />
-      <main className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6">
+      <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-6">
         <section className="surface-panel w-full max-w-md p-5 text-center">
           <span className="text-12 uppercase tracking-wider text-humo">Escala</span>
           <div className="mt-3 flex items-center justify-between gap-3 text-16 font-semibold text-hueso">

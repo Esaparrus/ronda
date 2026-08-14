@@ -411,7 +411,10 @@ export function Hand({
         </div>
       </div>
 
-      <div ref={containerRef} className="flex touch-pan-y items-end overflow-x-auto">
+      <div
+        ref={containerRef}
+        className="game-hand-scroll flex touch-pan-y items-end overflow-x-auto"
+      >
         {order.map((cardId, i) => {
           const isLocked = cardId === lockedCardId;
           const isDragging = cardId === draggingCardId;

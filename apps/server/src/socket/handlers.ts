@@ -13,6 +13,7 @@ import type { RateLimiter } from './rate-limit.ts';
 import {
   clientPayloadSchemas,
   GameConfigSchema,
+  ok,
   type ClientToServerEvents,
   type Err,
   type GameConfig,
@@ -203,7 +204,11 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     if (!guard(deps, sid, 'room:close', payload, respond)) return;
     const st = requirePlayer(deps, sid, respond);
     if (!st) return;
-    const r = deps.mgr.closeByHost({ roomCode: st.roomCode, playerId: st.playerId, now: deps.now() });
+    const r = deps.mgr.closeByHost({
+      roomCode: st.roomCode,
+      playerId: st.playerId,
+      now: deps.now(),
+    });
     ack(r);
   });
 
@@ -229,6 +234,8 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     if (!guard(deps, sid, 'game:action', payload, respond)) return;
     const st = requirePlayer(deps, sid, respond);
     if (!st) return;
+    const room = deps.mgr.getRoomByCode(st.roomCode);
+    const beforeVersion = room?.state?.version ?? null;
     const r = deps.mgr.applyAction({
       roomCode: st.roomCode,
       playerId: st.playerId,
@@ -236,6 +243,16 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
       expectedVersion: payload.expectedVersion,
       action: payload.action,
       now: deps.now(),
+    });
+    room?.recordDiagnosticAction({
+      at: deps.now(),
+      playerId: st.playerId,
+      clientActionId: payload.clientActionId,
+      expectedVersion: payload.expectedVersion,
+      beforeVersion,
+      afterVersion: room.state?.version ?? null,
+      result: r.ok ? 'ok' : r.code,
+      action: payload.action,
     });
     if (r.ok) rebroadcast(deps, st.roomCode);
     ack(r);
@@ -294,6 +311,73 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     ack(deps.mgr.getStats({ roomCode: st.roomCode }));
   });
 
+  // --- diagnostic:report ---
+  socket.on('diagnostic:report', (payload, ack) => {
+    const respond: Respond = (e) => ack(e);
+    if (!guard(deps, sid, 'diagnostic:report', payload, respond)) return;
+    const st = deps.states.get(sid);
+    if (!st?.roomCode) {
+      respond({ ok: false, code: 'PLAYER_NOT_IN_ROOM' });
+      return;
+    }
+    const room = deps.mgr.getRoomByCode(st.roomCode);
+    if (!room) {
+      respond({ ok: false, code: 'ROOM_NOT_FOUND' });
+      return;
+    }
+
+    const state = room.state as unknown as Record<string, unknown> | null;
+    const serverState: Record<string, unknown> = {
+      gameId: room.gameId,
+      roomStatus: room.status,
+      version: room.state?.version ?? 0,
+      connectedPlayers: [...room.players.values()].filter((player) => player.connected).length,
+      players: room.players.size,
+    };
+    for (const key of [
+      'status',
+      'round',
+      'handNumber',
+      'phase',
+      'turnSeat',
+      'turnPhase',
+      'dealerSeat',
+      'manoSeat',
+      'winnerId',
+      'winnerTeamIndex',
+    ]) {
+      const value = state?.[key];
+      if (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean' ||
+        value === null
+      ) {
+        serverState[key] = value;
+      }
+    }
+
+    // El hook termina en playtest_events. El roomCode se guarda en su columna
+    // propia; el payload no contiene apodos, tokens ni respuestas libres.
+    room.hooks.onTrack?.(room, 'error', {
+      source: 'client_diagnostic',
+      incidentId: payload.incidentId,
+      reason: payload.reason,
+      occurredAt: payload.occurredAt,
+      receivedAt: deps.now(),
+      path: payload.path,
+      release: payload.release,
+      userAgent: payload.userAgent,
+      reporterPlayerId: st.playerId,
+      client: payload.context,
+      entries: payload.entries,
+      error: payload.error,
+      server: serverState,
+      actions: room.getDiagnosticActions(),
+    });
+    ack(ok({ incidentId: payload.incidentId }));
+  });
+
   // --- ping ---
   socket.on('ping', (payload, ack) => {
     const respond: Respond = (e) => ack(e);
@@ -305,7 +389,12 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
 // --- helpers ----------------------------------------------------------------
 
 /** Enlaza socket→player y difunde connection + snapshot. Nunca lanza. */
-function bindAndBroadcast(deps: HandlerDeps, sid: string, roomCode: string, playerId: string): void {
+function bindAndBroadcast(
+  deps: HandlerDeps,
+  sid: string,
+  roomCode: string,
+  playerId: string,
+): void {
   try {
     const st = deps.states.get(sid);
     if (st) {

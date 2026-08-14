@@ -36,6 +36,7 @@ db/migrations       SQL plano
 pnpm install
 pnpm dev          # levanta la web
 pnpm dev:server   # levanta el servidor
+pnpm incident -- RND-A1B2C3D4  # recupera un informe de bloqueo desde Postgres
 pnpm typecheck && pnpm lint && pnpm test
 ```
 

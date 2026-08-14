@@ -163,7 +163,7 @@ export function GameScreen({ view }: GameScreenProps) {
   });
 
   return (
-    <div className="game-shell flex min-h-dvh flex-col">
+    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TurnTimerHeader
         key={`${view.turnPlayerId ?? 'sin-turno'}:${view.round}:${view.turnPhase}`}
         left={`Mano ${view.round}`}
@@ -219,7 +219,7 @@ export function GameScreen({ view }: GameScreenProps) {
         </div>
       </div>
 
-      <div className="flex flex-col">
+      <div className="flex shrink-0 flex-col">
         <Hand
           hand={me.hand}
           lockedCardId={me.lockedCardId}

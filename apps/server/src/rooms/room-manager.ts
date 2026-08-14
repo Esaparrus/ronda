@@ -49,8 +49,36 @@ export interface JoinResult {
 }
 
 export interface RoomManagerOptions {
-  /** Tiempo sin mutaciones válidas antes de cerrar una sala. */
+  /** Tiempo sin mutaciones válidas ni jugadores conectados antes de cerrar una sala. */
   inactivityTimeoutMs?: number;
+}
+
+/**
+ * Coloca primero las preguntas que todavía no se han visto en esta sala. Si
+ * ya no quedan suficientes para completar la partida, comienza un ciclo nuevo
+ * con el banco entero; dentro de cada ciclo nunca hay repeticiones.
+ */
+function prioritizeUnseenColorQuestions(room: Room, state: EngineState): EngineState {
+  if (state.gameId !== 'colores' || state.config.gameId !== 'colores' || !state.colors)
+    return state;
+
+  const order = state.colors.questionOrder;
+  const unseen = order.filter((id) => !room.seenColorQuestionIds.has(id));
+  if (unseen.length < Math.min(state.config.rounds, order.length)) {
+    room.seenColorQuestionIds.clear();
+    return state;
+  }
+
+  const seen = order.filter((id) => room.seenColorQuestionIds.has(id));
+  state.colors.questionOrder = [...unseen, ...seen];
+  state.colors.questionId = state.colors.questionOrder[0] ?? '';
+  return state;
+}
+
+function rememberCurrentColorQuestion(room: Room, state: EngineState): void {
+  if (state.gameId === 'colores' && state.colors?.questionId) {
+    room.seenColorQuestionIds.add(state.colors.questionId);
+  }
 }
 
 /**
@@ -146,11 +174,7 @@ export class RoomManager {
 
   // --- join ----------------------------------------------------------------
 
-  joinRoom(input: {
-    roomCode: string;
-    nick: string;
-    now: number;
-  }): Result<JoinResult> {
+  joinRoom(input: { roomCode: string; nick: string; now: number }): Result<JoinResult> {
     this.sweep(input.now);
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
@@ -202,9 +226,9 @@ export class RoomManager {
     // los dejó fuera a propósito). Se rechaza aquí y no solo escondiendo el
     // botón: un bot en una mesa de Mus dejaría la partida colgada en su
     // turno para siempre, porque bot-driver.ts no lo va a mover.
-      if (room.gameId === 'mus') {
-        return err('INVALID_ACTION');
-      }
+    if (room.gameId === 'mus') {
+      return err('INVALID_ACTION');
+    }
 
     const seat = room.nextFreeSeat();
     if (seat === null) return err('ROOM_FULL');
@@ -347,11 +371,7 @@ export class RoomManager {
 
   // --- start ---------------------------------------------------------------
 
-  start(input: {
-    roomCode: string;
-    playerId: PlayerId;
-    now: number;
-  }): Result<null> {
+  start(input: { roomCode: string; playerId: PlayerId; now: number }): Result<null> {
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
     if (room.status !== 'lobby') return err('ROOM_ALREADY_STARTED');
@@ -365,8 +385,12 @@ export class RoomManager {
     const module = GAMES[room.gameId];
     if (!module) return err('GAME_NOT_FOUND');
 
-    const initialState = module.createInitialState(dealInput(room)) as EngineState;
+    const initialState = prioritizeUnseenColorQuestions(
+      room,
+      module.createInitialState(dealInput(room)) as EngineState,
+    );
     room.state = this.withTurnDeadline(null, initialState, input.now);
+    rememberCurrentColorQuestion(room, room.state);
     room.status = 'playing';
     room.touch(input.now);
     this.syncTurnTimer(room, null);
@@ -396,11 +420,7 @@ export class RoomManager {
 
   // --- leave ---------------------------------------------------------------
 
-  leave(input: {
-    roomCode: string;
-    playerId: PlayerId;
-    now: number;
-  }): Result<null> {
+  leave(input: { roomCode: string; playerId: PlayerId; now: number }): Result<null> {
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
     const player = room.players.get(input.playerId);
@@ -565,6 +585,7 @@ export class RoomManager {
     const rawState = r.value.state as EngineState;
     const newState = this.withTurnDeadline(currentState, rawState, input.now);
     room.state = newState;
+    rememberCurrentColorQuestion(room, newState);
     room.processedActions.set(input.clientActionId, newState.version);
     room.touch(input.now);
     this.syncTurnTimer(room, currentState);
@@ -627,16 +648,19 @@ export class RoomManager {
 
     // ¿Todos los conectados votaron sí?
     const connected = [...room.players.values()].filter((p) => p.connected);
-    const allYes =
-      connected.length > 0 && connected.every((p) => votes.includes(p.playerId));
+    const allYes = connected.length > 0 && connected.every((p) => votes.includes(p.playerId));
     if (allYes) {
       // Reinicia la partida con los mismos asientos y marcador a cero.
       const module = GAMES[room.gameId];
       if (!module) return err('GAME_NOT_FOUND');
       room.seed = randomSeed();
       const previousState = room.state;
-      const initialState = module.createInitialState(dealInput(room)) as EngineState;
+      const initialState = prioritizeUnseenColorQuestions(
+        room,
+        module.createInitialState(dealInput(room)) as EngineState,
+      );
       room.state = this.withTurnDeadline(previousState, initialState, input.now);
+      rememberCurrentColorQuestion(room, room.state);
       room.status = 'playing';
       this.syncTurnTimer(room, previousState);
       room.hooks.onTrack?.(room, 'rematch', {});
@@ -693,7 +717,11 @@ export class RoomManager {
 
   // --- screen --------------------------------------------------------------
 
-  attachScreen(input: { roomCode: string; socketId: string; now: number }): Result<{ roomCode: string }> {
+  attachScreen(input: {
+    roomCode: string;
+    socketId: string;
+    now: number;
+  }): Result<{ roomCode: string }> {
     this.sweep(input.now);
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');

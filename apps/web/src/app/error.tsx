@@ -8,6 +8,13 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { logClientError } from '@/lib/logger';
+import { useIncidentReport } from '@/lib/useIncidentReport';
+import { diagnosticContextFromState } from '@/lib/diagnostics';
+import { useRondaStore } from '@/lib/store';
+
+function currentContext() {
+  return diagnosticContextFromState(useRondaStore.getState());
+}
 
 export default function ErrorScreen({
   error,
@@ -16,6 +23,8 @@ export default function ErrorScreen({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const incidentId = useIncidentReport(error, currentContext);
+
   useEffect(() => {
     // El mensaje/traza real solo va a la consola (para depurar en playtest
     // con el móvil conectado); el jugador nunca ve `error.message` ni el
@@ -27,6 +36,7 @@ export default function ErrorScreen({
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
       <h1 className="font-display text-28 leading-display text-hueso">Algo ha fallado</h1>
       <p className="text-16 text-humo">Vuelve a intentarlo. Si sigue pasando, recarga la página.</p>
+      {incidentId ? <p className="font-mono text-14 text-oro">Código {incidentId}</p> : null}
       <Button onClick={reset}>Reintentar</Button>
     </main>
   );

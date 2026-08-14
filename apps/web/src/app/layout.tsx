@@ -11,6 +11,8 @@ import type { Metadata, Viewport } from 'next';
 import { Domine, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import { InstallAppPrompt } from '@/components/InstallAppPrompt';
+import { DiagnosticsProvider } from '@/components/DiagnosticsProvider';
+import { ReportProblemButton } from '@/components/ReportProblemButton';
 import { COLOR_TOKENS } from '@/lib/tokens';
 import '../styles/globals.css';
 
@@ -73,6 +75,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-tinta font-sans text-hueso">
         <RegisterServiceWorker />
         <InstallAppPrompt />
+        <DiagnosticsProvider />
+        <ReportProblemButton />
         {children}
       </body>
     </html>
