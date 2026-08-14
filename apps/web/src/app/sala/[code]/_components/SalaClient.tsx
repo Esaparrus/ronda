@@ -17,8 +17,6 @@ import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
 import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
 import { InactiveTabScreen } from '@/components/ui/InactiveTabScreen';
-import { ReactionBar } from '@/components/ui/ReactionBar';
-import { ReactionOverlay } from '@/components/ui/ReactionOverlay';
 import { Lobby } from './Lobby';
 import { GameScreen } from './GameScreen';
 import { RoundEndScreen } from './RoundEndScreen';
@@ -29,6 +27,10 @@ import { MusGameScreen } from './MusGameScreen';
 import { MusRoundEndScreen } from './MusRoundEndScreen';
 import { MusGameEndScreen } from './MusGameEndScreen';
 import { PartyGameScreen } from './PartyGameScreen';
+import { ClassicGameScreen } from './ClassicGameScreen';
+import { RondaGameScreen } from './RondaGameScreen';
+import { RondaRoundEndScreen } from './RondaRoundEndScreen';
+import { RondaGameEndScreen } from './RondaGameEndScreen';
 
 export interface SalaClientProps {
   code: string;
@@ -131,6 +133,9 @@ export function SalaClient({ code }: SalaClientProps) {
         >
           Crear una partida nueva
         </Link>
+        <Link href="/" className="text-14 text-humo underline">
+          Volver al inicio
+        </Link>
       </main>
     );
   }
@@ -150,6 +155,9 @@ export function SalaClient({ code }: SalaClientProps) {
         <Link href={`/unirse/${code}`} className="text-14 text-brasa underline">
           Unirse con un apodo
         </Link>
+        <Link href="/" className="text-14 text-humo underline">
+          Volver al inicio
+        </Link>
       </main>
     );
   }
@@ -160,6 +168,9 @@ export function SalaClient({ code }: SalaClientProps) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
         <p className="text-16 text-hueso">Esta pantalla es solo para jugadores.</p>
+        <Link href="/" className="mt-4 text-14 text-humo underline">
+          Volver al inicio
+        </Link>
       </main>
     );
   }
@@ -182,14 +193,8 @@ export function SalaClient({ code }: SalaClientProps) {
       }
     >
       <Banner status={connection} className="shrink-0" />
-      {/* Barra superior: reacciones rápidas a la izquierda (roadmap
-          "Después del MVP" §2) y el cierre de sala del anfitrión a la
-          derecha. Las reacciones van AQUÍ, y no flotando sobre la mesa,
-          para no competir con la regla de "en tu turno solo hay una acción
-          principal visible" (00-MASTER.md §8). */}
-      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-1">
-        <ReactionBar />
-        {isHost && view.status === 'lobby' ? (
+      {isHost && view.status === 'lobby' ? (
+        <div className="flex shrink-0 justify-end px-4 py-2">
           <button
             type="button"
             onClick={() => setConfirmClose(true)}
@@ -197,15 +202,25 @@ export function SalaClient({ code }: SalaClientProps) {
           >
             Cerrar sala
           </button>
-        ) : null}
-      </div>
-      <ReactionOverlay />
+        </div>
+      ) : null}
       {view.status === 'lobby' ? <Lobby view={view} /> : null}
       {view.status === 'playing' && view.gameId === 'chinchon' ? <GameScreen view={view} /> : null}
       {view.status === 'playing' && view.gameId === 'pocha' ? (
         <PochaGameScreen view={view} />
       ) : null}
       {view.status === 'playing' && view.gameId === 'mus' ? <MusGameScreen view={view} /> : null}
+      {view.status === 'playing' && view.gameId === 'laronda' ? (
+        <RondaGameScreen view={view} />
+      ) : null}
+      {view.status === 'playing' &&
+      (view.gameId === 'brisca' ||
+        view.gameId === 'escoba' ||
+        view.gameId === 'sieteymedia' ||
+        view.gameId === 'tute' ||
+        view.gameId === 'cinquillo') ? (
+        <ClassicGameScreen view={view} />
+      ) : null}
       {view.status === 'playing' &&
       (view.gameId === 'orden' ||
         view.gameId === 'colores' ||
@@ -222,11 +237,19 @@ export function SalaClient({ code }: SalaClientProps) {
       {view.status === 'roundEnd' && view.gameId === 'mus' ? (
         <MusRoundEndScreen view={view} />
       ) : null}
+      {view.status === 'roundEnd' && view.gameId === 'laronda' ? (
+        <RondaRoundEndScreen view={view} />
+      ) : null}
       {/* Mus tiene su propio fin de partida: GameEndScreen ordena por `score`
           y corona a `winnerId`, y en Mus los dos van a 0 y a null porque gana
           una pareja (§12.12). */}
       {view.status === 'gameEnd' && view.gameId === 'mus' ? <MusGameEndScreen view={view} /> : null}
-      {view.status === 'gameEnd' && view.gameId !== 'mus' ? <GameEndScreen view={view} /> : null}
+      {view.status === 'gameEnd' && view.gameId === 'laronda' ? (
+        <RondaGameEndScreen view={view} />
+      ) : null}
+      {view.status === 'gameEnd' && view.gameId !== 'mus' && view.gameId !== 'laronda' ? (
+        <GameEndScreen view={view} />
+      ) : null}
       <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
         <div className="flex flex-col gap-4">
           <p className="text-16 text-hueso">¿Cerrar la sala para todos?</p>

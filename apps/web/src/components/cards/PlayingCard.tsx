@@ -21,9 +21,10 @@
 // mecanismo de escalado de /mesa.
 import { memo, useId } from 'react';
 import { parseCardId, type CardId, type Suit } from '@ronda/protocol';
-import { useCardStyle, type CardStyle } from '@/lib/card-style';
+import { cardStyleRenderMode, useCardStyle, type CardStyle } from '@/lib/card-style';
 import { CardBack } from './CardBack';
 import { cardImageSrc } from './cardImages';
+import { StylizedCardFace } from './StylizedCardFace';
 
 export type CardSize = 'sm' | 'md' | 'lg';
 
@@ -118,7 +119,8 @@ function PlayingCardComponent({
 
   const card = parsed.value;
   const suitColor = SUIT_COLOR_VAR[card.suit];
-  const imageSrc = cardImageSrc(card.suit, card.rank, cardStyle ?? preferredCardStyle);
+  const resolvedCardStyle = cardStyle ?? preferredCardStyle;
+  const renderMode = cardStyleRenderMode(resolvedCardStyle);
 
   return (
     <svg
@@ -173,15 +175,21 @@ function PlayingCardComponent({
       {/* `preserveAspectRatio="none"`: la imagen es 5:7 y el naipe 2:3, y se
           prefiere estrechar el dibujo un 4,6 % —imperceptible— a recortarlo,
           que se comería el filete de color del borde. */}
-      <image
-        href={imageSrc}
-        x={1.75}
-        y={1.75}
-        width={VIEWBOX_WIDTH - 1.5}
-        height={VIEWBOX_HEIGHT - 1.5}
-        preserveAspectRatio="none"
-        clipPath={`url(#${clipId})`}
-      />
+      {renderMode === 'image' ? (
+        <image
+          href={cardImageSrc(card.suit, card.rank, resolvedCardStyle)}
+          x={1.75}
+          y={1.75}
+          width={VIEWBOX_WIDTH - 1.5}
+          height={VIEWBOX_HEIGHT - 1.5}
+          preserveAspectRatio="none"
+          clipPath={`url(#${clipId})`}
+        />
+      ) : (
+        <g clipPath={`url(#${clipId})`}>
+          <StylizedCardFace suit={card.suit} rank={card.rank} variant={renderMode} />
+        </g>
+      )}
       {/* Contorno de tinta repintado ENCIMA de la imagen: el del fondo queda
           tapado por dentro y el naipe perdería la mitad del trazo, que es
           justo lo que lo separa del tapete y de la carta de al lado cuando la

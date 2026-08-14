@@ -21,6 +21,11 @@ export interface SeatBeans {
   label: string;
 }
 
+export interface SeatStats {
+  handCount: number;
+  score: number;
+}
+
 export interface TableSeatProps {
   player: PublicPlayer;
   variant: 'top' | 'plate';
@@ -30,8 +35,23 @@ export interface TableSeatProps {
   isTurn?: boolean;
   /** Fila de garbanzos bajo el apodo, o null si este juego no cuenta nada ahí. */
   beans?: SeatBeans | null;
+  /** Datos principales de Chinchón, rotulados para no depender de "7 · 12". */
+  stats?: SeatStats;
   /** Línea de datos en mono ("7 · 12", "cantó 2"...). */
   info?: string;
+}
+
+function SeatStatsLine({ handCount, score }: SeatStats) {
+  return (
+    <span
+      aria-label={`${handCount} cartas en mano, ${score} puntos`}
+      className="max-w-full truncate whitespace-nowrap font-mono text-[11px] leading-none text-humo"
+    >
+      <strong className="font-semibold text-hueso">{handCount}</strong> c
+      <span aria-hidden="true"> · </span>
+      <strong className="font-semibold text-hueso">{score}</strong> pts
+    </span>
+  );
 }
 
 /**
@@ -60,6 +80,7 @@ export function TableSeat({
   isPartner = false,
   isTurn = false,
   beans = null,
+  stats,
   info,
 }: TableSeatProps) {
   const colorIndex = (player.colorIndex % 6) as SeatColorIndex;
@@ -72,7 +93,7 @@ export function TableSeat({
   if (variant === 'plate') {
     return (
       <div
-        className={`flex items-center gap-2 rounded-full border-2 py-[5px] pl-[6px] pr-3 ${
+        className={`flex max-w-full items-center gap-2 rounded-full border-2 py-[5px] pl-[6px] pr-3 ${
           isYou ? 'border-oro bg-mesa' : 'border-linea bg-mesa'
         }`}
       >
@@ -82,13 +103,14 @@ export function TableSeat({
           size={32}
           className={`border-2 ${ring} ${dimmed}`}
         />
-        <div className="flex flex-col gap-[2px]">
-          <span className="whitespace-nowrap text-12 text-hueso">{player.nick}</span>
+        <div className="flex min-w-0 flex-col gap-[2px]">
+          <span className="truncate whitespace-nowrap text-12 text-hueso">{player.nick}</span>
           {beans ? <Garbanzos count={beans.count} total={beans.total} label={beans.label} /> : null}
+          {stats ? <SeatStatsLine {...stats} /> : null}
         </div>
-        {info ? <span className="font-mono text-12 text-humo">{info}</span> : null}
+        {info && !stats ? <span className="font-mono text-12 text-humo">{info}</span> : null}
         {isYou ? (
-          <span className="inline-flex items-center rounded-full bg-oro px-2 py-[3px] font-mono text-12 font-semibold leading-none tracking-wider text-tinta">
+          <span className="inline-flex shrink-0 items-center rounded-full bg-oro px-2 py-[3px] font-mono text-12 font-semibold leading-none tracking-wider text-tinta">
             TÚ
           </span>
         ) : null}
@@ -97,7 +119,9 @@ export function TableSeat({
   }
 
   return (
-    <div className="flex w-[72px] flex-col items-center gap-[2px]">
+    <div
+      className={`flex flex-col items-center gap-[3px] ${stats ? 'min-w-0 flex-1' : 'w-[72px]'}`}
+    >
       {isPartner ? (
         <span className="font-mono text-12 uppercase leading-none tracking-wider text-oro">
           Compañero
@@ -111,7 +135,8 @@ export function TableSeat({
       />
       <span className="max-w-full truncate text-12 text-hueso">{player.nick}</span>
       {beans ? <Garbanzos count={beans.count} total={beans.total} label={beans.label} /> : null}
-      {info ? (
+      {stats ? <SeatStatsLine {...stats} /> : null}
+      {info && !stats ? (
         <span className="max-w-full truncate font-mono text-12 text-humo">{info}</span>
       ) : null}
     </div>

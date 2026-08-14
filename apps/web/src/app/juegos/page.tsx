@@ -3,11 +3,17 @@
 import Link from 'next/link';
 
 const GAMES = [
+  { slug: 'laronda', name: 'La Ronda', players: '3–8 jugadores', duration: '10–20 min', mark: '€', kind: 'Cartas y pique' },
   { slug: 'chinchon', name: 'Chinchón', players: '2–4 jugadores', duration: '15–30 min', mark: '7', kind: 'Cartas' },
   { slug: 'pocha', name: 'Pocha', players: '2–6 jugadores', duration: '20–45 min', mark: '♠', kind: 'Bazas' },
   { slug: 'mus', name: 'Mus', players: '4 jugadores, por parejas', duration: '30–60 min', mark: 'M', kind: 'Parejas' },
+  { slug: 'brisca', name: 'Brisca', players: '2–4 jugadores', duration: '10–25 min', mark: '3', kind: 'Bazas' },
+  { slug: 'escoba', name: 'Escoba', players: '2–4 jugadores', duration: '15–25 min', mark: '15', kind: 'Capturas' },
+  { slug: 'sieteymedia', name: 'Siete y media', players: '2–7 jugadores', duration: '10–20 min', mark: '7½', kind: 'Tentar la suerte' },
+  { slug: 'tute', name: 'Tute', players: '2 jugadores', duration: '20–35 min', mark: 'T', kind: 'Bazas' },
+  { slug: 'cinquillo', name: 'Cinquillo', players: '2–6 jugadores', duration: '10–20 min', mark: '5', kind: 'Descarte' },
   { slug: 'orden', name: 'Orden', players: '2–7 jugadores', duration: '10–20 min', mark: '↑', kind: 'Cooperativo' },
-  { slug: 'colores', name: 'Colores', players: '2–7 jugadores', duration: '10–20 min', mark: '●', kind: 'Social' },
+  { slug: 'colores', name: 'Colores', players: '2–7 jugadores', duration: '15–25 min', mark: '●', kind: 'Social' },
   { slug: 'mayoria', name: 'Mayoría', players: '2–7 jugadores', duration: '10–20 min', mark: '≋', kind: 'Social' },
   { slug: 'escala', name: 'Escala', players: '2–7 jugadores', duration: '15–25 min', mark: '↔', kind: 'Social' },
 ] as const;

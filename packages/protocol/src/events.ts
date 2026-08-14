@@ -71,6 +71,20 @@ export const GameEventSchema = z.discriminatedUnion('t', [
     ]),
     round: z.number().int(),
   }),
+  // --- La Ronda ------------------------------------------------------------
+  z.object({
+    t: z.literal('rondaCardPlayed'),
+    playerId: z.string(),
+    cardId: z.string(),
+    premiumCardId: z.string().nullable(),
+  }),
+  z.object({ t: z.literal('rondaBillAsked'), playerId: z.string() }),
+  z.object({ t: z.literal('rondaTipPlayed'), playerId: z.string(), cardId: z.string() }),
+  z.object({
+    t: z.literal('rondaBillPaid'),
+    totalCents: z.number().int(),
+    payments: z.array(z.object({ playerId: z.string(), amountCents: z.number().int() })),
+  }),
 ]);
 
 export type GameEvent = z.infer<typeof GameEventSchema>;

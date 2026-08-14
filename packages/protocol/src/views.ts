@@ -20,9 +20,11 @@ import { z } from 'zod';
 import type { CardId, PlayerId, RoomCode } from './ids.ts';
 import type { Suit } from './cards.ts';
 import type {
+  ClassicConfig,
   ChinchonConfig,
   ColoresConfig,
   EscalaConfig,
+  LaRondaConfig,
   MayoriaConfig,
   MusConfig,
   OrdenConfig,
@@ -38,6 +40,16 @@ export type AvailableAction = 'drawDeck' | 'drawDiscard' | 'discard' | 'close';
 /** Acción de juego disponible para el jugador en este momento (Pocha). */
 export type PochaAvailableAction = 'bid' | 'playCard' | 'nextRound';
 
+/** Los cinco clásicos añadidos como una familia de vistas homogénea. */
+export type ClassicGameId = 'brisca' | 'escoba' | 'sieteymedia' | 'tute' | 'cinquillo';
+export type ClassicPhase = 'trick' | 'capture' | 'draw' | 'banker' | 'layout';
+export type ClassicAvailableAction =
+  | 'playCard'
+  | 'playCapture'
+  | 'drawDeck'
+  | 'stand'
+  | 'pass';
+
 /**
  * Jugador público (sin mano). Compartido por ambos juegos: los campos son
  * genéricos de verdad. `colorIndex` se ensanchó a `0|1|2|3|4|5` (§10.7,
@@ -49,7 +61,7 @@ export interface PublicPlayer {
   playerId: PlayerId;
   nick: string;
   seat: number; // 0..3 en Chinchón y Mus; 0..5 en Pocha
-  colorIndex: 0 | 1 | 2 | 3 | 4 | 5 | 6; // color de asiento, asignado por asiento
+  colorIndex: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // color de asiento, asignado por asiento
   score: number; // acumulado de la partida
   handCount: number; // nº de cartas, nunca cuáles
   connected: boolean;
@@ -179,6 +191,44 @@ export interface PochaRoundResultRow {
 
 export interface PochaRoundResult {
   rows: PochaRoundResultRow[];
+}
+
+// --- Clásicos de baraja española -----------------------------------------
+
+export interface ClassicCommonView extends CommonViewBase {
+  gameId: ClassicGameId;
+  config: ClassicConfig;
+  phase: ClassicPhase;
+  deckCount: number;
+  trumpCardId: CardId | null;
+  trumpSuit: Suit | null;
+  currentTrick: { playerId: PlayerId; cardId: CardId }[];
+  tableCards: CardId[];
+  capturedCounts: number[];
+  escobas: number[];
+  bankerPlayerId: PlayerId | null;
+  totals: (number | null)[];
+  stoodPlayerIds: PlayerId[];
+  bustPlayerIds: PlayerId[];
+  /** Solo contiene manos que ya son públicas; nunca cartas activas ajenas. */
+  revealedHands: { playerId: PlayerId; cards: CardId[] }[];
+}
+
+export interface ClassicPlayerViewMe {
+  playerId: PlayerId;
+  hand: CardId[];
+  legalCardIds: CardId[];
+  total: number | null;
+  availableActions: ClassicAvailableAction[];
+}
+
+export interface ClassicPlayerView extends ClassicCommonView {
+  kind: 'player';
+  me: ClassicPlayerViewMe;
+}
+
+export interface ClassicTableView extends ClassicCommonView {
+  kind: 'table';
 }
 
 // --- Mus (nuevo en P28; §12.12) ---------------------------------------------
@@ -338,9 +388,17 @@ export interface ColoresPublic {
   questionId: string;
   prompt: string;
   allowMultiple: boolean;
+  /** Número exacto de fichas que hay que bloquear para responder. */
+  answerCount: number;
+  /** Empieza con la primera respuesta y lo fija el servidor. */
+  deadlineAt: number | null;
+  /** Puntos acumulados porque toda la mesa acertó preguntas anteriores. */
+  rollover: number;
   submittedPlayerIds: PlayerId[];
   correctColors: string[] | null;
   answers: Record<PlayerId, string[]> | null;
+  /** Puntos obtenidos en esta pregunta; solo existe durante la revelación. */
+  scoreDeltas: Record<PlayerId, number> | null;
 }
 
 export interface MayoriaPublic {
@@ -459,11 +517,134 @@ export type PartyTableView =
   | MayoriaTableView
   | EscalaTableView;
 
+// --- La Ronda --------------------------------------------------------------
+
+export type RondaTapaType = 'carne' | 'pescado' | 'vegetal';
+export type RondaCardKind =
+  | 'tapa'
+  | 'vino'
+  | 'bloqueo'
+  | 'giro'
+  | 'premium'
+  | 'toilette'
+  | 'sobremesa'
+  | 'celebracion'
+  | 'mitad'
+  | 'grupo'
+  | 'servicio';
+export type RondaPhase = 'ordering' | 'billChoice' | 'tips' | 'discard';
+export type RondaBillMode = 'solo' | 'half' | 'group';
+export type RondaAvailableAction =
+  | 'playRondaCard'
+  | 'askRondaBill'
+  | 'skipRondaTurn'
+  | 'chooseRondaBillMode'
+  | 'playRondaTip'
+  | 'passRondaBill'
+  | 'confirmRondaDiscards'
+  | 'nextRound';
+
+export interface RondaCardView {
+  id: string;
+  kind: RondaCardKind;
+  name: string;
+  description: string;
+  priceCents: number;
+  tapaType: RondaTapaType | null;
+}
+
+export interface RondaPlayedTapa {
+  cardId: string;
+  name: string;
+  priceCents: number;
+  effectivePriceCents: number;
+  premium: boolean;
+}
+
+export interface RondaTapasPile {
+  type: RondaTapaType;
+  blocked: boolean;
+  topPriceCents: number | null;
+  cards: RondaPlayedTapa[];
+}
+
+export interface RondaRoundResult {
+  requesterId: PlayerId;
+  totalCents: number;
+  mode: RondaBillMode;
+  payments: {
+    playerId: PlayerId;
+    amountCents: number;
+    balanceCents: number;
+  }[];
+  handIncrease: number;
+}
+
+export interface RondaCommonView extends CommonViewBase {
+  gameId: 'laronda';
+  config: LaRondaConfig;
+  phase: RondaPhase;
+  direction: 1 | -1;
+  orderingCardCount: number;
+  deckCount: number;
+  tapas: RondaTapasPile[];
+  wineCount: number;
+  wineCostCents: number;
+  publicCards: RondaCardView[];
+  ordersClosed: boolean;
+  billPreviewCents: number;
+  billRequesterId: PlayerId | null;
+  billMode: RondaBillMode | null;
+  billTargetId: PlayerId | null;
+  billResponderId: PlayerId | null;
+  passedPlayerIds: PlayerId[];
+  protectedPlayerIds: PlayerId[];
+  roundResult: RondaRoundResult | null;
+  winnerIds: PlayerId[];
+}
+
+export interface RondaPlayerViewMe {
+  playerId: PlayerId;
+  hand: RondaCardView[];
+  legalCardIds: string[];
+  legalTargetTypes: RondaTapaType[];
+  legalTargetPlayerIds: PlayerId[];
+  availableBillModes: RondaBillMode[];
+  availableActions: RondaAvailableAction[];
+}
+
+export interface RondaPlayerView extends RondaCommonView {
+  kind: 'player';
+  me: RondaPlayerViewMe;
+}
+
+export interface RondaTableView extends RondaCommonView {
+  kind: 'table';
+}
+
 // --- Uniones públicas (§2.5, ensanchadas en P22, P28 y modos sociales) ------
 
-export type CommonView = ChinchonCommonView | PochaCommonView | MusCommonView | PartyCommonView;
-export type PlayerView = ChinchonPlayerView | PochaPlayerView | MusPlayerView | PartyPlayerView;
-export type TableView = ChinchonTableView | PochaTableView | MusTableView | PartyTableView;
+export type CommonView =
+  | ChinchonCommonView
+  | PochaCommonView
+  | MusCommonView
+  | ClassicCommonView
+  | PartyCommonView
+  | RondaCommonView;
+export type PlayerView =
+  | ChinchonPlayerView
+  | PochaPlayerView
+  | MusPlayerView
+  | ClassicPlayerView
+  | PartyPlayerView
+  | RondaPlayerView;
+export type TableView =
+  | ChinchonTableView
+  | PochaTableView
+  | MusTableView
+  | ClassicTableView
+  | PartyTableView
+  | RondaTableView;
 
 // --- Esquemas zod (tipo derivado por z.infer donde coincide) -----------------
 // Nota: no había (ni hay) un PlayerViewSchema/TableViewSchema en zod -- las
@@ -474,7 +655,7 @@ export type TableView = ChinchonTableView | PochaTableView | MusTableView | Part
 export const PublicPlayerSchema = z.object({
   playerId: z.string(),
   nick: z.string(),
-  seat: z.number().int().min(0).max(6),
+  seat: z.number().int().min(0).max(7),
   colorIndex: z.union([
     z.literal(0),
     z.literal(1),
@@ -483,6 +664,7 @@ export const PublicPlayerSchema = z.object({
     z.literal(4),
     z.literal(5),
     z.literal(6),
+    z.literal(7),
   ]),
   score: z.number().int(),
   handCount: z.number().int().min(0),

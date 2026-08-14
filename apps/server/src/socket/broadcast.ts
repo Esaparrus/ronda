@@ -16,6 +16,9 @@ import type {
   ChinchonCommonView,
   ChinchonPlayerView,
   ChinchonTableView,
+  ClassicCommonView,
+  ClassicPlayerView,
+  ClassicTableView,
   GameEvent,
   MusCommonView,
   MusPlayerView,
@@ -29,6 +32,9 @@ import type {
   PochaTableView,
   PublicPlayer,
   ReactionPayload,
+  RondaCommonView,
+  RondaPlayerView,
+  RondaTableView,
   TableView,
 } from '@ronda/protocol';
 
@@ -104,6 +110,50 @@ function buildPochaLobbyCommon(room: Room): PochaCommonView {
   };
 }
 
+function buildClassicLobbyCommon(room: Room): ClassicCommonView {
+  return {
+    roomCode: room.code,
+    gameId: room.gameId as ClassicCommonView['gameId'],
+    config: room.config as ClassicCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    phase:
+      room.gameId === 'escoba'
+        ? 'capture'
+        : room.gameId === 'sieteymedia'
+          ? 'draw'
+          : room.gameId === 'cinquillo'
+            ? 'layout'
+            : 'trick',
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    rematchVotes: [],
+    deckCount: 0,
+    trumpCardId: null,
+    trumpSuit: null,
+    currentTrick: [],
+    tableCards: [],
+    capturedCounts: [],
+    escobas: [],
+    bankerPlayerId: null,
+    totals: [],
+    stoodPlayerIds: [],
+    bustPlayerIds: [],
+    revealedHands: [],
+  };
+}
+
+function isClassicGame(gameId: Room['gameId']): boolean {
+  return (
+    gameId === 'brisca' ||
+    gameId === 'escoba' ||
+    gameId === 'sieteymedia' ||
+    gameId === 'tute' ||
+    gameId === 'cinquillo'
+  );
+}
+
 /** Misma idea, con la forma de Mus (§12.12). El marcador de parejas ya
  * aparece a cero para que el lobby pueda pintarlo sin casos especiales. */
 function buildMusLobbyCommon(room: Room): MusCommonView {
@@ -177,10 +227,14 @@ function buildPartyLobbyCommon(room: Room): PartyCommonView {
         phase: 'input',
         questionId: '',
         prompt: 'La pregunta aparecerá al empezar.',
-        allowMultiple: true,
+        allowMultiple: false,
+        answerCount: 1,
+        deadlineAt: null,
+        rollover: 0,
         submittedPlayerIds: [],
         correctColors: null,
         answers: null,
+        scoreDeltas: null,
       },
     };
   }
@@ -222,8 +276,60 @@ function buildPartyLobbyCommon(room: Room): PartyCommonView {
   };
 }
 
+function buildRondaLobbyCommon(room: Room): RondaCommonView {
+  return {
+    roomCode: room.code,
+    gameId: 'laronda',
+    config: room.config as RondaCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    phase: 'ordering',
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    winnerIds: [],
+    rematchVotes: [],
+    direction: 1,
+    orderingCardCount: 0,
+    deckCount: 100,
+    tapas: [
+      { type: 'carne', blocked: false, topPriceCents: null, cards: [] },
+      { type: 'pescado', blocked: false, topPriceCents: null, cards: [] },
+      { type: 'vegetal', blocked: false, topPriceCents: null, cards: [] },
+    ],
+    wineCount: 0,
+    wineCostCents: 0,
+    publicCards: [],
+    ordersClosed: false,
+    billPreviewCents: 0,
+    billRequesterId: null,
+    billMode: null,
+    billTargetId: null,
+    billResponderId: null,
+    passedPlayerIds: [],
+    protectedPlayerIds: [],
+    roundResult: null,
+  };
+}
+
 /** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
 function lobbyPlayerView(room: Room, playerId: string): PlayerView {
+  if (room.gameId === 'laronda') {
+    const view: RondaPlayerView = {
+      kind: 'player',
+      ...buildRondaLobbyCommon(room),
+      me: {
+        playerId,
+        hand: [],
+        legalCardIds: [],
+        legalTargetTypes: [],
+        legalTargetPlayerIds: [],
+        availableBillModes: [],
+        availableActions: [],
+      },
+    };
+    return view;
+  }
   if (
     room.gameId === 'orden' ||
     room.gameId === 'colores' ||
@@ -270,6 +376,14 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
     };
     return view;
   }
+  if (isClassicGame(room.gameId)) {
+    const view: ClassicPlayerView = {
+      kind: 'player',
+      ...buildClassicLobbyCommon(room),
+      me: { playerId, hand: [], legalCardIds: [], total: null, availableActions: [] },
+    };
+    return view;
+  }
   const view: ChinchonPlayerView = {
     kind: 'player',
     ...buildChinchonLobbyCommon(room),
@@ -288,6 +402,10 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
 }
 
 function lobbyTableView(room: Room): TableView {
+  if (room.gameId === 'laronda') {
+    const view: RondaTableView = { kind: 'table', ...buildRondaLobbyCommon(room) };
+    return view;
+  }
   if (
     room.gameId === 'orden' ||
     room.gameId === 'colores' ||
@@ -303,6 +421,10 @@ function lobbyTableView(room: Room): TableView {
   }
   if (room.gameId === 'pocha') {
     const view: PochaTableView = { kind: 'table', ...buildPochaLobbyCommon(room) };
+    return view;
+  }
+  if (isClassicGame(room.gameId)) {
+    const view: ClassicTableView = { kind: 'table', ...buildClassicLobbyCommon(room) };
     return view;
   }
   const view: ChinchonTableView = { kind: 'table', ...buildChinchonLobbyCommon(room) };

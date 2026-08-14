@@ -31,9 +31,25 @@
   --color-violeta: #7a5a8c; /* asiento 5 (Pocha, hasta 6 jugadores) */
   --color-rosa: #9c4f5e; /* asiento 6 (Pocha, hasta 6 jugadores) */
   --color-gris: #707070; /* asiento 7 (modos sociales) */
+  --color-cobre: #b56a42; /* asiento 8 (La Ronda) */
   --color-crema: #fff7e6; /* brillo cálido para estados y texto destacado */
   --color-madera-clara: #55331f; /* superficie elevada sobre --color-mesa */
   --color-alerta: #d78335; /* aviso de temporizador antes del estado crítico */
+
+  /* Fichas del juego Colores. No reutilizan los tonos apagados de los
+   * asientos: azul y gris deben distinguirse de un vistazo. El nombre y un
+   * símbolo acompañan siempre al color para no depender solo de la percepción. */
+  --color-ficha-rojo: #c43f35;
+  --color-ficha-azul: #2563c7;
+  --color-ficha-verde: #2f8548;
+  --color-ficha-amarillo: #e4b923;
+  --color-ficha-naranja: #e77820;
+  --color-ficha-morado: #7941a5;
+  --color-ficha-rosa: #db668f;
+  --color-ficha-negro: #171717;
+  --color-ficha-blanco: #f5f1e8;
+  --color-ficha-marron: #784a2b;
+  --color-ficha-gris: #747b84;
 
   /* --- Mesa de bar (P32) -------------------------------------------------
    * La mesa es un mueble, no un rectángulo de color: tablero de madera con
@@ -64,6 +80,7 @@
    * interfaz que la rodea. */
   --card-ink: #1b1d2a; /* trazo/tinta de la carta (distinto del fondo --color-tinta) */
   --card-face: #fbf1da; /* papel de la cara de la carta */
+  --card-skin: #f2c7a6; /* piel plana de las figuras minimalistas */
   --card-oros: #e3a93b;
   --card-copas: #e14b3b;
   --card-espadas: #3e7bc4;
@@ -106,6 +123,7 @@
   --seat-4: var(--color-violeta);
   --seat-5: var(--color-rosa);
   --seat-6: var(--color-gris);
+  --seat-7: var(--color-cobre);
 
   color-scheme: dark;
 }
@@ -131,16 +149,13 @@ body.game-active {
  * que es lo que la delataría como rayas en vez de como madera. */
 body {
   background-color: var(--color-tinta);
-  background-image: radial-gradient(
+  background-image:
+    radial-gradient(
       ellipse at 50% 0%,
       color-mix(in srgb, var(--color-oro) 8%, transparent),
       transparent 60%
     ),
-    repeating-linear-gradient(
-      180deg,
-      var(--color-tinta) 0 3px,
-      var(--color-veta) 3px 6px
-    );
+    repeating-linear-gradient(180deg, var(--color-tinta) 0 3px, var(--color-veta) 3px 6px);
   background-attachment: fixed;
   color: var(--color-hueso);
   font-family: var(--font-sans);
@@ -224,8 +239,16 @@ summary {
   z-index: -1;
   inset: 0;
   background:
-    radial-gradient(circle at 15% 12%, color-mix(in srgb, var(--color-oro) 10%, transparent), transparent 26rem),
-    radial-gradient(circle at 90% 82%, color-mix(in srgb, var(--color-brasa) 10%, transparent), transparent 28rem);
+    radial-gradient(
+      circle at 15% 12%,
+      color-mix(in srgb, var(--color-oro) 10%, transparent),
+      transparent 26rem
+    ),
+    radial-gradient(
+      circle at 90% 82%,
+      color-mix(in srgb, var(--color-brasa) 10%, transparent),
+      transparent 28rem
+    );
   content: '';
   pointer-events: none;
 }
@@ -238,8 +261,11 @@ summary {
 .surface-panel {
   border: 1px solid color-mix(in srgb, var(--color-linea) 82%, var(--color-oro));
   border-radius: 20px;
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--color-madera-clara) 86%, transparent), var(--color-mesa));
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-madera-clara) 86%, transparent),
+    var(--color-mesa)
+  );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.05),
     0 12px 30px rgb(0 0 0 / 0.2);
@@ -248,8 +274,11 @@ summary {
 .interactive-surface {
   border: 1px solid color-mix(in srgb, var(--color-linea) 82%, var(--color-oro));
   border-radius: 18px;
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--color-madera-clara) 78%, transparent), var(--color-mesa));
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-madera-clara) 78%, transparent),
+    var(--color-mesa)
+  );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.04),
     0 8px 22px rgb(0 0 0 / 0.16);
@@ -329,13 +358,20 @@ summary {
 }
 
 .game-shell {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-tinta) 52%, transparent), transparent 18rem);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-tinta) 52%, transparent),
+    transparent 18rem
+  );
 }
 
 .game-hand {
   border-top: 1px solid color-mix(in srgb, var(--color-oro) 24%, var(--color-linea));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-mesa) 68%, transparent), var(--color-tinta));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-mesa) 68%, transparent),
+    var(--color-tinta)
+  );
   box-shadow: 0 -10px 24px rgb(0 0 0 / 0.18);
 }
 
@@ -347,6 +383,25 @@ summary {
   margin-top: -24px;
   padding-top: 24px;
   overscroll-behavior-x: contain;
+}
+
+/* La mesa de Chinchón conserva su proporción, pero también se adapta a la
+ * altura realmente libre entre los asientos y la mano. Sin este límite, en
+ * móviles bajos el flex centraba un bloque más alto que su hueco y recortaba
+ * los jugadores por arriba y por abajo. */
+.game-table-stage {
+  container-type: size;
+}
+
+.game-table-frame {
+  width: min(100%, 340px);
+  aspect-ratio: 340 / 262;
+}
+
+@supports (width: 1cqh) {
+  .game-table-frame {
+    width: min(100cqw, 340px, calc(100cqh * 340 / 262));
+  }
 }
 
 .action-dock {
@@ -366,7 +421,9 @@ summary {
 .drop-zone-active {
   filter: brightness(1.12) saturate(1.08);
   transform: scale(1.02);
-  box-shadow: 0 0 0 3px var(--color-oro), 0 0 24px color-mix(in srgb, var(--color-oro) 34%, transparent);
+  box-shadow:
+    0 0 0 3px var(--color-oro),
+    0 0 24px color-mix(in srgb, var(--color-oro) 34%, transparent);
 }
 
 .drag-instruction {
@@ -462,9 +519,7 @@ summary {
   aspect-ratio: 0.7;
   border: 3px solid var(--card-ink);
   border-radius: 18px;
-  background:
-    radial-gradient(circle at 50% 50%, rgb(201 152 46 / 0.12) 0 2px, transparent 3px),
-    linear-gradient(145deg, var(--card-face), #f0dfbb);
+  background: var(--card-ink);
   color: var(--card-ink);
   box-shadow:
     inset 0 0 0 2px rgb(255 255 255 / 0.35),
@@ -472,19 +527,33 @@ summary {
     0 10px 18px rgb(0 0 0 / 0.18);
   font-family: var(--font-mono);
   font-weight: 700;
-  padding: 16px 12px;
+  padding: 0;
   touch-action: none;
   user-select: none;
-  transition: transform 140ms ease, filter 140ms ease;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease;
 }
 
 .number-card::before {
   position: absolute;
+  z-index: 2;
   inset: 6px;
-  border: 1px solid color-mix(in srgb, var(--card-ink) 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-crema) 36%, transparent);
   border-radius: 11px;
   content: '';
   pointer-events: none;
+}
+
+.number-card-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transition: filter 140ms ease;
+  user-select: none;
 }
 
 .number-card:not(:disabled):active {
@@ -504,7 +573,9 @@ summary {
   pointer-events: none;
   filter: drop-shadow(0 18px 18px rgb(0 0 0 / 0.48));
   transform: translate(-50%, -82%) rotate(-3deg) scale(1.04);
-  transition: filter 120ms ease, transform 120ms ease;
+  transition:
+    filter 120ms ease,
+    transform 120ms ease;
 }
 
 .number-card-drag-preview .number-card {
@@ -512,50 +583,9 @@ summary {
 }
 
 .number-card-drag-ready {
-  filter:
-    drop-shadow(0 18px 18px rgb(0 0 0 / 0.42))
+  filter: drop-shadow(0 18px 18px rgb(0 0 0 / 0.42))
     drop-shadow(0 0 12px color-mix(in srgb, var(--color-oro) 58%, transparent));
   transform: translate(-50%, -82%) rotate(1deg) scale(1.1);
-}
-
-.number-card-value {
-  position: relative;
-  z-index: 1;
-  font-family: var(--font-display);
-  font-size: clamp(36px, 10vw, 54px);
-  line-height: 1;
-}
-
-.number-card-mark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  color: var(--card-oros);
-  font-family: var(--font-display);
-  font-size: 52px;
-  line-height: 1;
-  opacity: 0.22;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-}
-
-.number-card-corner {
-  position: absolute;
-  z-index: 1;
-  font-size: 15px;
-  line-height: 1;
-  opacity: 0.68;
-}
-
-.number-card-corner-top {
-  top: 15px;
-  left: 15px;
-}
-
-.number-card-corner-bottom {
-  right: 15px;
-  bottom: 15px;
-  transform: rotate(180deg);
 }
 
 .number-card-static {
@@ -570,34 +600,26 @@ summary {
   border-width: 2px;
   border-color: var(--color-oro);
   border-radius: 13px;
-  padding: 9px 7px;
+  padding: 0;
 }
 
-.number-card-played .number-card-value {
-  font-size: 28px;
-}
-
-.number-card-played .number-card-mark {
-  font-size: 32px;
-}
-
-.number-card-played .number-card-corner {
-  font-size: 10px;
-}
-
-.number-card-played .number-card-corner-top {
-  top: 10px;
-  left: 9px;
-}
-
-.number-card-played .number-card-corner-bottom {
-  right: 9px;
-  bottom: 10px;
+.number-card-table {
+  width: 84px;
+  min-height: 120px;
+  flex: 0 0 84px;
+  border-color: var(--color-oro);
 }
 
 .number-card-failed {
   border-color: var(--color-brasa);
-  background: linear-gradient(145deg, #f0c9b6, #d98c75);
+  box-shadow:
+    inset 0 0 0 5px color-mix(in srgb, var(--color-brasa) 72%, transparent),
+    0 5px 0 rgb(27 29 42 / 0.4),
+    0 10px 18px rgb(0 0 0 / 0.18);
+}
+
+.number-card-failed .number-card-art {
+  filter: grayscale(0.42) sepia(0.32) saturate(1.35);
 }
 
 .number-card-preview {
@@ -608,12 +630,23 @@ summary {
   justify-content: center;
   border: 2px solid var(--card-ink);
   border-radius: 9px;
-  background: var(--card-face);
+  background-position: center;
+  background-size: cover;
   color: var(--card-ink);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
   box-shadow: 0 3px 0 rgb(27 29 42 / 0.35);
+}
+
+.number-card-preview-one {
+  background-image: url('/cards/orden/1.webp');
+  color: transparent;
+}
+
+.number-card-preview-hundred {
+  background-image: url('/cards/orden/100.webp');
+  color: transparent;
 }
 
 /* Un garbanzo. No es redondo: es más ancho que alto y con el pico abajo, o
@@ -666,31 +699,6 @@ summary {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-/* Reacción rápida flotando (roadmap "Después del MVP" §2). Es la única
- * animación que no estaba en la lista cerrada de §8.4, porque la función
- * tampoco existía cuando se escribió: se mantiene dentro del mismo espíritu
- * (un movimiento corto, sin rebotes ni giros) y la duración la marca
- * REACTION_TTL_MS desde el componente, no esta regla. Como el resto,
- * prefers-reduced-motion la neutraliza en el bloque de abajo. */
-@keyframes reaction-float {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  15% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  75% {
-    opacity: 1;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-20px);
   }
 }
 

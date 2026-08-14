@@ -98,6 +98,7 @@ export {
   getTableView as partyGetTableView,
   COLOR_NAMES,
   COLOR_QUESTIONS,
+  colorQuestionById,
   MAJORITY_QUESTIONS,
   SCALE_QUESTIONS,
   type PartyState,
@@ -109,3 +110,41 @@ export {
   type MajorityRoundState,
   type ScaleRoundState,
 } from './games/party/index.ts';
+
+// Registro de Brisca, Escoba, Siete y media, Tute y Cinquillo.
+import './games/classics/index.ts';
+export {
+  briscaModule,
+  escobaModule,
+  sieteYMediaModule,
+  tuteModule,
+  cinquilloModule,
+  createClassicState,
+  applyClassicAction,
+  getClassicPlayerView,
+  getClassicTableView,
+  trickPoints,
+  escobaValue,
+  sevenHalfValue,
+  sevenHalfTotal,
+  cinquilloLegal,
+  type ClassicState,
+  type ClassicPlayer,
+} from './games/classics/index.ts';
+
+// Registro de La Ronda: baraja propia, turnos y cuenta compartida.
+import './games/laronda/index.ts';
+export {
+  laRondaModule,
+  createRondaState,
+  applyRondaAction,
+  getRondaPlayerView,
+  getRondaTableView,
+  buildRondaDeck,
+  rondaCardById,
+  calculateRondaBill,
+  wineCostCents,
+  type RondaState,
+  type RondaPlayer,
+  type RondaCard,
+} from './games/laronda/index.ts';

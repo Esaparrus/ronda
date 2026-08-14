@@ -7,6 +7,7 @@
 // intentar remendar un socket que ya lleva medio minuto sin responder.
 'use client';
 
+import Link from 'next/link';
 import { Button } from './Button';
 
 export function ConnectionLostScreen() {
@@ -19,6 +20,9 @@ export function ConnectionLostScreen() {
         Llevamos un rato sin poder conectar. Comprueba tu conexión e inténtalo de nuevo.
       </p>
       <Button onClick={() => window.location.reload()}>Reintentar</Button>
+      <Link href="/" className="text-14 text-humo underline">
+        Volver al inicio
+      </Link>
     </main>
   );
 }

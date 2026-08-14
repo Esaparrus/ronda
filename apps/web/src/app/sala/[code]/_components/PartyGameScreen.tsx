@@ -11,10 +11,12 @@ import type {
 } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
-import { NumberCard, NumberCardFace } from '@/components/cards/NumberCard';
+import { NumberCard } from '@/components/cards/NumberCard';
+import { NumberCardFace } from '@/components/cards/NumberCardFace';
 import { TableHeader } from './TableHeader';
 import { PlayerStrip } from './PlayerStrip';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
+import { ColorCountdownHeader } from './ColorCountdownHeader';
 
 export interface PartyGameScreenProps {
   view: PartyPlayerView;
@@ -197,18 +199,20 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
 }
 
 const COLOR_OPTIONS = [
-  { name: 'rojo', className: 'bg-brasa' },
-  { name: 'azul', className: 'bg-azul' },
-  { name: 'verde', className: 'bg-verde' },
-  { name: 'amarillo', className: 'bg-oro' },
-  { name: 'naranja', className: 'bg-teja' },
-  { name: 'morado', className: 'bg-violeta' },
-  { name: 'rosa', className: 'bg-rosa' },
-  { name: 'negro', className: 'bg-tinta' },
-  { name: 'blanco', className: 'bg-hueso' },
-  { name: 'marrón', className: 'bg-mesa' },
-  { name: 'gris', className: 'bg-azul' },
+  { name: 'rojo', className: 'bg-ficha-rojo', symbol: '●', darkText: false },
+  { name: 'azul', className: 'bg-ficha-azul', symbol: '◆', darkText: false },
+  { name: 'verde', className: 'bg-ficha-verde', symbol: '▲', darkText: false },
+  { name: 'amarillo', className: 'bg-ficha-amarillo', symbol: '✦', darkText: true },
+  { name: 'naranja', className: 'bg-ficha-naranja', symbol: '⬟', darkText: true },
+  { name: 'morado', className: 'bg-ficha-morado', symbol: '✚', darkText: false },
+  { name: 'rosa', className: 'bg-ficha-rosa', symbol: '♥', darkText: true },
+  { name: 'negro', className: 'bg-ficha-negro', symbol: '■', darkText: false },
+  { name: 'blanco', className: 'bg-ficha-blanco', symbol: '○', darkText: true },
+  { name: 'marrón', className: 'bg-ficha-marron', symbol: '⬢', darkText: false },
+  { name: 'gris', className: 'bg-ficha-gris', symbol: '╳', darkText: false },
 ] as const;
+
+const COLOR_OPTION_BY_NAME = new Map(COLOR_OPTIONS.map((color) => [color.name, color]));
 
 function ColoresGame({ view }: { view: ColoresPlayerView }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
@@ -222,25 +226,23 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
 
   function toggleColor(color: string) {
     if (party.phase !== 'input' || me.submitted) return;
-    if (!party.allowMultiple) {
-      setSelected([color]);
-      return;
-    }
-    setSelected((current) =>
-      current.includes(color) ? current.filter((item) => item !== color) : [...current, color],
-    );
+    setSelected((current) => {
+      if (current.includes(color)) return current.filter((item) => item !== color);
+      if (current.length >= party.answerCount) return current;
+      return [...current, color];
+    });
   }
 
   function submit() {
-    if (selected.length === 0) return;
+    if (selected.length !== party.answerCount) return;
     void useRondaStore.getState().sendAction({ type: 'submitColors', colors: selected });
   }
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
-      <TableHeader
+      <ColorCountdownHeader
         left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
-        turnNick={null}
+        deadlineAt={party.deadlineAt}
       />
       <PlayerStrip
         players={view.players}
@@ -252,10 +254,22 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
         <section className="surface-panel w-full max-w-md p-5 text-center">
           <span className="text-12 uppercase tracking-wider text-humo">Colores</span>
           <h1 className="mt-3 text-20 font-semibold text-hueso">{party.prompt}</h1>
-          <p className="mt-2 text-14 text-humo">
-            {party.allowMultiple ? 'Puedes elegir varios.' : 'Elige una respuesta.'}
+          <p className="mt-3 text-16 font-semibold text-oro">
+            Elige exactamente {party.answerCount} {party.answerCount === 1 ? 'color' : 'colores'}
           </p>
-          <p className="mt-2 text-12 text-oro">Exacto: 4 puntos · parecido: 1–3 · lejos: 0</p>
+          <p className="mt-2 text-12 text-humo">
+            Quien acierte gana 1 punto por cada rival que falle, más el bote.
+          </p>
+          {party.rollover > 0 ? (
+            <p className="mt-2 font-mono text-14 font-semibold text-crema">
+              Bote: +{party.rollover}
+            </p>
+          ) : null}
+          {party.deadlineAt === null && party.phase === 'input' ? (
+            <p className="mt-2 text-12 text-humo">
+              La primera respuesta inicia la cuenta atrás de 15 segundos.
+            </p>
+          ) : null}
         </section>
         {party.phase === 'input' ? (
           <section className="grid w-full max-w-md grid-cols-3 gap-3">
@@ -266,28 +280,40 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
                   key={color.name}
                   type="button"
                   aria-pressed={checked}
+                  aria-label={`${color.name}${checked ? ', seleccionado' : ''}`}
                   disabled={me.submitted || pendingAction}
                   onClick={() => toggleColor(color.name)}
                   className={`min-h-20 rounded-2xl border-2 px-2 text-14 font-semibold shadow-md transition-[transform,filter,border-color] active:scale-95 ${
                     color.className
-                  } ${color.name === 'blanco' ? 'text-tinta' : 'text-hueso'} ${
+                  } ${color.darkText ? 'text-tinta' : 'text-hueso'} ${
                     checked
                       ? 'border-oro ring-2 ring-oro ring-offset-2 ring-offset-tinta'
                       : 'border-linea'
                   }`}
                 >
-                  {color.name}
+                  <span className="flex flex-col items-center gap-1">
+                    <span className="text-20 leading-none" aria-hidden="true">
+                      {color.symbol}
+                    </span>
+                    <span>{color.name}</span>
+                  </span>
                 </button>
               );
             })}
           </section>
         ) : null}
         {party.phase === 'input' && !me.submitted ? (
-          <Button onClick={submit} disabled={selected.length === 0} loading={pendingAction}>
-            Guardar respuesta
+          <Button
+            onClick={submit}
+            disabled={selected.length !== party.answerCount}
+            loading={pendingAction}
+          >
+            Bloquear respuesta ({selected.length}/{party.answerCount})
           </Button>
         ) : party.phase === 'input' ? (
-          <p className="text-16 text-oro">Respuesta guardada. Espera a los demás.</p>
+          <p className="text-center text-16 text-oro">
+            Respuesta bloqueada. El resto tiene 15 segundos desde la primera respuesta.
+          </p>
         ) : (
           <ColorsReveal view={view} />
         )}
@@ -308,18 +334,91 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
 }
 
 function ColorsReveal({ view }: { view: ColoresPlayerView }) {
-  const answers = view.party.answers;
+  const { answers, correctColors, scoreDeltas, rollover } = view.party;
+  const correctCount = view.players.filter((player) =>
+    isExactColorAnswer(answers?.[player.playerId], correctColors),
+  ).length;
+  const everyoneCorrect = correctCount === view.players.length;
+  const nobodyCorrect = correctCount === 0;
+
   return (
-    <section className="surface-panel flex w-full max-w-md flex-col gap-3 p-4">
-      <p className="text-16 text-hueso">Correctos: {view.party.correctColors?.join(', ')}</p>
-      {answers
-        ? Object.entries(answers).map(([playerId, colors]) => (
-            <p key={playerId} className="text-14 text-humo">
-              {playerNick(view, playerId)}: {colors.join(', ')}
-            </p>
-          ))
-        : null}
+    <section className="surface-panel flex w-full max-w-md flex-col gap-4 p-4">
+      <div className="text-center">
+        <p className="text-12 uppercase tracking-wider text-humo">Respuesta correcta</p>
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
+          {correctColors?.map((color) => (
+            <ColorChip key={color} color={color} />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {view.players.map((player) => {
+          const colors = answers?.[player.playerId];
+          const correct = isExactColorAnswer(colors, correctColors);
+          const delta = scoreDeltas?.[player.playerId] ?? 0;
+          return (
+            <div
+              key={player.playerId}
+              className={`rounded-xl border px-3 py-2 ${
+                correct ? 'border-verde bg-verde/15' : 'border-linea bg-tinta/30'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-14 font-semibold text-hueso">{player.nick}</span>
+                <span
+                  className={correct ? 'text-14 font-semibold text-crema' : 'text-14 text-humo'}
+                >
+                  {correct ? (delta > 0 ? `+${delta}` : 'Acierto') : 'Fallo'}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {colors?.length ? (
+                  colors.map((color) => <ColorChip key={color} color={color} />)
+                ) : (
+                  <span className="text-12 text-humo">Sin respuesta</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-center text-14 text-humo">
+        {everyoneCorrect
+          ? `Todos habéis acertado: el bote sube a +${rollover}.`
+          : nobodyCorrect
+            ? 'Nadie ha acertado: el bote se pierde.'
+            : `${view.players.length - correctCount} ${view.players.length - correctCount === 1 ? 'rival ha fallado' : 'rivales han fallado'}.`}
+      </p>
     </section>
+  );
+}
+
+function ColorChip({ color }: { color: string }) {
+  const option = COLOR_OPTION_BY_NAME.get(color as (typeof COLOR_OPTIONS)[number]['name']);
+  if (!option) return <span className="text-12 text-humo">{color}</span>;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border border-hueso/30 px-2 py-1 text-12 font-semibold ${
+        option.className
+      } ${option.darkText ? 'text-tinta' : 'text-hueso'}`}
+    >
+      <span aria-hidden="true">{option.symbol}</span>
+      {option.name}
+    </span>
+  );
+}
+
+function isExactColorAnswer(
+  answer: readonly string[] | undefined,
+  correct: readonly string[] | null,
+): boolean {
+  return (
+    answer !== undefined &&
+    correct !== null &&
+    answer.length === correct.length &&
+    correct.every((color) => answer.includes(color))
   );
 }
 

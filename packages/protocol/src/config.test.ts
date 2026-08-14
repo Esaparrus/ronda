@@ -3,8 +3,10 @@ import {
   ChinchonConfigSchema,
   GameConfigSchema,
   PochaConfigSchema,
+  LaRondaConfigSchema,
   DEFAULT_CONFIG,
   DEFAULT_COLORES_CONFIG,
+  DEFAULT_LA_RONDA_CONFIG,
   ColoresConfigSchema,
 } from './config.ts';
 
@@ -79,8 +81,17 @@ describe('GameConfigSchema', () => {
     expect(PochaConfigSchema.parse({ maxPlayers: 2 }).maxPlayers).toBe(2);
   });
 
+  it('configura La Ronda para mesas de 3 a 8 personas', () => {
+    expect(GameConfigSchema.parse({ gameId: 'laronda' })).toEqual(DEFAULT_LA_RONDA_CONFIG);
+    expect(LaRondaConfigSchema.parse({ maxPlayers: 3 }).maxPlayers).toBe(3);
+    expect(LaRondaConfigSchema.parse({ maxPlayers: 8 }).maxPlayers).toBe(8);
+    expect(() => LaRondaConfigSchema.parse({ maxPlayers: 2 })).toThrow();
+  });
+
   it('configura el tema de Colores y usa todo el banco por defecto', () => {
     expect(DEFAULT_COLORES_CONFIG.topic).toBe('todo');
+    expect(DEFAULT_COLORES_CONFIG.rounds).toBe(20);
+    expect(DEFAULT_COLORES_CONFIG.pointsToWin).toBe(10);
     expect(ColoresConfigSchema.parse({ topic: 'banderas' }).topic).toBe('banderas');
     expect(() => ColoresConfigSchema.parse({ topic: 'faciles' })).toThrow();
   });

@@ -47,61 +47,68 @@ export async function startServer(opts: {
   const persistence = new Persistence(dbConfig, logger);
 
   // RoomManager con hooks que difunden snapshots y persisten.
-  const manager = new RoomManager(() => ({
-    onSnapshot: (room) => {
-      // La difusión la dispara el handler tras applyAction; aquí solo agendamos
-      // persistencia. (El handler llama a broadcastRoom explícitamente.)
-      persistence.scheduleSnapshot(room);
+  const manager = new RoomManager(
+    () => ({
+      onSnapshot: (room) => {
+        // La difusión la dispara el handler tras applyAction; aquí solo agendamos
+        // persistencia. (El handler llama a broadcastRoom explícitamente.)
+        persistence.scheduleSnapshot(room);
+      },
+      onEvent: (room, events, version) => {
+        // La difusión de eventos la gestiona el handler vía RoomManager.applyAction
+        // que ya emitió onSnapshot; los eventos cosméticos se difunden aquí.
+        void events;
+        void version;
+        void room;
+      },
+      onToast: (room, level, text) => {
+        // También puede originarlo una tarea del servidor (por ejemplo, un
+        // turno agotado), así que no puede depender de un handler de socket.
+        broadcastToast(io, room, level, text);
+      },
+      onClosed: (room, reason) => {
+        // El sweep cierra salas fuera de un handler de socket. Avisa a quienes
+        // sigan conectados antes de que RoomManager retire la sala del mapa.
+        // Las caducidades del sweep no pasan por un handler de socket; avisa a
+        // jugadores y pantallas antes de retirar la sala del mapa.
+        broadcastClosed(io, room, reason);
+        void persistence.onClose(room);
+      },
+      onPersist: (room) => {
+        void persistence.flushNow(room);
+      },
+      onStats: (room) => {
+        // saveRoomStats() nunca lanza (ver stats-repo.ts): la copia viva de
+        // las estadísticas está en memoria, esto es solo el histórico.
+        void saveRoomStats(dbConfig, room.code, room.getStats().rows);
+      },
+      onTurnTimeout: (room) => {
+        // El temporizador muta el estado sin pasar por `game:action`; difundir
+        // aquí evita que la mesa se quede mostrando el turno anterior.
+        // Este cambio de estado lo origina un timer del servidor, no un socket;
+        // difundirlo aquí evita que las pantallas se queden mostrando el turno
+        // que ya ha expirado.
+        broadcastRoom(io, room);
+        // El timeout también puede entregar el turno a un robot. En ese caso no
+        // existe un handler de socket que pase por `rebroadcast`, así que hay que
+        // agendarlo aquí o la sala queda esperando indefinidamente.
+        if (botDeps) scheduleBotTurn(botDeps, room.code);
+      },
+      onColorTimeout: (room) => {
+        // El cierre del plazo no pasa por un socket de jugador.
+        broadcastRoom(io, room);
+      },
+      onTrack: (room, kind, payload) => {
+        // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
+        // no puede tumbar una partida. `void` porque el llamador (room-
+        // manager.ts) tampoco espera esta promesa.
+        void track(dbConfig, kind, payload, room.code);
+      },
+    }),
+    {
+      inactivityTimeoutMs: config.ROOM_INACTIVITY_MINUTES * 60_000,
     },
-    onEvent: (room, events, version) => {
-      // La difusión de eventos la gestiona el handler vía RoomManager.applyAction
-      // que ya emitió onSnapshot; los eventos cosméticos se difunden aquí.
-      void events;
-      void version;
-      void room;
-    },
-    onToast: (room, level, text) => {
-      // También puede originarlo una tarea del servidor (por ejemplo, un
-      // turno agotado), así que no puede depender de un handler de socket.
-      broadcastToast(io, room, level, text);
-    },
-    onClosed: (room, reason) => {
-      // El sweep cierra salas fuera de un handler de socket. Avisa a quienes
-      // sigan conectados antes de que RoomManager retire la sala del mapa.
-      // Las caducidades del sweep no pasan por un handler de socket; avisa a
-      // jugadores y pantallas antes de retirar la sala del mapa.
-      broadcastClosed(io, room, reason);
-      void persistence.onClose(room);
-    },
-    onPersist: (room) => {
-      void persistence.flushNow(room);
-    },
-    onStats: (room) => {
-      // saveRoomStats() nunca lanza (ver stats-repo.ts): la copia viva de
-      // las estadísticas está en memoria, esto es solo el histórico.
-      void saveRoomStats(dbConfig, room.code, room.getStats().rows);
-    },
-    onTurnTimeout: (room) => {
-      // El temporizador muta el estado sin pasar por `game:action`; difundir
-      // aquí evita que la mesa se quede mostrando el turno anterior.
-      // Este cambio de estado lo origina un timer del servidor, no un socket;
-      // difundirlo aquí evita que las pantallas se queden mostrando el turno
-      // que ya ha expirado.
-      broadcastRoom(io, room);
-      // El timeout también puede entregar el turno a un robot. En ese caso no
-      // existe un handler de socket que pase por `rebroadcast`, así que hay que
-      // agendarlo aquí o la sala queda esperando indefinidamente.
-      if (botDeps) scheduleBotTurn(botDeps, room.code);
-    },
-    onTrack: (room, kind, payload) => {
-      // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
-      // no puede tumbar una partida. `void` porque el llamador (room-
-      // manager.ts) tampoco espera esta promesa.
-      void track(dbConfig, kind, payload, room.code);
-    },
-  }), {
-    inactivityTimeoutMs: config.ROOM_INACTIVITY_MINUTES * 60_000,
-  });
+  );
 
   const { server } = createHttpServer({ countRooms: () => manager.countRooms() });
   const { io, stopPeriodic } = createIoServer({
@@ -129,7 +136,9 @@ export async function startServer(opts: {
     try {
       await snapshot();
     } catch (e) {
-      logger.error('snapshot falló en shutdown', { detail: e instanceof Error ? e.message : String(e) });
+      logger.error('snapshot falló en shutdown', {
+        detail: e instanceof Error ? e.message : String(e),
+      });
     }
     io.close();
     server.close();
@@ -172,7 +181,10 @@ import { fileURLToPath } from 'node:url';
 import { argv } from 'node:process';
 const isMain = (() => {
   try {
-    return process.argv[1] && fileURLToPath(new URL(`file://${argv[1]}`)) === fileURLToPath(import.meta.url);
+    return (
+      process.argv[1] &&
+      fileURLToPath(new URL(`file://${argv[1]}`)) === fileURLToPath(import.meta.url)
+    );
   } catch {
     return false;
   }

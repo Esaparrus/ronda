@@ -19,7 +19,6 @@ import type { TableView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { Banner } from '@/components/ui/Banner';
 import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
-import { ReactionOverlay } from '@/components/ui/ReactionOverlay';
 import { CornerCode } from './CornerCode';
 import { MesaLobbyBoard } from './MesaLobbyBoard';
 import { MesaGameBoard } from './MesaGameBoard';
@@ -31,6 +30,8 @@ import { MusMesaGameBoard } from './MusMesaGameBoard';
 import { MusMesaRoundEndScreen } from './MusMesaRoundEndScreen';
 import { MusMesaGameEndScreen } from './MusMesaGameEndScreen';
 import { PartyMesaGameBoard } from './PartyMesaGameBoard';
+import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
+import { RondaMesaScreen } from './RondaMesaScreen';
 
 export interface MesaClientProps {
   code: string;
@@ -105,10 +106,6 @@ export function MesaClient({ code }: MesaClientProps) {
   return (
     <div className="relative flex min-h-dvh flex-col bg-tinta">
       <Banner status={connection} />
-      {/* La pantalla central recibe las reacciones pero no las manda: aquí
-          no hay ReactionBar, solo el overlay (roadmap "Después del MVP" §2).
-          Es la pantalla donde más gracia tienen, y sigue sin accionar nada. */}
-      <ReactionOverlay variant="mesa" />
       {tableView.status !== 'lobby' ? <CornerCode view={tableView} /> : null}
       {tableView.status === 'lobby' ? <MesaLobbyBoard view={tableView} /> : null}
       {tableView.status === 'playing' && tableView.gameId === 'chinchon' ? (
@@ -126,6 +123,17 @@ export function MesaClient({ code }: MesaClientProps) {
       {tableView.status === 'playing' && tableView.gameId === 'mus' ? (
         <MusMesaGameBoard view={tableView} />
       ) : null}
+      {tableView.gameId === 'laronda' && tableView.status !== 'lobby' ? (
+        <RondaMesaScreen view={tableView} />
+      ) : null}
+      {tableView.status === 'playing' &&
+      (tableView.gameId === 'brisca' ||
+        tableView.gameId === 'escoba' ||
+        tableView.gameId === 'sieteymedia' ||
+        tableView.gameId === 'tute' ||
+        tableView.gameId === 'cinquillo') ? (
+        <ClassicMesaGameBoard view={tableView} />
+      ) : null}
       {tableView.status === 'playing' &&
       (tableView.gameId === 'orden' ||
         tableView.gameId === 'colores' ||
@@ -141,7 +149,9 @@ export function MesaClient({ code }: MesaClientProps) {
       {tableView.status === 'gameEnd' && tableView.gameId === 'mus' ? (
         <MusMesaGameEndScreen view={tableView} />
       ) : null}
-      {tableView.status === 'gameEnd' && tableView.gameId !== 'mus' ? (
+      {tableView.status === 'gameEnd' &&
+      tableView.gameId !== 'mus' &&
+      tableView.gameId !== 'laronda' ? (
         <MesaGameEndScreen view={tableView} />
       ) : null}
     </div>

@@ -9,13 +9,23 @@
 // simulador de P9 (bot-policy.ts): legal y rápida, no necesariamente buena.
 import { randomUUID } from 'node:crypto';
 import { GAMES } from '@ronda/engine';
-import type { PartyPlayerView, PlayerId } from '@ronda/protocol';
+import type {
+  ChinchonPlayerView,
+  ClassicPlayerView,
+  PartyPlayerView,
+  PlayerId,
+} from '@ronda/protocol';
 import type { TypedIoServer } from '../io.ts';
 import type { RoomManager } from './room-manager.ts';
 import type { EngineState } from './room.ts';
 import type { Room } from './room.ts';
 import { broadcastRoom } from '../socket/broadcast.ts';
-import { decideChinchonAction, decidePartyAction, decidePochaAction } from './bot-policy.ts';
+import {
+  decideChinchonAction,
+  decideClassicAction,
+  decidePartyAction,
+  decidePochaAction,
+} from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
 
@@ -176,7 +186,16 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
         return;
       }
       if (view.gameId === 'mus') return;
-      const action = view.gameId === 'pocha' ? decidePochaAction(view) : decideChinchonAction(view);
+      const action =
+        view.gameId === 'pocha'
+          ? decidePochaAction(view)
+          : view.gameId === 'brisca' ||
+              view.gameId === 'escoba' ||
+              view.gameId === 'sieteymedia' ||
+              view.gameId === 'tute' ||
+              view.gameId === 'cinquillo'
+            ? decideClassicAction(view as ClassicPlayerView)
+            : decideChinchonAction(view as ChinchonPlayerView);
       if (!action) return;
       const r = deps.mgr.applyAction({
         roomCode,

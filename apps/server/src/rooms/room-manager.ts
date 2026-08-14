@@ -38,6 +38,7 @@ import { decideChinchonTimeoutDiscard } from './bot-policy.ts';
  * §10.6, no el de un juego concreto). */
 export function minPlayersFor(gameId: GameId): number {
   if (gameId === 'mus') return 4;
+  if (gameId === 'laronda') return 3;
   return 2;
 }
 
@@ -94,6 +95,8 @@ export class RoomManager {
   private io: unknown = null;
   /** Un único temporizador de turno por sala; no existe para partidas sin tiempo. */
   private turnTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Plazo de Colores, creado solo después de la primera respuesta. */
+  private colorTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private inactivityTimeoutMs: number | undefined;
 
   constructor(hooksFactory: () => RoomHooks = () => ({}), options: RoomManagerOptions = {}) {
@@ -226,7 +229,7 @@ export class RoomManager {
     // los dejó fuera a propósito). Se rechaza aquí y no solo escondiendo el
     // botón: un bot en una mesa de Mus dejaría la partida colgada en su
     // turno para siempre, porque bot-driver.ts no lo va a mover.
-    if (room.gameId === 'mus') {
+    if (room.gameId === 'mus' || room.gameId === 'laronda') {
       return err('INVALID_ACTION');
     }
 
@@ -394,6 +397,7 @@ export class RoomManager {
     room.status = 'playing';
     room.touch(input.now);
     this.syncTurnTimer(room, null);
+    this.syncColorTimer(room);
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'game_started', { players: actives.length });
     return ok(null);
@@ -458,6 +462,73 @@ export class RoomManager {
           ),
         };
       }
+      if (state?.gameId === 'laronda') {
+        const leavingSeat = state.players.find(
+          (candidate) => candidate.playerId === player.playerId,
+        )?.seat;
+        const players = state.players.map((candidate) =>
+          candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
+        );
+        const nextActiveSeat = (fromSeat: number): number | null => {
+          for (let offset = 1; offset <= players.length; offset += 1) {
+            const candidate =
+              (fromSeat + state.direction * offset + players.length * 2) % players.length;
+            if (players[candidate] && !players[candidate].left) {
+              return candidate;
+            }
+          }
+          return null;
+        };
+        let turnSeat = state.turnSeat;
+        let phase = state.phase;
+        let status = state.status;
+        let bill = state.bill
+          ? {
+              ...state.bill,
+              responderSeats: [...state.bill.responderSeats],
+              passedSeats: [...state.bill.passedSeats],
+              tipCardIds: [...state.bill.tipCardIds],
+            }
+          : null;
+
+        if (leavingSeat !== undefined && bill?.requesterSeat === leavingSeat) {
+          if (phase === 'discard') {
+            status = 'roundEnd';
+            room.status = 'roundEnd';
+            turnSeat = null;
+          } else {
+            phase = 'ordering';
+            bill = null;
+            turnSeat = nextActiveSeat(leavingSeat);
+          }
+        } else if (leavingSeat !== undefined && phase === 'tips' && bill) {
+          const removedIndex = bill.responderSeats.indexOf(leavingSeat);
+          if (removedIndex >= 0) {
+            bill.responderSeats.splice(removedIndex, 1);
+            bill.passedSeats = bill.passedSeats.filter((seat) => seat !== leavingSeat);
+            if (removedIndex < bill.responderIndex) bill.responderIndex -= 1;
+            if (bill.responderSeats.length > 0) {
+              bill.responderIndex %= bill.responderSeats.length;
+              turnSeat = bill.responderSeats[bill.responderIndex] ?? null;
+            } else {
+              phase = 'ordering';
+              bill = null;
+              turnSeat = nextActiveSeat(leavingSeat);
+            }
+          }
+        } else if (leavingSeat !== undefined && turnSeat === leavingSeat) {
+          turnSeat = nextActiveSeat(leavingSeat);
+        }
+        room.state = {
+          ...state,
+          version: state.version + 1,
+          players,
+          turnSeat,
+          phase,
+          status,
+          bill,
+        };
+      }
       // El motor no gestiona abandonos directamente: marcamos el jugador como
       // eliminado congelando su marcador. Simplificación aceptable para el MVP.
       // (Una implementación más fina movería sus cartas al descarte; aquí
@@ -497,6 +568,7 @@ export class RoomManager {
       if (connected.length < minPlayersFor(room.gameId)) {
         room.status = 'gameEnd';
         this.clearTurnTimer(room.code);
+        this.clearColorTimer(room.code);
         const state = room.state;
         if (state?.gameId === 'mus') {
           // Mus, decisión 6 de P28 (§12.11): la partida se ANULA. No hay
@@ -505,6 +577,21 @@ export class RoomManager {
           // resultado -- y por eso tampoco se llama a `recordMatchEnd()`:
           // esta partida no cuenta en las estadísticas de §11.2.
           room.state = { ...state, status: 'gameEnd', winnerTeamIndex: null };
+        } else if (state?.gameId === 'laronda' && connected[0]) {
+          const winner = connected.reduce((best, candidate) => {
+            const bestScore =
+              state.players.find((player) => player.playerId === best.playerId)?.score ?? 0;
+            const candidateScore =
+              state.players.find((player) => player.playerId === candidate.playerId)?.score ?? 0;
+            return candidateScore > bestScore ? candidate : best;
+          });
+          room.state = {
+            ...state,
+            status: 'gameEnd',
+            winnerId: winner.playerId,
+            winnerIds: [winner.playerId],
+          };
+          if (room.recordMatchEnd()) room.hooks.onStats?.(room);
         } else if (state && connected[0]) {
           room.state = { ...state, status: 'gameEnd', winnerId: connected[0].playerId };
           // Una partida que acaba por abandono cuenta igual en las
@@ -589,6 +676,7 @@ export class RoomManager {
     room.processedActions.set(input.clientActionId, newState.version);
     room.touch(input.now);
     this.syncTurnTimer(room, currentState);
+    this.syncColorTimer(room);
 
     // Eventos cosméticos (una sola vez por acción).
     if (r.value.events.length > 0) {
@@ -663,6 +751,7 @@ export class RoomManager {
       rememberCurrentColorQuestion(room, room.state);
       room.status = 'playing';
       this.syncTurnTimer(room, previousState);
+      this.syncColorTimer(room);
       room.hooks.onTrack?.(room, 'rematch', {});
     }
     room.hooks.onSnapshot?.(room);
@@ -851,6 +940,74 @@ export class RoomManager {
     this.turnTimers.delete(roomCode);
   }
 
+  /** Programa la revelación de Colores a partir de la primera respuesta. */
+  private syncColorTimer(room: Room): void {
+    const state = room.state;
+    if (
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'colores' ||
+      state.phase !== 'input' ||
+      !state.colors ||
+      state.colors.deadlineAt === null
+    ) {
+      this.clearColorTimer(room.code);
+      return;
+    }
+    if (this.colorTimers.has(room.code)) return;
+
+    const deadlineAt = state.colors.deadlineAt;
+    const delayMs = Math.max(0, deadlineAt - Date.now());
+    const timer = setTimeout(() => {
+      if (this.colorTimers.get(room.code) !== timer) return;
+      this.handleColorTimeout(room.code, deadlineAt, Date.now());
+      if (this.colorTimers.get(room.code) === timer) this.colorTimers.delete(room.code);
+    }, delayMs);
+    timer.unref?.();
+    this.colorTimers.set(room.code, timer);
+  }
+
+  private clearColorTimer(roomCode: string): void {
+    const timer = this.colorTimers.get(roomCode);
+    if (timer) clearTimeout(timer);
+    this.colorTimers.delete(roomCode);
+  }
+
+  private handleColorTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
+    const room = this.rooms.get(roomCode);
+    const state = room?.state;
+    if (
+      !room ||
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'colores' ||
+      state.phase !== 'input' ||
+      !state.colors ||
+      state.colors.deadlineAt !== expectedDeadlineAt
+    ) {
+      return;
+    }
+    if (expectedDeadlineAt > now) {
+      this.clearColorTimer(room.code);
+      this.syncColorTimer(room);
+      return;
+    }
+
+    const actor = room.playersBySeat()[0];
+    if (!actor) return;
+    const result = this.applyAction({
+      roomCode,
+      playerId: actor.playerId,
+      clientActionId: `color-timeout:${roomCode}:${state.version}:${randomUUID()}`,
+      expectedVersion: state.version,
+      action: { type: 'finishColors' },
+      now,
+    });
+    if (result.ok) room.hooks.onColorTimeout?.(room);
+  }
+
   /**
    * El tiempo agotado no cierra por el jugador: roba del mazo y tira una carta
    * suelta legal. Así el cierre sigue siendo una decisión explícita y la mano
@@ -954,23 +1111,60 @@ export class RoomManager {
     return advanced;
   }
 
+  /** Respaldo para procesos suspendidos o callbacks perdidos del reloj de Colores. */
+  expireOverdueColorAnswers(now: number): number {
+    let revealed = 0;
+    for (const room of this.rooms.values()) {
+      const state = room.state;
+      if (
+        room.status !== 'playing' ||
+        !state ||
+        state.gameId !== 'colores' ||
+        state.status !== 'playing' ||
+        state.phase !== 'input' ||
+        !state.colors ||
+        state.colors.deadlineAt === null ||
+        state.colors.deadlineAt > now
+      ) {
+        continue;
+      }
+
+      const deadlineAt = state.colors.deadlineAt;
+      const versionBefore = state.version;
+      this.clearColorTimer(room.code);
+      this.handleColorTimeout(room.code, deadlineAt, now);
+      if (room.state?.version !== versionBefore) revealed += 1;
+    }
+    return revealed;
+  }
+
   /** Cierra cualquier sala que lleve demasiado tiempo sin mutación válida. */
   sweep(now: number): number {
     let closed = 0;
     for (const room of this.rooms.values()) {
       if (room.status === 'closed') continue;
-      const anyConnected = [...room.players.values()].some((p) => p.connected);
+      const humanPlayers = [...room.players.values()].filter((player) => !player.isBot);
+      const anyConnected = humanPlayers.some((player) => player.connected);
+      // El plazo de abandono empieza cuando se desconecta el último móvil,
+      // no en la última jugada. Si una sala llevaba una hora abierta y el
+      // usuario bloquea el teléfono, debe conservar el margen completo para
+      // volver a entrar. Los robots no mantienen una sala viva por sí solos.
+      const lastHumanDisconnectAt = humanPlayers.reduce(
+        (latest, player) => Math.max(latest, player.disconnectedAt ?? 0),
+        0,
+      );
+      const unattendedSince = Math.max(room.lastActivityAt, lastHumanDisconnectAt);
       let shouldClose = false;
       if (anyConnected) {
         // Una sala abierta en algún móvil sigue viva aunque el grupo se
         // tome un descanso o esté leyendo una pantalla sin enviar acciones.
         shouldClose = false;
       } else if (this.inactivityTimeoutMs !== undefined) {
-        shouldClose = now - room.lastActivityAt >= this.inactivityTimeoutMs;
+        shouldClose = now - unattendedSince >= this.inactivityTimeoutMs;
       } else if (room.status === 'lobby') {
-        shouldClose = now - room.lastActivityAt >= LOBBY_TTL_MS;
+        shouldClose = now - unattendedSince >= LOBBY_TTL_MS;
       } else {
-        shouldClose = now - room.lastActivityAt >= PLAYING_TTL_MS;
+        shouldClose = now - unattendedSince >= PLAYING_TTL_MS;
       }
       if (shouldClose) {
         this.closeRoom(room, 'expired');
@@ -983,6 +1177,7 @@ export class RoomManager {
   /** Marca la sala como cerrada y la quita del mapa. */
   closeRoom(room: Room, reason: 'host_left' | 'empty' | 'expired'): void {
     this.clearTurnTimer(room.code);
+    this.clearColorTimer(room.code);
     room.status = 'closed';
     room.hooks.onClosed?.(room, reason);
     this.rooms.delete(room.code);

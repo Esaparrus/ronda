@@ -14,10 +14,16 @@ export type GameId =
   | 'chinchon'
   | 'pocha'
   | 'mus'
+  | 'brisca'
+  | 'escoba'
+  | 'sieteymedia'
+  | 'tute'
+  | 'cinquillo'
   | 'orden'
   | 'colores'
   | 'mayoria'
-  | 'escala';
+  | 'escala'
+  | 'laronda';
 
 /**
  * Identificador de carta: '<suit>-<rank>' con suit ∈ {oros,copas,espadas,
@@ -41,5 +47,5 @@ export const ROOM_CODE_LENGTH = 4;
  * límite de un juego concreto. Contrato §10.6 (P21/P22). El límite real de
  * cada partida lo pone `config.maxPlayers` del `GameConfig` de ese juego.
  */
-export const MAX_PLAYERS = 7; // los modos sociales admiten una cuadrilla de 7
+export const MAX_PLAYERS = 8; // La Ronda admite una mesa completa de 8
 export const MIN_PLAYERS = 2; // sin cambio -- Chinchón lo sigue necesitando

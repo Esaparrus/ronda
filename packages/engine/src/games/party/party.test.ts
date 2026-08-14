@@ -7,7 +7,7 @@ import {
   type PlayerId,
 } from '@ronda/protocol';
 import { applyAction, createPartyState } from './reducer.ts';
-import { COLOR_QUESTIONS } from './content.ts';
+import { COLOR_QUESTIONS, colorQuestionById } from './content.ts';
 import { getPlayerView, getTableView } from './views.ts';
 import type { PartyState } from './state.ts';
 
@@ -54,9 +54,32 @@ function createScale(): PartyState {
 }
 
 function apply(state: PartyState, playerId: PlayerId, action: Parameters<typeof applyAction>[2]): PartyState {
-  const result = applyAction(state, playerId, action, 0);
+  return applyAt(state, playerId, action, 0);
+}
+
+function applyAt(
+  state: PartyState,
+  playerId: PlayerId,
+  action: Parameters<typeof applyAction>[2],
+  now: number,
+): PartyState {
+  const result = applyAction(state, playerId, action, now);
   if (!result.ok) throw new Error(`${result.code}: ${result.detail ?? ''}`);
   return result.value.state;
+}
+
+function withColorQuestion(state: PartyState, questionId: string): PartyState {
+  if (!state.colors) throw new Error('sin ronda de Colores');
+  return {
+    ...state,
+    colors: {
+      ...state.colors,
+      questionId,
+      submissions: {},
+      deadlineAt: null,
+      scoreDeltas: null,
+    },
+  };
 }
 
 describe('modos sociales', () => {
@@ -114,15 +137,77 @@ describe('modos sociales', () => {
 
   it('revela Colores cuando todos han enviado su selección', () => {
     let state = createColors();
-    state = apply(state, 'p1', { type: 'submitColors', colors: ['rojo'] });
-    state = apply(state, 'p2', { type: 'submitColors', colors: ['rojo'] });
+    const answer = colorQuestionById(state.colors?.questionId ?? '').correctColors;
+    state = apply(state, 'p1', { type: 'submitColors', colors: answer });
+    state = apply(state, 'p2', { type: 'submitColors', colors: answer });
     expect(state.phase).toBe('input');
-    state = apply(state, 'p3', { type: 'submitColors', colors: ['rojo'] });
+    state = apply(state, 'p3', { type: 'submitColors', colors: answer });
     expect(state.phase).toBe('reveal');
+    expect(state.colors?.rollover).toBe(1);
+    expect(state.players.every((player) => player.score === 0)).toBe(true);
     const view = getPlayerView(state, 'p1');
     if (view.party.gameId !== 'colores') throw new Error('vista incorrecta');
     expect(view.party.answers).not.toBeNull();
     expect(view.party.correctColors).not.toBeNull();
+  });
+
+  it('puntúa un punto por cada rival que falla y exige la combinación exacta', () => {
+    let state = withColorQuestion(createColors(), 'simpsons-camiseta-bart');
+    state = apply(state, 'p1', { type: 'submitColors', colors: ['naranja'] });
+    state = apply(state, 'p2', { type: 'submitColors', colors: ['naranja'] });
+    state = apply(state, 'p3', { type: 'submitColors', colors: ['rojo'] });
+
+    expect(state.phase).toBe('reveal');
+    expect(state.players.map((player) => player.score)).toEqual([1, 1, 0]);
+    expect(state.colors?.scoreDeltas).toEqual({ p1: 1, p2: 1, p3: 0 });
+  });
+
+  it('acumula bote si todos aciertan y lo suma en la siguiente pregunta', () => {
+    let state = withColorQuestion(createColors(), 'simpsons-camiseta-bart');
+    for (const player of PLAYERS) {
+      state = apply(state, player.playerId, { type: 'submitColors', colors: ['naranja'] });
+    }
+    expect(state.colors?.rollover).toBe(1);
+
+    state = apply(state, 'p1', { type: 'nextRound' });
+    state = withColorQuestion(state, 'simpsons-camiseta-bart');
+    state = apply(state, 'p1', { type: 'submitColors', colors: ['naranja'] });
+    state = apply(state, 'p2', { type: 'submitColors', colors: ['naranja'] });
+    state = apply(state, 'p3', { type: 'submitColors', colors: ['azul'] });
+
+    expect(state.players.map((player) => player.score)).toEqual([2, 2, 0]);
+    expect(state.colors?.rollover).toBe(0);
+  });
+
+  it('inicia 15 segundos con la primera respuesta y revela a quien no contestó como fallo', () => {
+    let state = withColorQuestion(createColors(), 'simpsons-camiseta-bart');
+    state = applyAt(state, 'p1', { type: 'submitColors', colors: ['naranja'] }, 1_000);
+    expect(state.colors?.deadlineAt).toBe(16_000);
+
+    const early = applyAction(state, 'p1', { type: 'finishColors' }, 15_999);
+    expect(early).toEqual({ ok: false, code: 'INVALID_ACTION' });
+
+    state = applyAt(state, 'p1', { type: 'finishColors' }, 16_000);
+    expect(state.phase).toBe('reveal');
+    expect(state.players.map((player) => player.score)).toEqual([2, 0, 0]);
+    expect(state.colors?.deadlineAt).toBeNull();
+  });
+
+  it('obliga a elegir el número exacto de colores aunque el orden sea distinto', () => {
+    let state = withColorQuestion(createColors(), 'multi-bandera-alemania');
+    const incomplete = applyAction(
+      state,
+      'p1',
+      { type: 'submitColors', colors: ['rojo', 'amarillo'] },
+      0,
+    );
+    expect(incomplete).toEqual({ ok: false, code: 'INVALID_ACTION' });
+
+    state = apply(state, 'p1', {
+      type: 'submitColors',
+      colors: ['amarillo', 'negro', 'rojo'],
+    });
+    expect(state.colors?.submissions.p1).toEqual(['amarillo', 'negro', 'rojo']);
   });
 
   it('baraja únicamente el tema elegido en Colores', () => {
@@ -136,7 +221,9 @@ describe('modos sociales', () => {
       COLOR_QUESTIONS.map((question) => [question.id, question.category]),
     );
 
-    expect(state.colors?.questionOrder).toHaveLength(110);
+    expect(state.colors?.questionOrder).toHaveLength(
+      COLOR_QUESTIONS.filter((question) => question.category === 'banderas').length,
+    );
     expect(
       state.colors?.questionOrder.every((questionId) => categoryById.get(questionId) === 'banderas'),
     ).toBe(true);

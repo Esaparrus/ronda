@@ -33,7 +33,7 @@ export function TableHeader({
       : 'calm';
 
   return (
-    <header className="border-b border-linea bg-mesa/95 px-4 py-2.5 shadow-md backdrop-blur-sm">
+    <header className="shrink-0 border-b border-linea bg-mesa/95 px-4 py-2.5 shadow-md backdrop-blur-sm">
       <div className="flex min-w-0 items-center justify-between gap-3">
         <span className="shrink-0 font-mono text-12 uppercase leading-none tracking-wider text-humo">
           {left}

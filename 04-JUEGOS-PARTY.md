@@ -65,16 +65,21 @@ la necesidad de tener una baraja numerada.
 Nombre de interfaz: **Colores**.
 
 1. La web muestra una pregunta: «¿De qué color es…?» o «¿Qué colores tiene…?».
-2. Cada jugador selecciona uno o varios colores en privado.
-3. Las respuestas se revelan a la vez.
-4. Se muestra la respuesta válida y la puntuación depende de la cercanía del
-   color: 4 exacto, 3/2/1 parecido y 0 lejano.
-5. La partida termina al alcanzar el objetivo de puntos elegido (con un máximo
-   de seguridad de rondas).
+2. La pregunta indica cuántas fichas exactas hay que elegir. Cada jugador las
+   selecciona y bloquea en privado.
+3. La primera respuesta inicia un plazo de 15 segundos fijado por el servidor.
+   Al agotarse, quien no haya respondido cuenta como fallo.
+4. Las respuestas se revelan a la vez. Solo puntúa la combinación completa;
+   no existen aciertos por colores parecidos.
+5. Cada jugador que acierta gana un punto por cada rival que falla. Si todos
+   aciertan, nadie puntúa y se añade un punto al bote de la siguiente pregunta.
+   Si nadie acierta, el bote se pierde.
+6. La partida termina al alcanzar el objetivo de puntos elegido (10 por
+   defecto), con un máximo de seguridad de 20 preguntas.
 
-La batería inicial debe tener al menos 100 preguntas, con preguntas de una
-respuesta y preguntas de varias respuestas. Los colores serán fichas visuales
-con nombre accesible, no texto libre.
+La batería es contenido propio de Ronda y combina preguntas de una respuesta
+con preguntas de hasta cuatro colores. Los colores son fichas visuales con
+nombre y símbolo accesibles, no texto libre.
 
 ## 3. Mayoría
 

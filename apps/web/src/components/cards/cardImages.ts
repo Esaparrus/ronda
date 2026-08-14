@@ -10,10 +10,17 @@
 // contra ~0,6 MB en WebP, que se descargan por la red del móvil de cada
 // jugador).
 import type { Rank, Suit } from '@ronda/protocol';
-import { cardStyleFolder, type CardStyle } from '@/lib/card-style';
+import {
+  cardStyleExtension,
+  cardStyleFolder,
+  type CardStyle,
+} from '@/lib/card-style';
 
 /** Ruta de la imagen de una carta. */
 export function cardImageSrc(suit: Suit, rank: Rank, style: CardStyle = 'classic'): string {
   const folder = cardStyleFolder(style);
-  return folder ? `/cards/${folder}/${suit}-${rank}.png` : `/cards/${suit}-${rank}.webp`;
+  const extension = cardStyleExtension(style);
+  return folder
+    ? `/cards/${folder}/${suit}-${rank}.${extension}`
+    : `/cards/${suit}-${rank}.${extension}`;
 }

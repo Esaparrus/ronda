@@ -1,115 +1,56 @@
-// Lobby: código + QR para unirse, lista de jugadores, y controles de
-// anfitrión (variantes, expulsar, empezar). Contrato P14.
+// Sala de espera: una sola pantalla para invitar, ver quién ha entrado y empezar.
 'use client';
 
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
-import type {
-  ChinchonConfig,
-  GameConfig,
-  MusConfig,
-  PlayerView,
-  PochaConfig,
-} from '@ronda/protocol';
+import type { PlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { RoomCode } from '@/components/ui/RoomCode';
 import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { QuantityStepper } from '@/components/ui/QuantityStepper';
-import { Sheet } from '@/components/ui/Sheet';
-import { StatsPanel } from '@/components/ui/StatsPanel';
 
-// Genérico por `gameId` desde que Pocha tiene su propio lobby (los campos
-// que usa este componente -- roomCode/players/me.playerId/config -- son
-// comunes a cualquier `PlayerView`; solo la sección "Variantes" se ramifica
-// por juego, ver ChinchonVariants/PochaVariants más abajo).
 export interface LobbyProps {
   view: PlayerView;
 }
 
 export function Lobby({ view }: LobbyProps) {
-  const lastError = useRondaStore((s) => s.lastError);
+  const lastError = useRondaStore((state) => state.lastError);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [addingBot, setAddingBot] = useState(false);
-  const [statsOpen, setStatsOpen] = useState(false);
-  const [config, setConfig] = useState<GameConfig>(view.config);
-  // Mus: primer jugador marcado para intercambiar asiento (§12.2, decisión 1
-  // de P28). Se toca uno, se toca otro, y cambian de sitio.
-  const [swapFrom, setSwapFrom] = useState<string | null>(null);
 
-  const me = view.players.find((p) => p.playerId === view.me.playerId);
+  const me = view.players.find((player) => player.playerId === view.me.playerId);
   const isHost = me?.isHost ?? false;
   const joinUrl =
     typeof window !== 'undefined' ? `${window.location.origin}/unirse/${view.roomCode}` : '';
 
   useEffect(() => {
-    // El código QR se genera en el cliente (contrato P14): no hay servicio
-    // externo de por medio, solo la librería `qrcode` sobre el enlace de
-    // unirse con el código precargado.
     if (!joinUrl) return;
     let cancelled = false;
-    QRCode.toDataURL(joinUrl, { margin: 1, width: 200 })
+
+    QRCode.toDataURL(joinUrl, { margin: 1, width: 220 })
       .then((url) => {
         if (!cancelled) setQrDataUrl(url);
       })
       .catch(() => {
         if (!cancelled) setQrDataUrl(null);
       });
+
     return () => {
       cancelled = true;
     };
   }, [joinUrl]);
-
-  // La config del lobby puede cambiar por otro jugador o por el servidor
-  // (normalización de defaults); se resincroniza si no la estamos editando
-  // nosotros mismos en este instante (evita pisar un cambio a medio hacer).
-  useEffect(() => {
-    setConfig(view.config);
-  }, [view.config]);
 
   async function handleCopyLink() {
     if (!joinUrl) return;
     try {
       await navigator.clipboard.writeText(joinUrl);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Sin permiso de portapapeles: no hay nada más que hacer aquí.
+      // El QR y el código siguen disponibles si el navegador niega el portapapeles.
     }
-  }
-
-  function setChinchonField<K extends keyof ChinchonConfig>(key: K, value: ChinchonConfig[K]) {
-    setConfig((prev) => ({ ...(prev as ChinchonConfig), [key]: value }));
-    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<ChinchonConfig>);
-  }
-
-  function setPochaField<K extends keyof PochaConfig>(key: K, value: PochaConfig[K]) {
-    setConfig((prev) => ({ ...(prev as PochaConfig), [key]: value }));
-    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<PochaConfig>);
-  }
-
-  function setMusField<K extends keyof MusConfig>(key: K, value: MusConfig[K]) {
-    setConfig((prev) => ({ ...(prev as MusConfig), [key]: value }));
-    void useRondaStore.getState().updateConfig({ [key]: value } as Partial<MusConfig>);
-  }
-
-  /** Mus: marca a un jugador, o lo intercambia con el ya marcado. */
-  async function handleSeatTap(playerId: string) {
-    if (swapFrom === null) {
-      setSwapFrom(playerId);
-      return;
-    }
-    if (swapFrom === playerId) {
-      setSwapFrom(null);
-      return;
-    }
-    const from = swapFrom;
-    setSwapFrom(null);
-    await useRondaStore.getState().swapSeats(from, playerId);
   }
 
   async function handleStart() {
@@ -118,357 +59,72 @@ export function Lobby({ view }: LobbyProps) {
     setStarting(false);
   }
 
-  async function handleKick(playerId: string) {
-    await useRondaStore.getState().kickPlayer(playerId);
-  }
-
-  async function handleAddBot() {
-    setAddingBot(true);
-    await useRondaStore.getState().addBot();
-    setAddingBot(false);
-  }
-
-  // Mínimo de jugadores por juego: 2 salvo Mus, que necesita 4 para formar
-  // las dos parejas. Mismo criterio que `minPlayersFor` del servidor
-  // (apps/server/src/rooms/room-manager.ts).
-  const isMus = view.gameId === 'mus';
-  const isParty =
-    view.gameId === 'orden' ||
-    view.gameId === 'colores' ||
-    view.gameId === 'mayoria' ||
-    view.gameId === 'escala';
-  const minPlayers = isMus ? 4 : 2;
-  const canStart = view.players.length >= minPlayers;
-  // Mus no tiene bots (§12.11): el servidor rechaza `room:addBot` en sus
-  // salas, así que aquí ni se ofrece.
-  const hasFreeSeat = !isMus && view.players.length < config.maxPlayers;
+  const minimumPlayers = view.gameId === 'mus' ? 4 : view.gameId === 'laronda' ? 3 : 2;
+  const canStart = view.players.length >= minimumPlayers;
+  const minimumLabel = minimumPlayers === 4 ? 'cuatro' : minimumPlayers === 3 ? 'tres' : 'dos';
 
   return (
-    <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-5">
-      <header className="flex flex-col items-center gap-4">
-        <span className="eyebrow">Mesa abierta</span>
-        <h1 className="font-display text-28 leading-display text-hueso">Todo listo para jugar</h1>
+    <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col gap-7 px-5">
+      <header className="flex flex-col items-center gap-3 text-center">
+        <span className="eyebrow">Sala creada</span>
+        <h1 className="font-display text-28 leading-display text-hueso">Invita al resto</h1>
+        <p className="max-w-xs text-14 text-humo">
+          Pueden escanear el QR o escribir estas cuatro letras.
+        </p>
         <RoomCode code={view.roomCode} />
       </header>
 
-      <section className="flex flex-col items-center gap-3">
+      <section className="flex flex-col items-center gap-3" aria-label="Invitación a la sala">
         {qrDataUrl ? (
-          // <img> normal a propósito: es una data URL generada en el
-          // cliente (QRCode.toDataURL), no un asset estático que
-          // next/image pueda optimizar.
+          // Es una data URL generada en el cliente; next/image no puede optimizarla.
           <img
             src={qrDataUrl}
             alt={`Código QR para unirse a la sala ${view.roomCode}`}
-            width={160}
-            height={160}
-            className="rounded-lg border border-linea"
+            width={184}
+            height={184}
+            className="rounded-xl border border-linea bg-white p-1"
           />
         ) : null}
         <Button variant="ghost" onClick={handleCopyLink}>
-          {copied ? 'Enlace copiado' : 'Copiar enlace'}
+          {copied ? 'Enlace copiado' : 'Copiar enlace para entrar'}
         </Button>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-20 font-semibold text-hueso">Jugadores</h2>
-        {isMus ? (
-          <p className="text-14 text-humo">
-            {isHost
-              ? 'Los compañeros se sientan enfrentados. Toca a dos jugadores para cambiarlos de sitio y formar las parejas.'
-              : 'Los compañeros se sientan enfrentados. El anfitrión decide las parejas antes de empezar.'}
-          </p>
-        ) : null}
+      <section className="flex flex-col gap-3" aria-live="polite">
+        <h2 className="text-20 font-semibold text-hueso">Ya están dentro</h2>
         <ul className="flex flex-col gap-2">
-          {view.players.map((p) => (
+          {view.players.map((player) => (
             <li
-              key={p.playerId}
-              className={`interactive-surface flex flex-wrap items-center gap-2 px-3 py-2 ${
-                swapFrom === p.playerId ? 'border-brasa' : 'border-linea'
-              }`}
+              key={player.playerId}
+              className="interactive-surface flex min-h-14 items-center gap-3 px-3 py-2"
             >
-              <Avatar name={p.nick} colorIndex={p.colorIndex} size={36} />
-              <span className="flex-1 truncate text-16 text-hueso">{p.nick}</span>
-              {/* La pareja solo existe en Mus: en los otros dos juegos
-                  `teamIndex` llega a null y no se pinta nada (§12.12). */}
-              {p.teamIndex !== null ? <Pill>Pareja {p.teamIndex === 0 ? 'A' : 'B'}</Pill> : null}
-              {p.isHost ? <Pill>Anfitrión</Pill> : null}
-              <Pill>{p.connected ? 'Conectado' : 'Desconectado'}</Pill>
-              {isMus && isHost ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSeatTap(p.playerId)}
-                  className="px-3"
-                  aria-pressed={swapFrom === p.playerId}
-                >
-                  {swapFrom === null
-                    ? 'Cambiar sitio'
-                    : swapFrom === p.playerId
-                      ? 'Cancelar'
-                      : 'Cambiar por este'}
-                </Button>
-              ) : null}
-              {isHost && !p.isHost ? (
-                // Contrato §8.5.2 / P18: zona táctil mínima 56px -- se
-                // mantiene el min-h-14 por defecto del Button.
-                <Button variant="danger" onClick={() => handleKick(p.playerId)} className="px-3">
-                  Expulsar
-                </Button>
-              ) : null}
+              <Avatar name={player.nick} colorIndex={player.colorIndex} size={36} />
+              <span className="min-w-0 flex-1 truncate text-16 text-hueso">{player.nick}</span>
+              {player.isHost ? <Pill>Anfitrión</Pill> : null}
+              {!player.connected ? <Pill>Reconectando</Pill> : null}
             </li>
           ))}
         </ul>
-        {isHost && hasFreeSeat ? (
-          <Button variant="ghost" onClick={handleAddBot} loading={addingBot}>
-            Añadir jugador IA
-          </Button>
-        ) : null}
-        {/* Estadísticas del grupo (roadmap "Después del MVP" §3). En el
-            lobby es donde tienen sentido: es el momento entre partidas.
-            Van en una hoja, no en la pantalla, para no robarle sitio al
-            código de sala ni al QR, que es lo que la gente mira aquí. */}
-        <button
-          type="button"
-          onClick={() => setStatsOpen(true)}
-          className="self-center text-14 text-brasa underline"
-        >
-          Estadísticas del grupo
-        </button>
       </section>
-
-      {isParty ? (
-        <section className="surface-panel flex flex-col gap-2 p-4">
-          <h2 className="text-20 font-semibold text-hueso">Configuración de la partida</h2>
-          <p className="text-14 text-humo">
-            Estos ajustes se eligieron al crear la sala. Aquí solo gestionáis jugadores e invitaciones.
-          </p>
-          <p className="text-14 text-oro">
-            {view.config.maxPlayers} jugadores como máximo
-            {view.gameId === 'orden' ? (
-              <>
-                {' · '}
-                {view.config.cardsPerPlayer} carta{view.config.cardsPerPlayer === 1 ? '' : 's'} inicial
-                {view.config.cardsPerPlayer === 1 ? '' : 'es'} por persona
-              </>
-            ) : (
-              <>
-                {' · '}
-                {view.config.rounds} rondas · {view.config.pointsToWin} puntos para ganar
-              </>
-            )}
-          </p>
-        </section>
-      ) : null}
-
-      {isHost && !isParty ? (
-        <section className="flex flex-col gap-6">
-          <h2 className="text-20 font-semibold text-hueso">Variantes</h2>
-          {isMus ? (
-            <MusVariantsSection config={config as MusConfig} setField={setMusField} />
-          ) : view.gameId === 'pocha' ? (
-            <PochaVariantsSection config={config as PochaConfig} setField={setPochaField} />
-          ) : (
-            <ChinchonVariantsSection config={config as ChinchonConfig} setField={setChinchonField} />
-          )}
-        </section>
-      ) : null}
 
       {lastError ? <p className="text-14 text-brasa">{lastError}</p> : null}
 
       {isHost ? (
         <div className="mt-auto flex flex-col gap-2">
           <Button onClick={handleStart} disabled={!canStart} loading={starting}>
-            Empezar
+            Empezar partida
           </Button>
           {!canStart ? (
-            // El texto de `messageFor('NOT_ENOUGH_PLAYERS')` es el del
-            // servidor y dice "al menos dos", que es el mínimo de Chinchón.
-            // Aquí se sabe el juego, así que se dice el número de verdad.
-            <p className="text-12 text-humo">
-              {`Hacen falta ${minPlayers === 4 ? 'cuatro' : 'dos'} jugadores${
-                isMus ? '' : ' como mínimo'
-              }.`}
+            <p className="text-center text-12 text-humo">
+              Esperando: hacen falta {minimumLabel} personas.
             </p>
           ) : null}
         </div>
       ) : (
         <p className="mt-auto text-center text-14 text-humo">
-          Esperando a que el anfitrión empiece la partida.
+          La partida empezará cuando el anfitrión pulse Empezar.
         </p>
       )}
-
-      <Sheet open={statsOpen} onClose={() => setStatsOpen(false)}>
-        <div className="flex flex-col gap-4">
-          <h2 className="text-20 font-semibold text-hueso">Estadísticas del grupo</h2>
-          <StatsPanel refreshKey={statsOpen ? 'abierto' : 'cerrado'} />
-          <Button variant="ghost" onClick={() => setStatsOpen(false)}>
-            Cerrar
-          </Button>
-        </div>
-      </Sheet>
     </main>
-  );
-}
-
-interface ChinchonVariantsSectionProps {
-  config: ChinchonConfig;
-  setField: <K extends keyof ChinchonConfig>(key: K, value: ChinchonConfig[K]) => void;
-}
-
-function ChinchonVariantsSection({ config, setField }: ChinchonVariantsSectionProps) {
-  return (
-    <>
-      <QuantityStepper
-        legend="Jugadores"
-        helperText="Cuántos jugadores puede tener la sala."
-        value={config.maxPlayers}
-        onChange={(v) => setField('maxPlayers', v)}
-        options={[
-          { value: 2, label: '2' },
-          { value: 3, label: '3' },
-          { value: 4, label: '4' },
-        ]}
-        valueSuffix="personas"
-      />
-      <QuantityStepper
-        legend="Umbral de cierre"
-        helperText="Puntos sueltos máximos para poder cerrar."
-        value={config.closeThreshold}
-        onChange={(v) => setField('closeThreshold', v)}
-        options={[
-          { value: 0, label: '0' },
-          { value: 3, label: '3' },
-          { value: 5, label: '5' },
-          { value: 10, label: '10' },
-        ]}
-        valueSuffix="puntos"
-      />
-      <QuantityStepper
-        legend="Puntuación de eliminación"
-        helperText="Puntos para quedar eliminado de la partida."
-        value={config.eliminationScore}
-        onChange={(v) => setField('eliminationScore', v)}
-        options={[
-          { value: 50, label: '50' },
-          { value: 100, label: '100' },
-          { value: 150, label: '150' },
-        ]}
-        valueSuffix="puntos"
-      />
-      <SegmentedControl
-        legend="Tiempo por turno"
-        helperText="Cuenta atrás por jugador. Al agotarse, se hace una jugada automática legal."
-        value={config.turnTimeSeconds}
-        onChange={(v) => setField('turnTimeSeconds', v)}
-        options={[
-          { value: 0, label: 'Sin tiempo' },
-          { value: 10, label: '10 s' },
-          { value: 20, label: '20 s' },
-          { value: 30, label: '30 s' },
-          { value: 60, label: '1 min' },
-        ]}
-      />
-      <SegmentedControl
-        legend="Chinchón acaba la partida"
-        helperText="Un chinchón termina la partida en el acto."
-        value={config.chinchonEndsGame}
-        onChange={(v) => setField('chinchonEndsGame', v)}
-        options={[
-          { value: true, label: 'Sí' },
-          { value: false, label: 'No' },
-        ]}
-      />
-    </>
-  );
-}
-
-interface MusVariantsSectionProps {
-  config: MusConfig;
-  setField: <K extends keyof MusConfig>(key: K, value: MusConfig[K]) => void;
-}
-
-/** Variantes de Mus (§12). Sin control de "Jugadores": son 4 fijos (§12.2). */
-function MusVariantsSection({ config, setField }: MusVariantsSectionProps) {
-  return (
-    <>
-      <SegmentedControl
-        legend="Ocho reyes"
-        helperText="Los Treses valen como Rey y los Doses como As."
-        value={config.ochoReyes}
-        onChange={(v) => setField('ochoReyes', v)}
-        options={[
-          { value: true, label: 'Sí' },
-          { value: false, label: 'No' },
-        ]}
-      />
-      <QuantityStepper
-        legend="Juegos para ganar"
-        helperText="Cuántos juegos (vacas) hay que ganar para llevarse la partida."
-        value={config.juegos}
-        onChange={(v) => setField('juegos', v)}
-        options={[
-          { value: 1, label: '1' },
-          { value: 2, label: '2' },
-          { value: 3, label: '3' },
-        ]}
-        valueSuffix="juegos"
-      />
-      <QuantityStepper
-        legend="El punto vale"
-        helperText="Piedras que paga el punto cuando nadie tiene juego."
-        value={config.puntoVale}
-        onChange={(v) => setField('puntoVale', v)}
-        options={[
-          { value: 1, label: '1 piedra' },
-          { value: 2, label: '2 piedras' },
-        ]}
-        valueSuffix="en el lance"
-      />
-    </>
-  );
-}
-
-interface PochaVariantsSectionProps {
-  config: PochaConfig;
-  setField: <K extends keyof PochaConfig>(key: K, value: PochaConfig[K]) => void;
-}
-
-function PochaVariantsSection({ config, setField }: PochaVariantsSectionProps) {
-  return (
-    <>
-      <QuantityStepper
-        legend="Jugadores"
-        helperText="Cuántos jugadores puede tener la sala."
-        value={config.maxPlayers}
-        onChange={(v) => setField('maxPlayers', v)}
-        options={[
-          { value: 2, label: '2' },
-          { value: 3, label: '3' },
-          { value: 4, label: '4' },
-          { value: 5, label: '5' },
-          { value: 6, label: '6' },
-        ]}
-        valueSuffix="personas"
-      />
-      <SegmentedControl
-        legend="Triunfo"
-        helperText="Se revela una carta y su palo manda en la ronda."
-        value={config.trump}
-        onChange={(v) => setField('trump', v)}
-        options={[
-          { value: true, label: 'Sí' },
-          { value: false, label: 'No' },
-        ]}
-      />
-      <SegmentedControl
-        legend="Orden de fuerza"
-        helperText="Qué carta gana la baza dentro de un palo."
-        value={config.rankOrder}
-        onChange={(v) => setField('rankOrder', v)}
-        options={[
-          { value: 'numerico', label: 'Numérico' },
-          { value: 'brisca', label: 'Brisca' },
-        ]}
-      />
-    </>
   );
 }

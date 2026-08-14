@@ -7,17 +7,25 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import {
   DEFAULT_CONFIG,
+  DEFAULT_BRISCA_CONFIG,
+  DEFAULT_CINQUILLO_CONFIG,
   DEFAULT_COLORES_CONFIG,
+  DEFAULT_ESCOBA_CONFIG,
   DEFAULT_ESCALA_CONFIG,
   DEFAULT_MAYORIA_CONFIG,
   DEFAULT_MUS_CONFIG,
+  DEFAULT_LA_RONDA_CONFIG,
   DEFAULT_ORDEN_CONFIG,
   DEFAULT_POCHA_CONFIG,
+  DEFAULT_SIETE_Y_MEDIA_CONFIG,
+  DEFAULT_TUTE_CONFIG,
   messageFor,
   type ChinchonConfig,
+  type ClassicConfig,
   type ColorTopic,
   type GameId,
   type MusConfig,
+  type LaRondaConfig,
   type PartyConfig,
   type PochaConfig,
 } from '@ronda/protocol';
@@ -43,15 +51,12 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [chinchonConfig, setChinchonConfig] = useState<ChinchonConfig>(DEFAULT_CONFIG);
   const [pochaConfig, setPochaConfig] = useState<PochaConfig>(DEFAULT_POCHA_CONFIG);
   const [musConfig, setMusConfig] = useState<MusConfig>(DEFAULT_MUS_CONFIG);
+  const [rondaConfig, setRondaConfig] = useState<LaRondaConfig>(DEFAULT_LA_RONDA_CONFIG);
+  const [classicConfig, setClassicConfig] = useState<ClassicConfig>(() => classicDefaults(gameId));
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
   const [submitting, setSubmitting] = useState(false);
 
-  const title =
-    gameId === 'mus'
-      ? 'Crear partida de Mus'
-      : gameId === 'pocha'
-        ? 'Crear partida de Pocha'
-        : 'Crear partida de Chinchón';
+  const title = `Crear partida de ${gameTitle(gameId)}`;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -63,13 +68,17 @@ export function CrearForm({ gameId }: CrearFormProps) {
     setNickError(null);
     setSubmitting(true);
     const config =
-      gameId === 'mus'
-        ? musConfig
-        : gameId === 'pocha'
-          ? pochaConfig
-          : isPartyGame(gameId)
-            ? partyConfig
-            : chinchonConfig;
+      gameId === 'laronda'
+        ? rondaConfig
+        : gameId === 'mus'
+          ? musConfig
+          : gameId === 'pocha'
+            ? pochaConfig
+            : isClassicGame(gameId)
+              ? classicConfig
+              : isPartyGame(gameId)
+                ? partyConfig
+                : chinchonConfig;
     const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
     setSubmitting(false);
     if (created) {
@@ -84,10 +93,10 @@ export function CrearForm({ gameId }: CrearFormProps) {
       <header className="flex flex-col gap-2">
         <span className="eyebrow">Nueva mesa</span>
         <h1 className="font-display text-40 leading-display text-hueso">
-          {isPartyGame(gameId) ? gameTitle(gameId) : title}
+          {isPartyGame(gameId) ? `Crear partida de ${gameTitle(gameId)}` : title}
         </h1>
         <p className="text-14 text-humo">
-          Deja la partida a vuestro gusto. Podrás revisar los ajustes en la sala.
+          Elige los ajustes una vez. Al crearla verás directamente el código para invitar.
         </p>
       </header>
 
@@ -110,12 +119,16 @@ export function CrearForm({ gameId }: CrearFormProps) {
           {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
         </div>
 
-        {!isPartyGame(gameId) ? <CardStylePicker /> : null}
+        {!isPartyGame(gameId) && gameId !== 'laronda' ? <CardStylePicker /> : null}
 
-        {gameId === 'mus' ? (
+        {gameId === 'laronda' ? (
+          <LaRondaVariants config={rondaConfig} setConfig={setRondaConfig} />
+        ) : gameId === 'mus' ? (
           <MusVariants config={musConfig} setConfig={setMusConfig} />
         ) : gameId === 'pocha' ? (
           <PochaVariants config={pochaConfig} setConfig={setPochaConfig} />
+        ) : isClassicGame(gameId) ? (
+          <ClassicVariants config={classicConfig} setConfig={setClassicConfig} />
         ) : isPartyGame(gameId) ? (
           <PartyVariants config={partyConfig} setConfig={setPartyConfig} />
         ) : (
@@ -391,6 +404,24 @@ function isPartyGame(gameId: GameId): gameId is PartyConfig['gameId'] {
   return gameId === 'orden' || gameId === 'colores' || gameId === 'mayoria' || gameId === 'escala';
 }
 
+function isClassicGame(gameId: GameId): gameId is ClassicConfig['gameId'] {
+  return (
+    gameId === 'brisca' ||
+    gameId === 'escoba' ||
+    gameId === 'sieteymedia' ||
+    gameId === 'tute' ||
+    gameId === 'cinquillo'
+  );
+}
+
+function classicDefaults(gameId: GameId): ClassicConfig {
+  if (gameId === 'escoba') return DEFAULT_ESCOBA_CONFIG;
+  if (gameId === 'sieteymedia') return DEFAULT_SIETE_Y_MEDIA_CONFIG;
+  if (gameId === 'tute') return DEFAULT_TUTE_CONFIG;
+  if (gameId === 'cinquillo') return DEFAULT_CINQUILLO_CONFIG;
+  return DEFAULT_BRISCA_CONFIG;
+}
+
 function partyDefaults(gameId: GameId): PartyConfig {
   if (gameId === 'colores') return DEFAULT_COLORES_CONFIG;
   if (gameId === 'mayoria') return DEFAULT_MAYORIA_CONFIG;
@@ -399,11 +430,100 @@ function partyDefaults(gameId: GameId): PartyConfig {
 }
 
 function gameTitle(gameId: GameId): string {
-  if (gameId === 'orden') return 'Crear partida de Orden';
-  if (gameId === 'colores') return 'Crear partida de Colores';
-  if (gameId === 'mayoria') return 'Crear partida de Mayoria';
-  if (gameId === 'escala') return 'Crear partida de Escala';
-  return gameId === 'mus' ? 'Crear partida de Mus' : gameId === 'pocha' ? 'Crear partida de Pocha' : 'Crear partida de Chinchon';
+  if (gameId === 'laronda') return 'La Ronda';
+  if (gameId === 'orden') return 'Orden';
+  if (gameId === 'colores') return 'Colores';
+  if (gameId === 'mayoria') return 'Mayoría';
+  if (gameId === 'escala') return 'Escala';
+  if (gameId === 'brisca') return 'Brisca';
+  if (gameId === 'escoba') return 'Escoba';
+  if (gameId === 'sieteymedia') return 'Siete y media';
+  if (gameId === 'tute') return 'Tute';
+  if (gameId === 'cinquillo') return 'Cinquillo';
+  if (gameId === 'mus') return 'Mus';
+  if (gameId === 'pocha') return 'Pocha';
+  return 'Chinchón';
+}
+
+interface LaRondaVariantsProps {
+  config: LaRondaConfig;
+  setConfig: (fn: (prev: LaRondaConfig) => LaRondaConfig) => void;
+}
+
+function LaRondaVariants({ config, setConfig }: LaRondaVariantsProps) {
+  return (
+    <>
+      <QuantityStepper
+        legend="Jugadores"
+        helperText="La mesa funciona desde tres personas y admite hasta ocho."
+        value={config.maxPlayers}
+        onChange={(value) =>
+          updateConfig(setConfig, 'maxPlayers', value as LaRondaConfig['maxPlayers'])
+        }
+        options={[3, 4, 5, 6, 7, 8].map((value) => ({ value, label: String(value) }))}
+        valueSuffix="personas"
+      />
+      <SegmentedControl
+        legend="Sonido"
+        helperText="Efectos breves al servir tapas y pedir la cuenta."
+        value={config.soundEnabled}
+        onChange={(value) => updateConfig(setConfig, 'soundEnabled', value)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+    </>
+  );
+}
+
+interface ClassicVariantsProps {
+  config: ClassicConfig;
+  setConfig: (fn: (prev: ClassicConfig) => ClassicConfig) => void;
+}
+
+function ClassicVariants({ config, setConfig }: ClassicVariantsProps) {
+  const maximum =
+    config.gameId === 'tute'
+      ? 2
+      : config.gameId === 'cinquillo'
+        ? 6
+        : config.gameId === 'sieteymedia'
+          ? 7
+          : 4;
+  const options = Array.from({ length: maximum - 1 }, (_, index) => index + 2).map((value) => ({
+    value,
+    label: String(value),
+  }));
+
+  return (
+    <>
+      <QuantityStepper
+        legend="Jugadores"
+        helperText={
+          config.gameId === 'tute'
+            ? 'Esta modalidad inicial de Tute se juega a dos.'
+            : 'Máximo de personas en la sala.'
+        }
+        value={config.maxPlayers}
+        onChange={(maxPlayers) =>
+          setConfig((previous) => ({ ...previous, maxPlayers }) as ClassicConfig)
+        }
+        options={options}
+        valueSuffix="personas"
+      />
+      <SegmentedControl
+        legend="Sonido"
+        helperText="Activa los sonidos de la partida."
+        value={config.soundEnabled}
+        onChange={(soundEnabled) => setConfig((previous) => ({ ...previous, soundEnabled }))}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+    </>
+  );
 }
 
 interface PartyVariantsProps {
@@ -420,9 +540,7 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
   }
 
   function setColorTopic(topic: ColorTopic) {
-    setConfig((previous) =>
-      previous.gameId === 'colores' ? { ...previous, topic } : previous,
-    );
+    setConfig((previous) => (previous.gameId === 'colores' ? { ...previous, topic } : previous));
   }
 
   const playerOptions = [2, 3, 4, 5, 6, 7].map((value) => ({
@@ -435,8 +553,10 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
       <div className="surface-panel p-4">
         <div className="flex items-center gap-4">
           <div className="flex shrink-0 -space-x-3" aria-hidden="true">
-            <span className="number-card-preview rotate-[-8deg]">1</span>
-            <span className="number-card-preview rotate-[8deg]">100</span>
+            <span className="number-card-preview number-card-preview-one rotate-[-8deg]">1</span>
+            <span className="number-card-preview number-card-preview-hundred rotate-[8deg]">
+              100
+            </span>
           </div>
           <div>
             <p className="text-16 font-semibold text-hueso">
@@ -497,10 +617,17 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
           ) : null}
           <QuantityStepper
             legend="Rondas máximas"
-            helperText="Preguntas antes de revelar."
+            helperText={
+              config.gameId === 'colores'
+                ? 'Límite de seguridad si nadie alcanza antes los puntos para ganar.'
+                : 'Número máximo de preguntas de la partida.'
+            }
             value={config.rounds}
             onChange={(value) => setField('rounds', value)}
-            options={[5, 7, 10, 12].map((value) => ({ value, label: String(value) }))}
+            options={(config.gameId === 'colores' ? [10, 15, 20] : [5, 7, 10, 12]).map((value) => ({
+              value,
+              label: String(value),
+            }))}
             valueSuffix="rondas"
           />
           <QuantityStepper

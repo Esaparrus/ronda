@@ -7,34 +7,13 @@ import {
   isUpwardCardFling,
   pointInsideExpandedRect,
 } from '@/lib/card-gesture';
+import { NumberCardArtwork, NumberCardFace } from './NumberCardFace';
 
 export interface NumberCardProps {
   value: number;
   disabled?: boolean;
   onPlay: (value: number) => void;
   onDragStateChange?: (active: boolean, ready: boolean) => void;
-}
-
-export interface NumberCardFaceProps {
-  value: number;
-  className?: string;
-}
-
-function NumberCardContent({ value }: { value: number }) {
-  return (
-    <>
-      <span className="number-card-corner number-card-corner-top" aria-hidden="true">
-        {value}
-      </span>
-      <span className="number-card-mark" aria-hidden="true">
-        ✦
-      </span>
-      <span className="number-card-value">{value}</span>
-      <span className="number-card-corner number-card-corner-bottom" aria-hidden="true">
-        {value}
-      </span>
-    </>
-  );
 }
 
 /**
@@ -60,7 +39,9 @@ export function NumberCard({
   const start = useRef<NumberDragStart | null>(null);
   const committed = useRef(false);
   const suppressClick = useRef(false);
-  const [dragVisual, setDragVisual] = useState<{ x: number; y: number; ready: boolean } | null>(null);
+  const [dragVisual, setDragVisual] = useState<{ x: number; y: number; ready: boolean } | null>(
+    null,
+  );
 
   function commit() {
     if (disabled || committed.current) return;
@@ -176,7 +157,7 @@ export function NumberCard({
       className={`number-card ${dragVisual ? 'opacity-20' : ''}`}
       aria-label={'Jugar carta ' + value}
     >
-      <NumberCardContent value={value} />
+      <NumberCardArtwork value={value} />
       {typeof document !== 'undefined' && dragVisual
         ? createPortal(
             <div
@@ -190,13 +171,5 @@ export function NumberCard({
           )
         : null}
     </button>
-  );
-}
-
-export function NumberCardFace({ value, className = '' }: NumberCardFaceProps) {
-  return (
-    <div className={'number-card number-card-static ' + className} aria-label={'Carta ' + value}>
-      <NumberCardContent value={value} />
-    </div>
   );
 }
