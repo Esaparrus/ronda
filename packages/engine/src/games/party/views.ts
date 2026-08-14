@@ -101,9 +101,13 @@ function buildColoresCommon(state: PartyState): ColoresCommonView {
       questionId: question.id,
       prompt: question.prompt,
       allowMultiple: question.allowMultiple,
+      answerCount: question.correctColors.length,
+      deadlineAt: state.colors.deadlineAt,
+      rollover: state.colors.rollover,
       submittedPlayerIds: Object.keys(state.colors.submissions),
       correctColors: revealed ? [...question.correctColors] : null,
       answers: revealed ? cloneColorAnswers(state.colors.submissions) : null,
+      scoreDeltas: revealed && state.colors.scoreDeltas ? { ...state.colors.scoreDeltas } : null,
     },
   };
 }

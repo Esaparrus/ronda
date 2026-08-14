@@ -53,6 +53,8 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     type: z.literal('submitColors'),
     colors: z.array(z.string().min(1).max(24)).min(1).max(4),
   }),
+  /** Acción interna del reloj del servidor; antes del plazo el motor la rechaza. */
+  z.object({ type: z.literal('finishColors') }),
   z.object({ type: z.literal('submitMajority'), answer: z.string().min(1).max(80) }),
   z.object({ type: z.literal('submitScale'), value: z.number().int().min(0).max(100) }),
 ]);

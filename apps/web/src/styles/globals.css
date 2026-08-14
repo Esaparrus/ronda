@@ -35,6 +35,21 @@
   --color-madera-clara: #55331f; /* superficie elevada sobre --color-mesa */
   --color-alerta: #d78335; /* aviso de temporizador antes del estado crítico */
 
+  /* Fichas del juego Colores. No reutilizan los tonos apagados de los
+   * asientos: azul y gris deben distinguirse de un vistazo. El nombre y un
+   * símbolo acompañan siempre al color para no depender solo de la percepción. */
+  --color-ficha-rojo: #c43f35;
+  --color-ficha-azul: #2563c7;
+  --color-ficha-verde: #2f8548;
+  --color-ficha-amarillo: #e4b923;
+  --color-ficha-naranja: #e77820;
+  --color-ficha-morado: #7941a5;
+  --color-ficha-rosa: #db668f;
+  --color-ficha-negro: #171717;
+  --color-ficha-blanco: #f5f1e8;
+  --color-ficha-marron: #784a2b;
+  --color-ficha-gris: #747b84;
+
   /* --- Mesa de bar (P32) -------------------------------------------------
    * La mesa es un mueble, no un rectángulo de color: tablero de madera con
    * veta, cuatro tachuelas de latón en las esquinas y un tapete verde

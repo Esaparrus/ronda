@@ -81,6 +81,8 @@ describe('GameConfigSchema', () => {
 
   it('configura el tema de Colores y usa todo el banco por defecto', () => {
     expect(DEFAULT_COLORES_CONFIG.topic).toBe('todo');
+    expect(DEFAULT_COLORES_CONFIG.rounds).toBe(20);
+    expect(DEFAULT_COLORES_CONFIG.pointsToWin).toBe(10);
     expect(ColoresConfigSchema.parse({ topic: 'banderas' }).topic).toBe('banderas');
     expect(() => ColoresConfigSchema.parse({ topic: 'faciles' })).toThrow();
   });

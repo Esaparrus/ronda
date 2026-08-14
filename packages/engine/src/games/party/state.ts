@@ -51,6 +51,12 @@ export interface ColorsRoundState {
   questionIndex: number;
   questionId: string;
   submissions: Record<PlayerId, string[]>;
+  /** Se fija al responder la primera persona; null mientras nadie haya bloqueado. */
+  deadlineAt: number | null;
+  /** Bote que se arrastra cuando toda la mesa acierta. */
+  rollover: number;
+  /** Delta público de la última pregunta; null hasta revelar. */
+  scoreDeltas: Record<PlayerId, number> | null;
 }
 
 export interface MajorityRoundState {

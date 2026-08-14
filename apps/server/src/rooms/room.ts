@@ -90,6 +90,8 @@ export interface RoomHooks {
   onStats?: (room: Room) => void;
   /** Un temporizador de turno ha ejecutado una jugada automática. */
   onTurnTimeout?: (room: Room) => void;
+  /** El plazo de respuestas de Colores ha revelado y puntuado la pregunta. */
+  onColorTimeout?: (room: Room) => void;
   /** Evento de telemetría (P18). */
   onTrack?: (room: Room, kind: string, payload?: Record<string, unknown>) => void;
 }

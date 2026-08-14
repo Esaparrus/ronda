@@ -7,7 +7,7 @@ const GAMES = [
   { slug: 'pocha', name: 'Pocha', players: '2–6 jugadores', duration: '20–45 min', mark: '♠', kind: 'Bazas' },
   { slug: 'mus', name: 'Mus', players: '4 jugadores, por parejas', duration: '30–60 min', mark: 'M', kind: 'Parejas' },
   { slug: 'orden', name: 'Orden', players: '2–7 jugadores', duration: '10–20 min', mark: '↑', kind: 'Cooperativo' },
-  { slug: 'colores', name: 'Colores', players: '2–7 jugadores', duration: '10–20 min', mark: '●', kind: 'Social' },
+  { slug: 'colores', name: 'Colores', players: '2–7 jugadores', duration: '15–25 min', mark: '●', kind: 'Social' },
   { slug: 'mayoria', name: 'Mayoría', players: '2–7 jugadores', duration: '10–20 min', mark: '≋', kind: 'Social' },
   { slug: 'escala', name: 'Escala', players: '2–7 jugadores', duration: '15–25 min', mark: '↔', kind: 'Social' },
 ] as const;

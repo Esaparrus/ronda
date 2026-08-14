@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_COLORES_CONFIG, DEFAULT_CONFIG, DEFAULT_ORDEN_CONFIG } from '@ronda/protocol';
+import { colorQuestionById } from '@ronda/engine';
 import { RoomManager } from './room-manager.ts';
 import { scheduleBotTurn, type BotDriverDeps } from './bot-driver.ts';
 import type { TypedIoServer } from '../io.ts';
@@ -98,6 +99,7 @@ describe('BotDriver', () => {
 
   it('deja visible el resultado de Colores hasta que avance el anfitrión', () => {
     vi.useFakeTimers();
+    vi.setSystemTime(NOW);
     try {
       const manager = new RoomManager();
       const created = manager.createRoom({
@@ -130,13 +132,14 @@ describe('BotDriver', () => {
 
       const room = manager.getRoomByCode(created.value.roomCode);
       const state = room?.state;
-      if (!state || state.gameId !== 'colores') throw new Error('estado incorrecto');
+      if (!state || state.gameId !== 'colores' || !state.colors) throw new Error('estado incorrecto');
+      const answer = colorQuestionById(state.colors.questionId).correctColors;
       const answered = manager.applyAction({
         roomCode: created.value.roomCode,
         playerId: created.value.playerId,
         clientActionId: 'human-color',
         expectedVersion: state.version,
-        action: { type: 'submitColors', colors: ['rojo'] },
+        action: { type: 'submitColors', colors: answer },
         now: NOW,
       });
       if (!answered.ok) throw new Error('no se pudo responder');

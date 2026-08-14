@@ -177,10 +177,14 @@ function buildPartyLobbyCommon(room: Room): PartyCommonView {
         phase: 'input',
         questionId: '',
         prompt: 'La pregunta aparecerá al empezar.',
-        allowMultiple: true,
+        allowMultiple: false,
+        answerCount: 1,
+        deadlineAt: null,
+        rollover: 0,
         submittedPlayerIds: [],
         correctColors: null,
         answers: null,
+        scoreDeltas: null,
       },
     };
   }

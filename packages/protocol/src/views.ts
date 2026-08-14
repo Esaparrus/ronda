@@ -338,9 +338,17 @@ export interface ColoresPublic {
   questionId: string;
   prompt: string;
   allowMultiple: boolean;
+  /** Número exacto de fichas que hay que bloquear para responder. */
+  answerCount: number;
+  /** Empieza con la primera respuesta y lo fija el servidor. */
+  deadlineAt: number | null;
+  /** Puntos acumulados porque toda la mesa acertó preguntas anteriores. */
+  rollover: number;
   submittedPlayerIds: PlayerId[];
   correctColors: string[] | null;
   answers: Record<PlayerId, string[]> | null;
+  /** Puntos obtenidos en esta pregunta; solo existe durante la revelación. */
+  scoreDeltas: Record<PlayerId, number> | null;
 }
 
 export interface MayoriaPublic {

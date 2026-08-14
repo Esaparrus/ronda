@@ -6,6 +6,7 @@
 // convertirse en otra primera carta válida.
 
 import {
+  COLOR_ANSWER_SECONDS,
   type CardId,
   type GameAction,
   type GameEvent,
@@ -17,7 +18,7 @@ import {
 } from '@ronda/protocol';
 import { shuffle } from '../../core/rng.ts';
 import type { CreateInitialStateInput } from '../../core/types.ts';
-import { COLOR_NAMES, colorDistance, colorQuestionById } from './content.ts';
+import { COLOR_NAMES, colorQuestionById } from './content.ts';
 import {
   activePlayers,
   findPlayer,
@@ -56,6 +57,7 @@ function cloneState(state: PartyState): PartyState {
           ...state.colors,
           questionOrder: [...state.colors.questionOrder],
           submissions: cloneRecord(state.colors.submissions, (colors) => [...colors]),
+          scoreDeltas: state.colors.scoreDeltas ? { ...state.colors.scoreDeltas } : null,
         }
       : null,
     majority: state.majority
@@ -183,6 +185,9 @@ export function createPartyState(
       questionIndex: 0,
       questionId,
       submissions: {},
+      deadlineAt: null,
+      rollover: 0,
+      scoreDeltas: null,
     };
   } else if (gameId === 'mayoria') {
     state.majority = {
@@ -214,8 +219,6 @@ export function applyAction(
   action: GameAction,
   now: number,
 ): PartyActionResult {
-  void now;
-
   switch (action.type) {
     case 'playNumber':
       return applyPlayNumber(state, playerId, action.value);
@@ -224,7 +227,9 @@ export function applyAction(
     case 'endOrder':
       return applyEndOrder(state, playerId);
     case 'submitColors':
-      return applySubmitColors(state, playerId, action.colors);
+      return applySubmitColors(state, playerId, action.colors, now);
+    case 'finishColors':
+      return applyFinishColors(state, now);
     case 'submitMajority':
       return applySubmitMajority(state, playerId, action.answer);
     case 'submitScale':
@@ -341,13 +346,17 @@ function applySubmitColors(
   state: PartyState,
   playerId: PlayerId,
   values: readonly string[],
+  now: number,
 ): PartyActionResult {
   if (state.gameId !== 'colores' || !state.colors) return err('INVALID_ACTION');
   const playerResult = requireInputPlayer(state, playerId);
   if (!playerResult.ok) return playerResult;
+  if (state.colors.deadlineAt !== null && now >= state.colors.deadlineAt) {
+    return err('INVALID_ACTION');
+  }
   const colors = canonicalColors(values);
   const question = colorQuestionById(state.colors.questionId);
-  if (!colors || colors.length === 0 || (!question.allowMultiple && colors.length !== 1)) {
+  if (!colors || colors.length !== question.correctColors.length) {
     return err('INVALID_ACTION');
   }
   if (state.colors.submissions[playerId] !== undefined) return err('INVALID_ACTION');
@@ -356,43 +365,80 @@ function applySubmitColors(
   const round = next.colors;
   if (!round) return err('INVALID_ACTION');
   round.submissions[playerId] = colors;
+  round.deadlineAt ??= now + COLOR_ANSWER_SECONDS * 1000;
   const events: GameEvent[] = [
     { t: 'partyAnswerSubmitted', playerId, gameId: 'colores' },
   ];
 
   if (allSubmitted(next, round.submissions)) {
-    scoreColors(next);
-    next.phase = 'reveal';
-    events.push({ t: 'partyRevealed', gameId: 'colores', round: next.round });
-    finishScoredRound(next, events);
+    revealColorsRound(next, events);
   }
 
   return ok({ state: next, events });
 }
 
-function scoreColors(state: PartyState): void {
-  if (!state.colors) return;
-  const correct = colorQuestionById(state.colors.questionId).correctColors;
-  for (const player of activePlayers(state)) {
-    const answer = state.colors.submissions[player.playerId];
-    if (!answer) continue;
-    const distances = correct.map((target) => {
-      return Math.min(...answer.map((candidate) => colorDistance(candidate, target)));
-    });
-    const missingOrExtra = Math.abs(answer.length - correct.length);
-    const averageDistance =
-      distances.reduce((total, distance) => total + distance, 0) / Math.max(1, distances.length) +
-      missingOrExtra * 0.18;
-    player.score += scoreByColorDistance(averageDistance);
+function applyFinishColors(state: PartyState, now: number): PartyActionResult {
+  if (
+    state.gameId !== 'colores' ||
+    state.status !== 'playing' ||
+    state.phase !== 'input' ||
+    !state.colors ||
+    state.colors.deadlineAt === null ||
+    now < state.colors.deadlineAt
+  ) {
+    return err('INVALID_ACTION');
   }
+
+  const next = bump(state);
+  const events: GameEvent[] = [];
+  revealColorsRound(next, events);
+  return ok({ state: next, events });
 }
 
-function scoreByColorDistance(distance: number): number {
-  if (distance <= 0.05) return 4;
-  if (distance <= 0.2) return 3;
-  if (distance <= 0.38) return 2;
-  if (distance <= 0.58) return 1;
-  return 0;
+function revealColorsRound(state: PartyState, events: GameEvent[]): void {
+  const round = state.colors;
+  if (!round) return;
+  const correctColors = colorQuestionById(round.questionId).correctColors;
+  const players = activePlayers(state);
+  const correctIds = new Set(
+    players
+      .filter((player) => isExactColorAnswer(round.submissions[player.playerId], correctColors))
+      .map((player) => player.playerId),
+  );
+  const scoreDeltas = Object.fromEntries(
+    players.map((player) => [player.playerId, 0]),
+  ) as Record<PlayerId, number>;
+
+  if (correctIds.size === players.length && players.length > 0) {
+    round.rollover += 1;
+  } else if (correctIds.size > 0) {
+    const points = players.length - correctIds.size + round.rollover;
+    for (const player of players) {
+      if (!correctIds.has(player.playerId)) continue;
+      player.score += points;
+      scoreDeltas[player.playerId] = points;
+    }
+    round.rollover = 0;
+  } else {
+    round.rollover = 0;
+  }
+
+  round.deadlineAt = null;
+  round.scoreDeltas = scoreDeltas;
+  state.phase = 'reveal';
+  events.push({ t: 'partyRevealed', gameId: 'colores', round: state.round });
+  finishScoredRound(state, events);
+}
+
+function isExactColorAnswer(
+  answer: readonly string[] | undefined,
+  correctColors: readonly string[],
+): boolean {
+  return (
+    answer !== undefined &&
+    answer.length === correctColors.length &&
+    correctColors.every((color) => answer.includes(color))
+  );
 }
 
 function applySubmitMajority(
@@ -581,6 +627,9 @@ function nextColorsRound(current: ColorsRoundState, questionIndex: number): Colo
     questionIndex,
     questionId: nextQuestionId(current.questionOrder, questionIndex),
     submissions: {},
+    deadlineAt: null,
+    rollover: current.rollover,
+    scoreDeltas: null,
   };
 }
 
