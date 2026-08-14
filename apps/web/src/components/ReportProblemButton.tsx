@@ -40,7 +40,11 @@ export function ReportProblemButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-3 top-[max(12px,env(safe-area-inset-top))] z-40 min-h-11 rounded-full border border-linea bg-tinta/85 px-3 text-12 font-semibold text-humo shadow-lg backdrop-blur-sm hover:border-oro/60 hover:text-hueso"
+        // La barra de sala ya ocupa la esquina superior derecha (allí está
+        // "Cerrar sala" para el anfitrión). Dejamos el acceso de diagnóstico
+        // justo debajo para que ninguno de los dos botones capture el clic
+        // del otro en pantallas estrechas.
+        className="fixed right-3 top-16 z-40 min-h-11 rounded-full border border-linea bg-tinta/85 px-3 text-12 font-semibold text-humo shadow-lg backdrop-blur-sm hover:border-oro/60 hover:text-hueso"
       >
         ¿Bloqueado?
       </button>
