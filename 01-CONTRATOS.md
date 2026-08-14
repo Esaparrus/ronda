@@ -1110,6 +1110,9 @@ mano     =  reparto -> fase de mus -> 4 lances -> recuento
 
 - El **mano** habla primero en todo; el **postre** es el jugador a su derecha
   y es quien reparte.
+- En la aplicación cada mano empieza en fase `reparto`: solo el postre puede
+  confirmar `repartir`. Hasta entonces no se sirve ni se muestra ninguna
+  carta. Después el motor da cuatro cartas y la palabra pasa al mano.
 - La mano rota un asiento a la izquierda al terminar cada mano.
 - Se reparten **4 cartas** a cada jugador, de una en una, empezando por el
   mano.
@@ -1201,6 +1204,12 @@ En cada lance, empezando por el mano y por orden:
 | **No quiero** | rechaza: quien envidó se lleva **las piedras acumuladas antes del último envite** (1 si no había nada) y el lance no se compara. |
 | **Órdago** | apuesta el **juego entero** (§12.8). |
 
+En la interfaz, un «envido» sin cantidad son 2 piedras. También se puede
+cantar cualquier cantidad total concreta; los múltiplos de 5 se muestran
+además como amarrakos (5 piedras = 1 amarrako). Un reenvido introduce la nueva
+cantidad total, no solo el incremento. El órdago sigue siendo una acción
+separada y no una cantidad numérica.
+
 - Aceptar o rechazar corresponde a la pareja contraria; el compañero de quien
   envidó no puede subir hasta que la contraria responda.
 - En **Pares** y **Juego** solo pueden envidar quienes hayan declarado que
@@ -1243,6 +1252,11 @@ compañero, reutilizando el mecanismo de §11.1) queda **descartada**: abre un
 canal privado dentro de la partida, y eso no se hace de rebote. Si algún día
 se retoma, es un paquete propio con su contrato, no un añadido al motor.
 
+La sala distingue `modo: 'presencial' | 'online'`. No cambia las reglas: en
+presencial los jugadores pueden hablar en la mesa, pero cada decisión se
+confirma igualmente en el móvil para que el motor conozca los envites y haga
+el tanteo. La aplicación no interpreta voz ni implementa señas.
+
 ### 12.11 Abandono o desconexión
 
 - El Mus **no se puede jugar con 3**. Si un jugador abandona, la partida queda
@@ -1274,12 +1288,13 @@ decisión de arquitectura pendiente, no un detalle de implementación:
   cada juego; ese diseño ya lo admite (`minPlayers = maxPlayers = 4`).
 - **`GameAction`** nuevas: `mus`, `noMus`, `descartar { cardIds }`,
   `envidar { piedras }`, `querer`, `noQuerer`, `ordago`,
-  `declararPares { tiene }`, `declararJuego { tiene }`.
+  `declararPares { tiene }`, `declararJuego { tiene }`, `repartir`.
 - **`ERROR_CODES`** nuevos: `NOT_IN_MUS_PHASE`, `MUST_DISCARD_AT_LEAST_ONE`,
   `BET_TOO_LOW`, `CANNOT_BID_WITHOUT_PARES`, `CANNOT_BID_WITHOUT_JUEGO`,
   `NOT_YOUR_TEAM_TURN`.
 - **`MusConfig`**: `{ gameId: 'mus'; maxPlayers: 4; ochoReyes: boolean;
-  juegos: 1 | 2 | 3; puntoVale: 1 | 2; sonido: boolean }`.
+  modo: 'presencial' | 'online'; juegos: 1 | 2 | 3; puntoVale: 1 | 2;
+  sonido: boolean }`.
 - **Base de datos**: sin migración (`rooms.game_id` es `text`, §10.8).
 
 ### 12.13 Tests dorados (escribir con estos casos exactos)

@@ -26,7 +26,7 @@ import type {
 } from '@ronda/protocol';
 import { juegoSuma, paresOf, tieneJuego } from './hand.ts';
 import { MUS_META, PIEDRAS_POR_AMARRAKO } from './recuento.ts';
-import type { MusState } from './state.ts';
+import { postreSeat, type MusState } from './state.ts';
 
 function buildPublicPlayers(state: MusState): PublicPlayer[] {
   return state.players.map((p) => ({
@@ -70,6 +70,7 @@ function buildCommon(state: MusState): MusCommonView {
     teams: buildTeams(state),
     winnerTeamIndex: state.winnerTeamIndex,
     manoSeat: state.manoSeat,
+    postreSeat: postreSeat(state),
     phase: state.phase,
     lance: state.lance,
     bet: state.bet
@@ -120,6 +121,9 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
 
   if (isMyTurn) {
     switch (state.phase) {
+      case 'reparto':
+        available.push('repartir');
+        break;
       case 'mus':
         available.push('mus', 'noMus');
         break;

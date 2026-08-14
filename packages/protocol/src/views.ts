@@ -244,6 +244,7 @@ export type MusLance = 'grande' | 'chica' | 'pares' | 'juego' | 'punto';
 
 /** Fase dentro de una mano de Mus. */
 export type MusPhase =
+  | 'reparto' // el postre confirma el reparto y el motor sirve las cartas
   | 'mus' // cada uno dice mus o corta (§12.5)
   | 'descarte' // los cuatro dijeron mus: se descarta de 1 a 4 (§12.5)
   | 'declararPares' // declaración pública antes del lance de pares (§12.6)
@@ -252,6 +253,7 @@ export type MusPhase =
   | 'recuento'; // mano terminada, cartas descubiertas (§12.9)
 
 export type MusAvailableAction =
+  | 'repartir'
   | 'mus'
   | 'noMus'
   | 'descartar'
@@ -290,6 +292,7 @@ export interface MusCommonView extends CommonViewBase {
   /** Ganador de la PARTIDA por parejas. `winnerId` es siempre null en Mus. */
   winnerTeamIndex: 0 | 1 | null;
   manoSeat: number; // habla primero en todo (§12.4); rota una silla por mano
+  postreSeat: number; // reparte; es el asiento inmediatamente anterior al mano
   phase: MusPhase;
   lance: MusLance | null; // solo con phase === 'lance'
   bet: MusBet | null;

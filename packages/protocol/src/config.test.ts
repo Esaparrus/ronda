@@ -3,6 +3,7 @@ import {
   ChinchonConfigSchema,
   GameConfigSchema,
   PochaConfigSchema,
+  MusConfigSchema,
   LaRondaConfigSchema,
   DEFAULT_CONFIG,
   DEFAULT_COLORES_CONFIG,
@@ -79,6 +80,12 @@ describe('GameConfigSchema', () => {
 
   it('acepta partidas de Pocha para dos personas', () => {
     expect(PochaConfigSchema.parse({ maxPlayers: 2 }).maxPlayers).toBe(2);
+  });
+
+  it('Mus distingue mesa presencial y partida online', () => {
+    expect(MusConfigSchema.parse({}).modo).toBe('presencial');
+    expect(MusConfigSchema.parse({ modo: 'online' }).modo).toBe('online');
+    expect(() => MusConfigSchema.parse({ modo: 'hibrido' })).toThrow();
   });
 
   it('configura La Ronda para mesas de 3 a 8 personas', () => {

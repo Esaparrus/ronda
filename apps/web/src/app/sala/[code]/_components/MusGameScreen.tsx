@@ -24,6 +24,7 @@ import { MusEnvitePicker } from './MusEnvitePicker';
 import { TableHeader } from './TableHeader';
 import { TableSeat, orderAroundMe } from './TableSeat';
 import { BarTable } from '@/components/ui/BarTable';
+import { formatMusAmount } from '@/lib/mus';
 
 /** §12.3: 8 amarrakos = 1 juego. Mismo puñado que los huecos de Chinchón. */
 const AMARRAKOS_POR_JUEGO = 8;
@@ -39,6 +40,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
     : null;
   const manoNick = view.players.find((p) => p.seat === view.manoSeat)?.nick ?? null;
+  const postreNick = view.players.find((p) => p.seat === view.postreSeat)?.nick ?? null;
 
   const [selected, setSelected] = useState<CardId[]>([]);
   const [envidando, setEnvidando] = useState(false);
@@ -103,6 +105,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
     const pareja = teamIndex === null ? '—' : teamIndex === 0 ? 'A' : 'B';
     const marks: string[] = [];
     if (seat === view.manoSeat) marks.push('mano');
+    if (seat === view.postreSeat) marks.push('postre');
     if (view.phase === 'mus' && view.musSaid[seat] === true) marks.push('mus');
     if (view.phase === 'mus' && view.musSaid[seat] === false) marks.push('corta');
     if (view.paresDeclared[seat] === true) marks.push('pares');
@@ -141,6 +144,12 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
 
         <BarTable>
           <section className="flex flex-col items-center justify-center gap-2 px-6 text-center">
+            {view.phase === 'reparto' ? (
+              <>
+                <p className="font-display text-28 leading-display text-hueso">Reparto</p>
+                {postreNick ? <p className="text-14 text-oro">Reparte {postreNick}</p> : null}
+              </>
+            ) : null}
             {view.phase === 'mus' ? (
               <p className="font-display text-28 leading-display text-hueso">Mus</p>
             ) : null}
@@ -164,7 +173,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
                   <p className="text-16 text-oro">
                     {view.bet.isOrdago
                       ? '¡Órdago!'
-                      : `${view.bet.piedras} piedras envidadas por la pareja ${
+                      : `${formatMusAmount(view.bet.piedras)} · pareja ${
                           view.bet.byTeam === 0 ? 'A' : 'B'
                         }`}
                   </p>
@@ -201,6 +210,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
 
         <MusActionBar
           phase={view.phase}
+          modo={view.config.modo}
           lance={view.lance}
           isMyTurn={isMyTurn}
           me={me}
@@ -208,6 +218,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
           turnPlayerNick={turnPlayer?.nick ?? null}
           turnPlayerConnected={turnPlayer?.connected ?? true}
           bet={view.bet}
+          onRepartir={() => void useRondaStore.getState().sendAction({ type: 'repartir' })}
           onMus={handleMus}
           onDescartar={handleDescartar}
           onDeclararPares={handleDeclararPares}

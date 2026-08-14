@@ -80,6 +80,18 @@ function emitAndListen(
   });
 }
 
+/** Espera una vista con el estado pedido e ignora snapshots anteriores. */
+function viewWithStatus(socket: ClientSocket, status: string): Promise<unknown> {
+  return new Promise((resolve) => {
+    const onView = (payload: { view: { status: string } }) => {
+      if (payload.view.status !== status) return;
+      socket.off('state:view', onView);
+      resolve(payload);
+    };
+    socket.on('state:view', onView);
+  });
+}
+
 // ---------------------------------------------------------------------------
 
 describe('integración socket', () => {
@@ -167,6 +179,35 @@ describe('integración socket', () => {
     expect((snap as { view: { kind: string } }).view.kind).toBe('player');
 
     c1b.close();
+    c2.close();
+  }, 15000);
+
+  it('room:leave difunde el final de la partida a quien se queda', async () => {
+    const c1 = client();
+    const c2 = client();
+    await Promise.all([connect(c1), connect(c2)]);
+
+    const { ack: createdAck } = await emitAndListen(c1, 'room:create', {
+      gameId: 'chinchon',
+      config: { gameId: 'chinchon' },
+      nick: 'Ana',
+    });
+    const code = (createdAck as { value: { roomCode: string } }).value.roomCode;
+
+    await emitAndListen(c2, 'room:join', { roomCode: code, nick: 'Beto' });
+    await emitAck(c1, 'room:start', {});
+
+    const ended = viewWithStatus(c1, 'gameEnd');
+    const leaveAck = (await emitAck(c2, 'room:leave', {})) as { ok: boolean };
+    expect(leaveAck.ok).toBe(true);
+
+    const snapshot = (await ended) as {
+      view: { status: string; winnerId: string | null };
+    };
+    expect(snapshot.view.status).toBe('gameEnd');
+    expect(snapshot.view.winnerId).not.toBeNull();
+
+    c1.close();
     c2.close();
   }, 15000);
 

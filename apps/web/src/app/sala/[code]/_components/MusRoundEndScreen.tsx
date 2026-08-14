@@ -115,7 +115,7 @@ export function MusRoundEndScreen({ view }: MusRoundEndScreenProps) {
             Confirmado.{' '}
             {waitingFor.length > 0
               ? `Esperando a ${waitingFor.map((p) => p.nick).join(', ')}.`
-              : 'Repartiendo la siguiente mano.'}
+              : 'El postre ya puede preparar el siguiente reparto.'}
           </p>
         ) : (
           <Button onClick={handleNextRound} loading={confirming}>

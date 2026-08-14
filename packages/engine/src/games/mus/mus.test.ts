@@ -43,6 +43,11 @@ const FOUR_PLAYERS = [
 ];
 
 function newGame(seed = 'mus-1', config: MusConfig = DEFAULT_CFG): MusState {
+  const waiting = createInitialState({ config, players: FOUR_PLAYERS, seed, roomCode: 'TEST' });
+  return apply(waiting, 3, { type: 'repartir' });
+}
+
+function waitingForDeal(seed = 'mus-1', config: MusConfig = DEFAULT_CFG): MusState {
   return createInitialState({ config, players: FOUR_PLAYERS, seed, roomCode: 'TEST' });
 }
 
@@ -389,12 +394,33 @@ describe('§12.13.9 — el recuento se corta al llegar a 40', () => {
 // Fase de mus y descarte (§12.5)
 // ---------------------------------------------------------------------------
 
-describe('fase de mus y descarte (§12.5)', () => {
-  it('reparte 4 cartas a cada uno y el mano habla primero', () => {
+describe('reparto por el postre (§12.4)', () => {
+  it('empieza sin cartas y solo el postre puede repartir', () => {
+    const s = waitingForDeal();
+    expect(s.phase).toBe('reparto');
+    expect(s.manoSeat).toBe(0);
+    expect(s.turnSeat).toBe(3);
+    expect(s.players.map((p) => p.hand.length)).toEqual([0, 0, 0, 0]);
+    expect(getTableView(s).postreSeat).toBe(3);
+    expect(getPlayerView(s, 'p3').me.availableActions).toContain('repartir');
+    expect(getPlayerView(s, 'p0').me.availableActions).not.toContain('repartir');
+    expect(applyAction(s, 'p0', { type: 'repartir' }, 0)).toMatchObject({
+      ok: false,
+      code: 'NOT_YOUR_TURN',
+    });
+  });
+
+  it('al repartir sirve cuatro cartas y da la palabra al mano', () => {
     const s = newGame();
     expect(s.players.map((p) => p.hand.length)).toEqual([4, 4, 4, 4]);
     expect(s.phase).toBe('mus');
     expect(s.turnSeat).toBe(s.manoSeat);
+  });
+});
+
+describe('fase de mus y descarte (§12.5)', () => {
+  it('el reparto no repite cartas', () => {
+    const s = newGame();
     const todas = s.players.flatMap((p) => p.hand);
     expect(new Set(todas).size).toBe(16); // sin repetidas
   });
@@ -651,15 +677,19 @@ describe('parejas, juegos y mano (§12.2-§12.4)', () => {
     ).toThrow();
   });
 
-  it('el mano rota una silla a la izquierda al empezar la mano siguiente', () => {
-    // Mano terminada sin que nadie ganase el juego: al confirmarla los cuatro
-    // se reparte la siguiente y el mano se mueve una silla.
+  it('el mano rota y el nuevo postre confirma el reparto siguiente', () => {
     let s: MusState = { ...newGame(), status: 'roundEnd', handResult: null };
     expect(s.manoSeat).toBe(0);
     for (let i = 0; i < 4; i++) s = apply(s, i, { type: 'nextRound' });
     expect(s.manoSeat).toBe(1);
     expect(s.handNumber).toBe(2);
     expect(s.status).toBe('playing');
+    expect(s.phase).toBe('reparto');
+    expect(s.turnSeat).toBe(0);
+    expect(s.players.map((p) => p.hand.length)).toEqual([0, 0, 0, 0]);
+    s = apply(s, 0, { type: 'repartir' });
+    expect(s.phase).toBe('mus');
+    expect(s.turnSeat).toBe(1);
   });
 
   it('con juegos > 1, ganar un juego reinicia las piedras y no acaba la partida', () => {
@@ -684,6 +714,7 @@ describe('parejas, juegos y mano (§12.2-§12.4)', () => {
     expect(s.piedras).toEqual([0, 0]); // juego nuevo, piedras a cero (§12.3)
     expect(s.juegoNumber).toBe(2);
     expect(s.handNumber).toBe(1);
+    expect(s.phase).toBe('reparto');
   });
 });
 

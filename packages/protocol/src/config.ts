@@ -85,10 +85,14 @@ const MUS_MAX_PLAYERS = z.literal(4);
 const MUS_JUEGOS = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 /** Piedras que paga el lance del punto cuando nadie tiene juego (§12.6 bis). */
 const PUNTO_VALE = z.union([z.literal(1), z.literal(2)]);
+/** Dónde está sentada la cuadrilla. Las reglas y el tanteo son idénticos;
+ * solo cambia la ayuda de interfaz porque en presencial pueden hablar. */
+const MUS_MODO = z.union([z.literal('presencial'), z.literal('online')]);
 
 export const MusConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('mus' satisfies GameId).default('mus'),
   maxPlayers: MUS_MAX_PLAYERS.default(4),
+  modo: MUS_MODO.default('presencial'),
   ochoReyes: z.boolean().default(true),
   juegos: MUS_JUEGOS.default(1),
   puntoVale: PUNTO_VALE.default(1),

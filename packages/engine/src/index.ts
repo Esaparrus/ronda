@@ -73,6 +73,7 @@ export {
   teamOfSeat as musTeamOfSeat,
   otherTeam as musOtherTeam,
   seatsFromMano as musSeatsFromMano,
+  postreSeat as musPostreSeat,
   findPlayer as musFindPlayer,
   isPlayerTurn as musIsPlayerTurn,
   type MusState,

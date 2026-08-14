@@ -22,7 +22,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'El mano y el reparto',
-    body: 'El mano habla primero en todo y va rotando un asiento cada mano. Se reparten cuatro cartas a cada uno. Cuando dos manos empatan en cualquier comparación, gana quien esté más cerca del mano.',
+    body: 'El mano habla primero en todo. El postre, sentado inmediatamente antes en el orden de juego, pulsa Repartir y sirve cuatro cartas a cada uno. Los dos puestos rotan un asiento cada mano. Cuando dos manos empatan, gana quien esté más cerca del mano.',
   },
   {
     title: 'Mus y descarte',
@@ -40,7 +40,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Envidar, querer y no querer',
-    body: 'En cada lance puedes pasar, envidar (apostar piedras, mínimo dos) o subir lo que haya apostado la pareja contraria. Ellos responden: si quieren, el lance se resuelve al descubrir las cartas; si no quieren, quien envidó se lleva lo que hubiera acumulado antes del último envite y ese lance no se compara. Si pasan los cuatro, el lance vale una piedra para quien lo gane.',
+    body: 'En cada lance puedes pasar, envidar (el envido simple son dos piedras), cantar una cantidad concreta o subir la apuesta contraria. Cinco piedras son un amarrako. La subida se registra como nueva cantidad total. La otra pareja puede querer, no querer o volver a subir. Si pasan los cuatro, el lance vale una piedra para quien lo gane.',
     example: 'Envidas 2 en grande y la contraria dice «no quiero»: te llevas 1 piedra en el acto y nadie enseña nada.',
   },
   {
@@ -79,8 +79,9 @@ export default function ReglasMusPage() {
       <p className="text-14 text-humo">
         Los ocho reyes (los Treses valen como Rey y los Doses como As), cuántos juegos hacen falta
         para ganar la partida y si el punto paga una piedra o dos son variantes: quien crea la sala
-        puede cambiarlas antes de empezar. Aquí no se juegan señas: los compañeros no tienen ningún
-        canal para hablar entre ellos.
+        puede cambiarlas antes de empezar. También se indica si la mesa es presencial u online. En
+        presencial podéis hablar; en ambos modos cada paso se confirma en el móvil para que la app
+        pueda resolver los lances y sumar el tanteo. La app no implementa señas.
       </p>
 
       <Link

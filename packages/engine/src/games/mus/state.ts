@@ -154,3 +154,10 @@ export function seatsFromMano(state: MusState): number[] {
   for (let i = 0; i < n; i++) out.push((state.manoSeat + i) % n);
   return out;
 }
+
+/** El postre está inmediatamente antes del mano en el orden de juego y es
+ * quien reparte. Se deriva para que nunca pueda desincronizarse al rotar. */
+export function postreSeat(state: MusState): number {
+  const n = state.players.length;
+  return (state.manoSeat - 1 + n) % n;
+}

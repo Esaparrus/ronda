@@ -53,6 +53,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ordago') }),
   z.object({ type: z.literal('declararPares'), tiene: z.boolean() }),
   z.object({ type: z.literal('declararJuego'), tiene: z.boolean() }),
+  z.object({ type: z.literal('repartir') }),
   // --- Modos sociales -------------------------------------------------------
   // `playNumber` no tiene turno: la primera acción que acepta el servidor
   // gana la carrera. `expectedVersion` ya hace de árbitro de simultaneidad.

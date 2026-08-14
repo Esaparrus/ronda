@@ -41,6 +41,7 @@ import {
   type MusState,
   findPlayer,
   isPlayerTurn,
+  postreSeat,
   seatsFromMano,
   teamOfSeat,
 } from './state.ts';
@@ -104,7 +105,7 @@ export function createInitialState(input: {
   const state: MusState = {
     version: 0,
     status: 'playing',
-    phase: 'mus',
+    phase: 'reparto',
     config,
     gameId: 'mus',
     roomCode: input.roomCode ?? '',
@@ -138,7 +139,8 @@ export function createInitialState(input: {
     rematchVotes: [],
   };
 
-  return dealHand(state);
+  state.turnSeat = postreSeat(state);
+  return state;
 }
 
 /**
@@ -222,6 +224,8 @@ export function applyAction(
   const events: GameEvent[] = [];
 
   switch (action.type) {
+    case 'repartir':
+      return applyRepartir(state, playerId, events);
     case 'mus':
       return applyMus(state, playerId, true, events);
     case 'noMus':
@@ -248,6 +252,19 @@ export function applyAction(
     default:
       return err('INVALID_ACTION');
   }
+}
+
+function applyRepartir(
+  state: MusState,
+  playerId: PlayerId,
+  events: GameEvent[],
+): Result<{ state: MusState; events: GameEvent[] }> {
+  if (state.status !== 'playing' || state.phase !== 'reparto') return err('INVALID_ACTION');
+  if (!isPlayerTurn(state, playerId)) return err('NOT_YOUR_TURN');
+
+  const dealt = dealHand(bump(state));
+  events.push({ t: 'dealt', round: dealt.handNumber });
+  return ok({ state: dealt, events });
 }
 
 // ---------------------------------------------------------------------------
@@ -665,7 +682,7 @@ function closeHand(s: MusState, wonTeam: 0 | 1 | null, events: GameEvent[]): Mus
 }
 
 // ---------------------------------------------------------------------------
-// nextRound: confirmar el recuento y repartir la mano siguiente
+// nextRound: confirmar el recuento y preparar el reparto siguiente
 // ---------------------------------------------------------------------------
 
 function applyNextRound(
@@ -700,8 +717,21 @@ function applyNextRound(
   next.manoSeat = (next.manoSeat + 1) % next.players.length; // rota una silla (§12.4)
   next.status = 'playing';
   next.handResult = null;
+  next.phase = 'reparto';
+  next.turnSeat = postreSeat(next);
+  next.deck = [];
+  next.discardPile = [];
+  next.lance = null;
+  next.bet = null;
+  next.lances = [];
+  next.spoken = next.players.map(() => false);
+  for (const p of next.players) {
+    p.hand = [];
+    p.musSaid = null;
+    p.discarded = false;
+    p.paresDeclared = null;
+    p.juegoDeclared = null;
+  }
 
-  const dealt = dealHand(next);
-  events.push({ t: 'dealt', round: dealt.handNumber });
-  return ok({ state: dealt, events });
+  return ok({ state: next, events });
 }

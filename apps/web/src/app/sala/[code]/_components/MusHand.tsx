@@ -40,6 +40,15 @@ export function MusHand({ hand, selectable, selected, onToggle, pares, juego }: 
   const marked = new Set(selected);
   const ordered = [...hand].sort((a, b) => sortKey(a) - sortKey(b));
 
+  if (hand.length === 0) {
+    return (
+      <div className="game-hand flex min-h-32 flex-col items-center justify-center gap-2 px-4 pb-4 pt-3 text-center">
+        <h2 className="text-14 font-semibold text-hueso">Esperando el reparto</h2>
+        <p className="text-12 text-humo">El postre tiene que repartir cuatro cartas.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="game-hand flex flex-col gap-2 px-4 pb-4 pt-3">
       <div className="flex items-baseline justify-between gap-2">

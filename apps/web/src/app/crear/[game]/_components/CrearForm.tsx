@@ -289,6 +289,23 @@ function MusVariants({ config, setConfig }: MusVariantsProps) {
       </p>
 
       <SegmentedControl
+        legend="Cómo vais a jugar"
+        helperText="Las jugadas siempre se confirman en el móvil."
+        value={config.modo}
+        onChange={(v) => set('modo', v)}
+        options={[
+          { value: 'presencial', label: 'En la misma mesa' },
+          { value: 'online', label: 'Cada uno a distancia' },
+        ]}
+      />
+
+      <p className="text-12 text-humo">
+        {config.modo === 'presencial'
+          ? 'Podéis hablar con normalidad; cada paso se marca también en el móvil para llevar el tanteo.'
+          : 'Los botones comunican cada paso, envite y respuesta al resto de la mesa.'}
+      </p>
+
+      <SegmentedControl
         legend="Ocho reyes"
         helperText="Los Treses valen como Rey y los Doses como As."
         value={config.ochoReyes}

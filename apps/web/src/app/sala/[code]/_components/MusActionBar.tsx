@@ -3,11 +3,19 @@
 // motor en `availableActions`; este componente solo las ordena y las explica.
 'use client';
 
-import type { MusAvailableAction, MusLance, MusPhase, MusPlayerViewMe } from '@ronda/protocol';
+import type {
+  MusAvailableAction,
+  MusConfig,
+  MusLance,
+  MusPhase,
+  MusPlayerViewMe,
+} from '@ronda/protocol';
 import { Button } from '@/components/ui/Button';
+import { formatMusAmount } from '@/lib/mus';
 
 export interface MusActionBarProps {
   phase: MusPhase;
+  modo: MusConfig['modo'];
   lance: MusLance | null;
   isMyTurn: boolean;
   me: MusPlayerViewMe;
@@ -17,6 +25,7 @@ export interface MusActionBarProps {
   turnPlayerConnected: boolean;
   /** Envite vivo: hay que quererlo, rechazarlo o subirlo. */
   bet: { piedras: number; isOrdago: boolean; ifRejected: number; byTeam: 0 | 1 } | null;
+  onRepartir: () => void;
   onMus: (quiere: boolean) => void;
   onDescartar: () => void;
   onDeclararPares: () => void;
@@ -42,6 +51,7 @@ const PARES_LABEL = {
 } as const;
 
 const PHASE_HINT: Record<MusPhase, string> = {
+  reparto: 'Reparte cuatro cartas a cada jugador.',
   mus: '¿Mus?',
   descarte: 'Marca las cartas que te quieras quitar.',
   declararPares: '¿Tienes pares?',
@@ -56,6 +66,7 @@ function teamLabel(teamIndex: 0 | 1): string {
 
 export function MusActionBar({
   phase,
+  modo,
   lance,
   isMyTurn,
   me,
@@ -63,6 +74,7 @@ export function MusActionBar({
   turnPlayerNick,
   turnPlayerConnected,
   bet,
+  onRepartir,
   onMus,
   onDescartar,
   onDeclararPares,
@@ -77,7 +89,7 @@ export function MusActionBar({
     can('envidar') &&
     (lance !== 'pares' || me.pares !== null) &&
     (lance !== 'juego' || me.juego.tiene);
-  const lanceName = lance ? LANCE_LABEL[lance] : 'Mus';
+  const lanceName = phase === 'reparto' ? 'Reparto' : lance ? LANCE_LABEL[lance] : 'Mus';
   const announcement = isMyTurn
     ? `Tu turno. ${lanceName}. ${PHASE_HINT[phase]}`
     : turnPlayerNick
@@ -107,12 +119,12 @@ export function MusActionBar({
           <div className="rounded-lg border border-linea bg-mesa px-4 py-3">
             <p className="text-12 uppercase tracking-wider text-humo">Envite actual</p>
             <p className="text-16 font-semibold text-hueso">
-              {bet.isOrdago ? 'Órdago' : `${bet.piedras} piedras · ${teamLabel(bet.byTeam)}`}
+              {bet.isOrdago ? 'Órdago' : `${formatMusAmount(bet.piedras)} · ${teamLabel(bet.byTeam)}`}
             </p>
             <p className="text-12 text-humo">
               {bet.isOrdago
                 ? 'La pareja contraria debe querer o no querer.'
-                : `Si no quiere, ${teamLabel(bet.byTeam)} gana ${bet.ifRejected} ${bet.ifRejected === 1 ? 'piedra' : 'piedras'}.`}
+                : `Si no quiere, ${teamLabel(bet.byTeam)} gana ${formatMusAmount(bet.ifRejected)}.`}
             </p>
           </div>
         ) : null}
@@ -127,6 +139,18 @@ export function MusActionBar({
         <p className="text-12 font-semibold uppercase tracking-wider text-oro">Tu turno</p>
         <p className="text-20 font-semibold text-hueso">{lanceName}</p>
       </div>
+
+      {modo === 'presencial' && phase !== 'reparto' ? (
+        <p className="text-center text-12 text-humo">
+          Habladlo en la mesa y confirma aquí la decisión para que el tanteo siga al día.
+        </p>
+      ) : null}
+
+      {phase === 'reparto' && can('repartir') ? (
+        <Button onClick={onRepartir} className="w-full">
+          Repartir 4 cartas
+        </Button>
+      ) : null}
 
       {phase === 'mus' ? (
         <div className="grid grid-cols-2 gap-2">
@@ -192,12 +216,12 @@ export function MusActionBar({
           <div className="rounded-lg border border-oro/60 bg-mesa px-4 py-3 text-center">
             <p className="text-12 uppercase tracking-wider text-humo">Te están envidando</p>
             <p className="text-20 font-semibold text-hueso">
-              {bet.isOrdago ? 'Órdago' : `${bet.piedras} piedras`}
+              {bet.isOrdago ? 'Órdago' : formatMusAmount(bet.piedras)}
             </p>
             <p className="text-12 text-humo">
               {bet.isOrdago
                 ? 'Si quieres, te juegas el juego entero.'
-                : `Si no quieres, ${teamLabel(bet.byTeam)} gana ${bet.ifRejected} ${bet.ifRejected === 1 ? 'piedra' : 'piedras'}.`}
+                : `Si no quieres, ${teamLabel(bet.byTeam)} gana ${formatMusAmount(bet.ifRejected)}.`}
             </p>
           </div>
 

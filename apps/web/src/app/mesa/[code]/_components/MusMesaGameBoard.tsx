@@ -9,6 +9,7 @@
 import type { MusTableView } from '@ronda/protocol';
 import { SeatRing } from './SeatRing';
 import { MusMesaScore } from './MusMesaScore';
+import { formatMusAmount } from '@/lib/mus';
 
 export interface MusMesaGameBoardProps {
   view: MusTableView;
@@ -23,6 +24,7 @@ const LANCE_LABEL: Record<string, string> = {
 };
 
 const PHASE_LABEL: Record<string, string> = {
+  reparto: 'Esperando el reparto',
   mus: '¿Mus?',
   descarte: 'Descarte',
   declararPares: '¿Pares?',
@@ -46,6 +48,7 @@ export function MusMesaGameBoard({ view }: MusMesaGameBoardProps) {
           renderBadge={(p) => {
             const marks: string[] = [];
             if (p.seat === view.manoSeat) marks.push('mano');
+            if (p.seat === view.postreSeat) marks.push('postre');
             if (view.phase === 'mus' && view.musSaid[p.seat] === true) marks.push('mus');
             if (view.phase === 'mus' && view.musSaid[p.seat] === false) marks.push('corta');
             if (view.paresDeclared[p.seat] === true) marks.push('pares');
@@ -67,7 +70,7 @@ export function MusMesaGameBoard({ view }: MusMesaGameBoardProps) {
             <p className="text-[clamp(1rem,2vw,1.5rem)] text-brasa">
               {view.bet.isOrdago
                 ? '¡Órdago!'
-                : `${view.bet.piedras} piedras · pareja ${view.bet.byTeam === 0 ? 'A' : 'B'}`}
+                : `${formatMusAmount(view.bet.piedras)} · pareja ${view.bet.byTeam === 0 ? 'A' : 'B'}`}
             </p>
           ) : null}
         </div>

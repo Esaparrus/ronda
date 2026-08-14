@@ -198,6 +198,10 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     const st = requirePlayer(deps, sid, respond);
     if (!st) return;
     const r = deps.mgr.leave({ roomCode: st.roomCode, playerId: st.playerId, now: deps.now() });
+    // `leave` borra el binding del socket que sale, por lo que el posterior
+    // evento `disconnect` ya no puede avisar a quienes se quedan. Difundir aquí
+    // mantiene su vista sincronizada sin obligarles a recargar.
+    if (r.ok) rebroadcast(deps, st.roomCode);
     ack(r);
     deps.states.delete(sid);
   });
