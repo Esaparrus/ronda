@@ -8,6 +8,7 @@
 //   5. Dispara la difusión correspondiente.
 import type { Socket } from 'socket.io';
 import type { TypedIoServer } from '../io.ts';
+import type { Logger } from '../logger.ts';
 import type { RoomManager } from '../rooms/room-manager.ts';
 import type { RateLimiter } from './rate-limit.ts';
 import {
@@ -37,6 +38,7 @@ export interface HandlerDeps {
   mgr: RoomManager;
   rateLimiter: RateLimiter;
   states: Map<string, SocketState>;
+  logger?: Pick<Logger, 'info'>;
   now: () => number;
 }
 
@@ -357,14 +359,14 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
       }
     }
 
-    // El hook termina en playtest_events. El roomCode se guarda en su columna
-    // propia; el payload no contiene apodos, tokens ni respuestas libres.
-    room.hooks.onTrack?.(room, 'error', {
+    const receivedAt = deps.now();
+    const actions = room.getDiagnosticActions();
+    const diagnostic = {
       source: 'client_diagnostic',
       incidentId: payload.incidentId,
       reason: payload.reason,
       occurredAt: payload.occurredAt,
-      receivedAt: deps.now(),
+      receivedAt,
       path: payload.path,
       release: payload.release,
       userAgent: payload.userAgent,
@@ -373,7 +375,20 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
       entries: payload.entries,
       error: payload.error,
       server: serverState,
-      actions: room.getDiagnosticActions(),
+      actions,
+    };
+
+    // El hook termina en playtest_events. El roomCode se guarda en su columna
+    // propia; el payload no contiene apodos, tokens ni respuestas libres.
+    room.hooks.onTrack?.(room, 'error', diagnostic);
+
+    // Render Free no ofrece Shell. Repetir el mismo payload ya anonimizado en
+    // el log estructurado permite buscar el código RND-… desde el panel sin
+    // exponer DATABASE_URL ni depender de acceso interactivo al contenedor.
+    deps.logger?.info('informe de diagnóstico recibido', {
+      roomCode: room.code,
+      gameId: room.gameId,
+      ...diagnostic,
     });
     ack(ok({ incidentId: payload.incidentId }));
   });

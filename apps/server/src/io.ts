@@ -53,6 +53,7 @@ export function createIoServer(deps: IoDeps): IoRuntime {
         mgr: deps.manager,
         rateLimiter,
         states,
+        logger: deps.logger,
         now: () => Date.now(),
       });
       socket.on('disconnect', (reason) => {
