@@ -15,6 +15,7 @@ import {
   DEFAULT_POCHA_CONFIG,
   messageFor,
   type ChinchonConfig,
+  type ColorTopic,
   type GameId,
   type MusConfig,
   type PartyConfig,
@@ -418,6 +419,12 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
     setConfig((previous) => ({ ...previous, [key]: value }) as PartyConfig);
   }
 
+  function setColorTopic(topic: ColorTopic) {
+    setConfig((previous) =>
+      previous.gameId === 'colores' ? { ...previous, topic } : previous,
+    );
+  }
+
   const playerOptions = [2, 3, 4, 5, 6, 7].map((value) => ({
     value,
     label: String(value),
@@ -465,6 +472,29 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
         />
       ) : (
         <>
+          {config.gameId === 'colores' ? (
+            <div className="flex flex-col gap-2.5">
+              <label htmlFor="color-topic" className="text-16 font-semibold text-hueso">
+                Tema de las preguntas
+              </label>
+              <p className="text-12 text-humo">Elige un banco difícil o mezcla todos.</p>
+              <select
+                id="color-topic"
+                value={config.topic}
+                onChange={(event) => setColorTopic(event.target.value as ColorTopic)}
+                className="form-control px-4 text-16"
+              >
+                <option value="todo">De todo</option>
+                <option value="animacion">Dibujos y animación</option>
+                <option value="series">Series de televisión</option>
+                <option value="cine">Cine</option>
+                <option value="banderas">Banderas difíciles</option>
+                <option value="logos">Logos y marcas</option>
+                <option value="juegos">Juegos y videojuegos</option>
+                <option value="cultura">Historia, ciencia y cultura</option>
+              </select>
+            </div>
+          ) : null}
           <QuantityStepper
             legend="Rondas máximas"
             helperText="Preguntas antes de revelar."

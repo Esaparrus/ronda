@@ -4,6 +4,7 @@
 import type {
   CardId,
   GameConfig,
+  ColorTopic,
   PartyConfig,
   PartyGameId,
   PlayerId,
@@ -108,8 +109,15 @@ export function partyConfigForGame(config: GameConfig, gameId: PartyGameId): Par
   return config;
 }
 
-export function questionIdsFor(gameId: Exclude<PartyGameId, 'orden'>): string[] {
-  if (gameId === 'colores') return COLOR_QUESTIONS.map((question) => question.id);
+export function questionIdsFor(
+  gameId: Exclude<PartyGameId, 'orden'>,
+  colorTopic: ColorTopic = 'todo',
+): string[] {
+  if (gameId === 'colores') {
+    return COLOR_QUESTIONS.filter(
+      (question) => colorTopic === 'todo' || question.category === colorTopic,
+    ).map((question) => question.id);
+  }
   if (gameId === 'mayoria') return MAJORITY_QUESTIONS.map((question) => question.id);
   return SCALE_QUESTIONS.map((question) => question.id);
 }

@@ -1,10 +1,12 @@
 /** Contenido inicial propio de los modos sociales. */
 
+import type { ColorQuestionCategory } from '@ronda/protocol';
 import { COLOR_QUESTIONS } from './color-questions.ts';
 
 export interface ColorQuestion {
   id: string;
   prompt: string;
+  category: ColorQuestionCategory;
   allowMultiple: boolean;
   correctColors: string[];
 }
@@ -277,6 +279,7 @@ export function colorQuestionById(id: string): ColorQuestion {
   return COLOR_QUESTIONS.find((q) => q.id === id) ?? {
     id: 'color-fallback',
     prompt: '¿De qué color es?',
+    category: 'cultura',
     allowMultiple: false,
     correctColors: ['rojo'],
   };

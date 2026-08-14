@@ -173,7 +173,8 @@ export function createPartyState(
     return state;
   }
 
-  const questionOrder = shuffled(state, questionIdsFor(gameId));
+  const colorTopic = config.gameId === 'colores' ? config.topic : 'todo';
+  const questionOrder = shuffled(state, questionIdsFor(gameId, colorTopic));
   const questionId = questionOrder[0] ?? '';
 
   if (gameId === 'colores') {

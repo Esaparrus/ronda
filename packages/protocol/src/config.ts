@@ -139,11 +139,27 @@ export const OrdenConfigSchema = CommonGameConfigSchema.extend({
 
 export type OrdenConfig = z.infer<typeof OrdenConfigSchema>;
 
+export const COLOR_TOPICS = [
+  'todo',
+  'animacion',
+  'series',
+  'cine',
+  'banderas',
+  'logos',
+  'juegos',
+  'cultura',
+] as const;
+
+export const ColorTopicSchema = z.enum(COLOR_TOPICS);
+export type ColorTopic = z.infer<typeof ColorTopicSchema>;
+export type ColorQuestionCategory = Exclude<ColorTopic, 'todo'>;
+
 export const ColoresConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('colores' satisfies GameId).default('colores'),
   maxPlayers: PARTY_MAX_PLAYERS.default(7),
   rounds: PARTY_ROUNDS.default(10),
   pointsToWin: PARTY_POINTS.default(10),
+  topic: ColorTopicSchema.default('todo'),
 });
 
 export type ColoresConfig = z.infer<typeof ColoresConfigSchema>;

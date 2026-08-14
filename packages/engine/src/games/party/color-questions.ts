@@ -1,10 +1,22 @@
 import type { ColorQuestion } from './content.ts';
+import { FLAG_COLOR_QUESTIONS } from './color-questions-flags.ts';
+import { LOGO_COLOR_QUESTIONS } from './color-questions-logos.ts';
+
+type ColorQuestionSeed = Omit<ColorQuestion, 'category'>;
+
+function inCategory(
+  category: ColorQuestion['category'],
+  questions: readonly ColorQuestionSeed[],
+): readonly ColorQuestion[] {
+  return questions.map((question) => ({ ...question, category }));
+}
 
 /**
  * Banco de dificultad alta. Todas las preguntas apuntan a un único detalle
  * visual concreto y admiten exactamente una ficha de color como respuesta.
  */
 export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
+  ...inCategory('animacion', [
   // Los Simpson: decorado, secundarios y prendas concretas.
   { id: 'simpsons-sofa-salon', prompt: '¿De qué color es el sofá del salón de Los Simpson?', allowMultiple: false, correctColors: ['marrón'] },
   { id: 'simpsons-pared-salon', prompt: '¿De qué color son las paredes del salón de Los Simpson?', allowMultiple: false, correctColors: ['rosa'] },
@@ -452,7 +464,9 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   { id: 'coraline-piedra', prompt: '¿De qué color es la piedra agujereada que usan Coraline y Wybie para buscar las almas?', allowMultiple: false, correctColors: ['verde'] },
   { id: 'pesadilla-antes-navidad-pajarita', prompt: '¿De qué color es la pajarita con forma de murciélago de Jack Skellington?', allowMultiple: false, correctColors: ['negro'] },
   { id: 'pesadilla-antes-navidad-nariz-zero', prompt: '¿De qué color brilla la nariz de Zero?', allowMultiple: false, correctColors: ['naranja'] },
+  ]),
 
+  ...inCategory('juegos', [
   // Juegos de mesa y juguetes: reglas visuales de ediciones clásicas.
   { id: 'monopoly-casas', prompt: '¿De qué color son las casas de la edición clásica de Monopoly?', allowMultiple: false, correctColors: ['verde'] },
   { id: 'monopoly-hoteles', prompt: '¿De qué color son los hoteles de la edición clásica de Monopoly?', allowMultiple: false, correctColors: ['rojo'] },
@@ -475,7 +489,9 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   { id: 'conecta-cuatro-jugadores', prompt: 'Además del rojo, ¿qué color tienen las fichas de Conecta 4?', allowMultiple: false, correctColors: ['amarillo'] },
   { id: 'uno-carta-comodin', prompt: '¿De qué color es el fondo de una carta comodín clásica de UNO?', allowMultiple: false, correctColors: ['negro'] },
   { id: 'ajedrez-casilla-a1', prompt: '¿De qué color es la casilla a1 de un tablero de ajedrez correctamente colocado?', allowMultiple: false, correctColors: ['negro'] },
+  ]),
 
+  ...inCategory('series', [
   // Series de acción real: decorados y atrezo reconocible.
   { id: 'friends-sofa-central-perk', prompt: '¿De qué color es el sofá de Central Perk en Friends?', allowMultiple: false, correctColors: ['naranja'] },
   { id: 'friends-puerta-monica', prompt: '¿De qué color es la puerta del apartamento de Monica en Friends?', allowMultiple: false, correctColors: ['morado'] },
@@ -508,12 +524,14 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   { id: 'the-office-camisa-dwight', prompt: '¿De qué color es con frecuencia la camisa de manga corta de Dwight Schrute?', allowMultiple: false, correctColors: ['amarillo'] },
   { id: 'big-bang-sofa', prompt: '¿De qué color es el sofá donde Sheldon tiene “su sitio” en The Big Bang Theory?', allowMultiple: false, correctColors: ['marrón'] },
   { id: 'big-bang-camiseta-flash', prompt: '¿De qué color es el círculo del emblema de Flash en la camiseta de Sheldon?', allowMultiple: false, correctColors: ['blanco'] },
-  { id: 'doctor-who-tardis', prompt: '¿De qué color es la TARDIS de Doctor Who?', allowMultiple: false, correctColors: ['azul'] },
+  { id: 'doctor-who-tardis-letrero', prompt: '¿De qué color es el fondo del letrero superior «Police Public Call Box» de la TARDIS?', allowMultiple: false, correctColors: ['negro'] },
   { id: 'twin-peaks-cortinas', prompt: '¿De qué color son las cortinas de la Habitación Roja en Twin Peaks?', allowMultiple: false, correctColors: ['rojo'] },
   { id: 'lost-furgoneta-dharma', prompt: '¿De qué color es la furgoneta de la Iniciativa Dharma en Lost?', allowMultiple: false, correctColors: ['azul'] },
   { id: 'sherlock-puerta-221b', prompt: '¿De qué color es la puerta del 221B de Baker Street en Sherlock?', allowMultiple: false, correctColors: ['negro'] },
   { id: 'peaky-blinders-gorras', prompt: '¿De qué color son normalmente las gorras de los Shelby en Peaky Blinders?', allowMultiple: false, correctColors: ['gris'] },
+  ]),
 
+  ...inCategory('cine', [
   // Cine: objetos, vestuario y vehículos concretos.
   { id: 'harry-coche-weasley', prompt: '¿De qué color es el Ford Anglia volador de la familia Weasley?', allowMultiple: false, correctColors: ['azul'] },
   { id: 'harry-autobus-noctambulo', prompt: '¿De qué color es el Autobús Noctámbulo?', allowMultiple: false, correctColors: ['morado'] },
@@ -561,7 +579,9 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   { id: 'marvel-piedra-realidad', prompt: '¿De qué color es la Gema de la Realidad del Universo Marvel?', allowMultiple: false, correctColors: ['rojo'] },
   { id: 'marvel-piedra-poder', prompt: '¿De qué color es la Gema del Poder del Universo Marvel?', allowMultiple: false, correctColors: ['morado'] },
   { id: 'marvel-piedra-alma', prompt: '¿De qué color es la Gema del Alma del Universo Marvel?', allowMultiple: false, correctColors: ['naranja'] },
+  ]),
 
+  ...inCategory('juegos', [
   // Videojuegos: botones, accesorios y personajes secundarios.
   { id: 'mario-botones-peto', prompt: '¿De qué color son los botones del peto de Mario?', allowMultiple: false, correctColors: ['amarillo'] },
   { id: 'luigi-letra-gorra', prompt: '¿De qué color es el círculo que rodea la L en la gorra de Luigi?', allowMultiple: false, correctColors: ['blanco'] },
@@ -598,7 +618,9 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   { id: 'fallout-vault-boy-mono', prompt: '¿De qué color es el mono de Vault Boy en Fallout?', allowMultiple: false, correctColors: ['azul'] },
   { id: 'final-fantasy-vii-ojos-aerith', prompt: '¿De qué color son los ojos de Aerith en Final Fantasy VII?', allowMultiple: false, correctColors: ['verde'] },
   { id: 'among-us-icono', prompt: '¿De qué color es el tripulante que funciona como icono principal de Among Us?', allowMultiple: false, correctColors: ['rojo'] },
+  ]),
 
+  ...inCategory('cultura', [
   // Historia, ciencia, deporte, arte y logos: detalles documentables de la vida real.
   { id: 'historia-coche-kennedy', prompt: '¿De qué color era el Lincoln presidencial en el que viajaba Kennedy cuando fue asesinado?', allowMultiple: false, correctColors: ['azul'] },
   { id: 'historia-spirit-st-louis', prompt: '¿De qué color era el fuselaje del Spirit of St. Louis de Charles Lindbergh?', allowMultiple: false, correctColors: ['gris'] },
@@ -641,6 +663,8 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   { id: 'musica-dark-side-fondo', prompt: '¿De qué color es el fondo de la portada de The Dark Side of the Moon?', allowMultiple: false, correctColors: ['negro'] },
   { id: 'musica-bowie-rayo-central', prompt: '¿De qué color es principalmente el centro del rayo de David Bowie en la portada de Aladdin Sane?', allowMultiple: false, correctColors: ['rojo'] },
   { id: 'musica-thriller-chaqueta', prompt: '¿De qué color es principalmente la chaqueta de Michael Jackson en Thriller?', allowMultiple: false, correctColors: ['rojo'] },
+  ]),
+  ...inCategory('logos', [
   { id: 'logo-amazon-sonrisa', prompt: '¿De qué color es la flecha con forma de sonrisa del logotipo de Amazon?', allowMultiple: false, correctColors: ['naranja'] },
   { id: 'logo-dominos-ficha-un-punto', prompt: '¿De qué color es la mitad con un solo punto del logotipo de Domino’s?', allowMultiple: false, correctColors: ['rojo'] },
   { id: 'logo-fedex-flecha', prompt: '¿De qué color es la flecha oculta entre la E y la X del logotipo de FedEx sobre fondo blanco?', allowMultiple: false, correctColors: ['blanco'] },
@@ -660,4 +684,7 @@ export const COLOR_QUESTIONS: readonly ColorQuestion[] = [
   { id: 'logo-xbox-x', prompt: '¿De qué color se representa tradicionalmente la X de Xbox?', allowMultiple: false, correctColors: ['verde'] },
   { id: 'logo-gameboy-botones', prompt: '¿De qué color son los botones A y B de la Game Boy original?', allowMultiple: false, correctColors: ['morado'] },
   { id: 'logo-gameboy-pantalla', prompt: '¿De qué color se ve la pantalla de la Game Boy original cuando está encendida?', allowMultiple: false, correctColors: ['verde'] },
+  ]),
+  ...LOGO_COLOR_QUESTIONS,
+  ...FLAG_COLOR_QUESTIONS,
 ];

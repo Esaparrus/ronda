@@ -7,6 +7,7 @@ import {
   type PlayerId,
 } from '@ronda/protocol';
 import { applyAction, createPartyState } from './reducer.ts';
+import { COLOR_QUESTIONS } from './content.ts';
 import { getPlayerView, getTableView } from './views.ts';
 import type { PartyState } from './state.ts';
 
@@ -122,6 +123,23 @@ describe('modos sociales', () => {
     if (view.party.gameId !== 'colores') throw new Error('vista incorrecta');
     expect(view.party.answers).not.toBeNull();
     expect(view.party.correctColors).not.toBeNull();
+  });
+
+  it('baraja únicamente el tema elegido en Colores', () => {
+    const state = createPartyState({
+      config: { ...DEFAULT_COLORES_CONFIG, topic: 'banderas' },
+      seed: 'flags-only',
+      players: PLAYERS,
+      roomCode: 'TEST',
+    }, 'colores');
+    const categoryById = new Map(
+      COLOR_QUESTIONS.map((question) => [question.id, question.category]),
+    );
+
+    expect(state.colors?.questionOrder).toHaveLength(110);
+    expect(
+      state.colors?.questionOrder.every((questionId) => categoryById.get(questionId) === 'banderas'),
+    ).toBe(true);
   });
 
   it('agrupa Mayoría ignorando mayúsculas, tildes y puntuación', () => {

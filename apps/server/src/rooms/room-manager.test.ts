@@ -628,7 +628,12 @@ describe('historial de preguntas de Colores', () => {
     const m = mgr();
     const created = m.createRoom({
       gameId: 'colores',
-      config: { ...DEFAULT_COLORES_CONFIG, rounds: 10, pointsToWin: 40 },
+      config: {
+        ...DEFAULT_COLORES_CONFIG,
+        rounds: 10,
+        pointsToWin: 40,
+        topic: 'banderas',
+      },
       nick: 'Ana',
       now: NOW,
     });

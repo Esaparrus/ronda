@@ -4,6 +4,8 @@ import {
   GameConfigSchema,
   PochaConfigSchema,
   DEFAULT_CONFIG,
+  DEFAULT_COLORES_CONFIG,
+  ColoresConfigSchema,
 } from './config.ts';
 
 describe('GameConfigSchema', () => {
@@ -75,5 +77,11 @@ describe('GameConfigSchema', () => {
 
   it('acepta partidas de Pocha para dos personas', () => {
     expect(PochaConfigSchema.parse({ maxPlayers: 2 }).maxPlayers).toBe(2);
+  });
+
+  it('configura el tema de Colores y usa todo el banco por defecto', () => {
+    expect(DEFAULT_COLORES_CONFIG.topic).toBe('todo');
+    expect(ColoresConfigSchema.parse({ topic: 'banderas' }).topic).toBe('banderas');
+    expect(() => ColoresConfigSchema.parse({ topic: 'faciles' })).toThrow();
   });
 });
