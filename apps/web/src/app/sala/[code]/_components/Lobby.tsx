@@ -19,6 +19,7 @@ export function Lobby({ view }: LobbyProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [addingBot, setAddingBot] = useState(false);
 
   const me = view.players.find((player) => player.playerId === view.me.playerId);
   const isHost = me?.isHost ?? false;
@@ -59,9 +60,20 @@ export function Lobby({ view }: LobbyProps) {
     setStarting(false);
   }
 
+  async function handleAddBot() {
+    setAddingBot(true);
+    try {
+      await useRondaStore.getState().addBot();
+    } finally {
+      setAddingBot(false);
+    }
+  }
+
   const minimumPlayers = view.gameId === 'mus' ? 4 : view.gameId === 'laronda' ? 3 : 2;
   const canStart = view.players.length >= minimumPlayers;
   const minimumLabel = minimumPlayers === 4 ? 'cuatro' : minimumPlayers === 3 ? 'tres' : 'dos';
+  const supportsBots = view.gameId !== 'mus' && view.gameId !== 'laronda';
+  const hasFreeSeat = view.players.length < view.config.maxPlayers;
 
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col gap-7 px-5">
@@ -105,6 +117,16 @@ export function Lobby({ view }: LobbyProps) {
             </li>
           ))}
         </ul>
+        {isHost && supportsBots && hasFreeSeat ? (
+          <div className="flex flex-col gap-2">
+            <Button variant="ghost" onClick={handleAddBot} loading={addingBot}>
+              {view.players.length === 1 ? 'Jugar contra un bot' : 'Añadir bot'}
+            </Button>
+            <p className="text-center text-12 text-humo">
+              Añade jugadores automáticos para practicar o simular una partida.
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {lastError ? <p className="text-14 text-brasa">{lastError}</p> : null}
