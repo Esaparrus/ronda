@@ -5,7 +5,7 @@
 // incluso con la red inestable; TODO lo demás pasa siempre por red
 // (NetworkOnly), porque una partida es en tiempo real y nunca debe servirse
 // una vista de caché ni una respuesta de socket.
-const CACHE_NAME = 'ronda-shell-v3';
+const CACHE_NAME = 'ronda-shell-v4';
 
 // Caché aparte para la baraja (`/cards/*.webp`). No entra en el precache del
 // shell: son 40 ficheros que no hacen falta hasta que empieza una partida.
@@ -54,8 +54,38 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Shell precacheado: se sirve de caché al instante y se refresca en
-  // segundo plano. Si no hay caché (primera visita), va a la red.
+  // Las navegaciones van primero a red. Así una PWA instalada no arranca con
+  // el HTML y los chunks de una versión anterior después de un despliegue.
+  // Sin conexión se usa la ruta pedida si está precacheada y, como último
+  // recurso, la portada offline.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok && SHELL_URLS.includes(url.pathname)) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          const home = await caches.match('/');
+          return (
+            home ??
+            new Response('Sin conexión', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            })
+          );
+        }),
+    );
+    return;
+  }
+
+  // El resto del shell precacheado (manifest e iconos) se sirve de caché al
+  // instante y se refresca en segundo plano.
   if (SHELL_URLS.includes(url.pathname)) {
     event.respondWith(
       caches.match(request).then((cached) => {
