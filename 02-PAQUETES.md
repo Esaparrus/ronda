@@ -535,7 +535,7 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 
 **Tests:** `packages/engine/src/games/mus/mus.test.ts`, 53 casos — los 9 dorados de §12.13 uno a uno, más fase de mus/descarte, declaraciones, envites, parejas y juegos (vaca), determinismo, serializabilidad y censura de vistas.
 
-**Lo que NO hace este paquete:** servidor, interfaz y bots. Los bots quedan explícitamente fuera por §12.11 (envidar y farolear es otro problema), y `bot-driver.ts` los desactiva para `gameId === 'mus'`. Para poder jugar una partida de Mus de principio a fin faltan todavía la clasificación por parejas en `/sala` y `/mesa` (P16) y las estadísticas de §11.2, que siguen contando `wins` por jugador.
+**Lo que NO hacía este paquete P28:** servidor, interfaz y bots. La política conservadora de bots de práctica se añadió después en la capa de servidor; no forma parte del motor. Para poder jugar una partida de Mus de principio a fin faltaban todavía la clasificación por parejas en `/sala` y `/mesa` (P16) y las estadísticas de §11.2, que seguían contando `wins` por jugador.
 
 ---
 
@@ -555,7 +555,7 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 
 **Abandono (decisión 6 de P28).** Si una sala de Mus se queda sin cuatro, la partida se **anula**: `winnerTeamIndex` a `null`, sin `recordMatchEnd()` y sin contar en §11.2. Darle la victoria a la pareja que quede entera sería inventarse el resultado.
 
-**Sin bots (§12.11).** `room:addBot` se rechaza en salas de Mus con `INVALID_ACTION`, no solo escondiendo el botón: un bot en una mesa de Mus dejaría la partida colgada en su turno para siempre.
+**Bots de práctica.** `room:addBot` admite Mus y el lobby puede completar en un clic los huecos hasta cuatro. `bot-driver.ts` cubre reparto, mus/descarte, declaraciones, lances y confirmación de la siguiente mano con una política conservadora basada solo en la vista censurada del robot. Sirve para practicar y verificar el flujo completo; no pretende envidar ni farolear estratégicamente.
 
 **Entregado en `@ronda/protocol`:** `'mus'` en `roomCreateSchema`, `MusConfigSchema.partial()` en el patch de `room:config`, evento y esquema de `room:swapSeats`, y la semántica de Mus documentada en `stats.ts`.
 

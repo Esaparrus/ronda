@@ -12,6 +12,7 @@ import { GAMES } from '@ronda/engine';
 import type {
   ChinchonPlayerView,
   ClassicPlayerView,
+  MusPlayerView,
   PartyPlayerView,
   PlayerId,
 } from '@ronda/protocol';
@@ -23,6 +24,7 @@ import { broadcastRoom } from '../socket/broadcast.ts';
 import {
   decideChinchonAction,
   decideClassicAction,
+  decideMusAction,
   decidePartyAction,
   decidePochaAction,
 } from './bot-policy.ts';
@@ -164,8 +166,6 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
       if (!module) return;
       const view = module.getPlayerView(state, turn.playerId);
       if (view.kind !== 'player') return;
-      // Mus no tiene bots: envidar y farolear es un problema muy distinto al de
-      // los bots actuales y §12.11 lo deja explícitamente fuera del contrato.
       if (
         view.gameId === 'orden' ||
         view.gameId === 'colores' ||
@@ -185,17 +185,18 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
         if (r.ok) broadcastRoom(deps.io, room);
         return;
       }
-      if (view.gameId === 'mus') return;
       const action =
-        view.gameId === 'pocha'
-          ? decidePochaAction(view)
-          : view.gameId === 'brisca' ||
-              view.gameId === 'escoba' ||
-              view.gameId === 'sieteymedia' ||
-              view.gameId === 'tute' ||
-              view.gameId === 'cinquillo'
-            ? decideClassicAction(view as ClassicPlayerView)
-            : decideChinchonAction(view as ChinchonPlayerView);
+        view.gameId === 'mus'
+          ? decideMusAction(view as MusPlayerView)
+          : view.gameId === 'pocha'
+            ? decidePochaAction(view)
+            : view.gameId === 'brisca' ||
+                view.gameId === 'escoba' ||
+                view.gameId === 'sieteymedia' ||
+                view.gameId === 'tute' ||
+                view.gameId === 'cinquillo'
+              ? decideClassicAction(view as ClassicPlayerView)
+              : decideChinchonAction(view as ChinchonPlayerView);
       if (!action) return;
       const r = deps.mgr.applyAction({
         roomCode,

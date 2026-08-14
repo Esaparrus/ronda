@@ -225,11 +225,10 @@ export class RoomManager {
     const host = room.players.get(input.playerId);
     if (!host) return err('PLAYER_NOT_IN_ROOM');
     if (!host.isHost) return err('NOT_HOST');
-    // Mus no tiene bots (§12.11: envidar y farolear es otro problema, y P28
-    // los dejó fuera a propósito). Se rechaza aquí y no solo escondiendo el
-    // botón: un bot en una mesa de Mus dejaría la partida colgada en su
-    // turno para siempre, porque bot-driver.ts no lo va a mover.
-    if (room.gameId === 'mus' || room.gameId === 'laronda') {
+    // La Ronda todavía no tiene una política automática para sus decisiones
+    // simultáneas y de cuenta. Los demás juegos, incluido Mus, sí están
+    // cubiertos por bot-driver.ts.
+    if (room.gameId === 'laronda') {
       return err('INVALID_ACTION');
     }
 
@@ -677,6 +676,13 @@ export class RoomManager {
     room.touch(input.now);
     this.syncTurnTimer(room, currentState);
     this.syncColorTimer(room);
+
+    // `nextRound` puede devolver el motor a playing. La sala mantiene un
+    // status propio para lobby/persistencia y debe volver a sincronizarlo;
+    // si se quedase en roundEnd, el BotDriver no iniciaría la mano siguiente.
+    if (newState.status === 'playing' && room.status === 'roundEnd') {
+      room.status = 'playing';
+    }
 
     // Eventos cosméticos (una sola vez por acción).
     if (r.value.events.length > 0) {

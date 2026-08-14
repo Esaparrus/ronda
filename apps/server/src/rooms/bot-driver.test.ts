@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_COLORES_CONFIG, DEFAULT_CONFIG, DEFAULT_ORDEN_CONFIG } from '@ronda/protocol';
-import { colorQuestionById } from '@ronda/engine';
+import {
+  DEFAULT_COLORES_CONFIG,
+  DEFAULT_CONFIG,
+  DEFAULT_MUS_CONFIG,
+  DEFAULT_ORDEN_CONFIG,
+} from '@ronda/protocol';
+import { colorQuestionById, musGetPlayerView } from '@ronda/engine';
 import { RoomManager } from './room-manager.ts';
 import { scheduleBotTurn, type BotDriverDeps } from './bot-driver.ts';
+import { decideMusAction } from './bot-policy.ts';
 import type { TypedIoServer } from '../io.ts';
 
 const NOW = 1_000_000;
@@ -132,7 +138,8 @@ describe('BotDriver', () => {
 
       const room = manager.getRoomByCode(created.value.roomCode);
       const state = room?.state;
-      if (!state || state.gameId !== 'colores' || !state.colors) throw new Error('estado incorrecto');
+      if (!state || state.gameId !== 'colores' || !state.colors)
+        throw new Error('estado incorrecto');
       const answer = colorQuestionById(state.colors.questionId).correctColors;
       const answered = manager.applyAction({
         roomCode: created.value.roomCode,
@@ -209,6 +216,102 @@ describe('BotDriver', () => {
       expect(manager.getRoomByCode(created.value.roomCode)?.state?.turnSeat).toBe(1);
       vi.advanceTimersByTime(700);
       expect(manager.getRoomByCode(created.value.roomCode)?.state?.turnSeat).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('permite jugar una mano completa de Mus con tres robots', () => {
+    vi.useFakeTimers();
+    try {
+      const manager = new RoomManager();
+      const created = manager.createRoom({
+        gameId: 'mus',
+        config: DEFAULT_MUS_CONFIG,
+        nick: 'Ana',
+        now: NOW,
+      });
+      if (!created.ok) throw new Error('no se pudo crear la sala');
+      for (let i = 0; i < 3; i++) {
+        const bot = manager.addBot({
+          roomCode: created.value.roomCode,
+          playerId: created.value.playerId,
+          now: NOW,
+        });
+        if (!bot.ok) throw new Error('no se pudo añadir un robot de Mus');
+      }
+      const started = manager.start({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!started.ok) throw new Error('no se pudo empezar la partida');
+
+      const deps: BotDriverDeps = {
+        io: { to: vi.fn() } as unknown as TypedIoServer,
+        mgr: manager,
+        now: () => NOW,
+      };
+      const room = manager.getRoomByCode(created.value.roomCode);
+      if (!room) throw new Error('sala no encontrada');
+
+      // El anfitrión usa en el test la misma política conservadora. Los otros
+      // tres asientos pasan necesariamente por el BotDriver y sus temporizadores.
+      for (let step = 0; step < 100 && room.status === 'playing'; step++) {
+        const state = room.state;
+        if (!state || state.gameId !== 'mus' || state.turnSeat === null) {
+          throw new Error('estado de Mus inválido');
+        }
+        const current = state.players[state.turnSeat];
+        if (!current) throw new Error('turno sin jugador');
+        const runtime = room.players.get(current.playerId);
+        if (!runtime) throw new Error('jugador sin runtime');
+
+        if (runtime.isBot) {
+          scheduleBotTurn(deps, room.code);
+          vi.advanceTimersByTime(700);
+        } else {
+          const action = decideMusAction(musGetPlayerView(state, current.playerId));
+          if (!action) throw new Error('el bot de prueba no encontró una acción legal');
+          const applied = manager.applyAction({
+            roomCode: room.code,
+            playerId: current.playerId,
+            clientActionId: `human-${step}`,
+            expectedVersion: state.version,
+            action,
+            now: NOW,
+          });
+          if (!applied.ok) throw new Error(`acción humana rechazada: ${applied.code}`);
+        }
+      }
+
+      expect(room.status).toBe('roundEnd');
+      expect(room.state?.status).toBe('roundEnd');
+      expect(room.state?.version).toBeGreaterThan(10);
+
+      // El humano confirma primero; después los tres robots confirman uno a
+      // uno y dejan preparada la siguiente mano sin intervención adicional.
+      const roundEnd = room.state;
+      if (!roundEnd || roundEnd.gameId !== 'mus') throw new Error('sin fin de mano');
+      const confirmed = manager.applyAction({
+        roomCode: room.code,
+        playerId: created.value.playerId,
+        clientActionId: 'human-next-round',
+        expectedVersion: roundEnd.version,
+        action: { type: 'nextRound' },
+        now: NOW,
+      });
+      if (!confirmed.ok) throw new Error('el anfitrión no pudo confirmar');
+
+      scheduleBotTurn(deps, room.code);
+      // Avanzamos cada temporizador por separado: cada confirmación agenda la
+      // siguiente dentro de su callback.
+      for (let i = 0; i < 3; i++) vi.advanceTimersByTime(700);
+      expect(room.status).toBe('playing');
+      const nextHand = room.state;
+      if (!nextHand || nextHand.gameId !== 'mus') throw new Error('sin siguiente mano de Mus');
+      expect(nextHand.status).toBe('playing');
+      expect(nextHand.phase).toBe('reparto');
     } finally {
       vi.useRealTimers();
     }

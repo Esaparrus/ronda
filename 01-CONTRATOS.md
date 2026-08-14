@@ -1266,9 +1266,11 @@ el tanteo. La aplicación no interpreta voz ni implementa señas.
   y Pocha, donde el abandono sí produce un ganador. Como en los otros dos
   juegos, esto es responsabilidad de `apps/server`, no del motor: `MusPlayer`
   tiene `left`, pero el motor **no salta asientos** porque no hay Mus con tres.
-- Los bots (modo "contra la máquina") tendrían que saber envidar y farolear:
-  es un problema mucho más difícil que el de los bots actuales y **no está
-  incluido** en este contrato.
+- El modo "contra la máquina" usa bots de práctica, no rivales competitivos.
+  Deciden solo a partir de su `PlayerView`: cortan el mus, pasan si no hay
+  apuesta, rechazan envites y declaran pares/juego con los valores calculados
+  por el motor. Su objetivo es permitir recorrer y verificar una partida
+  completa; no intentan interpretar señas, envidar estratégicamente ni farolear.
 
 ### 12.12 Cambios de contrato que Mus exige
 

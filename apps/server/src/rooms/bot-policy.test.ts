@@ -2,8 +2,14 @@
 // listón que la política de Chinchón (P9: legal y rápida, no necesariamente
 // buena) -- aquí solo se comprueba que nunca produce una acción ilegal.
 import { describe, it, expect } from 'vitest';
-import { decidePochaAction } from './bot-policy.ts';
-import { DEFAULT_POCHA_CONFIG, type PochaPlayerView } from '@ronda/protocol';
+import { decideMusAction, decidePochaAction } from './bot-policy.ts';
+import {
+  DEFAULT_MUS_CONFIG,
+  DEFAULT_POCHA_CONFIG,
+  type MusAvailableAction,
+  type MusPlayerView,
+  type PochaPlayerView,
+} from '@ronda/protocol';
 
 function baseView(overrides: Partial<PochaPlayerView> = {}): PochaPlayerView {
   return {
@@ -116,7 +122,79 @@ describe('decidePochaAction', () => {
   });
 
   it('sin acción disponible (no es mi turno) -> null', () => {
-    const view = baseView({ me: { playerId: 'p2', hand: [], legalCardIds: [], availableActions: [] } });
+    const view = baseView({
+      me: { playerId: 'p2', hand: [], legalCardIds: [], availableActions: [] },
+    });
     expect(decidePochaAction(view)).toBeNull();
+  });
+});
+
+function musView(
+  availableActions: MusAvailableAction[],
+  me: Partial<MusPlayerView['me']> = {},
+): MusPlayerView {
+  return {
+    kind: 'player',
+    roomCode: 'MUSA',
+    gameId: 'mus',
+    config: DEFAULT_MUS_CONFIG,
+    status: 'playing',
+    round: 1,
+    players: [],
+    turnPlayerId: 'p0',
+    winnerId: null,
+    rematchVotes: [],
+    teams: [
+      { index: 0, piedras: 0, amarrakos: 0, juegos: 0 },
+      { index: 1, piedras: 0, amarrakos: 0, juegos: 0 },
+    ],
+    winnerTeamIndex: null,
+    manoSeat: 0,
+    postreSeat: 3,
+    phase: 'lance',
+    lance: 'grande',
+    bet: null,
+    musSaid: [null, null, null, null],
+    paresDeclared: [null, null, null, null],
+    juegoDeclared: [null, null, null, null],
+    handResult: null,
+    me: {
+      playerId: 'p0',
+      hand: ['oros-1', 'copas-2', 'espadas-3', 'bastos-4'],
+      teamIndex: 0,
+      pares: null,
+      juego: { suma: 10, tiene: false },
+      minEnvite: null,
+      availableActions,
+      ...me,
+    },
+  };
+}
+
+describe('decideMusAction', () => {
+  it('reparte, corta y pasa para hacer avanzar la mano de forma conservadora', () => {
+    expect(decideMusAction(musView(['repartir']))).toEqual({ type: 'repartir' });
+    expect(decideMusAction(musView(['mus', 'noMus']))).toEqual({ type: 'noMus' });
+    expect(decideMusAction(musView(['paso', 'envidar', 'ordago']))).toEqual({ type: 'paso' });
+  });
+
+  it('descarta únicamente cartas de su propia mano', () => {
+    const view = musView(['descartar']);
+    expect(decideMusAction(view)).toEqual({ type: 'descartar', cardIds: view.me.hand });
+  });
+
+  it('declara pares y juego según los datos calculados por el motor', () => {
+    expect(
+      decideMusAction(musView(['declararPares'], { pares: { kind: 'pareja', piedras: 1 } })),
+    ).toEqual({ type: 'declararPares', tiene: true });
+    expect(
+      decideMusAction(musView(['declararJuego'], { juego: { suma: 30, tiene: false } })),
+    ).toEqual({ type: 'declararJuego', tiene: false });
+  });
+
+  it('rechaza un envite antes de intentar subirlo', () => {
+    expect(decideMusAction(musView(['querer', 'noQuerer', 'envidar', 'ordago']))).toEqual({
+      type: 'noQuerer',
+    });
   });
 });

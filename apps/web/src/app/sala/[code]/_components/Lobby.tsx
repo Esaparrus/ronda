@@ -63,7 +63,13 @@ export function Lobby({ view }: LobbyProps) {
   async function handleAddBot() {
     setAddingBot(true);
     try {
-      await useRondaStore.getState().addBot();
+      // Mus necesita exactamente cuatro jugadores. Un solo clic completa los
+      // huecos para que se pueda entrar a probar la partida inmediatamente.
+      const botsToAdd = view.gameId === 'mus' ? view.config.maxPlayers - view.players.length : 1;
+      for (let i = 0; i < botsToAdd; i++) {
+        const added = await useRondaStore.getState().addBot();
+        if (!added) break;
+      }
     } finally {
       setAddingBot(false);
     }
@@ -72,7 +78,7 @@ export function Lobby({ view }: LobbyProps) {
   const minimumPlayers = view.gameId === 'mus' ? 4 : view.gameId === 'laronda' ? 3 : 2;
   const canStart = view.players.length >= minimumPlayers;
   const minimumLabel = minimumPlayers === 4 ? 'cuatro' : minimumPlayers === 3 ? 'tres' : 'dos';
-  const supportsBots = view.gameId !== 'mus' && view.gameId !== 'laronda';
+  const supportsBots = view.gameId !== 'laronda';
   const hasFreeSeat = view.players.length < view.config.maxPlayers;
 
   return (
@@ -120,10 +126,16 @@ export function Lobby({ view }: LobbyProps) {
         {isHost && supportsBots && hasFreeSeat ? (
           <div className="flex flex-col gap-2">
             <Button variant="ghost" onClick={handleAddBot} loading={addingBot}>
-              {view.players.length === 1 ? 'Jugar contra un bot' : 'Añadir bot'}
+              {view.gameId === 'mus'
+                ? 'Completar mesa con IA'
+                : view.players.length === 1
+                  ? 'Jugar contra un bot'
+                  : 'Añadir bot'}
             </Button>
             <p className="text-center text-12 text-humo">
-              Añade jugadores automáticos para practicar o simular una partida.
+              {view.gameId === 'mus'
+                ? 'Añade automáticamente los robots que falten hasta completar las dos parejas.'
+                : 'Añade jugadores automáticos para practicar o simular una partida.'}
             </p>
           </div>
         ) : null}
@@ -138,7 +150,7 @@ export function Lobby({ view }: LobbyProps) {
           </Button>
           {!canStart ? (
             <p className="text-center text-12 text-humo">
-              Esperando: hacen falta {minimumLabel} personas.
+              Esperando: hacen falta {minimumLabel} jugadores.
             </p>
           ) : null}
         </div>

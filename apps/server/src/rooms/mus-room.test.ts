@@ -2,7 +2,7 @@
 //
 // El motor ya estaba (P28). Lo que se prueba aquí es la capa de sala: los
 // cuatro jugadores obligatorios (§12.2), las parejas que el anfitrión asigna
-// moviendo asientos (decisión 1 de P28), la ausencia de bots (§12.11) y las
+// moviendo asientos (decisión 1 de P28), los bots de práctica y las
 // estadísticas de §11.2, que hasta ahora contaban `wins` por jugador y en Mus
 // tienen que contarlas por pareja.
 import { describe, it, expect } from 'vitest';
@@ -171,16 +171,24 @@ describe('Mus: parejas por asiento', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Sin bots (§12.11)
+// Bots de práctica
 // ---------------------------------------------------------------------------
 
-describe('Mus: sin modo contra la máquina', () => {
-  it('rechaza añadir un robot', () => {
+describe('Mus: modo contra la máquina', () => {
+  it('permite completar con robots los cuatro asientos y empezar', () => {
     const m = new RoomManager();
     const r = musRoom(m, ['Ana']);
-    const res = m.addBot({ roomCode: r.code, playerId: idOf(r, 'Ana'), now: NOW });
-    expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.code).toBe('INVALID_ACTION');
+    for (let i = 0; i < 3; i++) {
+      const added = m.addBot({ roomCode: r.code, playerId: idOf(r, 'Ana'), now: NOW });
+      expect(added.ok).toBe(true);
+    }
+
+    const players = roomOf(m, r.code).playersBySeat();
+    expect(players).toHaveLength(4);
+    expect(players.slice(1).every((player) => player.isBot)).toBe(true);
+
+    const started = m.start({ roomCode: r.code, playerId: idOf(r, 'Ana'), now: NOW });
+    expect(started.ok).toBe(true);
   });
 });
 

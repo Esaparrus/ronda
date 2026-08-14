@@ -12,6 +12,7 @@ import type {
   ChinchonPlayerView,
   ClassicPlayerView,
   GameAction,
+  MusPlayerView,
   PartyPlayerView,
   PochaPlayerView,
 } from '@ronda/protocol';
@@ -85,6 +86,53 @@ export function decidePochaAction(view: PochaPlayerView): GameAction | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Mus: bot conservador para practicar y recorrer la partida completa. No
+// intenta leer intenciones ni farolear: corta, pasa y rechaza envites. Todas
+// las decisiones se toman exclusivamente con la PlayerView censurada del bot.
+// ---------------------------------------------------------------------------
+
+export function decideMusAction(view: MusPlayerView): GameAction | null {
+  const actions = new Set(view.me.availableActions);
+
+  if (actions.has('repartir')) return { type: 'repartir' };
+
+  // Cortar evita ciclos de descartes indefinidos entre robots y lleva la mano
+  // hasta los cuatro lances, que es lo más útil para probar el flujo entero.
+  if (actions.has('noMus')) return { type: 'noMus' };
+  if (actions.has('mus')) return { type: 'mus' };
+
+  if (actions.has('descartar')) {
+    // El motor exige entre una y cuatro cartas. En una vista válida de esta
+    // fase la mano contiene cuatro; el slice mantiene el límite del contrato.
+    const cardIds = view.me.hand.slice(0, 4);
+    return cardIds.length > 0 ? { type: 'descartar', cardIds } : null;
+  }
+
+  if (actions.has('declararPares')) {
+    return { type: 'declararPares', tiene: view.me.pares !== null };
+  }
+  if (actions.has('declararJuego')) {
+    return { type: 'declararJuego', tiene: view.me.juego.tiene };
+  }
+
+  // Ante un envite, la salida conservadora y siempre legal es no querer. Si
+  // una variante futura solo permitiese querer, queda cubierto el fallback.
+  if (actions.has('noQuerer')) return { type: 'noQuerer' };
+  if (actions.has('querer')) return { type: 'querer' };
+  if (actions.has('paso')) return { type: 'paso' };
+
+  // `envidar` siempre convive hoy con paso o con una respuesta, pero estos
+  // fallbacks impiden bloquear la mesa si una variante cambia ese conjunto.
+  if (actions.has('envidar') && view.me.minEnvite !== null) {
+    return { type: 'envidar', piedras: view.me.minEnvite };
+  }
+  if (actions.has('ordago')) return { type: 'ordago' };
+  if (actions.has('nextRound')) return { type: 'nextRound' };
+
+  return null;
+}
+
 /** Política mínima para poder probar los modos sociales con jugadores IA. */
 export function decidePartyAction(view: PartyPlayerView): GameAction | null {
   if (view.gameId === 'orden') {
@@ -149,7 +197,9 @@ function decideBid(view: PochaPlayerView, mySeat: number | null): number {
   const strong = view.me.hand.filter((id) => {
     const parsed = parseCardId(id);
     if (!parsed.ok || parsed.value.suit === null || parsed.value.rank === null) return false;
-    return parsed.value.rank >= 10 || (view.trumpSuit !== null && parsed.value.suit === view.trumpSuit);
+    return (
+      parsed.value.rank >= 10 || (view.trumpSuit !== null && parsed.value.suit === view.trumpSuit)
+    );
   }).length;
   let amount = Math.min(view.roundSize, Math.max(0, strong));
 
