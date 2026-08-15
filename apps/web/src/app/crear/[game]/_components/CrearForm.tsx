@@ -37,6 +37,7 @@ import { NickLegalNote } from '@/components/ui/NickLegalNote';
 import { BackToGames } from '@/components/ui/BackToGames';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
+import { CreateRoomLoading } from './CreateRoomLoading';
 
 export interface CrearFormProps {
   gameId: GameId;
@@ -60,6 +61,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     const normalized = normalizeNick(nick);
     if (!isValidNick(normalized)) {
       setNickError(messageFor('NICK_INVALID'));
@@ -80,11 +82,18 @@ export function CrearForm({ gameId }: CrearFormProps) {
                 ? partyConfig
                 : chinchonConfig;
     const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
-    setSubmitting(false);
     if (created) {
       const code = useRondaStore.getState().roomCode;
-      if (code) router.push(`/sala/${code}`);
+      if (code) {
+        router.push(`/sala/${code}`);
+        return;
+      }
     }
+    setSubmitting(false);
+  }
+
+  if (submitting) {
+    return <CreateRoomLoading gameTitle={gameTitle(gameId)} />;
   }
 
   return (

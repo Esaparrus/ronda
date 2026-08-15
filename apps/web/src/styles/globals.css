@@ -336,6 +336,193 @@ summary {
   text-transform: uppercase;
 }
 
+/* Espera de arranque de la mesa. El servidor gratuito puede necesitar unos
+ * segundos para abrir el bar; esta vista mantiene informado al jugador y
+ * evita que vuelva a enviar el formulario mientras llega la conexión. */
+.create-loading-screen {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(in srgb, var(--color-verde) 34%, transparent),
+      transparent 20rem
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      color-mix(in srgb, var(--color-oro) 8%, transparent),
+      transparent 34rem
+    ),
+    repeating-linear-gradient(180deg, var(--color-tinta) 0 3px, var(--color-veta) 3px 6px);
+  isolation: isolate;
+  overscroll-behavior: none;
+}
+
+.create-loading-screen::before {
+  position: absolute;
+  z-index: -1;
+  width: min(35rem, 126vw);
+  height: min(35rem, 68vh);
+  border: 1px solid color-mix(in srgb, var(--color-linea) 78%, var(--color-oro));
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 38%, var(--table-felt-a), var(--table-felt-b) 76%);
+  box-shadow:
+    inset 0 0 0 7px color-mix(in srgb, var(--table-edge) 48%, transparent),
+    inset 0 12px 30px rgb(0 0 0 / 0.28),
+    0 24px 55px rgb(0 0 0 / 0.34);
+  content: '';
+  transform: rotate(-2deg);
+}
+
+.create-loading-panel {
+  display: flex;
+  width: min(100%, 28rem);
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.create-loading-clock {
+  position: relative;
+  display: grid;
+  width: 156px;
+  height: 156px;
+  place-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--table-felt-b) 92%, var(--color-tinta));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-oro) 28%, transparent),
+    0 14px 30px rgb(0 0 0 / 0.3);
+  text-align: center;
+}
+
+.create-loading-clock__ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 45deg,
+    var(--color-oro) 105deg,
+    var(--color-crema) 155deg,
+    var(--color-brasa) 210deg,
+    transparent 275deg 360deg
+  );
+  filter: drop-shadow(0 2px 5px rgb(0 0 0 / 0.35));
+  animation: create-loading-ring-turn 1.6s linear infinite;
+}
+
+.create-loading-clock__ring::after {
+  position: absolute;
+  inset: 7px;
+  border-radius: inherit;
+  background: var(--table-felt-b);
+  content: '';
+}
+
+.create-loading-clock__tick {
+  position: absolute;
+  z-index: 2;
+  color: color-mix(in srgb, var(--color-oro) 72%, var(--color-humo));
+  font-size: 7px;
+  line-height: 1;
+}
+
+.create-loading-clock__tick--top {
+  top: 13px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.create-loading-clock__tick--right {
+  top: 50%;
+  right: 13px;
+  transform: translateY(-50%);
+}
+
+.create-loading-clock__tick--bottom {
+  bottom: 13px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.create-loading-clock__tick--left {
+  top: 50%;
+  left: 13px;
+  transform: translateY(-50%);
+}
+
+.create-loading-clock__number {
+  position: relative;
+  z-index: 2;
+  min-width: 3ch;
+  color: var(--color-crema);
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.create-loading-clock__unit {
+  position: relative;
+  z-index: 2;
+  margin-top: 5px;
+  color: var(--color-humo);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.create-loading-message {
+  min-width: min(100%, 19rem);
+  border-top: 1px solid color-mix(in srgb, var(--color-oro) 58%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-oro) 58%, transparent);
+  padding: 12px 18px;
+  color: var(--color-crema);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.create-loading-message p {
+  animation: create-loading-message-in 480ms ease-out both;
+}
+
+@keyframes create-loading-ring-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes create-loading-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-loading-clock__ring,
+  .create-loading-message p {
+    animation: none;
+  }
+}
+
 .hero-mark {
   position: relative;
   display: grid;
