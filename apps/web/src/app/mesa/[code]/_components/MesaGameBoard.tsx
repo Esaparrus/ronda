@@ -12,6 +12,9 @@ export interface MesaGameBoardProps {
 }
 
 export function MesaGameBoard({ view }: MesaGameBoardProps) {
+  const visibleDiscardCards =
+    view.discardCards ?? (view.discardTop ? [view.discardTop] : []);
+
   return (
     <main className="flex min-h-dvh flex-1 items-center justify-center p-6">
       <div className="relative aspect-square w-[min(90vw,80vh)]">
@@ -19,7 +22,7 @@ export function MesaGameBoard({ view }: MesaGameBoardProps) {
         <div className="absolute inset-0 flex items-center justify-center">
           <CenterTable
             deckCount={view.deckCount}
-            discardTop={view.discardTop}
+            discardCards={visibleDiscardCards}
             discardCount={view.discardCount}
           />
         </div>

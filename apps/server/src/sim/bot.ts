@@ -118,7 +118,7 @@ export function checkNoLeak(bot: BotHandle): CardId[] {
   const view = bot.lastView;
   if (!view || view.status !== 'playing' || !view.me) return [];
   if (view.gameId !== 'chinchon') return []; // ver nota de botPlay más arriba
-  const allowed = view.discardTop ? [view.discardTop] : [];
+  const allowed = view.discardCards;
   const leaks = leakedCards(view, view.me.hand, allowed);
   if (leaks.length > 0) bot.violations.push(...leaks);
   return leaks;

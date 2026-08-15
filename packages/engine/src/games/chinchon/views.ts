@@ -60,6 +60,7 @@ function buildCommon(state: ChinchonState): ChinchonCommonView {
     turnDeadlineAt: state.turnDeadlineAt ?? null,
     deckCount: state.deck.length,
     discardTop: state.discard.length > 0 ? (state.discard[state.discard.length - 1] ?? null) : null,
+    discardCards: state.discard.slice(-2),
     discardCount: state.discard.length,
     roundResult: state.roundResult,
     winnerId: state.winnerId,
@@ -161,7 +162,7 @@ export type { ConnectionPlayer };
  * revelan dentro de roundResult, lo cual es legítimo.
  *
  * `allowed` admite ids legítimamente públicos además de la mano propia (p.ej.
- * la cima del descarte). Por defecto solo la propia mano.
+ * las dos cartas superiores del descarte). Por defecto solo la propia mano.
  */
 export function leakedCards(view: PlayerView, ownHand: CardId[], allowed: CardId[] = []): CardId[] {
   if (view.status !== 'playing') return [];

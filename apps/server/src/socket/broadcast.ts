@@ -64,7 +64,7 @@ function buildLobbyPlayers(room: Room): PublicPlayer[] {
 
 /**
  * Construye la parte común de la vista de lobby de Chinchón (vocabulario
- * turnPhase/deckCount/discardTop/discardCount).
+ * turnPhase/deckCount/discardTop/discardCards/discardCount).
  */
 function buildChinchonLobbyCommon(room: Room): ChinchonCommonView {
   return {
@@ -79,6 +79,7 @@ function buildChinchonLobbyCommon(room: Room): ChinchonCommonView {
     turnDeadlineAt: null,
     deckCount: 0,
     discardTop: null,
+    discardCards: [],
     discardCount: 0,
     roundResult: null,
     winnerId: null,

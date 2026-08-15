@@ -1,5 +1,5 @@
 // Lo que hay encima del tapete en Chinchón: mazo (con nº de cartas
-// restantes) y montón de descarte con la carta superior visible. Contrato
+// restantes) y montón de descarte con las dos cartas públicas visibles. Contrato
 // P14, recolocado por P32 dentro de <BarTable> — antes era una banda a lo
 // ancho de la pantalla; ahora es el contenido de la mesa, así que las cartas
 // bajan de tamaño 'lg' a 'md' para caber en el tapete sin comerse el filete.
@@ -8,17 +8,16 @@
 // cartas): se generan ids de relleno (`deck-0`, `deck-1`...) solo para que
 // <Pile> tenga algo que iterar y rotar boca abajo. No revela nada real: da
 // igual qué id de mentira se use, el dorso es siempre el mismo. El montón
-// de descarte, en cambio, solo conocemos su carta superior (`discardTop`),
-// así que se pinta esa única carta real -no una pila de cartas inventadas
-// que podrían sugerir identidades falsas- junto con el recuento total.
+// de descarte, en cambio, solo recibe sus dos cartas superiores reales
+// (`discardCards`). Así puede insinuar una pila sin inventar identidades
+// privadas, y muestra directamente la siguiente carta cuando alguien roba.
 import type { CardId } from '@ronda/protocol';
-import { PlayingCard } from '@/components/cards/PlayingCard';
 import { Pile } from '@/components/cards/Pile';
 import { Pill } from '@/components/ui/Pill';
 
 export interface CommonAreaProps {
   deckCount: number;
-  discardTop: CardId | null;
+  discardCards: CardId[];
   discardCount: number;
   /** Presente solo si tocar el mazo es una jugada válida ahora mismo. */
   onDrawDeck?: () => void;
@@ -33,14 +32,9 @@ export type DropTarget = 'discard';
 
 const MAX_VISUAL_DECK_STACK = 5;
 
-// Medidas del tamaño 'md' de PlayingCard. El hueco del descarte vacío las
-// repite para que el layout no salte cuando aparece la primera carta.
-const EMPTY_DISCARD_WIDTH = 72;
-const EMPTY_DISCARD_HEIGHT = 108;
-
 export function CommonArea({
   deckCount,
-  discardTop,
+  discardCards,
   discardCount,
   onDrawDeck,
   onDrawDiscard,
@@ -89,15 +83,7 @@ export function CommonArea({
               aria-label={onDrawDiscard ? 'Robar la carta del descarte' : 'Montón de descarte'}
               className="rounded-lg disabled:cursor-default"
             >
-              {discardTop ? (
-                <PlayingCard cardId={discardTop} size="md" />
-              ) : (
-                <div
-                  aria-hidden="true"
-                  style={{ width: EMPTY_DISCARD_WIDTH, height: EMPTY_DISCARD_HEIGHT }}
-                  className="rounded-lg border border-dashed border-linea"
-                />
-              )}
+              <Pile cards={discardCards} size="md" layout="discard" />
             </button>
           </div>
           <Pill className="border-oro bg-tinta text-hueso">{discardCount} cartas</Pill>

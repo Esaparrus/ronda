@@ -4,7 +4,7 @@
 // Gap encontrado durante P22 (no cubierto por §10, P21): §10 amplió GameId,
 // GameConfig, GameEvent, GameAction y ERROR_CODES para Pocha, pero nunca
 // diseñó la forma de su PlayerView/TableView -- CommonView (de antes de P22)
-// asumía campos de Chinchón (turnPhase, deckCount, discardTop/Count) como
+// asumía campos de Chinchón (turnPhase, deckCount, discardTop/Cards/Count) como
 // obligatorios al nivel superior. Se resuelve aquí siguiendo el mismo patrón
 // ya usado para GameConfig (§10.2): unión discriminada por `gameId`. La forma
 // de Chinchón (ChinchonCommonView/ChinchonPlayerView/ChinchonTableView/
@@ -102,6 +102,8 @@ export interface ChinchonCommonView extends CommonViewBase {
   turnDeadlineAt: number | null;
   deckCount: number;
   discardTop: CardId | null;
+  /** Hasta las dos cartas superiores del descarte, de abajo a arriba. */
+  discardCards: CardId[];
   discardCount: number;
   roundResult: RoundResult | null; // solo en status 'roundEnd' | 'gameEnd'
 }

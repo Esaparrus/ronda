@@ -387,6 +387,17 @@ describe('9. Rondas', () => {
 // ---------------------------------------------------------------------------
 
 describe('10. Estanqueidad', () => {
+  it('publica solo las dos cartas superiores del descarte, de abajo a arriba', () => {
+    const s = newGame('seed-discard-pile');
+    s.discard = ['oros-1', 'copas-2', 'espadas-3'] as CardId[];
+
+    const view = getPlayerView(s, 'p1' as PlayerId);
+
+    expect(view.discardCards).toEqual(['copas-2', 'espadas-3']);
+    expect(view.discardTop).toBe('espadas-3');
+    expect(view.discardCount).toBe(3);
+  });
+
   it('getTableView y getPlayerView no revelan cartas ajenas mientras playing', () => {
     const s = newGame('seed-O');
     const viewA = getPlayerView(s, 'p1' as PlayerId);
@@ -400,9 +411,10 @@ describe('10. Estanqueidad', () => {
     const tableJson = JSON.stringify(table);
     expect(tableJson).not.toContain(`"${firstCardB}"`);
 
-    // La cima del descarte es pública por contrato (§2.5 discardTop).
-    const discardTopCard = s.discard[s.discard.length - 1];
-    const allowed = discardTopCard ? [discardTopCard] : [];
+    // Las dos cartas superiores del descarte son públicas para representar
+    // visualmente el montón sin revelar el resto de la pila.
+    const allowed = s.discard.slice(-2);
+    expect(viewA.discardCards).toEqual(allowed);
     const leakA = leakedCards(viewA, playerAt(s, 0).hand, allowed);
     expect(leakA).toEqual([]);
   });

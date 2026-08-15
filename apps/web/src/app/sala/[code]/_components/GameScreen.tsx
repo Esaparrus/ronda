@@ -140,6 +140,8 @@ export function GameScreen({ view }: GameScreenProps) {
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDeck');
   const canDrawDiscard =
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDiscard');
+  const visibleDiscardCards =
+    view.discardCards ?? (view.discardTop ? [view.discardTop] : []);
 
   const { top, me: mySeat } = orderAroundMe(view.players, me.playerId);
 
@@ -176,7 +178,7 @@ export function GameScreen({ view }: GameScreenProps) {
             <BarTable>
               <CommonArea
                 deckCount={view.deckCount}
-                discardTop={view.discardTop}
+                discardCards={visibleDiscardCards}
                 discardCount={view.discardCount}
                 onDrawDeck={canDrawDeck ? handleDrawDeck : undefined}
                 onDrawDiscard={canDrawDiscard ? handleDrawDiscard : undefined}

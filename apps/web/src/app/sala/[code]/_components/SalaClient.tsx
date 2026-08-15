@@ -31,6 +31,7 @@ import { ClassicGameScreen } from './ClassicGameScreen';
 import { RondaGameScreen } from './RondaGameScreen';
 import { RondaRoundEndScreen } from './RondaRoundEndScreen';
 import { RondaGameEndScreen } from './RondaGameEndScreen';
+import { TurnAnnouncement } from './TurnAnnouncement';
 
 export interface SalaClientProps {
   code: string;
@@ -250,6 +251,11 @@ export function SalaClient({ code }: SalaClientProps) {
       {view.status === 'gameEnd' && view.gameId !== 'mus' && view.gameId !== 'laronda' ? (
         <GameEndScreen view={view} />
       ) : null}
+      <TurnAnnouncement
+        active={view.status === 'playing'}
+        myPlayerId={view.me.playerId}
+        turnPlayerId={view.turnPlayerId}
+      />
       <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
         <div className="flex flex-col gap-4">
           <p className="text-16 text-hueso">¿Cerrar la sala para todos?</p>
