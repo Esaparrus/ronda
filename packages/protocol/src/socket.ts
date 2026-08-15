@@ -10,6 +10,7 @@ import {
   EscobaConfigSchema,
   EscalaConfigSchema,
   GameConfigSchema,
+  LaRondaConfigSchema,
   MayoriaConfigSchema,
   MusConfigSchema,
   OrdenConfigSchema,
@@ -272,6 +273,7 @@ const roomCreateSchema = z.object({
     z.literal('colores'),
     z.literal('mayoria'),
     z.literal('escala'),
+    z.literal('laronda'),
   ]),
   config: GameConfigSchema,
   nick: z.string(),
@@ -306,6 +308,7 @@ const roomConfigSchema = z.object({
     ColoresConfigSchema.partial(),
     MayoriaConfigSchema.partial(),
     EscalaConfigSchema.partial(),
+    LaRondaConfigSchema.partial(),
   ]),
 });
 
