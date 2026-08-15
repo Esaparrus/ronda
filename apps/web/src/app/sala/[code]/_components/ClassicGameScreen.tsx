@@ -11,6 +11,7 @@ import { PlayerStrip } from './PlayerStrip';
 import { PochaHand } from './PochaHand';
 import { PochaTrickArea } from './PochaTrickArea';
 import { TableHeader } from './TableHeader';
+import { escobaTableDensity } from './escoba-layout';
 
 const TITLES: Record<ClassicPlayerView['gameId'], string> = {
   brisca: 'Brisca',
@@ -78,6 +79,7 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
   const [handCard, setHandCard] = useState<CardId | null>(null);
   const [selectedTable, setSelectedTable] = useState<CardId[]>([]);
   const canPlay = view.me.availableActions.includes('playCapture');
+  const tableDensity = escobaTableDensity(view.tableCards.length);
 
   useEffect(() => {
     setHandCard(null);
@@ -108,23 +110,32 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
     <>
       <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-2">
         <BarTable className="w-full max-w-[340px]">
-          <div className="flex max-h-[230px] flex-wrap items-center justify-center gap-1.5 overflow-y-auto">
-            {view.tableCards.map((cardId) => (
-              <button
-                key={cardId}
-                type="button"
-                disabled={!canPlay || !handCard}
-                onClick={() => toggleTable(cardId)}
-                aria-pressed={selectedTable.includes(cardId)}
-              >
-                <PlayingCard cardId={cardId} size="sm" selected={selectedTable.includes(cardId)} />
-              </button>
-            ))}
+          <div className="escoba-table-layout">
+            <div className="escoba-table-cards" data-density={tableDensity}>
+              {view.tableCards.map((cardId) => (
+                <button
+                  key={cardId}
+                  type="button"
+                  disabled={!canPlay || !handCard}
+                  onClick={() => toggleTable(cardId)}
+                  aria-pressed={selectedTable.includes(cardId)}
+                  className="escoba-table-card"
+                >
+                  <PlayingCard
+                    cardId={cardId}
+                    size="sm"
+                    selected={selectedTable.includes(cardId)}
+                  />
+                </button>
+              ))}
+            </div>
+            <div className="escoba-table-status">
+              <p className="font-mono text-12 text-hueso" aria-live="polite">
+                {handCard ? `Suma: ${total}` : 'Elige una carta de tu mano'}
+              </p>
+              <p className="whitespace-nowrap text-12 text-humo">Mazo · {view.deckCount}</p>
+            </div>
           </div>
-          <p className="mt-3 text-center font-mono text-14 text-hueso">
-            {handCard ? `Suma: ${total}` : 'Elige una carta de tu mano'}
-          </p>
-          <p className="text-center text-12 text-humo">Mazo: {view.deckCount}</p>
         </BarTable>
       </div>
       <SimpleHand hand={view.me.hand} selected={handCard} enabled={canPlay} onSelect={setHandCard} />
