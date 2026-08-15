@@ -14,6 +14,13 @@ export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 /** Evita que un móvil se quede con un botón bloqueado si el servidor no responde. */
 const ACK_TIMEOUT_MS = 12_000;
 
+/**
+ * Render puede tardar cerca de un minuto en despertar el servidor gratuito.
+ * Durante ese arranque no se envía la acción: así no vence el ack antes de
+ * conectar ni queda una creación de sala encolada después de mostrar error.
+ */
+const CONNECTION_TIMEOUT_MS = 90_000;
+
 function serverUrl(): string {
   // Next puede prerenderizar rutas que importan el store, aunque el socket
   // solo se use en el navegador. Durante ese prerender no debemos exigir la
@@ -91,7 +98,7 @@ export function connectIfNeeded(socket: AppSocket): void {
  * (§2.3) siguen este mismo patrón payload+ack, así que un único helper
  * genérico basta para todos ellos.
  */
-export function emitWithAck<E extends keyof ClientToServerEvents>(
+export async function emitWithAck<E extends keyof ClientToServerEvents>(
   socket: AppSocket,
   event: E,
   payload: Parameters<ClientToServerEvents[E]>[0],
@@ -99,9 +106,12 @@ export function emitWithAck<E extends keyof ClientToServerEvents>(
   type Ack = Parameters<ClientToServerEvents[E]>[1];
   type AckResult = Parameters<Ack>[0];
 
+  const shouldRecord = event !== 'diagnostic:report';
+  const connected = await waitUntilConnected(socket, event, shouldRecord);
+  if (!connected) return { ok: false, code: 'INTERNAL' } as AckResult;
+
   return new Promise<AckResult>((resolve) => {
     const startedAt = Date.now();
-    const shouldRecord = event !== 'diagnostic:report';
     if (shouldRecord) recordDiagnostic('socket:emit', payloadSummary(event, payload));
     let settled = false;
     const timeout = setTimeout(() => {
@@ -139,5 +149,41 @@ export function emitWithAck<E extends keyof ClientToServerEvents>(
     // fuertemente tipado por evento gracias a `Parameters<...>`; solo esta
     // llamada interna necesita el cast para poder compilar.
     (socket.emit as unknown as (ev: E, p: unknown, a: unknown) => void)(event, payload, ack);
+  });
+}
+
+function waitUntilConnected(
+  socket: AppSocket,
+  event: keyof ClientToServerEvents,
+  shouldRecord: boolean,
+): Promise<boolean> {
+  if (socket.connected) return Promise.resolve(true);
+
+  const startedAt = Date.now();
+  if (shouldRecord) recordDiagnostic('socket:connect_wait', { event });
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (connected: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      socket.off('connect', onConnect);
+      if (!connected && shouldRecord) {
+        recordDiagnostic('socket:connect_timeout', {
+          event,
+          elapsedMs: Date.now() - startedAt,
+        });
+      }
+      resolve(connected);
+    };
+    const onConnect = () => finish(true);
+    const timeout = setTimeout(() => finish(false), CONNECTION_TIMEOUT_MS);
+
+    socket.once('connect', onConnect);
+    connectIfNeeded(socket);
+    // Protege también implementaciones compatibles que conecten de forma
+    // síncrona dentro de connect().
+    if (socket.connected) finish(true);
   });
 }
