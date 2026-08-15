@@ -9,6 +9,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useRondaStore } from '@/lib/store';
 import { useSingleTabGuard } from '@/lib/useSingleTabGuard';
@@ -38,6 +39,7 @@ export interface SalaClientProps {
 }
 
 export function SalaClient({ code }: SalaClientProps) {
+  const router = useRouter();
   const view = useRondaStore((s) => s.view);
   const roomCode = useRondaStore((s) => s.roomCode);
   const connection = useRondaStore((s) => s.connection);
@@ -49,6 +51,8 @@ export function SalaClient({ code }: SalaClientProps) {
   const [resumeAttempted, setResumeAttempted] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [closingRoom, setClosingRoom] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [leavingRoom, setLeavingRoom] = useState(false);
 
   // Pestaña duplicada: se vigila siempre que sepamos en qué sala estamos,
   // incluso mientras se está resumiendo -- no hace falta esperar a `view`.
@@ -185,6 +189,12 @@ export function SalaClient({ code }: SalaClientProps) {
     setConfirmClose(false);
   }
 
+  async function handleLeaveRoom() {
+    setLeavingRoom(true);
+    await useRondaStore.getState().leave();
+    router.replace('/');
+  }
+
   return (
     <div
       className={
@@ -194,6 +204,31 @@ export function SalaClient({ code }: SalaClientProps) {
       }
     >
       <Banner status={connection} className="shrink-0" />
+      {isPlaying ? (
+        <div className="flex shrink-0 justify-end border-b border-linea bg-tinta/70 px-3 py-1.5">
+          <button
+            type="button"
+            onClick={() => setConfirmLeave(true)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-linea bg-mesa/80 px-3 text-13 font-semibold text-humo transition-[border-color,background-color,color,transform] hover:border-oro/60 hover:bg-madera-clara hover:text-hueso active:translate-y-0.5"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="M10 17l-5-5 5-5" />
+              <path d="M5 12h10" />
+              <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+            </svg>
+            Salir
+          </button>
+        </div>
+      ) : null}
       {isHost && view.status === 'lobby' ? (
         <div className="flex shrink-0 justify-end px-4 py-2">
           <button
@@ -273,6 +308,40 @@ export function SalaClient({ code }: SalaClientProps) {
               className="flex-1"
             >
               Cerrar sala
+            </Button>
+          </div>
+        </div>
+      </Sheet>
+      <Sheet
+        open={confirmLeave}
+        onClose={() => {
+          if (!leavingRoom) setConfirmLeave(false);
+        }}
+        ariaLabel="Confirmar salida de la partida"
+      >
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="text-20 font-semibold text-hueso">¿Salir al menú inicial?</p>
+            <p className="mt-2 text-14 text-humo">
+              Abandonarás esta partida y no podrás volver a entrar con esta sesión.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmLeave(false)}
+              disabled={leavingRoom}
+              className="flex-1"
+            >
+              Seguir jugando
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleLeaveRoom}
+              loading={leavingRoom}
+              className="flex-1"
+            >
+              Salir al inicio
             </Button>
           </div>
         </div>
