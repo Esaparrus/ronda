@@ -1382,20 +1382,21 @@ summary {
   box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.5);
 }
 
-/* Lanzamiento de la carta al descarte (contrato §8.4: 180ms). La rotación
- * determinista por CardId la aplica el propio componente (ver CenterTable,
- * P15) con un `transform: rotate()` estático en un envoltorio; este
- * keyframe solo anima la entrada (opacidad + escala) del envoltorio
- * interior, remontado con `key={discardTop}` para que se dispare de nuevo
- * cada vez que cambia la carta superior del descarte. */
+/* Entrada de una carta al descarte. La postura final vive en el envoltorio
+ * exterior y no se anima: por eso las cartas que quedan debajo no se mueven
+ * al robar la superior. Este gesto solo afecta al naipe que acaba de montarse. */
 @keyframes discard-fling {
   from {
-    opacity: 0;
-    transform: scale(0.5);
+    opacity: 0.35;
+    transform: translate3d(-18px, -30px, 0) rotate(-7deg) scale(0.94);
+  }
+  72% {
+    opacity: 1;
+    transform: translate3d(1px, 2px, 0) rotate(1deg) scale(1.01);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
   }
 }
 

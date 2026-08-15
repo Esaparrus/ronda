@@ -102,7 +102,7 @@ export interface ChinchonCommonView extends CommonViewBase {
   turnDeadlineAt: number | null;
   deckCount: number;
   discardTop: CardId | null;
-  /** Hasta las dos cartas superiores del descarte, de abajo a arriba. */
+  /** Hasta las tres cartas superiores del descarte, de abajo a arriba. */
   discardCards: CardId[];
   discardCount: number;
   roundResult: RoundResult | null; // solo en status 'roundEnd' | 'gameEnd'

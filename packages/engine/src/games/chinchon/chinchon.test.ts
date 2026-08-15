@@ -387,15 +387,15 @@ describe('9. Rondas', () => {
 // ---------------------------------------------------------------------------
 
 describe('10. Estanqueidad', () => {
-  it('publica solo las dos cartas superiores del descarte, de abajo a arriba', () => {
+  it('publica solo las tres cartas superiores del descarte, de abajo a arriba', () => {
     const s = newGame('seed-discard-pile');
-    s.discard = ['oros-1', 'copas-2', 'espadas-3'] as CardId[];
+    s.discard = ['oros-1', 'copas-2', 'espadas-3', 'bastos-4'] as CardId[];
 
     const view = getPlayerView(s, 'p1' as PlayerId);
 
-    expect(view.discardCards).toEqual(['copas-2', 'espadas-3']);
-    expect(view.discardTop).toBe('espadas-3');
-    expect(view.discardCount).toBe(3);
+    expect(view.discardCards).toEqual(['copas-2', 'espadas-3', 'bastos-4']);
+    expect(view.discardTop).toBe('bastos-4');
+    expect(view.discardCount).toBe(4);
   });
 
   it('getTableView y getPlayerView no revelan cartas ajenas mientras playing', () => {
@@ -411,9 +411,9 @@ describe('10. Estanqueidad', () => {
     const tableJson = JSON.stringify(table);
     expect(tableJson).not.toContain(`"${firstCardB}"`);
 
-    // Las dos cartas superiores del descarte son públicas para representar
+    // Las tres cartas superiores del descarte son públicas para representar
     // visualmente el montón sin revelar el resto de la pila.
-    const allowed = s.discard.slice(-2);
+    const allowed = s.discard.slice(-3);
     expect(viewA.discardCards).toEqual(allowed);
     const leakA = leakedCards(viewA, playerAt(s, 0).hand, allowed);
     expect(leakA).toEqual([]);

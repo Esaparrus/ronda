@@ -1,4 +1,4 @@
-// Centro del anillo: mazo y descarte. La pantalla central muestra las dos
+// Centro del anillo: mazo y descarte. La pantalla central muestra las tres
 // últimas cartas públicas solapadas para que número y palo sigan siendo
 // legibles a distancia y el origen de cada robo resulte evidente.
 import type { CardId } from '@ronda/protocol';
@@ -27,7 +27,12 @@ export function CenterTable({ deckCount, discardCards, discardCount }: CenterTab
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <Pile cards={discardCards} size="lg" layout="discard" />
+        <Pile
+          cards={discardCards}
+          size="lg"
+          layout="discard"
+          totalCount={discardCount}
+        />
         <Pill className="text-[clamp(0.9rem,1.4vw,1.15rem)]">
           {discardCount} en el descarte
         </Pill>

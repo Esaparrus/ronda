@@ -60,7 +60,7 @@ function buildCommon(state: ChinchonState): ChinchonCommonView {
     turnDeadlineAt: state.turnDeadlineAt ?? null,
     deckCount: state.deck.length,
     discardTop: state.discard.length > 0 ? (state.discard[state.discard.length - 1] ?? null) : null,
-    discardCards: state.discard.slice(-2),
+    discardCards: state.discard.slice(-3),
     discardCount: state.discard.length,
     roundResult: state.roundResult,
     winnerId: state.winnerId,
