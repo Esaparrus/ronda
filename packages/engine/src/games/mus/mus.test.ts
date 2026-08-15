@@ -558,6 +558,7 @@ describe('declaraciones de pares y juego (§12.6)', () => {
 
     const turnoSinPares: MusState = { ...s, turnSeat: 2 };
     expect(getPlayerView(turnoSinPares, 'p2').me.availableActions).not.toContain('envidar');
+    expect(getPlayerView(turnoSinPares, 'p2').me.availableActions).not.toContain('ordago');
   });
 });
 

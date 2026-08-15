@@ -12,7 +12,7 @@ import type {
 import { useRondaStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
 import { NumberCard } from '@/components/cards/NumberCard';
-import { NumberCardFace } from '@/components/cards/NumberCardFace';
+import { NumberTableGrid } from '@/components/cards/NumberTableGrid';
 import { TableHeader } from './TableHeader';
 import { PlayerStrip } from './PlayerStrip';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
@@ -79,23 +79,8 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
                 : 'Lleva la carta hasta aquí'
               : `Centro · quedan ${party.deckCount} cartas sin repartir`}
           </span>
-          <div className="flex min-h-36 flex-wrap items-center justify-center gap-3">
-            {party.played.length > 0 ? (
-              party.played.map((played, index) => (
-                <NumberCardFace
-                  key={`${played.playerId}-${played.value}-${index}`}
-                  value={played.value}
-                  className={
-                    party.failure?.value === played.value &&
-                    party.failure.playerId === played.playerId
-                      ? 'number-card-played number-card-failed'
-                      : 'number-card-played'
-                  }
-                />
-              ))
-            ) : (
-              <span className="text-16 text-humo">Aún no hay cartas</span>
-            )}
+          <div className="flex min-h-36 w-full items-center justify-center">
+            <NumberTableGrid cards={party.played} failure={party.failure} variant="compact" />
           </div>
           <p className="font-mono text-14 text-oro">Última válida: {party.highest || '—'}</p>
         </section>

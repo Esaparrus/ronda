@@ -13,7 +13,6 @@ import { Garbanzos } from '@/components/ui/Garbanzos';
 
 /** §12.3. Se repite aquí y no se importa del motor: apps/web no depende de
  * @ronda/engine, solo del protocolo. */
-const PIEDRAS_POR_AMARRAKO = 5;
 const AMARRAKOS_POR_JUEGO = 8;
 
 export interface MusScoreboardProps {
@@ -26,37 +25,40 @@ export interface MusScoreboardProps {
 
 export function MusScoreboard({ teams, myTeamIndex, juegosParaGanar }: MusScoreboardProps) {
   return (
-    <div className="flex gap-2 border-b border-linea px-4 py-2">
+    <section aria-label="Marcador por parejas" className="flex shrink-0 gap-1.5 px-3 py-1.5">
       {teams.map((team) => {
-        const sueltas = team.piedras % PIEDRAS_POR_AMARRAKO;
         const mine = team.index === myTeamIndex;
         return (
           <div
             key={team.index}
-            className={`flex flex-1 flex-col gap-1 rounded-lg border px-3 py-2 ${
+            aria-current={mine ? 'true' : undefined}
+            className={`flex min-w-0 flex-1 flex-col gap-1 rounded-xl border px-2.5 py-1.5 ${
               mine ? 'border-brasa' : 'border-linea'
             }`}
           >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-14 text-hueso">
+            <div className="flex min-w-0 items-baseline justify-between gap-2">
+              <span className="truncate text-12 font-medium text-hueso">
                 Pareja {team.index === 0 ? 'A' : 'B'}
                 {mine ? ' (tú)' : ''}
               </span>
-              <span className="font-mono text-16 text-hueso">{team.piedras}</span>
+              <span className="shrink-0 font-mono text-18 font-semibold text-hueso">
+                {team.piedras}
+              </span>
             </div>
-            <Garbanzos
-              count={team.amarrakos}
-              total={AMARRAKOS_POR_JUEGO}
-              label={`Amarrakos de la pareja ${team.index === 0 ? 'A' : 'B'}`}
-            />
-            <span className="text-12 text-humo">
-              {team.amarrakos} {team.amarrakos === 1 ? 'amarrako' : 'amarrakos'}
-              {sueltas > 0 ? ` y ${sueltas}` : ''}
-              {juegosParaGanar > 1 ? ` · ${team.juegos}/${juegosParaGanar} juegos` : ''}
-            </span>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <Garbanzos
+                count={team.amarrakos}
+                total={AMARRAKOS_POR_JUEGO}
+                label={`Amarrakos de la pareja ${team.index === 0 ? 'A' : 'B'}`}
+              />
+              <span className="truncate text-10 text-humo">
+                {team.amarrakos} am.
+                {juegosParaGanar > 1 ? ` · ${team.juegos}/${juegosParaGanar} juegos` : ''}
+              </span>
+            </div>
           </div>
         );
       })}
-    </div>
+    </section>
   );
 }

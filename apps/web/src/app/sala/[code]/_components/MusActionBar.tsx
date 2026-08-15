@@ -50,6 +50,8 @@ const PARES_LABEL = {
   pareja: 'Pareja',
 } as const;
 
+const COMPACT_BUTTON = '!min-h-12 !rounded-xl px-3';
+
 const PHASE_HINT: Record<MusPhase, string> = {
   reparto: 'Reparte cuatro cartas a cada jugador.',
   mus: '¿Mus?',
@@ -89,6 +91,10 @@ export function MusActionBar({
     can('envidar') &&
     (lance !== 'pares' || me.pares !== null) &&
     (lance !== 'juego' || me.juego.tiene);
+  const canOrdago =
+    can('ordago') &&
+    (lance !== 'pares' || me.pares !== null) &&
+    (lance !== 'juego' || me.juego.tiene);
   const lanceName = phase === 'reparto' ? 'Reparto' : lance ? LANCE_LABEL[lance] : 'Mus';
   const announcement = isMyTurn
     ? `Tu turno. ${lanceName}. ${PHASE_HINT[phase]}`
@@ -106,9 +112,9 @@ export function MusActionBar({
 
   if (!isMyTurn) {
     return (
-      <div className="action-dock flex flex-col gap-3 px-6 py-4 text-center">
+      <div className="action-dock flex shrink-0 flex-col gap-1.5 px-3 py-2 text-center">
         {liveRegion}
-        <p className="text-16 text-hueso">
+        <p className="truncate text-12 text-hueso">
           {turnPlayerNick
             ? turnPlayerConnected
               ? `Le toca a ${turnPlayerNick}`
@@ -116,16 +122,13 @@ export function MusActionBar({
             : ' '}
         </p>
         {bet ? (
-          <div className="rounded-lg border border-linea bg-mesa px-4 py-3">
-            <p className="text-12 uppercase tracking-wider text-humo">Envite actual</p>
-            <p className="text-16 font-semibold text-hueso">
-              {bet.isOrdago ? 'Órdago' : `${formatMusAmount(bet.piedras)} · ${teamLabel(bet.byTeam)}`}
-            </p>
-            <p className="text-12 text-humo">
+          <div className="flex items-center justify-center gap-2 rounded-lg border border-linea bg-mesa px-3 py-1.5">
+            <span className="text-10 uppercase tracking-wider text-humo">Envite</span>
+            <span className="text-12 font-semibold text-hueso">
               {bet.isOrdago
-                ? 'La pareja contraria debe querer o no querer.'
-                : `Si no quiere, ${teamLabel(bet.byTeam)} gana ${formatMusAmount(bet.ifRejected)}.`}
-            </p>
+                ? 'Órdago'
+                : `${formatMusAmount(bet.piedras)} · ${teamLabel(bet.byTeam)}`}
+            </span>
           </div>
         ) : null}
       </div>
@@ -133,38 +136,49 @@ export function MusActionBar({
   }
 
   return (
-    <div className="action-dock flex flex-col gap-3 px-4 py-4">
+    <div className="action-dock flex shrink-0 flex-col gap-2 px-3 py-2">
       {liveRegion}
-      <div className="text-center">
-        <p className="text-12 font-semibold uppercase tracking-wider text-oro">Tu turno</p>
-        <p className="text-20 font-semibold text-hueso">{lanceName}</p>
+      <div className="flex items-center justify-center gap-2 text-center">
+        <p className="text-10 font-semibold uppercase tracking-wider text-oro">Tu turno</p>
+        <span aria-hidden="true" className="text-10 text-linea">
+          ·
+        </span>
+        <p className="text-14 font-semibold text-hueso">{lanceName}</p>
       </div>
 
       {modo === 'presencial' && phase !== 'reparto' ? (
-        <p className="text-center text-12 text-humo">
-          Habladlo en la mesa y confirma aquí la decisión para que el tanteo siga al día.
+        <p className="text-center text-10 text-humo">
+          Habladlo en la mesa y confirma aquí la decisión.
         </p>
       ) : null}
 
       {phase === 'reparto' && can('repartir') ? (
-        <Button onClick={onRepartir} className="w-full">
+        <Button onClick={onRepartir} className={`w-full ${COMPACT_BUTTON}`}>
           Repartir 4 cartas
         </Button>
       ) : null}
 
       {phase === 'mus' ? (
         <div className="grid grid-cols-2 gap-2">
-          <Button onClick={() => onMus(true)} className="w-full">
+          <Button onClick={() => onMus(true)} className={`w-full ${COMPACT_BUTTON}`}>
             Mus
           </Button>
-          <Button variant="ghost" onClick={() => onMus(false)} className="w-full">
+          <Button
+            variant="ghost"
+            onClick={() => onMus(false)}
+            className={`w-full ${COMPACT_BUTTON}`}
+          >
             Cortar
           </Button>
         </div>
       ) : null}
 
       {phase === 'descarte' ? (
-        <Button onClick={onDescartar} disabled={selectedCount === 0} className="w-full">
+        <Button
+          onClick={onDescartar}
+          disabled={selectedCount === 0}
+          className={`w-full ${COMPACT_BUTTON}`}
+        >
           {selectedCount === 0
             ? 'Marca alguna carta'
             : `Descartar ${selectedCount} ${selectedCount === 1 ? 'carta' : 'cartas'}`}
@@ -172,85 +186,95 @@ export function MusActionBar({
       ) : null}
 
       {phase === 'declararPares' ? (
-        <Button onClick={onDeclararPares} className="w-full">
+        <Button onClick={onDeclararPares} className={`w-full ${COMPACT_BUTTON}`}>
           {me.pares ? `Tengo pares · ${PARES_LABEL[me.pares.kind]}` : 'No tengo pares'}
         </Button>
       ) : null}
 
       {phase === 'declararJuego' ? (
-        <Button onClick={onDeclararJuego} className="w-full">
+        <Button onClick={onDeclararJuego} className={`w-full ${COMPACT_BUTTON}`}>
           {me.juego.tiene ? `Tengo juego · ${me.juego.suma}` : 'No tengo juego'}
         </Button>
       ) : null}
 
       {phase === 'lance' && bet === null ? (
         <>
-          <div className="rounded-lg border border-linea bg-mesa px-4 py-3 text-center">
-            <p className="text-14 text-hueso">No hay apuesta todavía</p>
-            <p className="text-12 text-humo">Puedes pasar o abrir el envite desde 2 piedras.</p>
-          </div>
-          {canEnvido ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="ghost" onClick={onPaso} className="w-full">
-                Paso
-              </Button>
-              <Button onClick={onEnvidar} className="w-full">
-                Envidar
-              </Button>
-            </div>
-          ) : (
-            <Button variant="ghost" onClick={onPaso} className="w-full">
+          <p className="text-center text-10 text-humo">Sin envite · mínimo 2 piedras</p>
+          <div
+            className={`grid gap-2 ${
+              canEnvido && canOrdago
+                ? 'grid-cols-3'
+                : canEnvido || canOrdago
+                  ? 'grid-cols-2'
+                  : 'grid-cols-1'
+            }`}
+          >
+            <Button variant="ghost" onClick={onPaso} className={`w-full ${COMPACT_BUTTON}`}>
               Paso
             </Button>
-          )}
-          {can('ordago') ? (
-            <Button variant="danger" onClick={onOrdago} className="w-full">
-              Órdago
-            </Button>
-          ) : null}
+            {canEnvido ? (
+              <Button onClick={onEnvidar} className={`w-full ${COMPACT_BUTTON}`}>
+                Envidar
+              </Button>
+            ) : null}
+            {canOrdago ? (
+              <Button variant="danger" onClick={onOrdago} className={`w-full ${COMPACT_BUTTON}`}>
+                Órdago
+              </Button>
+            ) : null}
+          </div>
         </>
       ) : null}
 
       {phase === 'lance' && bet !== null ? (
         <>
-          <div className="rounded-lg border border-oro/60 bg-mesa px-4 py-3 text-center">
-            <p className="text-12 uppercase tracking-wider text-humo">Te están envidando</p>
-            <p className="text-20 font-semibold text-hueso">
+          <div className="flex items-center justify-center gap-2 rounded-lg border border-oro/60 bg-mesa px-3 py-1.5 text-center">
+            <span className="text-10 uppercase tracking-wider text-humo">Envite</span>
+            <span className="text-14 font-semibold text-hueso">
               {bet.isOrdago ? 'Órdago' : formatMusAmount(bet.piedras)}
-            </p>
-            <p className="text-12 text-humo">
+            </span>
+            <span className="text-10 text-humo">
               {bet.isOrdago
-                ? 'Si quieres, te juegas el juego entero.'
-                : `Si no quieres, ${teamLabel(bet.byTeam)} gana ${formatMusAmount(bet.ifRejected)}.`}
-            </p>
+                ? '· juego entero'
+                : `· no querer da ${formatMusAmount(bet.ifRejected)} a ${teamLabel(bet.byTeam)}`}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             {can('querer') ? (
-              <Button onClick={() => onQuerer(true)} className="w-full">
+              <Button onClick={() => onQuerer(true)} className={`w-full ${COMPACT_BUTTON}`}>
                 Quiero
               </Button>
             ) : null}
             {can('noQuerer') ? (
-              <Button variant="ghost" onClick={() => onQuerer(false)} className="w-full">
+              <Button
+                variant="ghost"
+                onClick={() => onQuerer(false)}
+                className={`w-full ${COMPACT_BUTTON}`}
+              >
                 No quiero
               </Button>
             ) : null}
           </div>
 
-          {canEnvido || can('ordago') ? (
-            <div className="border-t border-linea pt-3">
-              <p className="mb-2 text-center text-12 uppercase tracking-wider text-humo">
-                Otras opciones
-              </p>
+          {canEnvido || canOrdago ? (
+            <div className="border-t border-linea pt-2">
               <div className="grid grid-cols-2 gap-2">
                 {canEnvido ? (
-                  <Button variant="ghost" onClick={onEnvidar} className="w-full">
+                  <Button
+                    variant="ghost"
+                    onClick={onEnvidar}
+                    className={`w-full ${COMPACT_BUTTON}`}
+                  >
                     Subir
                   </Button>
                 ) : null}
-                {can('ordago') ? (
-                  <Button variant="danger" onClick={onOrdago} className="w-full">
+                {canOrdago ? (
+                  <Button
+                    variant="danger"
+                    onClick={onOrdago}
+                    className={`w-full ${COMPACT_BUTTON}`}
+                  >
                     Órdago
                   </Button>
                 ) : null}

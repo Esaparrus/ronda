@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
 import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
 import { InactiveTabScreen } from '@/components/ui/InactiveTabScreen';
+import { GameBriefing } from '@/components/ui/GameBriefing';
 import { Lobby } from './Lobby';
 import { GameScreen } from './GameScreen';
 import { RoundEndScreen } from './RoundEndScreen';
@@ -53,6 +54,7 @@ export function SalaClient({ code }: SalaClientProps) {
   const [closingRoom, setClosingRoom] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leavingRoom, setLeavingRoom] = useState(false);
+  const [briefingAccepted, setBriefingAccepted] = useState(false);
 
   // Pestaña duplicada: se vigila siempre que sepamos en qué sala estamos,
   // incluso mientras se está resumiendo -- no hace falta esperar a `view`.
@@ -78,7 +80,9 @@ export function SalaClient({ code }: SalaClientProps) {
       });
   }, [code]);
 
-  const isPlaying = view?.status === 'playing';
+  const shouldShowBriefing =
+    !briefingAccepted && (view?.status === 'lobby' || view?.status === 'playing');
+  const isPlaying = view?.status === 'playing' && !shouldShowBriefing;
 
   // Una partida es una superficie de juego, no una página desplazable. Se
   // bloquea el scroll de la raíz solo mientras se juega; lobby, fin de ronda
@@ -229,7 +233,7 @@ export function SalaClient({ code }: SalaClientProps) {
           </button>
         </div>
       ) : null}
-      {isHost && view.status === 'lobby' ? (
+      {!shouldShowBriefing && isHost && view.status === 'lobby' ? (
         <div className="flex shrink-0 justify-end px-4 py-2">
           <button
             type="button"
@@ -240,16 +244,26 @@ export function SalaClient({ code }: SalaClientProps) {
           </button>
         </div>
       ) : null}
-      {view.status === 'lobby' ? <Lobby view={view} /> : null}
-      {view.status === 'playing' && view.gameId === 'chinchon' ? <GameScreen view={view} /> : null}
-      {view.status === 'playing' && view.gameId === 'pocha' ? (
+      {shouldShowBriefing ? (
+        <GameBriefing gameId={view.gameId} onComplete={() => setBriefingAccepted(true)} />
+      ) : null}
+      {!shouldShowBriefing && view.status === 'lobby' ? (
+        <Lobby view={view} onReviewRules={() => setBriefingAccepted(false)} />
+      ) : null}
+      {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'chinchon' ? (
+        <GameScreen view={view} />
+      ) : null}
+      {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'pocha' ? (
         <PochaGameScreen view={view} />
       ) : null}
-      {view.status === 'playing' && view.gameId === 'mus' ? <MusGameScreen view={view} /> : null}
-      {view.status === 'playing' && view.gameId === 'laronda' ? (
+      {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'mus' ? (
+        <MusGameScreen view={view} />
+      ) : null}
+      {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'laronda' ? (
         <RondaGameScreen view={view} />
       ) : null}
-      {view.status === 'playing' &&
+      {!shouldShowBriefing &&
+      view.status === 'playing' &&
       (view.gameId === 'brisca' ||
         view.gameId === 'escoba' ||
         view.gameId === 'sieteymedia' ||
@@ -257,7 +271,8 @@ export function SalaClient({ code }: SalaClientProps) {
         view.gameId === 'cinquillo') ? (
         <ClassicGameScreen view={view} />
       ) : null}
-      {view.status === 'playing' &&
+      {!shouldShowBriefing &&
+      view.status === 'playing' &&
       (view.gameId === 'orden' ||
         view.gameId === 'colores' ||
         view.gameId === 'mayoria' ||
@@ -287,7 +302,7 @@ export function SalaClient({ code }: SalaClientProps) {
         <GameEndScreen view={view} />
       ) : null}
       <TurnAnnouncement
-        active={view.status === 'playing'}
+        active={!shouldShowBriefing && view.status === 'playing'}
         myPlayerId={view.me.playerId}
         turnPlayerId={view.turnPlayerId}
       />

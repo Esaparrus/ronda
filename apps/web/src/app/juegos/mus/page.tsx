@@ -4,7 +4,7 @@
 import { GameIntro } from '@/components/ui/GameIntro';
 
 const HOW_TO_PLAY = [
-  'Se juega siempre 4 contra 4, en dos parejas: los compañeros se sientan enfrentados.',
+  'Se juega siempre entre 4 personas, en dos parejas: los compañeros se sientan enfrentados.',
   'Cada uno recibe 4 cartas. Si los cuatro dicen «mus», se descarta y se reparte otra vez.',
   'En cuanto alguien corta, se juegan cuatro lances: grande, chica, pares y juego.',
   'En cada lance se pasa, se envida un número de piedras, o se lanza un órdago.',

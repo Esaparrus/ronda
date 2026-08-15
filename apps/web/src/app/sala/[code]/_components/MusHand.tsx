@@ -20,9 +20,6 @@ export interface MusHandProps {
   juego: MusPlayerViewMe['juego'];
 }
 
-const CARD_WIDTH = 76;
-const CARD_ASPECT = 108 / 72;
-
 const PARES_LABEL: Record<'duples' | 'medias' | 'pareja', string> = {
   duples: 'Duples',
   medias: 'Medias',
@@ -42,23 +39,23 @@ export function MusHand({ hand, selectable, selected, onToggle, pares, juego }: 
 
   if (hand.length === 0) {
     return (
-      <div className="game-hand flex min-h-32 flex-col items-center justify-center gap-2 px-4 pb-4 pt-3 text-center">
-        <h2 className="text-14 font-semibold text-hueso">Esperando el reparto</h2>
-        <p className="text-12 text-humo">El postre tiene que repartir cuatro cartas.</p>
+      <div className="game-hand flex min-h-20 shrink-0 flex-col items-center justify-center gap-1 px-3 py-2 text-center">
+        <h2 className="text-12 font-semibold text-hueso">Esperando el reparto</h2>
+        <p className="text-10 text-humo">El postre tiene que repartir cuatro cartas.</p>
       </div>
     );
   }
 
   return (
-    <div className="game-hand flex flex-col gap-2 px-4 pb-4 pt-3">
+    <div className="game-hand flex shrink-0 flex-col gap-1.5 px-3 pb-2 pt-2">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
-        <p className="font-mono text-12 text-humo">
+        <h2 className="text-12 font-semibold text-hueso">Tu mano</h2>
+        <p className="truncate font-mono text-10 text-humo">
           {pares ? `${PARES_LABEL[pares.kind]} (${pares.piedras})` : 'Sin pares'} ·{' '}
           {juego.tiene ? `Juego ${juego.suma}` : `Punto ${juego.suma}`}
         </p>
       </div>
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center gap-[clamp(4px,1.5vw,8px)]">
         {ordered.map((cardId) => {
           const isMarked = marked.has(cardId);
           return (
@@ -69,15 +66,12 @@ export function MusHand({ hand, selectable, selected, onToggle, pares, juego }: 
               aria-pressed={isMarked}
               aria-label={isMarked ? 'Quitar del descarte' : 'Descartar esta carta'}
               onClick={() => onToggle(cardId)}
-              style={{ transform: isMarked ? 'translateY(-10px)' : undefined }}
+              style={{ transform: isMarked ? 'translateY(-7px)' : undefined }}
               className={`flex flex-shrink-0 flex-col items-center rounded-xl transition-[transform,filter] disabled:cursor-default ${
                 isMarked ? 'ring-2 ring-oro drop-shadow-lg' : ''
               }`}
             >
-              <div
-                className="[&_svg]:h-full [&_svg]:w-full"
-                style={{ width: CARD_WIDTH, height: CARD_WIDTH * CARD_ASPECT }}
-              >
+              <div className="aspect-[2/3] w-[clamp(56px,16.5vw,66px)] [&_svg]:h-full [&_svg]:w-full">
                 <PlayingCard cardId={cardId} size="md" />
               </div>
             </button>

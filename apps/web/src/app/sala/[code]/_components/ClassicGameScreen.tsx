@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { parseCardId, type CardId, type ClassicPlayerView } from '@ronda/protocol';
+import { CinquilloTable } from '@/components/cards/CinquilloTable';
+import { MiniCardFan } from '@/components/cards/MiniCardFan';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { BarTable } from '@/components/ui/BarTable';
 import { Button } from '@/components/ui/Button';
@@ -163,15 +165,18 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
           <Pill>Mazo: {view.deckCount}</Pill>
         </div>
         <BarTable className="w-full max-w-[340px]">
-          <ul className="flex flex-col gap-2">
+          <ul className="seven-half-table seven-half-table--compact">
             {view.players.map((player, index) => (
-              <li key={player.playerId} className="flex items-center justify-between text-14 text-hueso">
-                <span>{player.nick}{player.playerId === view.bankerPlayerId ? ' · banca' : ''}</span>
-                <span className="font-mono">
-                  {view.bustPlayerIds.includes(player.playerId)
-                    ? 'se pasó'
-                    : view.totals[index] ?? 'oculto'}
-                </span>
+              <li key={player.playerId} className="seven-half-table__player">
+                <div className="flex min-w-0 items-center justify-between gap-1 text-11 text-hueso">
+                  <span className="truncate">{player.nick}{player.playerId === view.bankerPlayerId ? ' · banca' : ''}</span>
+                  <span className="shrink-0 font-mono text-oro">
+                    {view.bustPlayerIds.includes(player.playerId)
+                      ? 'se pasó'
+                      : view.totals[index] ?? 'oculto'}
+                  </span>
+                </div>
+                <MiniCardFan cards={view.revealedHands.find((hand) => hand.playerId === player.playerId)?.cards ?? []} />
               </li>
             ))}
           </ul>
@@ -193,23 +198,11 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
 function CinquilloBoard({ view }: { view: ClassicPlayerView }) {
   const canPlay = view.me.availableActions.includes('playCard');
   const canPass = view.me.availableActions.includes('pass');
-  const suits = ['oros', 'copas', 'espadas', 'bastos'] as const;
   return (
     <>
       <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-2">
         <BarTable className="w-full max-w-[360px]">
-          <div className="grid grid-cols-4 gap-1">
-            {suits.map((suit) => (
-              <div key={suit} className="flex min-h-24 flex-col items-center gap-1">
-                <span className="text-12 capitalize text-humo">{suit}</span>
-                <div className="flex flex-wrap justify-center gap-0.5">
-                  {view.tableCards
-                    .filter((cardId) => cardId.startsWith(`${suit}-`))
-                    .map((cardId) => <PlayingCard key={cardId} cardId={cardId} size="sm" />)}
-                </div>
-              </div>
-            ))}
-          </div>
+          <CinquilloTable cards={view.tableCards} variant="compact" />
         </BarTable>
       </div>
       <div data-card-drop-target={canPlay ? 'pocha' : undefined}>

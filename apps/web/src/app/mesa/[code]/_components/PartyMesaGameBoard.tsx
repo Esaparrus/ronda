@@ -3,7 +3,7 @@
 import type { PartyTableView, PlayerId } from '@ronda/protocol';
 import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
 import { ColorCountdownHeader } from '@/app/sala/[code]/_components/ColorCountdownHeader';
-import { NumberCardFace } from '@/components/cards/NumberCardFace';
+import { NumberTableGrid } from '@/components/cards/NumberTableGrid';
 
 export interface PartyMesaGameBoardProps {
   view: PartyTableView;
@@ -28,23 +28,13 @@ function OrdenMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'ord
         <p className="text-20 text-humo">
           Ordenad las cartas hablando en la mesa · quedan {party.deckCount}
         </p>
-        <div className="flex max-w-5xl flex-wrap justify-center gap-4">
-          {party.played.length > 0 ? (
-            party.played.map((played, index) => (
-              <NumberCardFace
-                key={`${played.playerId}-${played.value}-${index}`}
-                value={played.value}
-                className={
-                  party.failure?.value === played.value &&
-                  party.failure.playerId === played.playerId
-                    ? 'number-card-table number-card-failed'
-                    : 'number-card-table'
-                }
-              />
-            ))
-          ) : (
-            <span className="text-28 text-humo">El centro está vacío</span>
-          )}
+        <div className="flex w-full max-w-6xl flex-1 items-center justify-center">
+          <NumberTableGrid
+            cards={party.played}
+            failure={party.failure}
+            variant="large"
+            emptyLabel="El centro está vacío"
+          />
         </div>
         <p className="font-mono text-20 text-oro">Última válida: {party.highest || '—'}</p>
         {party.failure ? (

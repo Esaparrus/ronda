@@ -12,9 +12,10 @@ import { Button } from '@/components/ui/Button';
 
 export interface LobbyProps {
   view: PlayerView;
+  onReviewRules: () => void;
 }
 
-export function Lobby({ view }: LobbyProps) {
+export function Lobby({ view, onReviewRules }: LobbyProps) {
   const lastError = useRondaStore((state) => state.lastError);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -90,6 +91,16 @@ export function Lobby({ view }: LobbyProps) {
           Pueden escanear el QR o escribir estas cuatro letras.
         </p>
         <RoomCode code={view.roomCode} />
+        <button
+          type="button"
+          onClick={onReviewRules}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-verde/70 bg-verde/15 px-4 text-13 font-semibold text-crema transition-[border-color,background-color,transform] hover:border-oro/60 hover:bg-verde/25 active:translate-y-0.5"
+        >
+          <span className="text-oro" aria-hidden="true">
+            ✓
+          </span>
+          Explicación vista · Repasar reglas
+        </button>
       </header>
 
       <section className="flex flex-col items-center gap-3" aria-label="Invitación a la sala">

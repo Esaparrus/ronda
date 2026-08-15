@@ -4,10 +4,14 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { SUITS, type CardId, type Suit } from '@ronda/protocol';
+import { SUITS, type CardId, type PublicPlayer, type Suit } from '@ronda/protocol';
+import { AdaptiveCardGrid } from '@/components/cards/AdaptiveCardGrid';
 import { PlayingCard, type CardSize } from '@/components/cards/PlayingCard';
 import { CardBack } from '@/components/cards/CardBack';
+import { CinquilloTable } from '@/components/cards/CinquilloTable';
+import { NumberTableGrid } from '@/components/cards/NumberTableGrid';
 import { Pile } from '@/components/cards/Pile';
+import { TableTrick } from '@/components/cards/TableTrick';
 import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
 import { Toast } from '@/components/ui/Toast';
@@ -41,6 +45,20 @@ const CONNECTION_STATUSES: ConnectionStatus[] = ['online', 'reconnecting', 'offl
 // Cartas de la baraja de 40 (P31): sin ochos ni nueves. El montón de muestra
 // llevaba un 'oros-9' desde antes de P31 y se pintaba como dorso roto.
 const PILE_SAMPLE: CardId[] = ['oros-3', 'copas-7', 'espadas-11', 'bastos-1', 'oros-10'];
+const TABLE_PLAYERS: PublicPlayer[] = ['Ana', 'Berto', 'Cris', 'Dani', 'Eva', 'Félix'].map(
+  (nick, seat) => ({
+    playerId: `layout-player-${seat}`,
+    nick,
+    seat,
+    colorIndex: (seat % 6) as PublicPlayer['colorIndex'],
+    score: 0,
+    handCount: 4,
+    connected: true,
+    isHost: seat === 0,
+    eliminated: false,
+    teamIndex: null,
+  }),
+);
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -155,6 +173,56 @@ export default function DesignShowcasePage() {
           <PlayingCard cardId="espadas-12" size="md" />
           <PlayingCard cardId="oros-3" size="md" />
         </BarTable>
+      </Section>
+
+      <Section title="Mesas adaptativas · casos de máxima carga">
+        <div className="grid gap-5 xl:grid-cols-2">
+          <article className="flex min-h-[390px] flex-col items-center gap-3 rounded-2xl border border-linea bg-mesa/70 p-4">
+            <h3 className="text-14 font-semibold text-hueso">Escoba · 40 cartas</h3>
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <AdaptiveCardGrid cardCount={ALL_CARDS.length} variant="large">
+                {ALL_CARDS.map((cardId) => (
+                  <PlayingCard key={cardId} cardId={cardId} size="sm" />
+                ))}
+              </AdaptiveCardGrid>
+            </div>
+          </article>
+
+          <article className="flex min-h-[390px] flex-col items-center gap-3 rounded-2xl border border-linea bg-mesa/70 p-4">
+            <h3 className="text-14 font-semibold text-hueso">Cinquillo · 40 cartas</h3>
+            <div className="h-[340px] w-full max-w-[520px]">
+              <CinquilloTable cards={ALL_CARDS} variant="large" />
+            </div>
+          </article>
+
+          <article className="flex min-h-[390px] flex-col items-center gap-3 rounded-2xl border border-linea bg-mesa/70 p-4">
+            <h3 className="text-14 font-semibold text-hueso">Pocha · baza de 6</h3>
+            <div className="h-[340px] w-full max-w-[520px]">
+              <TableTrick
+                players={TABLE_PLAYERS}
+                currentTrick={TABLE_PLAYERS.map((player, index) => ({
+                  playerId: player.playerId,
+                  cardId: ALL_CARDS[index * 6] ?? 'oros-1',
+                }))}
+                trumpCardId="bastos-12"
+                variant="large"
+              />
+            </div>
+          </article>
+
+          <article className="flex min-h-[390px] flex-col items-center gap-3 rounded-2xl border border-linea bg-mesa/70 p-4">
+            <h3 className="text-14 font-semibold text-hueso">Orden · 70 cartas</h3>
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <NumberTableGrid
+                cards={Array.from({ length: 70 }, (_, index) => ({
+                  playerId: TABLE_PLAYERS[index % TABLE_PLAYERS.length]?.playerId ?? '',
+                  value: index + 1,
+                }))}
+                variant="large"
+              />
+            </div>
+          </article>
+        </div>
       </Section>
 
       <Section title="Pill">

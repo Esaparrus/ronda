@@ -15,22 +15,73 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { CardId, MusPlayerView } from '@ronda/protocol';
+import type { CardId, MusPlayerView, PublicPlayer } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { MusScoreboard } from './MusScoreboard';
 import { MusHand } from './MusHand';
 import { MusActionBar, LANCE_LABEL } from './MusActionBar';
 import { MusEnvitePicker } from './MusEnvitePicker';
-import { TableHeader } from './TableHeader';
-import { TableSeat, orderAroundMe } from './TableSeat';
+import { orderAroundMe } from './TableSeat';
 import { BarTable } from '@/components/ui/BarTable';
+import { Avatar, type SeatColorIndex } from '@/components/ui/Avatar';
 import { formatMusAmount } from '@/lib/mus';
-
-/** §12.3: 8 amarrakos = 1 juego. Mismo puñado que los huecos de Chinchón. */
-const AMARRAKOS_POR_JUEGO = 8;
 
 export interface MusGameScreenProps {
   view: MusPlayerView;
+}
+
+type OpponentPosition = 'left' | 'opposite' | 'right';
+
+const OPPONENT_POSITION_CLASS: Record<OpponentPosition, string> = {
+  left: 'col-start-1 row-start-2 justify-self-start',
+  opposite: 'col-start-2 row-start-1 self-end justify-self-center',
+  right: 'col-start-3 row-start-2 justify-self-end',
+};
+
+interface MusOpponentSeatProps {
+  player: PublicPlayer;
+  position: OpponentPosition;
+  info: string;
+  isPartner: boolean;
+  isTurn: boolean;
+}
+
+function MusOpponentSeat({ player, position, info, isPartner, isTurn }: MusOpponentSeatProps) {
+  const isSide = position !== 'opposite';
+
+  return (
+    <div
+      data-mus-seat={position}
+      role="group"
+      aria-label={`${player.nick}, ${info}`}
+      className={`z-10 flex min-w-0 border ${OPPONENT_POSITION_CLASS[position]} ${
+        isSide
+          ? 'w-[58px] self-center flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-center'
+          : 'w-full max-w-[140px] items-center gap-1.5 rounded-full px-2 py-1'
+      } ${
+        isTurn
+          ? 'border-hueso bg-madera-clara'
+          : isPartner
+            ? 'border-oro/70 bg-mesa/90'
+            : 'border-linea bg-mesa/80'
+      }`}
+    >
+      <Avatar
+        name={player.nick}
+        colorIndex={(player.colorIndex % 6) as SeatColorIndex}
+        size={isSide ? 30 : 28}
+        className={player.connected ? '' : 'opacity-40'}
+      />
+      <div className="min-w-0 max-w-full">
+        <p
+          className={`truncate font-medium leading-tight text-hueso ${isSide ? 'text-[10px]' : 'text-[11px]'}`}
+        >
+          {player.nick}
+        </p>
+        <p className="truncate font-mono text-[9px] leading-tight text-humo">{info}</p>
+      </div>
+    </div>
+  );
 }
 
 export function MusGameScreen({ view }: MusGameScreenProps) {
@@ -81,22 +132,8 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
     void useRondaStore.getState().sendAction({ type: 'envidar', piedras });
   }
 
-  const { top, me: mySeat } = orderAroundMe(view.players, me.playerId);
-
-  // Los garbanzos de un asiento son los amarrakos de SU pareja: en Mus no
-  // existe puntuación individual (§12.12), así que los dos compañeros
-  // enseñan la misma fila. Es correcto y además es informativo: ves de un
-  // vistazo qué mitad de la mesa va ganando.
-  function beansFor(teamIndex: 0 | 1 | null) {
-    if (teamIndex === null) return null;
-    const team = view.teams.find((t) => t.index === teamIndex);
-    if (!team) return null;
-    return {
-      count: team.amarrakos,
-      total: AMARRAKOS_POR_JUEGO,
-      label: `Amarrakos de la pareja ${teamIndex === 0 ? 'A' : 'B'}`,
-    };
-  }
+  const { top: opponents } = orderAroundMe(view.players, me.playerId);
+  const [leftPlayer, oppositePlayer, rightPlayer] = opponents;
 
   // Línea de datos del asiento: su pareja y lo que ha dicho en esta mano.
   // Es la misma información que llevaba `renderInfo` de <PlayerStrip> antes
@@ -114,87 +151,93 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
   }
 
   return (
-    // `flex-1` y no `min-h-dvh`: el contenedor de SalaClient ya ocupa la
-    // pantalla entera y encima lleva la banda de conexión y las reacciones.
-    // Pedir aquí otra pantalla completa empujaría la barra de acción fuera
-    // del móvil, y en Mus la barra de acción ES el juego.
-    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="game-shell mus-game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <MusScoreboard
         teams={view.teams}
         myTeamIndex={me.teamIndex}
         juegosParaGanar={view.config.juegos}
       />
 
-      <TableHeader left={`Mano ${view.round}`} turnNick={turnPlayer?.nick ?? null} />
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-linea bg-mesa/80 px-3 py-1.5">
+        <span className="font-mono text-11 uppercase tracking-wider text-humo">
+          Mano {view.round}
+        </span>
+        <span className="min-w-0 truncate font-mono text-11 uppercase tracking-wider text-oro">
+          {isMyTurn ? 'Tu turno' : turnPlayer ? `Turno · ${turnPlayer.nick}` : 'En juego'}
+        </span>
+      </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[6px] px-1 py-2">
-        <div className="flex min-h-[60px] items-end justify-center gap-2">
-          {top.map((p) => (
-            <TableSeat
-              key={p.playerId}
-              player={p}
-              variant="top"
-              isPartner={p.teamIndex === me.teamIndex}
-              isTurn={p.playerId === view.turnPlayerId}
-              beans={beansFor(p.teamIndex)}
-              info={seatInfo(p.seat, p.teamIndex)}
-            />
-          ))}
-        </div>
+      <div className="flex min-h-0 flex-1 px-2 py-1.5">
+        <div className="mus-table-stage flex min-h-0 flex-1 items-center justify-center">
+          <div className="mus-table-layout">
+            {leftPlayer ? (
+              <MusOpponentSeat
+                player={leftPlayer}
+                position="left"
+                info={seatInfo(leftPlayer.seat, leftPlayer.teamIndex)}
+                isPartner={leftPlayer.teamIndex === me.teamIndex}
+                isTurn={leftPlayer.playerId === view.turnPlayerId}
+              />
+            ) : null}
+            {oppositePlayer ? (
+              <MusOpponentSeat
+                player={oppositePlayer}
+                position="opposite"
+                info={seatInfo(oppositePlayer.seat, oppositePlayer.teamIndex)}
+                isPartner={oppositePlayer.teamIndex === me.teamIndex}
+                isTurn={oppositePlayer.playerId === view.turnPlayerId}
+              />
+            ) : null}
+            {rightPlayer ? (
+              <MusOpponentSeat
+                player={rightPlayer}
+                position="right"
+                info={seatInfo(rightPlayer.seat, rightPlayer.teamIndex)}
+                isPartner={rightPlayer.teamIndex === me.teamIndex}
+                isTurn={rightPlayer.playerId === view.turnPlayerId}
+              />
+            ) : null}
 
-        <BarTable>
-          <section className="flex flex-col items-center justify-center gap-2 px-6 text-center">
-            {view.phase === 'reparto' ? (
-              <>
-                <p className="font-display text-28 leading-display text-hueso">Reparto</p>
-                {postreNick ? <p className="text-14 text-oro">Reparte {postreNick}</p> : null}
-              </>
-            ) : null}
-            {view.phase === 'mus' ? (
-              <p className="font-display text-28 leading-display text-hueso">Mus</p>
-            ) : null}
-            {view.phase === 'descarte' ? (
-              <p className="font-display text-28 leading-display text-hueso">Descarte</p>
-            ) : null}
-            {view.phase === 'declararPares' ? (
-              <p className="font-display text-28 leading-display text-hueso">¿Pares?</p>
-            ) : null}
-            {view.phase === 'declararJuego' ? (
-              <p className="font-display text-28 leading-display text-hueso">¿Juego?</p>
-            ) : null}
-            {view.phase === 'lance' && view.lance ? (
-              <>
-                <p className="font-display text-28 leading-display text-hueso">
-                  {LANCE_LABEL[view.lance]}
-                </p>
-                {/* Sobre el tapete verde el envite va en latón y no en brasa:
-                 * el rojo apagado de la acción no despega del verde. */}
-                {view.bet ? (
-                  <p className="text-16 text-oro">
-                    {view.bet.isOrdago
-                      ? '¡Órdago!'
-                      : `${formatMusAmount(view.bet.piedras)} · pareja ${
-                          view.bet.byTeam === 0 ? 'A' : 'B'
-                        }`}
-                  </p>
+            <BarTable className="mus-table-frame col-start-2 row-start-2 !max-w-none self-center justify-self-center">
+              <section className="flex flex-col items-center justify-center gap-1 px-4 text-center">
+                {view.phase === 'reparto' ? (
+                  <>
+                    <p className="font-display text-24 leading-display text-hueso">Reparto</p>
+                    {postreNick ? <p className="text-12 text-oro">Reparte {postreNick}</p> : null}
+                  </>
                 ) : null}
-              </>
-            ) : null}
-            {manoNick ? <p className="text-14 text-hueso">Es mano {manoNick}</p> : null}
-          </section>
-        </BarTable>
-
-        <div className="flex min-h-[46px] items-start justify-center">
-          {mySeat ? (
-            <TableSeat
-              player={mySeat}
-              variant="plate"
-              isYou
-              isTurn={isMyTurn}
-              beans={beansFor(me.teamIndex)}
-              info={seatInfo(mySeat.seat, mySeat.teamIndex)}
-            />
-          ) : null}
+                {view.phase === 'mus' ? (
+                  <p className="font-display text-24 leading-display text-hueso">Mus</p>
+                ) : null}
+                {view.phase === 'descarte' ? (
+                  <p className="font-display text-24 leading-display text-hueso">Descarte</p>
+                ) : null}
+                {view.phase === 'declararPares' ? (
+                  <p className="font-display text-24 leading-display text-hueso">¿Pares?</p>
+                ) : null}
+                {view.phase === 'declararJuego' ? (
+                  <p className="font-display text-24 leading-display text-hueso">¿Juego?</p>
+                ) : null}
+                {view.phase === 'lance' && view.lance ? (
+                  <>
+                    <p className="font-display text-24 leading-display text-hueso">
+                      {LANCE_LABEL[view.lance]}
+                    </p>
+                    {view.bet ? (
+                      <p className="text-12 font-semibold text-oro">
+                        {view.bet.isOrdago
+                          ? '¡Órdago!'
+                          : `${formatMusAmount(view.bet.piedras)} · pareja ${
+                              view.bet.byTeam === 0 ? 'A' : 'B'
+                            }`}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+                {manoNick ? <p className="text-11 text-hueso/90">Mano · {manoNick}</p> : null}
+              </section>
+            </BarTable>
+          </div>
         </div>
       </div>
 

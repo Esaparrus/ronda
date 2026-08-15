@@ -145,10 +145,9 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
         if (bet === null) {
           available.push('paso');
           if (canEnvido) {
-            available.push('envidar');
+            available.push('envidar', 'ordago');
             minEnvite = 2; // mínimo del contrato (§12.7)
           }
-          available.push('ordago');
         } else {
           available.push('querer', 'noQuerer');
           // Sobre un órdago solo se puede querer o no querer (§12.8).

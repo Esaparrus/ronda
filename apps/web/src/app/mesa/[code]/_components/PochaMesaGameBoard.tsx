@@ -24,8 +24,12 @@ export function PochaMesaGameBoard({ view }: PochaMesaGameBoardProps) {
             </span>
           )}
         />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <PochaCenterTable trumpCardId={view.trumpCardId} currentTrick={view.currentTrick} />
+        <div className="absolute inset-[16%] flex items-center justify-center">
+          <PochaCenterTable
+            trumpCardId={view.trumpCardId}
+            currentTrick={view.currentTrick}
+            players={view.players}
+          />
         </div>
       </div>
     </main>
