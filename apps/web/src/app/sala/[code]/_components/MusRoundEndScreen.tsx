@@ -30,13 +30,50 @@ const OUTCOME_LABEL: Record<string, string> = {
   soloUna: 'sin comparar',
 };
 
+const TEAM_PRESENTATION = {
+  0: {
+    label: 'Pareja A',
+    avatarColorIndex: 1 as const,
+    panelClass: 'border-verde/60 bg-verde/10',
+    badgeClass: 'border-verde/60 bg-verde/20',
+    scoreClass: 'border-verde/50 bg-verde/15',
+    winningScoreClass: 'border-verde bg-verde/30',
+    dotClass: 'bg-verde',
+  },
+  1: {
+    label: 'Pareja B',
+    avatarColorIndex: 3 as const,
+    panelClass: 'border-azul/60 bg-azul/10',
+    badgeClass: 'border-azul/60 bg-azul/20',
+    scoreClass: 'border-azul/50 bg-azul/15',
+    winningScoreClass: 'border-azul bg-azul/30',
+    dotClass: 'bg-azul',
+  },
+} as const;
+
 export function MusRoundEndScreen({ view }: MusRoundEndScreenProps) {
   const [confirming, setConfirming] = useState(false);
   const result = view.handResult;
 
   const iConfirmed = view.rematchVotes.includes(view.me.playerId);
   const waitingFor = pendingConfirmations(view.players, view.rematchVotes);
-  const bySeat = [...view.players].sort((a, b) => a.seat - b.seat);
+  const teams = ([0, 1] as const).map((teamIndex) => {
+    const members = view.players
+      .filter((player) => player.teamIndex === teamIndex)
+      .sort((a, b) => a.seat - b.seat);
+
+    return {
+      teamIndex,
+      members,
+      names: members.map((player) => player.nick).join(' + '),
+      ...TEAM_PRESENTATION[teamIndex],
+    };
+  });
+
+  function teamNames(teamIndex: 0 | 1): string {
+    const team = teams.find((candidate) => candidate.teamIndex === teamIndex);
+    return team?.names || TEAM_PRESENTATION[teamIndex].label;
+  }
 
   async function handleNextRound() {
     setConfirming(true);
@@ -47,26 +84,47 @@ export function MusRoundEndScreen({ view }: MusRoundEndScreenProps) {
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-5">
       <header className="flex flex-col items-center gap-2 text-center">
-        <h1 className="font-display text-28 leading-display text-hueso">Fin de la mano {view.round}</h1>
+        <h1 className="font-display text-28 leading-display text-hueso">
+          Fin de la mano {view.round}
+        </h1>
         {result?.byOrdago ? <p className="text-16 text-brasa">Órdago querido</p> : null}
         {result?.juegoWonByTeam !== null && result?.juegoWonByTeam !== undefined ? (
-          <p className="text-16 text-hueso">
-            Juego para la pareja {result.juegoWonByTeam === 0 ? 'A' : 'B'}
-          </p>
+          <p className="text-16 text-hueso">Juego para {teamNames(result.juegoWonByTeam)}</p>
         ) : null}
       </header>
 
       {/* Las cuatro manos, descubiertas. Solo existen aquí: hasta el recuento
           ninguna vista las lleva (§2.5 / views.ts del motor). */}
       {result ? (
-        <section className="flex flex-col gap-2">
-          {bySeat.map((p) => (
-            <div key={p.playerId} className="flex items-center gap-2">
-              <Avatar name={p.nick} colorIndex={p.colorIndex} size={28} />
-              <span className="w-20 shrink-0 truncate text-14 text-hueso">{p.nick}</span>
-              <div className="flex gap-1">
-                {(result.hands[p.seat] ?? []).map((cardId) => (
-                  <PlayingCard key={cardId} cardId={cardId} size="sm" />
+        <section aria-label="Manos descubiertas por pareja" className="flex flex-col gap-3">
+          {teams.map((team) => (
+            <div
+              key={team.teamIndex}
+              className={`overflow-hidden rounded-xl border ${team.panelClass}`}
+            >
+              <header className="flex min-w-0 items-center gap-2 border-b border-inherit px-3 py-2">
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${team.dotClass}`} />
+                <span className="shrink-0 text-12 font-semibold uppercase tracking-wide text-hueso">
+                  {team.label}
+                </span>
+                <span className="min-w-0 truncate text-12 text-humo">{team.names}</span>
+              </header>
+              <div className="flex flex-col gap-2 p-2">
+                {team.members.map((player) => (
+                  <div key={player.playerId} className="flex min-w-0 items-center gap-2">
+                    <Avatar name={player.nick} colorIndex={team.avatarColorIndex} size={28} />
+                    <span className="w-16 shrink-0 truncate text-14 text-hueso">{player.nick}</span>
+                    <div className="grid min-w-0 flex-1 grid-cols-4 gap-1">
+                      {(result.hands[player.seat] ?? []).map((cardId) => (
+                        <PlayingCard
+                          key={cardId}
+                          cardId={cardId}
+                          size="sm"
+                          className="h-auto w-full min-w-0 max-w-12"
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -76,36 +134,75 @@ export function MusRoundEndScreen({ view }: MusRoundEndScreenProps) {
 
       {result ? (
         <section className="flex flex-col gap-2">
-          <div className="flex items-baseline justify-between text-14 text-humo">
-            <span>Lance</span>
-            <span>Pareja A · Pareja B</span>
+          <div className="grid grid-cols-[minmax(0,1.15fr)_repeat(2,minmax(0,1fr))] items-stretch gap-1">
+            <span className="self-end pb-1 text-12 text-humo">Lance</span>
+            {teams.map((team) => (
+              <div
+                key={team.teamIndex}
+                title={`${team.label}: ${team.names}`}
+                className={`flex min-w-0 flex-col rounded-lg border px-1.5 py-1 text-center ${team.badgeClass}`}
+              >
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-humo">
+                  {team.label}
+                </span>
+                <span className="text-[10px] leading-tight text-hueso">{team.names}</span>
+              </div>
+            ))}
           </div>
           <ul className="flex flex-col gap-2">
-            {result.rows.map((row) => (
-              <li
-                key={row.lance}
-                className={`interactive-surface flex items-center justify-between gap-2 p-3 ${
-                  row.counted ? '' : 'opacity-40'
-                }`}
-              >
-                <div className="flex flex-col">
-                  <span className="text-16 text-hueso">{LANCE_LABEL[row.lance]}</span>
-                  <span className="text-12 text-humo">
-                    {OUTCOME_LABEL[row.outcome] ?? row.outcome}
-                    {row.wonByTeam !== null ? ` · gana ${row.wonByTeam === 0 ? 'A' : 'B'}` : ''}
-                    {row.counted ? '' : ' · sin contar'}
+            {result.rows.map((row) => {
+              const rowScores = ([0, 1] as const).map(
+                (teamIndex) =>
+                  (row.wonByTeam === teamIndex ? row.piedras : 0) + (row.tablas[teamIndex] ?? 0),
+              );
+
+              return (
+                <li
+                  key={row.lance}
+                  className={`interactive-surface grid grid-cols-[minmax(0,1.15fr)_repeat(2,minmax(0,1fr))] items-center gap-1.5 p-3 ${
+                    row.counted ? '' : 'opacity-40'
+                  }`}
+                >
+                  <div className="col-span-3 flex min-w-0 items-baseline justify-between gap-2">
+                    <span className="text-16 text-hueso">{LANCE_LABEL[row.lance]}</span>
+                    <span className="min-w-0 text-right text-11 leading-tight text-humo">
+                      {OUTCOME_LABEL[row.outcome] ?? row.outcome}
+                      {row.wonByTeam !== null ? ` · gana ${teamNames(row.wonByTeam)}` : ''}
+                      {row.counted ? '' : ' · sin contar'}
+                    </span>
+                  </div>
+                  <span className="text-10 font-semibold uppercase tracking-wide text-humo">
+                    Piedras
                   </span>
-                </div>
-                <span className="font-mono text-16 text-hueso">
-                  {(row.wonByTeam === 0 ? row.piedras : 0) + (row.tablas[0] ?? 0)} ·{' '}
-                  {(row.wonByTeam === 1 ? row.piedras : 0) + (row.tablas[1] ?? 0)}
-                </span>
-              </li>
-            ))}
+                  {teams.map((team) => (
+                    <span
+                      key={team.teamIndex}
+                      aria-label={`${team.names}: ${rowScores[team.teamIndex]} piedras`}
+                      className={`rounded-lg border py-1.5 text-center font-mono text-16 font-semibold text-hueso ${
+                        row.wonByTeam === team.teamIndex ? team.winningScoreClass : team.scoreClass
+                      }`}
+                    >
+                      {rowScores[team.teamIndex]}
+                    </span>
+                  ))}
+                </li>
+              );
+            })}
           </ul>
-          <p className="text-center font-mono text-16 text-hueso">
-            {result.piedras[0] ?? 0} · {result.piedras[1] ?? 0} piedras
-          </p>
+          <div className="grid grid-cols-[minmax(0,1.15fr)_repeat(2,minmax(0,1fr))] items-center gap-1.5 rounded-xl border border-linea bg-mesa px-3 py-2">
+            <span className="text-12 font-semibold uppercase tracking-wide text-humo">
+              Marcador
+            </span>
+            {teams.map((team) => (
+              <span
+                key={team.teamIndex}
+                aria-label={`${team.names}: ${result.piedras[team.teamIndex] ?? 0} piedras en total`}
+                className={`rounded-lg border py-1 text-center font-mono text-16 font-semibold text-hueso ${team.scoreClass}`}
+              >
+                {result.piedras[team.teamIndex] ?? 0}
+              </span>
+            ))}
+          </div>
         </section>
       ) : null}
 
