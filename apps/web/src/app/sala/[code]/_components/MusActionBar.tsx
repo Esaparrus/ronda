@@ -3,6 +3,7 @@
 // motor en `availableActions`; este componente solo las ordena y las explica.
 'use client';
 
+import { useState } from 'react';
 import type {
   MusAvailableAction,
   MusConfig,
@@ -11,7 +12,12 @@ import type {
   MusPlayerViewMe,
 } from '@ronda/protocol';
 import { Button } from '@/components/ui/Button';
-import { formatMusAmount } from '@/lib/mus';
+import {
+  formatMusAmount,
+  formatMusStepperAmount,
+  musEnviteChoices,
+  type MusEnviteChoice,
+} from '@/lib/mus';
 
 export interface MusActionBarProps {
   phase: MusPhase;
@@ -31,7 +37,7 @@ export interface MusActionBarProps {
   onDeclararPares: () => void;
   onDeclararJuego: () => void;
   onPaso: () => void;
-  onEnvidar: () => void;
+  onEnvidar: (piedras: number) => void;
   onOrdago: () => void;
   onQuerer: (quiere: boolean) => void;
 }
@@ -64,6 +70,118 @@ const PHASE_HINT: Record<MusPhase, string> = {
 
 function teamLabel(teamIndex: 0 | 1): string {
   return `pareja ${teamIndex === 0 ? 'A' : 'B'}`;
+}
+
+interface MusEnviteControlsProps {
+  minEnvite: number;
+  canOrdago: boolean;
+  actionLabel: 'Envidar' | 'Subir';
+  onConfirm: (piedras: number) => void;
+  onOrdago: () => void;
+  onPaso?: () => void;
+}
+
+function MusEnviteControls({
+  minEnvite,
+  canOrdago,
+  actionLabel,
+  onConfirm,
+  onOrdago,
+  onPaso,
+}: MusEnviteControlsProps) {
+  const choices = musEnviteChoices(minEnvite).filter((choice) => canOrdago || choice !== 'ordago');
+  const [choice, setChoice] = useState<MusEnviteChoice>(() => choices[0] ?? minEnvite);
+  const choiceIndex = Math.max(0, choices.indexOf(choice));
+  const isOrdago = choice === 'ordago';
+  const amountDisplay = isOrdago ? null : formatMusStepperAmount(choice);
+
+  function confirmChoice() {
+    if (isOrdago) {
+      onOrdago();
+      return;
+    }
+    onConfirm(choice);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(104px,0.5fr)] gap-2">
+        <div
+          role="group"
+          aria-label={
+            actionLabel === 'Subir' ? 'Cantidad total del reenvido' : 'Cantidad del envite'
+          }
+          className={`flex min-h-[52px] min-w-0 items-stretch overflow-hidden rounded-xl border bg-mesa ${
+            isOrdago ? 'border-brasa/80' : 'border-oro/60'
+          }`}
+        >
+          <button
+            type="button"
+            aria-label="Bajar envite"
+            disabled={choiceIndex === 0}
+            onClick={() => setChoice(choices[choiceIndex - 1] ?? choice)}
+            className="min-w-12 border-r border-linea px-2 text-22 text-hueso transition-colors hover:bg-madera-clara disabled:opacity-30"
+          >
+            −
+          </button>
+
+          <div
+            aria-live="polite"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center px-1 text-center leading-tight"
+          >
+            <span
+              className={`max-w-full truncate font-semibold ${
+                isOrdago ? 'text-15 uppercase tracking-wide text-brasa' : 'text-14 text-hueso'
+              }`}
+            >
+              {isOrdago ? 'Órdago' : amountDisplay?.primary}
+            </span>
+            <span className="min-h-3 text-10 text-humo">
+              {isOrdago ? 'Juego entero' : amountDisplay?.secondary}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            aria-label="Subir envite"
+            disabled={choiceIndex >= choices.length - 1}
+            onClick={() => setChoice(choices[choiceIndex + 1] ?? choice)}
+            className="min-w-12 border-l border-linea px-2 text-22 text-hueso transition-colors hover:bg-madera-clara disabled:opacity-30"
+          >
+            +
+          </button>
+        </div>
+
+        <Button
+          variant={isOrdago ? 'danger' : 'primary'}
+          onClick={confirmChoice}
+          className="!min-h-[52px] !rounded-xl px-3 text-14"
+        >
+          {isOrdago ? 'Confirmar' : actionLabel}
+        </Button>
+      </div>
+
+      {onPaso || canOrdago ? (
+        <div className={`grid gap-2 ${onPaso && canOrdago ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {onPaso ? (
+            <Button variant="ghost" onClick={onPaso} className={`w-full ${COMPACT_BUTTON}`}>
+              Paso
+            </Button>
+          ) : null}
+          {canOrdago ? (
+            <Button
+              variant="danger"
+              aria-pressed={isOrdago}
+              onClick={() => setChoice('ordago')}
+              className={`w-full ${COMPACT_BUTTON} ${isOrdago ? 'border-brasa bg-brasa/20' : ''}`}
+            >
+              Órdago
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function MusActionBar({
@@ -199,30 +317,29 @@ export function MusActionBar({
 
       {phase === 'lance' && bet === null ? (
         <>
-          <p className="text-center text-10 text-humo">Sin envite · mínimo 2 piedras</p>
-          <div
-            className={`grid gap-2 ${
-              canEnvido && canOrdago
-                ? 'grid-cols-3'
-                : canEnvido || canOrdago
-                  ? 'grid-cols-2'
-                  : 'grid-cols-1'
-            }`}
-          >
-            <Button variant="ghost" onClick={onPaso} className={`w-full ${COMPACT_BUTTON}`}>
-              Paso
-            </Button>
-            {canEnvido ? (
-              <Button onClick={onEnvidar} className={`w-full ${COMPACT_BUTTON}`}>
-                Envidar
+          <p className="text-center text-10 text-humo">Sin envite · elige la cantidad</p>
+          {canEnvido ? (
+            <MusEnviteControls
+              key={`abrir-${me.minEnvite ?? 2}`}
+              minEnvite={me.minEnvite ?? 2}
+              canOrdago={canOrdago}
+              actionLabel="Envidar"
+              onConfirm={onEnvidar}
+              onOrdago={onOrdago}
+              onPaso={onPaso}
+            />
+          ) : (
+            <div className={`grid gap-2 ${canOrdago ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <Button variant="ghost" onClick={onPaso} className={`w-full ${COMPACT_BUTTON}`}>
+                Paso
               </Button>
-            ) : null}
-            {canOrdago ? (
-              <Button variant="danger" onClick={onOrdago} className={`w-full ${COMPACT_BUTTON}`}>
-                Órdago
-              </Button>
-            ) : null}
-          </div>
+              {canOrdago ? (
+                <Button variant="danger" onClick={onOrdago} className={`w-full ${COMPACT_BUTTON}`}>
+                  Órdago
+                </Button>
+              ) : null}
+            </div>
+          )}
         </>
       ) : null}
 
@@ -259,26 +376,20 @@ export function MusActionBar({
 
           {canEnvido || canOrdago ? (
             <div className="border-t border-linea pt-2">
-              <div className="grid grid-cols-2 gap-2">
-                {canEnvido ? (
-                  <Button
-                    variant="ghost"
-                    onClick={onEnvidar}
-                    className={`w-full ${COMPACT_BUTTON}`}
-                  >
-                    Subir
-                  </Button>
-                ) : null}
-                {canOrdago ? (
-                  <Button
-                    variant="danger"
-                    onClick={onOrdago}
-                    className={`w-full ${COMPACT_BUTTON}`}
-                  >
-                    Órdago
-                  </Button>
-                ) : null}
-              </div>
+              {canEnvido ? (
+                <MusEnviteControls
+                  key={`subir-${me.minEnvite ?? 2}`}
+                  minEnvite={me.minEnvite ?? 2}
+                  canOrdago={canOrdago}
+                  actionLabel="Subir"
+                  onConfirm={onEnvidar}
+                  onOrdago={onOrdago}
+                />
+              ) : canOrdago ? (
+                <Button variant="danger" onClick={onOrdago} className={`w-full ${COMPACT_BUTTON}`}>
+                  Órdago
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </>

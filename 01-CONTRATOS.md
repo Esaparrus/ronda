@@ -1204,11 +1204,15 @@ En cada lance, empezando por el mano y por orden:
 | **No quiero** | rechaza: quien envidó se lleva **las piedras acumuladas antes del último envite** (1 si no había nada) y el lance no se compara. |
 | **Órdago** | apuesta el **juego entero** (§12.8). |
 
-En la interfaz, un «envido» sin cantidad son 2 piedras. También se puede
-cantar cualquier cantidad total concreta; los múltiplos de 5 se muestran
-además como amarrakos (5 piedras = 1 amarrako). Un reenvido introduce la nueva
-cantidad total, no solo el incremento. El órdago sigue siendo una acción
-separada y no una cantidad numérica.
+En la interfaz, el selector integrado empieza en el mínimo legal: 2 piedras al
+abrir o una más que el envite anterior al subir. Los controles `−` y `+`
+recorren 2, 3 y 4 piedras; después, amarrakos completos hasta 40 piedras, y por
+último ofrecen órdago. Si el mínimo de un reenvido cae entre dos amarrakos, se
+muestra primero esa cantidad exacta y el siguiente `+` salta al amarrako
+completo siguiente. Un reenvido expresa siempre la nueva cantidad total, no
+solo el incremento. El órdago requiere confirmación, conserva además su atajo
+propio y el motor lo recibe como una acción separada, nunca como una cantidad
+numérica.
 
 - Aceptar o rechazar corresponde a la pareja contraria; el compañero de quien
   envidó no puede subir hasta que la contraria responda.

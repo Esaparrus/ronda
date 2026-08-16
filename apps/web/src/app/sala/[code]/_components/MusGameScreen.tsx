@@ -20,7 +20,6 @@ import { useRondaStore } from '@/lib/store';
 import { MusScoreboard } from './MusScoreboard';
 import { MusHand } from './MusHand';
 import { MusActionBar, LANCE_LABEL } from './MusActionBar';
-import { MusEnvitePicker } from './MusEnvitePicker';
 import { orderAroundMe } from './TableSeat';
 import { BarTable } from '@/components/ui/BarTable';
 import { Avatar, type SeatColorIndex } from '@/components/ui/Avatar';
@@ -94,7 +93,6 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
   const postreNick = view.players.find((p) => p.seat === view.postreSeat)?.nick ?? null;
 
   const [selected, setSelected] = useState<CardId[]>([]);
-  const [envidando, setEnvidando] = useState(false);
 
   // El descarte marcado solo tiene sentido dentro de la fase de descarte: al
   // salir de ella (propia o ajena) se limpia, para que la mano nueva no
@@ -128,7 +126,6 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
   }
 
   function handleEnvidar(piedras: number) {
-    setEnvidando(false);
     void useRondaStore.getState().sendAction({ type: 'envidar', piedras });
   }
 
@@ -267,21 +264,13 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
           onDeclararPares={handleDeclararPares}
           onDeclararJuego={handleDeclararJuego}
           onPaso={() => void useRondaStore.getState().sendAction({ type: 'paso' })}
-          onEnvidar={() => setEnvidando(true)}
+          onEnvidar={handleEnvidar}
           onOrdago={() => void useRondaStore.getState().sendAction({ type: 'ordago' })}
           onQuerer={(quiere) =>
             void useRondaStore.getState().sendAction({ type: quiere ? 'querer' : 'noQuerer' })
           }
         />
       </div>
-
-      <MusEnvitePicker
-        open={envidando && me.minEnvite !== null}
-        minEnvite={me.minEnvite ?? 2}
-        currentBet={view.bet?.piedras ?? null}
-        onConfirm={handleEnvidar}
-        onCancel={() => setEnvidando(false)}
-      />
     </div>
   );
 }
