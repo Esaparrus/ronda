@@ -1,27 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CREATE_ROOM_LOADING_MESSAGES,
-  CREATE_ROOM_WAIT_SECONDS,
-  createLoadingSnapshot,
-} from './create-loading';
+import { CREATE_ROOM_LOADING_MESSAGES, createLoadingMessage } from './create-loading';
 
-describe('createLoadingSnapshot', () => {
-  it('starts the countdown at the full wait and shows the first bar message', () => {
-    expect(createLoadingSnapshot(0)).toEqual({
-      message: 'Poniendo el tapete…',
-      remainingSeconds: CREATE_ROOM_WAIT_SECONDS,
-    });
+describe('createLoadingMessage', () => {
+  it('empieza con una frase corta de bar', () => {
+    expect(createLoadingMessage(0)).toBe('Poniendo una ronda…');
   });
 
-  it('changes the message every four seconds and cycles through the list', () => {
-    expect(createLoadingSnapshot(4).message).toBe('Barajando las cartas…');
-    expect(createLoadingSnapshot(CREATE_ROOM_LOADING_MESSAGES.length * 4).message).toBe(
+  it('recorre todas las frases y vuelve a la primera', () => {
+    expect(createLoadingMessage(1)).toBe('Sacando la baraja…');
+    expect(createLoadingMessage(CREATE_ROOM_LOADING_MESSAGES.length)).toBe(
       CREATE_ROOM_LOADING_MESSAGES[0],
     );
   });
 
-  it('never shows a negative countdown', () => {
-    expect(createLoadingSnapshot(CREATE_ROOM_WAIT_SECONDS + 20).remainingSeconds).toBe(0);
-    expect(createLoadingSnapshot(-5).remainingSeconds).toBe(CREATE_ROOM_WAIT_SECONDS);
+  it('tolera valores negativos y decimales', () => {
+    expect(createLoadingMessage(-3)).toBe(CREATE_ROOM_LOADING_MESSAGES[0]);
+    expect(createLoadingMessage(2.9)).toBe('Buscando una mesa libre…');
   });
 });
