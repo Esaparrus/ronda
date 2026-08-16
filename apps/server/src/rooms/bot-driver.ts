@@ -5,8 +5,9 @@
 // Un bot nunca tiene socket: se le programa (setTimeout, para que la jugada
 // se note en pantalla como un turno real) y se le mueve llamando al
 // RoomManager directamente con su playerId, exactamente como si fuera un
-// jugador humano cualquiera. La política de juego es la misma que el
-// simulador de P9 (bot-policy.ts): legal y rápida, no necesariamente buena.
+// jugador humano cualquiera. `bot-policy.ts` reparte la decisión a una
+// estrategia competitiva específica para cada juego, siempre sobre la vista
+// censurada que recibiría un jugador real.
 import { randomUUID } from 'node:crypto';
 import { GAMES } from '@ronda/engine';
 import type {
@@ -15,6 +16,7 @@ import type {
   MusPlayerView,
   PartyPlayerView,
   PlayerId,
+  RondaPlayerView,
 } from '@ronda/protocol';
 import type { TypedIoServer } from '../io.ts';
 import type { RoomManager } from './room-manager.ts';
@@ -27,6 +29,7 @@ import {
   decideMusAction,
   decidePartyAction,
   decidePochaAction,
+  decideRondaAction,
 } from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
@@ -188,15 +191,17 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
       const action =
         view.gameId === 'mus'
           ? decideMusAction(view as MusPlayerView)
-          : view.gameId === 'pocha'
-            ? decidePochaAction(view)
-            : view.gameId === 'brisca' ||
-                view.gameId === 'escoba' ||
-                view.gameId === 'sieteymedia' ||
-                view.gameId === 'tute' ||
-                view.gameId === 'cinquillo'
-              ? decideClassicAction(view as ClassicPlayerView)
-              : decideChinchonAction(view as ChinchonPlayerView);
+          : view.gameId === 'laronda'
+            ? decideRondaAction(view as RondaPlayerView)
+            : view.gameId === 'pocha'
+              ? decidePochaAction(view)
+              : view.gameId === 'brisca' ||
+                  view.gameId === 'escoba' ||
+                  view.gameId === 'sieteymedia' ||
+                  view.gameId === 'tute' ||
+                  view.gameId === 'cinquillo'
+                ? decideClassicAction(view as ClassicPlayerView)
+                : decideChinchonAction(view as ChinchonPlayerView);
       if (!action) return;
       const r = deps.mgr.applyAction({
         roomCode,

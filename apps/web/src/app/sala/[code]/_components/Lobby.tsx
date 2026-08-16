@@ -79,7 +79,7 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
   const minimumPlayers = view.gameId === 'mus' ? 4 : view.gameId === 'laronda' ? 3 : 2;
   const canStart = view.players.length >= minimumPlayers;
   const minimumLabel = minimumPlayers === 4 ? 'cuatro' : minimumPlayers === 3 ? 'tres' : 'dos';
-  const supportsBots = view.gameId !== 'laronda';
+  const supportsBots = true;
   const hasFreeSeat = view.players.length < view.config.maxPlayers;
 
   return (

@@ -9,7 +9,12 @@ function startedRoom(nicks: string[]) {
   const manager = new RoomManager();
   const host = nicks[0];
   if (!host) throw new Error('falta anfitrión');
-  const created = manager.createRoom({ gameId: 'laronda', config: DEFAULT_LA_RONDA_CONFIG, nick: host, now: NOW });
+  const created = manager.createRoom({
+    gameId: 'laronda',
+    config: DEFAULT_LA_RONDA_CONFIG,
+    nick: host,
+    now: NOW,
+  });
   if (!created.ok) throw new Error(created.code);
   const ids = new Map([[host, created.value.playerId]]);
   for (const nick of nicks.slice(1)) {
@@ -17,7 +22,11 @@ function startedRoom(nicks: string[]) {
     if (!joined.ok) throw new Error(joined.code);
     ids.set(nick, joined.value.playerId);
   }
-  const started = manager.start({ roomCode: created.value.roomCode, playerId: created.value.playerId, now: NOW });
+  const started = manager.start({
+    roomCode: created.value.roomCode,
+    playerId: created.value.playerId,
+    now: NOW,
+  });
   if (!started.ok) throw new Error(started.code);
   return { manager, code: created.value.roomCode, ids };
 }
@@ -35,6 +44,34 @@ function idOf(ids: Map<string, string>, nick: string): string {
 }
 
 describe('La Ronda en RoomManager', () => {
+  it('permite completar el mínimo de la mesa con robots', () => {
+    const manager = new RoomManager();
+    const created = manager.createRoom({
+      gameId: 'laronda',
+      config: DEFAULT_LA_RONDA_CONFIG,
+      nick: 'Ana',
+      now: NOW,
+    });
+    if (!created.ok) throw new Error(created.code);
+    for (let count = 0; count < 2; count += 1) {
+      const added = manager.addBot({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      expect(added.ok).toBe(true);
+    }
+    const room = manager.getRoomByCode(created.value.roomCode);
+    expect(room?.playersBySeat().filter((runtime) => runtime.isBot)).toHaveLength(2);
+    expect(
+      manager.start({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      }).ok,
+    ).toBe(true);
+  });
+
   it('saca a un respondedor de la cuenta sin bloquear el turno', () => {
     const { manager, code, ids } = startedRoom(['Ana', 'Beto', 'Carla', 'Diego']);
     const room = manager.getRoomByCode(code);

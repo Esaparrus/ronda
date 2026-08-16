@@ -555,7 +555,7 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 
 **Abandono (decisión 6 de P28).** Si una sala de Mus se queda sin cuatro, la partida se **anula**: `winnerTeamIndex` a `null`, sin `recordMatchEnd()` y sin contar en §11.2. Darle la victoria a la pareja que quede entera sería inventarse el resultado.
 
-**Bots de práctica.** `room:addBot` admite Mus y el lobby puede completar en un clic los huecos hasta cuatro. `bot-driver.ts` cubre reparto, mus/descarte, declaraciones, lances y confirmación de la siguiente mano con una política conservadora basada solo en la vista censurada del robot. Sirve para practicar y verificar el flujo completo; no pretende envidar ni farolear estratégicamente.
+**Bots competitivos.** `room:addBot` admite Mus y el lobby puede completar en un clic los huecos hasta cuatro. `bot-driver.ts` cubre reparto, mus/descarte, declaraciones, lances y confirmación de la siguiente mano. La política valora Grande, Chica, Pares, Juego/Punto, selecciona descartes por muestreo determinista, acepta, rechaza o sube envites según mano y tanteo, y usa faroles poco frecuentes. Solo recibe la vista censurada del robot y nunca comparte manos entre compañeros.
 
 **Entregado en `@ronda/protocol`:** `'mus'` en `roomCreateSchema`, `MusConfigSchema.partial()` en el patch de `room:config`, evento y esquema de `room:swapSeats`, y la semántica de Mus documentada en `stats.ts`.
 
@@ -565,7 +565,7 @@ Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9
 
 **Detalle de interfaz que sí es una decisión:** las declaraciones de pares y juego se pintan como **un solo botón que dice la verdad de tu mano**. §12.6 las describe como declaraciones públicas y el motor rechaza mentir con `FALSE_DECLARATION` (§12.14.2): ofrecer el botón de mentir solo serviría para generar errores.
 
-**Tests:** `apps/server/src/rooms/mus-room.test.ts`, 9 casos — los cuatro jugadores obligatorios, el intercambio de asientos y sus permisos, el rechazo de bots, la victoria repartida a la pareja y la anulación por abandono.
+**Tests:** `apps/server/src/rooms/mus-room.test.ts` cubre los cuatro jugadores obligatorios, el intercambio de asientos y sus permisos, completar la mesa con bots, la victoria repartida a la pareja y la anulación por abandono.
 
 ---
 

@@ -1,6 +1,4 @@
-// Tests de la política del bot de Pocha (modo "contra la máquina"). Mismo
-// listón que la política de Chinchón (P9: legal y rápida, no necesariamente
-// buena) -- aquí solo se comprueba que nunca produce una acción ilegal.
+// Pruebas tácticas y de legalidad de las estrategias competitivas.
 import { describe, it, expect } from 'vitest';
 import { decideMusAction, decidePochaAction } from './bot-policy.ts';
 import {
@@ -172,15 +170,36 @@ function musView(
 }
 
 describe('decideMusAction', () => {
-  it('reparte, corta y pasa para hacer avanzar la mano de forma conservadora', () => {
+  it('pide mus con una mano floja, corta con duples y pasa sin jugada', () => {
     expect(decideMusAction(musView(['repartir']))).toEqual({ type: 'repartir' });
-    expect(decideMusAction(musView(['mus', 'noMus']))).toEqual({ type: 'noMus' });
+    expect(
+      decideMusAction(
+        musView(['mus', 'noMus'], {
+          hand: ['oros-4', 'copas-5', 'espadas-6', 'bastos-7'],
+          juego: { suma: 22, tiene: false },
+        }),
+      ),
+    ).toEqual({ type: 'mus' });
+    expect(
+      decideMusAction(
+        musView(['mus', 'noMus'], {
+          hand: ['oros-12', 'copas-12', 'espadas-3', 'bastos-3'],
+          pares: { kind: 'duples', piedras: 3 },
+          juego: { suma: 30, tiene: false },
+        }),
+      ),
+    ).toEqual({ type: 'noMus' });
     expect(decideMusAction(musView(['paso', 'envidar', 'ordago']))).toEqual({ type: 'paso' });
   });
 
-  it('descarta únicamente cartas de su propia mano', () => {
+  it('descarta de una a cuatro cartas, siempre de su propia mano', () => {
     const view = musView(['descartar']);
-    expect(decideMusAction(view)).toEqual({ type: 'descartar', cardIds: view.me.hand });
+    const action = decideMusAction(view);
+    expect(action?.type).toBe('descartar');
+    if (action?.type !== 'descartar') throw new Error('esperaba descarte');
+    expect(action.cardIds.length).toBeGreaterThanOrEqual(1);
+    expect(action.cardIds.length).toBeLessThanOrEqual(4);
+    expect(action.cardIds.every((cardId) => view.me.hand.includes(cardId))).toBe(true);
   });
 
   it('declara pares y juego según los datos calculados por el motor', () => {
@@ -192,9 +211,10 @@ describe('decideMusAction', () => {
     ).toEqual({ type: 'declararJuego', tiene: false });
   });
 
-  it('rechaza un envite antes de intentar subirlo', () => {
-    expect(decideMusAction(musView(['querer', 'noQuerer', 'envidar', 'ordago']))).toEqual({
-      type: 'noQuerer',
-    });
+  it('rechaza un envite a pares cuando no tiene pares', () => {
+    const view = musView(['querer', 'noQuerer', 'envidar', 'ordago']);
+    view.lance = 'pares';
+    view.bet = { piedras: 4, byTeam: 1, ifRejected: 2, isOrdago: false };
+    expect(decideMusAction(view)).toEqual({ type: 'noQuerer' });
   });
 });

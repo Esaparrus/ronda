@@ -1266,11 +1266,12 @@ el tanteo. La aplicación no interpreta voz ni implementa señas.
   y Pocha, donde el abandono sí produce un ganador. Como en los otros dos
   juegos, esto es responsabilidad de `apps/server`, no del motor: `MusPlayer`
   tiene `left`, pero el motor **no salta asientos** porque no hay Mus con tres.
-- El modo "contra la máquina" usa bots de práctica, no rivales competitivos.
-  Deciden solo a partir de su `PlayerView`: cortan el mus, pasan si no hay
-  apuesta, rechazan envites y declaran pares/juego con los valores calculados
-  por el motor. Su objetivo es permitir recorrer y verificar una partida
-  completa; no intentan interpretar señas, envidar estratégicamente ni farolear.
+- El modo "contra la máquina" usa una estrategia competitiva específica por
+  juego y decide exclusivamente a partir de la `PlayerView` censurada: nunca
+  conoce las cartas rivales. En Mus valora los cuatro lances, conserva juego y
+  pares al descartar, ajusta envites al tanteo y admite un farol determinista y
+  poco frecuente. La selección entre alternativas casi equivalentes introduce
+  variación controlada: el objetivo es un rival muy fuerte, no perfecto.
 
 ### 12.12 Cambios de contrato que Mus exige
 
