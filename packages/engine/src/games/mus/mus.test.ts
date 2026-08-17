@@ -45,7 +45,7 @@ const FOUR_PLAYERS = [
 
 function newGame(seed = 'mus-1', config: MusConfig = DEFAULT_CFG): MusState {
   const waiting = createInitialState({ config, players: FOUR_PLAYERS, seed, roomCode: 'TEST' });
-  return apply(waiting, 3, { type: 'repartir' });
+  return apply(waiting, 1, { type: 'repartir' });
 }
 
 function waitingForDeal(seed = 'mus-1', config: MusConfig = DEFAULT_CFG): MusState {
@@ -241,15 +241,15 @@ describe('§12.13.7 — empate: gana quien esté antes contando desde el mano', 
     ['espadas-12', 'bastos-12', 'copas-11', 'copas-10'], // asiento 3, igual que el 1
   ];
 
-  it('con el mano en el asiento 0, gana el asiento 1', () => {
+  it('con el mano en el asiento 0, gana el asiento 3, que está antes hacia la derecha', () => {
     const s = withHands(hands);
     expect(compareGrande(at(hands, 1), at(hands, 3), true)).toBe(0);
-    expect(lanceWinnerSeat(s, 'grande', [0, 1, 2, 3])).toBe(1);
+    expect(lanceWinnerSeat(s, 'grande', [0, 3, 2, 1])).toBe(3);
   });
 
-  it('con el mano en el asiento 2, gana el asiento 3', () => {
+  it('con el mano en el asiento 2, gana el asiento 1', () => {
     const s: MusState = { ...withHands(hands), manoSeat: 2 };
-    expect(lanceWinnerSeat(s, 'grande', [2, 3, 0, 1])).toBe(3);
+    expect(lanceWinnerSeat(s, 'grande', [2, 1, 0, 3])).toBe(1);
   });
 });
 
@@ -271,7 +271,7 @@ describe('§12.13.8 — órdago querido', () => {
     s = apply(s, 0, { type: 'noMus' }); // el mano corta: empieza Grande
     expect(s.lance).toBe('grande');
     s = apply(s, 0, { type: 'paso' });
-    s = apply(s, 1, { type: 'ordago' });
+    s = apply(s, 3, { type: 'ordago' });
     return s;
   }
 
@@ -279,8 +279,8 @@ describe('§12.13.8 — órdago querido', () => {
     const s = hastaElOrdago();
     expect(turn(s)).toBe(2);
     expect(teamOfSeat(2)).not.toBe(s.bet?.byTeam);
-    // El compañero (asiento 3) no puede responder aunque lo intente.
-    const r = applyAction(s, 'p3', { type: 'querer' }, 0);
+    // El compañero (asiento 1) no puede responder aunque lo intente.
+    const r = applyAction(s, 'p1', { type: 'querer' }, 0);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('NOT_YOUR_TURN');
   });
@@ -399,10 +399,10 @@ describe('reparto por el postre (§12.4)', () => {
     const s = waitingForDeal();
     expect(s.phase).toBe('reparto');
     expect(s.manoSeat).toBe(0);
-    expect(s.turnSeat).toBe(3);
+    expect(s.turnSeat).toBe(1);
     expect(s.players.map((p) => p.hand.length)).toEqual([0, 0, 0, 0]);
-    expect(getTableView(s).postreSeat).toBe(3);
-    expect(getPlayerView(s, 'p3').me.availableActions).toContain('repartir');
+    expect(getTableView(s).postreSeat).toBe(1);
+    expect(getPlayerView(s, 'p1').me.availableActions).toContain('repartir');
     expect(getPlayerView(s, 'p0').me.availableActions).not.toContain('repartir');
     expect(applyAction(s, 'p0', { type: 'repartir' }, 0)).toMatchObject({
       ok: false,
@@ -662,12 +662,12 @@ describe('envites (§12.7)', () => {
 
   it('subir tiene que superar lo apostado, y responde la pareja contraria', () => {
     let s = apply(enGrande(), 0, { type: 'envidar', piedras: 3 });
-    expect(turn(s)).toBe(1);
-    expect(applyAction(s, 'p1', { type: 'envidar', piedras: 3 }, 0)).toMatchObject({
+    expect(turn(s)).toBe(3);
+    expect(applyAction(s, 'p3', { type: 'envidar', piedras: 3 }, 0)).toMatchObject({
       ok: false,
       code: 'BET_TOO_LOW',
     });
-    s = apply(s, 1, { type: 'envidar', piedras: 5 });
+    s = apply(s, 3, { type: 'envidar', piedras: 5 });
     expect(s.bet).toMatchObject({ piedras: 5, byTeam: 1, ifRejected: 3 });
     expect(turn(s)).toBe(2); // vuelve a la pareja 0
   });
@@ -684,19 +684,19 @@ describe('envites (§12.7)', () => {
 
   it('no querer paga en el acto lo acumulado antes del último envite', () => {
     let s = apply(enGrande(), 0, { type: 'envidar', piedras: 3 });
-    s = apply(s, 1, { type: 'noQuerer' });
+    s = apply(s, 3, { type: 'noQuerer' });
     expect(s.piedras[0]).toBe(1); // no había nada antes: 1 piedra
     expect(s.lance).toBe('chica');
 
     let t = apply(enGrande(), 0, { type: 'envidar', piedras: 3 });
-    t = apply(t, 1, { type: 'envidar', piedras: 6 });
+    t = apply(t, 3, { type: 'envidar', piedras: 6 });
     t = apply(t, 2, { type: 'noQuerer' });
     expect(t.piedras[1]).toBe(3); // lo apostado antes del último envite
   });
 
   it('querer deja el lance para el recuento', () => {
     let s = apply(enGrande(), 0, { type: 'envidar', piedras: 4 });
-    s = apply(s, 1, { type: 'querer' });
+    s = apply(s, 3, { type: 'querer' });
     expect(s.piedras).toEqual([0, 0]); // todavía nada: se compara al final
     expect(s.lances[0]).toMatchObject({ lance: 'grande', outcome: 'querido', piedras: 4 });
     expect(s.lance).toBe('chica');
@@ -704,7 +704,7 @@ describe('envites (§12.7)', () => {
 
   it('con un envite sobre la mesa no se puede pasar', () => {
     const s = apply(enGrande(), 0, { type: 'envidar', piedras: 2 });
-    expect(applyAction(s, 'p1', { type: 'paso' }, 0)).toMatchObject({
+    expect(applyAction(s, 'p3', { type: 'paso' }, 0)).toMatchObject({
       ok: false,
       code: 'INVALID_ACTION',
     });
@@ -751,7 +751,7 @@ describe('parejas, juegos y mano (§12.2-§12.4)', () => {
     let s: MusState = { ...newGame(), status: 'roundEnd', handResult: null };
     expect(s.manoSeat).toBe(0);
     for (let i = 0; i < 4; i++) s = apply(s, i, { type: 'nextRound' });
-    expect(s.manoSeat).toBe(1);
+    expect(s.manoSeat).toBe(3);
     expect(s.handNumber).toBe(2);
     expect(s.status).toBe('playing');
     expect(s.phase).toBe('reparto');
@@ -759,7 +759,7 @@ describe('parejas, juegos y mano (§12.2-§12.4)', () => {
     expect(s.players.map((p) => p.hand.length)).toEqual([0, 0, 0, 0]);
     s = apply(s, 0, { type: 'repartir' });
     expect(s.phase).toBe('mus');
-    expect(s.turnSeat).toBe(1);
+    expect(s.turnSeat).toBe(3);
   });
 
   it('con juegos > 1, ganar un juego reinicia las piedras y no acaba la partida', () => {
@@ -773,7 +773,7 @@ describe('parejas, juegos y mano (§12.2-§12.4)', () => {
     let s = withHands(hands, cfg);
     s = apply(s, 0, { type: 'noMus' });
     s = apply(s, 0, { type: 'ordago' });
-    s = apply(s, 1, { type: 'querer' });
+    s = apply(s, 3, { type: 'querer' });
 
     expect(s.piedras[0]).toBe(MUS_META);
     expect(s.juegosWon).toEqual([1, 0]);
@@ -879,7 +879,7 @@ describe('vistas censuradas (§2.5)', () => {
     let s = withHands(hands);
     s = apply(s, 0, { type: 'noMus' });
     s = apply(s, 0, { type: 'ordago' });
-    s = apply(s, 1, { type: 'querer' });
+    s = apply(s, 3, { type: 'querer' });
     expect(getTableView(s).handResult?.hands).toEqual(hands);
   });
 });

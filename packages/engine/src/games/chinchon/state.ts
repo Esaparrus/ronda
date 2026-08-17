@@ -83,11 +83,11 @@ export function activePlayers(state: ChinchonState): ChinchonPlayer[] {
   return state.players.filter((p) => !p.eliminated && !p.left);
 }
 
-/** Siguiente asiento activo a partir de `seat` (excluido), rotando. */
+/** Siguiente asiento activo a la derecha de `seat` (sentido antihorario). */
 export function nextActiveSeat(state: ChinchonState, seat: number): number | null {
   const n = state.players.length;
   for (let i = 1; i <= n; i++) {
-    const cand = (seat + i) % n;
+    const cand = (seat - i + n) % n;
     const p = state.players[cand];
     if (p && !p.eliminated && !p.left) return cand;
   }

@@ -13,7 +13,7 @@ import {
 import { applyClassicAction, createClassicState, legalCardsFor } from './reducer.ts';
 import { escobaValue } from './rules.ts';
 import { getClassicPlayerView, getClassicTableView } from './views.ts';
-import type { ClassicState } from './state.ts';
+import { nextActiveSeat, type ClassicState } from './state.ts';
 
 const CONFIGS: Record<ClassicGameId, ClassicConfig> = {
   brisca: DEFAULT_BRISCA_CONFIG,
@@ -85,6 +85,17 @@ function playToEnd(initial: ClassicState): ClassicState {
 }
 
 describe('clásicos de baraja española', () => {
+  it('Brisca, Escoba y Siete y media avanzan a la derecha; Cinquillo conserva su variante horaria', () => {
+    for (const gameId of ['brisca', 'escoba', 'sieteymedia'] as const) {
+      const state = stateFor(gameId, 4);
+      expect(state.turnSeat).toBe(3);
+      expect(nextActiveSeat(state, 3)).toBe(2);
+    }
+
+    const cinquillo = stateFor('cinquillo', 4);
+    expect(nextActiveSeat(cinquillo, 0)).toBe(1);
+  });
+
   for (const gameId of Object.keys(CONFIGS) as ClassicGameId[]) {
     it(`${gameId} completa una partida determinista`, () => {
       const final = playToEnd(stateFor(gameId));

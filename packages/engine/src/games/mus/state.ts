@@ -166,7 +166,7 @@ export function isPlayerTurn(state: MusState, playerId: PlayerId): boolean {
 export function seatsFromMano(state: MusState): number[] {
   const n = state.players.length;
   const out: number[] = [];
-  for (let i = 0; i < n; i++) out.push((state.manoSeat + i) % n);
+  for (let i = 0; i < n; i++) out.push((state.manoSeat - i + n) % n);
   return out;
 }
 
@@ -174,5 +174,5 @@ export function seatsFromMano(state: MusState): number[] {
  * quien reparte. Se deriva para que nunca pueda desincronizarse al rotar. */
 export function postreSeat(state: MusState): number {
   const n = state.players.length;
-  return (state.manoSeat - 1 + n) % n;
+  return (state.manoSeat + 1) % n;
 }

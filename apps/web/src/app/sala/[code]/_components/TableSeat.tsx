@@ -56,7 +56,8 @@ function SeatStatsLine({ handCount, score }: SeatStats) {
 
 /**
  * Ordena la mesa como se ve desde tu silla: tú abajo y los demás arriba, en
- * el orden en que te llega el turno (asiento+1, +2, +3...).
+ * su posición física (asiento+1 a tu izquierda, asiento-1 a tu derecha).
+ * El motor decide el sentido de turno de cada juego por separado.
  *
  * En Mus esto coloca al compañero (asiento+2, §12.12) justo en el centro de
  * la fila de arriba, enfrente de ti, sin que este componente sepa nada de

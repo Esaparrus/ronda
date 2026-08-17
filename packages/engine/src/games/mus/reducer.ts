@@ -117,7 +117,7 @@ export function createInitialState(input: {
     juegosWon: [0, 0],
     piedras: [0, 0],
     handNumber: 1,
-    manoSeat: 0, // el asiento 0 es mano en la primera mano; rota a la izquierda (§12.4)
+    manoSeat: 0, // el asiento 0 es mano en la primera mano; rota a la derecha (§12.4)
     deck: [],
     discardPile: [],
     lance: null,
@@ -571,7 +571,7 @@ function nextEligibleOpponent(
   const seats = eligibleSeats(s, lance);
   const n = s.players.length;
   for (let i = 1; i <= n; i++) {
-    const cand = (fromSeat + i) % n;
+    const cand = (fromSeat - i + n) % n;
     if (seats.includes(cand) && teamOfSeat(cand) !== team) return cand;
   }
   return null;
@@ -817,7 +817,7 @@ function applyNextRound(
     next.handNumber += 1;
   }
 
-  next.manoSeat = (next.manoSeat + 1) % next.players.length; // rota una silla (§12.4)
+  next.manoSeat = (next.manoSeat - 1 + next.players.length) % next.players.length; // rota a la derecha (§12.4)
   next.status = 'playing';
   next.handResult = null;
   next.phase = 'reparto';

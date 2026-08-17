@@ -118,7 +118,7 @@ export function createInitialState(input: {
  * hace el llamador, igual que en Chinchón). §9.3:
  *   - Baraja la baraja de 40 cartas con el RNG del estado.
  *   - `roundSize` cartas a cada jugador activo, una a una, desde
- *     (dealerSeat+1) saltando a quien se haya ido.
+ *     (dealerSeat-1) saltando a quien se haya ido.
  *   - 1 carta revelada para fijar el triunfo, si `config.trump`.
  *   - El resto de cartas sobrantes se descarta (no se usa esa ronda, §9.3.5).
  */
@@ -176,12 +176,12 @@ export function dealRound(s: PochaState): PochaState {
   return next;
 }
 
-/** Orden de reparto/cante/primera baza: asientos activos empezando en (dealerSeat+1) % n. */
+/** Orden antihorario de reparto/cante/primera baza: empieza a la derecha del repartidor. */
 function dealOrder(state: PochaState): number[] {
   const n = state.players.length;
   const out: number[] = [];
   for (let i = 1; i <= n; i++) {
-    const seat = (state.dealerSeat + i) % n;
+    const seat = (state.dealerSeat - i + n) % n;
     const p = state.players[seat];
     if (p && !p.left) out.push(seat);
   }
@@ -237,7 +237,7 @@ function applyBid(
   if (seat === null) return err('INVALID_ACTION');
 
   // El repartidor canta siempre el último (§9.2/§9.4: el orden de cante es
-  // el mismo que el de reparto, que empieza a su izquierda y termina en él).
+  // el mismo que el de reparto, que empieza a su derecha y termina en él).
   // Por eso basta comprobar `seat === dealerSeat` para saber que este es el
   // cante sujeto al enganche, sin necesitar un contador aparte.
   if (seat === state.dealerSeat) {
@@ -257,7 +257,7 @@ function applyBid(
 
   if (seat === next.dealerSeat) {
     // El repartidor acaba de cantar: termina la fase de cante, empieza la
-    // primera baza. Lleva la primera baza el jugador a su izquierda (§9.5),
+    // primera baza. Lleva la primera baza el jugador a su derecha (§9.5),
     // el mismo asiento con el que empezó el reparto y el cante.
     next.phase = 'trick';
     const order = dealOrder(next);
@@ -319,11 +319,20 @@ function applyPlayCard(
   // Baza completa: se resuelve (§9.6).
   const leadSuit = next.leadSuit;
   if (leadSuit === null) return err('INVALID_ACTION'); // no debería pasar: ya se fijó arriba
-  const winnerSeat = resolveTrick(next.currentTrick, leadSuit, next.trumpSuit, next.config.rankOrder);
+  const winnerSeat = resolveTrick(
+    next.currentTrick,
+    leadSuit,
+    next.trumpSuit,
+    next.config.rankOrder,
+  );
   const winner = next.players[winnerSeat];
   if (!winner) return err('INVALID_ACTION');
   winner.tricksWon += 1;
-  events.push({ t: 'trickWon', playerId: winner.playerId, cards: next.currentTrick.map((t) => t.cardId) });
+  events.push({
+    t: 'trickWon',
+    playerId: winner.playerId,
+    cards: next.currentTrick.map((t) => t.cardId),
+  });
   next.currentTrick = [];
   next.leadSuit = null;
 

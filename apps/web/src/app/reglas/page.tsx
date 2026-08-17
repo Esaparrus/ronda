@@ -21,7 +21,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Reparto',
-    body: 'Cada jugador recibe 7 cartas. Se levanta una carta para empezar el descarte; el resto forma el mazo. Empieza quien tiene el asiento a la izquierda del repartidor.',
+    body: 'Cada jugador recibe 7 cartas. Se levanta una carta para empezar el descarte; el resto forma el mazo. Empieza quien tiene el asiento a la derecha del repartidor y se juega en sentido antihorario.',
   },
   {
     title: 'Tu turno',

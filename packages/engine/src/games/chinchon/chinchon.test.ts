@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  createInitialState,
-  applyAction,
-} from './reducer.ts';
+import { createInitialState, applyAction } from './reducer.ts';
 import { getPlayerView, getTableView, leakedCards } from './views.ts';
 import { solveHand, canCloseWith } from './melds.ts';
 import { deepFreeze } from '../../core/freeze.ts';
@@ -73,8 +70,14 @@ function roundResult(state: ChinchonState) {
  * deadwood 0 → cierre en seco (-10). Útil para tests de cierre normal.
  */
 const CLOSE_HAND: CardId[] = [
-  'oros-1', 'oros-2', 'oros-3', 'oros-4',
-  'copas-7', 'espadas-7', 'bastos-7', 'copas-2',
+  'oros-1',
+  'oros-2',
+  'oros-3',
+  'oros-4',
+  'copas-7',
+  'espadas-7',
+  'bastos-7',
+  'copas-2',
 ];
 const CLOSE_DISCARD: CardId = 'copas-2';
 
@@ -107,8 +110,8 @@ describe('1. Reparto', () => {
     }
     expect(s.status).toBe('playing');
     expect(s.turnPhase).toBe('draw');
-    // Empieza el jugador a la izquierda del repartidor (asiento 0) → asiento 1.
-    expect(s.turnSeat).toBe(1);
+    // Empieza el jugador a la derecha del repartidor (asiento 0) → asiento 3.
+    expect(s.turnSeat).toBe(3);
   });
 });
 
@@ -154,12 +157,7 @@ describe('2. Turno', () => {
     const pid = turnPlayerId(s);
     const r1 = applyAction(s, pid, { type: 'drawDeck' }, 0);
     if (!r1.ok) throw new Error('draw falló');
-    const r2 = applyAction(
-      r1.value.state,
-      pid,
-      { type: 'discard', cardId: 'oros-1' as CardId },
-      0,
-    );
+    const r2 = applyAction(r1.value.state, pid, { type: 'discard', cardId: 'oros-1' as CardId }, 0);
     // oros-1 puede o no estar; si no está, CARD_NOT_IN_HAND.
     if (!r2.ok) {
       expect(r2.code).toBe('CARD_NOT_IN_HAND');
@@ -190,26 +188,25 @@ describe('3. forbidDiscardDrawnCard', () => {
   });
 
   it('en el turno siguiente, la carta ya se puede descartar', () => {
-    // Construimos una secuencia: p2 roba del descarte (top), descarta otra,
-    // pasa a p3 ... p4 ... p1 ... p2 de nuevo, y ahora p2 puede descartar `top`.
+    // Construimos una secuencia antihoraria: p4 roba del descarte (top),
+    // descarta otra, pasa a p3 ... p2 ... p1 ... p4 de nuevo.
     const s = newGame('seed-G');
     let state = s;
-    // Turno de p2 (asiento 1).
+    // Turno de p4 (asiento 3).
     const top0 = state.discard[state.discard.length - 1];
     if (!top0) throw new Error('no hay descarte');
-    state = step(state, 'p2', { type: 'drawDiscard' });
+    state = step(state, 'p4', { type: 'drawDiscard' });
     // Descarta una carta distinta de top0.
-    const other = state.players[1]?.hand.find((c) => c !== top0);
+    const other = state.players[3]?.hand.find((c) => c !== top0);
     if (!other) throw new Error('no hay carta alternativa');
-    state = step(state, 'p2', { type: 'discard', cardId: other });
-    // Ahora top0 está en la mano de p2 pero ya no locked.
-    // Avanzamos una ronda de turnos hasta volver a p2.
-    state = advanceFullTurn(state, ['p3', 'p4', 'p1']);
-    // turnPlayerId debe ser p2 de nuevo.
-    expect(turnPlayerId(state)).toBe('p2');
+    state = step(state, 'p4', { type: 'discard', cardId: other });
+    // Ahora top0 está en la mano de p4 pero ya no locked.
+    // Avanzamos una ronda de turnos hasta volver a p4.
+    state = advanceFullTurn(state, ['p3', 'p2', 'p1']);
+    expect(turnPlayerId(state)).toBe('p4');
     // Roba del mazo y descarta top0 → debe ser válido.
-    state = step(state, 'p2', { type: 'drawDeck' });
-    const r = applyAction(state, 'p2' as PlayerId, { type: 'discard', cardId: top0 }, 0);
+    state = step(state, 'p4', { type: 'drawDeck' });
+    const r = applyAction(state, 'p4' as PlayerId, { type: 'discard', cardId: top0 }, 0);
     expect(r.ok).toBe(true);
   });
 });
@@ -284,8 +281,14 @@ describe('6. Chinchón', () => {
               ...p,
               score: 80,
               hand: [
-                'oros-1', 'oros-2', 'oros-3', 'oros-4',
-                'oros-5', 'oros-6', 'oros-7', 'copas-11',
+                'oros-1',
+                'oros-2',
+                'oros-3',
+                'oros-4',
+                'oros-5',
+                'oros-6',
+                'oros-7',
+                'copas-11',
               ] as CardId[],
               lockedCardId: null,
             }
@@ -312,9 +315,7 @@ describe('7. Eliminación', () => {
     const forced: ChinchonState = {
       ...state,
       players: state.players.map((p, i) =>
-        i === seat
-          ? { ...p, hand: [...CLOSE_HAND], lockedCardId: null }
-          : { ...p, score: 99 },
+        i === seat ? { ...p, hand: [...CLOSE_HAND], lockedCardId: null } : { ...p, score: 99 },
       ),
       turnPhase: 'discard',
     };
@@ -374,8 +375,8 @@ describe('9. Rondas', () => {
     }
     expect(s.status).toBe('playing');
     expect(s.round).toBe(2);
-    // Repartidor rotó del 0 al siguiente asiento activo (1).
-    expect(s.dealerSeat).toBe(1);
+    // Repartidor rotó del 0 al siguiente asiento activo a su derecha (3).
+    expect(s.dealerSeat).toBe(3);
     for (const p of s.players) {
       expect(p.hand.length).toBe(7);
     }
@@ -519,11 +520,7 @@ describe('12. Partida completa determinista (200 partidas)', () => {
 // Helpers de test
 // ---------------------------------------------------------------------------
 
-function step(
-  state: ChinchonState,
-  pid: PlayerId,
-  action: GameAction,
-): ChinchonState {
+function step(state: ChinchonState, pid: PlayerId, action: GameAction): ChinchonState {
   const r = applyAction(state, pid, action, 0);
   if (!r.ok) throw new Error(`step falló: ${r.code} para ${pid} ${JSON.stringify(action)}`);
   return r.value.state;

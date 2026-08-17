@@ -47,9 +47,15 @@ export interface ClassicState {
   rematchVotes: PlayerId[];
 }
 
+/** Cinquillo conserva su variante horaria; los demás clásicos avanzan a la derecha. */
+export function seatAtTurnOffset(state: ClassicState, seat: number, offset: number): number {
+  const direction = state.gameId === 'cinquillo' ? 1 : -1;
+  return (seat + direction * offset + state.players.length * 2) % state.players.length;
+}
+
 export function nextActiveSeat(state: ClassicState, seat: number): number | null {
   for (let offset = 1; offset <= state.players.length; offset++) {
-    const candidate = (seat + offset) % state.players.length;
+    const candidate = seatAtTurnOffset(state, seat, offset);
     if (state.players[candidate] && !state.players[candidate].left) return candidate;
   }
   return null;

@@ -42,22 +42,15 @@ function threadTransform(angleDeg: number, radius: string): string {
   return `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${radius})`;
 }
 
-export function SeatRing({
-  players,
-  turnPlayerId,
-  renderBadge,
-  showScore = true,
-}: SeatRingProps) {
+export function SeatRing({ players, turnPlayerId, renderBadge, showScore = true }: SeatRingProps) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const seatCount = Math.max(ordered.length, 1);
   const angleStep = 360 / seatCount;
   const turnIndex = turnPlayerId ? ordered.findIndex((p) => p.playerId === turnPlayerId) : -1;
 
-  // Rotación ACUMULADA (sin envolver a 360°) para que el hilo siempre
-  // avance hacia el siguiente asiento en el sentido del turno, nunca
-  // "hacia atrás" por el camino corto -- así se ve viajar físicamente de
-  // un asiento al siguiente, tal cual pide el contrato, incluso al volver
-  // del último asiento al primero.
+  // Rotación ACUMULADA (sin envolver a 360°). Cada transición toma el camino
+  // circular más corto, de modo que refleja tanto el sentido antihorario de
+  // los juegos tradicionales como los giros de La Ronda.
   const [rotation, setRotation] = useState(0);
   const prevIndexRef = useRef<number | null>(null);
 
@@ -68,7 +61,8 @@ export function SeatRing({
       setRotation(turnIndex * angleStep);
     } else if (prev !== turnIndex) {
       let steps = turnIndex - prev;
-      if (steps <= 0) steps += seatCount;
+      if (steps > seatCount / 2) steps -= seatCount;
+      if (steps < -seatCount / 2) steps += seatCount;
       setRotation((r) => r + steps * angleStep);
     }
     prevIndexRef.current = turnIndex;

@@ -19,11 +19,12 @@ const SECTIONS: Section[] = [
   {
     title: 'La pirámide de rondas',
     body: 'La partida no tiene un número fijo de rondas: empieza con manos de 1 carta, sube de una en una hasta un máximo (depende de cuántos jugáis) y vuelve a bajar hasta 1 otra vez. El repartidor rota una ronda cada vez.',
-    example: 'Con 4 jugadores, el máximo es 9: las manos van 1, 2, 3… hasta 9, y luego 8, 7… hasta 1.',
+    example:
+      'Con 4 jugadores, el máximo es 9: las manos van 1, 2, 3… hasta 9, y luego 8, 7… hasta 1.',
   },
   {
     title: 'Reparto y triunfo',
-    body: 'Se reparten las cartas de esa ronda a cada jugador, empezando por quien tiene el asiento a la izquierda del repartidor. Si la sala tiene el triunfo activado, se revela una carta más: su palo manda esa ronda.',
+    body: 'Se reparten las cartas de esa ronda en sentido antihorario, empezando por quien está a la derecha del repartidor. Si la sala tiene el triunfo activado, se revela una carta más: su palo manda esa ronda.',
   },
   {
     title: 'Cantar',
@@ -33,7 +34,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Jugar las bazas',
-    body: 'Empieza quien tiene el asiento a la izquierda del repartidor. Si tienes una carta del palo que ha salido, tienes que jugarla; si no tienes ninguna, puedes tirar lo que quieras, incluido el triunfo. Gana la baza quien juega el triunfo más fuerte, si hay alguno en la baza; si no, quien juega la carta más fuerte del palo que salió. Quien gana lleva la siguiente baza.',
+    body: 'Empieza quien está a la derecha del repartidor y el turno continúa en sentido antihorario. Si tienes una carta del palo que ha salido, tienes que jugarla; si no tienes ninguna, puedes tirar lo que quieras, incluido el triunfo. Gana la baza quien juega el triunfo más fuerte, si hay alguno en la baza; si no, quien juega la carta más fuerte del palo que salió. Quien gana lleva la siguiente baza.',
   },
   {
     title: 'Puntuación',

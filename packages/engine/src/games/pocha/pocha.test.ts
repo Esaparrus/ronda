@@ -5,7 +5,7 @@ import { getPlayerView, getTableView } from './views.ts';
 import { maxRoundSize, totalRounds, roundSizeFor } from './rounds.ts';
 import { resolveTrick, fuerza } from './trick.ts';
 import { buildPochaDeck, POCHA_DECK_SIZE } from './deck.ts';
-import { activePlayers, type PochaState } from './state.ts';
+import { activePlayers, nextActiveSeat, type PochaState } from './state.ts';
 import { deepFreeze } from '../../core/freeze.ts';
 
 const DEFAULT_CFG = PochaConfigSchema.parse({});
@@ -20,6 +20,15 @@ const FOUR_PLAYERS = [
 function newGame(seed = 'test-1', config = DEFAULT_CFG): PochaState {
   return createInitialState({ config, players: FOUR_PLAYERS, seed, roomCode: 'TEST' });
 }
+
+describe('sentido de juego', () => {
+  it('empieza a la derecha del repartidor y avanza en sentido antihorario', () => {
+    const state = newGame('direction');
+    expect(state.dealerSeat).toBe(0);
+    expect(state.turnSeat).toBe(3);
+    expect(nextActiveSeat(state, 3)).toBe(2);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Golden test 1 (§9.11): pirámide de rondas
@@ -138,14 +147,14 @@ describe('regla del enganche (§9.4, golden tests 2/3)', () => {
       phase: 'bidding',
       roundSize,
       dealerSeat,
-      turnSeat: (dealerSeat + 1) % 4,
+      turnSeat: (dealerSeat - 1 + 4) % 4,
       players: base.players.map((p) => ({ ...p, bid: null })),
     };
   }
 
   it('test 2: enganche activo -- ronda de 4 bazas, cantes 1,1,1 → repartidor no puede cantar 1', () => {
     let state = biddingState(4, 3);
-    for (const pid of ['p1', 'p2', 'p3'] as const) {
+    for (const pid of ['p3', 'p2', 'p1'] as const) {
       const r = applyAction(state, pid, { type: 'bid', amount: 1 }, 0);
       expect(r.ok).toBe(true);
       if (r.ok) state = r.value.state;
@@ -163,7 +172,7 @@ describe('regla del enganche (§9.4, golden tests 2/3)', () => {
 
   it('test 3a: enganche sigue aplicando con roundSize=5 (forbidden=2, dentro de rango)', () => {
     let state = biddingState(5, 3);
-    for (const pid of ['p1', 'p2', 'p3'] as const) {
+    for (const pid of ['p3', 'p2', 'p1'] as const) {
       const r = applyAction(state, pid, { type: 'bid', amount: 1 }, 0);
       expect(r.ok).toBe(true);
       if (r.ok) state = r.value.state;
@@ -177,7 +186,7 @@ describe('regla del enganche (§9.4, golden tests 2/3)', () => {
 
   it('test 3b: enganche no aplica si el valor prohibido cae fuera de [0, roundSize]', () => {
     let state = biddingState(4, 3);
-    for (const pid of ['p1', 'p2', 'p3'] as const) {
+    for (const pid of ['p3', 'p2', 'p1'] as const) {
       const r = applyAction(state, pid, { type: 'bid', amount: 2 }, 0);
       expect(r.ok).toBe(true);
       if (r.ok) state = r.value.state;
@@ -191,10 +200,10 @@ describe('regla del enganche (§9.4, golden tests 2/3)', () => {
 
   it('cantar fuera de [0, roundSize] es INVALID_BID (para cualquier jugador)', () => {
     const state = biddingState(4, 3);
-    const tooHigh = applyAction(state, 'p1' as PlayerId, { type: 'bid', amount: 5 }, 0);
+    const tooHigh = applyAction(state, 'p3' as PlayerId, { type: 'bid', amount: 5 }, 0);
     expect(tooHigh.ok).toBe(false);
     if (!tooHigh.ok) expect(tooHigh.code).toBe('INVALID_BID');
-    const negative = applyAction(state, 'p1' as PlayerId, { type: 'bid', amount: -1 }, 0);
+    const negative = applyAction(state, 'p3' as PlayerId, { type: 'bid', amount: -1 }, 0);
     expect(negative.ok).toBe(false);
     if (!negative.ok) expect(negative.code).toBe('INVALID_BID');
   });
@@ -235,7 +244,7 @@ describe('puntuación de la ronda (§9.7, golden test 6)', () => {
     };
 
     for (let trick = 0; trick < 3; trick++) {
-      for (const pid of ['p1', 'p2', 'p3', 'p4'] as const) {
+      for (const pid of ['p1', 'p4', 'p3', 'p2'] as const) {
         const card = hands[pid]?.[trick];
         if (!card) continue;
         const r = applyAction(state, pid as PlayerId, { type: 'playCard', cardId: card }, 0);
@@ -278,7 +287,7 @@ describe('obligación de asistir (§9.5)', () => {
         hand:
           p.playerId === 'p1'
             ? ['oros-1', 'copas-1']
-            : p.playerId === 'p2'
+            : p.playerId === 'p4'
               ? ['oros-2', 'bastos-2']
               : p.playerId === 'p3'
                 ? ['espadas-3', 'espadas-4']
@@ -290,11 +299,16 @@ describe('obligación de asistir (§9.5)', () => {
     if (!lead.ok) return;
     state = lead.value.state;
 
-    const illegal = applyAction(state, 'p2' as PlayerId, { type: 'playCard', cardId: 'bastos-2' }, 0);
+    const illegal = applyAction(
+      state,
+      'p4' as PlayerId,
+      { type: 'playCard', cardId: 'bastos-2' },
+      0,
+    );
     expect(illegal.ok).toBe(false);
     if (!illegal.ok) expect(illegal.code).toBe('MUST_FOLLOW_SUIT');
 
-    const legal = applyAction(state, 'p2' as PlayerId, { type: 'playCard', cardId: 'oros-2' }, 0);
+    const legal = applyAction(state, 'p4' as PlayerId, { type: 'playCard', cardId: 'oros-2' }, 0);
     expect(legal.ok).toBe(true);
   });
 
@@ -315,7 +329,7 @@ describe('obligación de asistir (§9.5)', () => {
         hand:
           p.playerId === 'p1'
             ? ['oros-1', 'copas-1']
-            : p.playerId === 'p2'
+            : p.playerId === 'p4'
               ? ['bastos-2', 'espadas-2'] // sin oros: puede jugar lo que quiera
               : p.playerId === 'p3'
                 ? ['espadas-3', 'espadas-4']
@@ -326,7 +340,7 @@ describe('obligación de asistir (§9.5)', () => {
     expect(lead.ok).toBe(true);
     if (!lead.ok) return;
     state = lead.value.state;
-    const r = applyAction(state, 'p2' as PlayerId, { type: 'playCard', cardId: 'bastos-2' }, 0);
+    const r = applyAction(state, 'p4' as PlayerId, { type: 'playCard', cardId: 'bastos-2' }, 0);
     expect(r.ok).toBe(true);
   });
 });

@@ -16,7 +16,13 @@ import { buildDeck } from '../../core/deck.ts';
 import { shuffle } from '../../core/rng.ts';
 import { resolveTrick } from '../pocha/trick.ts';
 import { cinquilloLegal, escobaValue, sevenHalfTotal, trickPoints } from './rules.ts';
-import { findPlayer, nextActiveSeat, type ClassicPlayer, type ClassicState } from './state.ts';
+import {
+  findPlayer,
+  nextActiveSeat,
+  seatAtTurnOffset,
+  type ClassicPlayer,
+  type ClassicState,
+} from './state.ts';
 
 function cloneState(state: ClassicState): ClassicState {
   return {
@@ -68,7 +74,7 @@ function take(state: ClassicState): CardId | null {
 function dealOneEach(state: ClassicState, count: number, firstSeat: number): void {
   for (let card = 0; card < count; card++) {
     for (let offset = 0; offset < state.players.length; offset++) {
-      const seat = (firstSeat + offset) % state.players.length;
+      const seat = seatAtTurnOffset(state, firstSeat, offset);
       const drawn = take(state);
       if (drawn) state.players[seat]?.hand.push(drawn);
     }
@@ -84,7 +90,8 @@ export function createClassicState(
   },
   gameId: ClassicGameId,
 ): ClassicState {
-  if (input.config.gameId !== gameId) throw new Error(`Config ${input.config.gameId} no corresponde a ${gameId}`);
+  if (input.config.gameId !== gameId)
+    throw new Error(`Config ${input.config.gameId} no corresponde a ${gameId}`);
   const state: ClassicState = {
     version: 0,
     status: 'playing',
@@ -159,7 +166,8 @@ function dealAllForCinquillo(state: ClassicState, firstSeat: number): void {
     if (card) state.players[seat]?.hand.push(card);
     seat = nextActiveSeat(state, seat) ?? firstSeat;
   }
-  state.turnSeat = state.players.find((player) => player.hand.includes('oros-5'))?.seat ?? firstSeat;
+  state.turnSeat =
+    state.players.find((player) => player.hand.includes('oros-5'))?.seat ?? firstSeat;
 }
 
 function dealSieteRound(state: ClassicState, bankerSeat: number): void {
@@ -247,7 +255,12 @@ function playTrickCard(
   const lead = next.currentTrick[0];
   const leadParsed = lead ? parseCardId(lead.cardId) : null;
   if (!leadParsed?.ok) return err('INTERNAL');
-  const winnerSeat = resolveTrick(next.currentTrick, leadParsed.value.suit, next.trumpSuit, 'brisca');
+  const winnerSeat = resolveTrick(
+    next.currentTrick,
+    leadParsed.value.suit,
+    next.trumpSuit,
+    'brisca',
+  );
   const winner = next.players[winnerSeat];
   if (!winner) return err('INTERNAL');
   const wonCards = next.currentTrick.map((card) => card.cardId);
@@ -291,7 +304,8 @@ function autoSing(state: ClassicState, player: ClassicPlayer): void {
 
 function finishTrickGame(state: ClassicState, lastWinnerSeat: number): void {
   for (const player of state.players) {
-    player.score = player.captured.reduce((sum, cardId) => sum + trickPoints(cardId), 0) + player.bonus;
+    player.score =
+      player.captured.reduce((sum, cardId) => sum + trickPoints(cardId), 0) + player.bonus;
     player.revealed = true;
   }
   if (state.gameId === 'tute') {
@@ -348,7 +362,10 @@ function playEscoba(
   return ok({ state: next, events });
 }
 
-function majorityWinners(players: ClassicPlayer[], score: (player: ClassicPlayer) => number): ClassicPlayer[] {
+function majorityWinners(
+  players: ClassicPlayer[],
+  score: (player: ClassicPlayer) => number,
+): ClassicPlayer[] {
   const maximum = Math.max(...players.map(score));
   const winners = players.filter((player) => score(player) === maximum);
   return winners.length === 1 ? winners : [];
@@ -392,7 +409,8 @@ function drawSevenHalf(
     advanceSevenHalf(next, current.seat);
   }
   const events: GameEvent[] = [{ t: 'drewDeck', playerId: current.playerId }];
-  if (next.status === 'gameEnd' && next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
+  if (next.status === 'gameEnd' && next.winnerId)
+    events.push({ t: 'gameOver', winnerId: next.winnerId });
   return ok({ state: next, events });
 }
 
@@ -408,7 +426,8 @@ function standSevenHalf(
   next.version += 1;
   advanceSevenHalf(next, current.seat);
   const events: GameEvent[] = [];
-  if (next.status === 'gameEnd' && next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
+  if (next.status === 'gameEnd' && next.winnerId)
+    events.push({ t: 'gameOver', winnerId: next.winnerId });
   return ok({ state: next, events });
 }
 
@@ -419,7 +438,7 @@ function advanceSevenHalf(state: ClassicState, fromSeat: number): void {
     return;
   }
   for (let offset = 1; offset <= state.players.length; offset++) {
-    const seat = (fromSeat + offset) % state.players.length;
+    const seat = seatAtTurnOffset(state, fromSeat, offset);
     if (seat === bankerSeat) continue;
     const candidate = state.players[seat];
     if (candidate && !candidate.left && !candidate.stood && !candidate.bust) {
@@ -456,7 +475,7 @@ function scoreSevenHalfRound(state: ClassicState): void {
     return;
   }
   state.round += 1;
-  dealSieteRound(state, (bankerSeat + 1) % state.players.length);
+  dealSieteRound(state, nextActiveSeat(state, bankerSeat) ?? bankerSeat);
 }
 
 function playCinquillo(

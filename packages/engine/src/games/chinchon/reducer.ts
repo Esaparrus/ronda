@@ -117,10 +117,10 @@ export function createInitialState(input: {
 /**
  * Reparte una ronda nueva sobre `state` (lo clona). §5.2.
  * - Baraja el mazo completo con el RNG del estado.
- * - 7 cartas a cada jugador activo, una a una, desde (dealerSeat+1) saltando
+ * - 7 cartas a cada jugador activo, una a una, desde (dealerSeat-1) saltando
  *   eliminados/abandonados.
  * - 1 carta al descarte. Resto al mazo.
- * - Empieza el jugador a la izquierda del repartidor.
+ * - Empieza el jugador a la derecha del repartidor.
  */
 export function dealRound(s: ChinchonState): ChinchonState {
   const next = cloneState(s);
@@ -165,7 +165,7 @@ export function dealRound(s: ChinchonState): ChinchonState {
   }
   next.deck = pool;
 
-  // Empieza el jugador a la izquierda del repartidor (mismo orden[0]).
+  // Empieza el jugador a la derecha del repartidor (mismo order[0]).
   const firstSeat = order[0] ?? null;
   next.turnSeat = firstSeat;
   next.turnPhase = firstSeat === null ? null : 'draw';
@@ -173,12 +173,12 @@ export function dealRound(s: ChinchonState): ChinchonState {
   return next;
 }
 
-/** Orden de reparto: asientos activos empezando en (dealerSeat+1) % n. */
+/** Orden antihorario de reparto: empieza a la derecha del repartidor. */
 function dealOrder(state: ChinchonState): number[] {
   const n = state.players.length;
   const out: number[] = [];
   for (let i = 1; i <= n; i++) {
-    const seat = (state.dealerSeat + i) % n;
+    const seat = (state.dealerSeat - i + n) % n;
     const p = state.players[seat];
     if (p && !p.eliminated && !p.left) out.push(seat);
   }
@@ -516,7 +516,8 @@ function endRound(
     let delta = sol.deadwood;
     if (p.playerId === closerId) {
       // El que cierra: si 0 puntos, dryCloseBonus (por defecto -10).
-      if (chinchon) delta = -25; // chinchón sin endGame: -25 (§5.7)
+      if (chinchon)
+        delta = -25; // chinchón sin endGame: -25 (§5.7)
       else if (sol.deadwood === 0) delta = next.config.dryCloseBonus;
       else delta = sol.deadwood;
     }
