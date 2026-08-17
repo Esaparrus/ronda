@@ -316,12 +316,12 @@ function MusVariants({ config, setConfig }: MusVariantsProps) {
 
       <SegmentedControl
         legend="Ocho reyes"
-        helperText="Los Treses valen como Rey y los Doses como As."
+        helperText="Variante: Tres = Rey y Dos = As. Con ella, un As y un Dos forman pareja."
         value={config.ochoReyes}
         onChange={(v) => set('ochoReyes', v)}
         options={[
-          { value: true, label: 'Sí' },
           { value: false, label: 'No' },
+          { value: true, label: 'Sí' },
         ]}
       />
 

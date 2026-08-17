@@ -178,6 +178,7 @@ function buildMusLobbyCommon(room: Room): MusCommonView {
     phase: 'reparto',
     lance: null,
     bet: null,
+    musConsultingTeam: null,
     musSaid: [],
     paresDeclared: [],
     juegoDeclared: [],
@@ -365,6 +366,7 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
         pares: null,
         juego: { suma: 0, tiene: false },
         minEnvite: null,
+        musConsultation: null,
         availableActions: [],
       },
     };
@@ -508,11 +510,7 @@ export function broadcastToast(
  * (que es donde más gracia tiene) y el propio autor: así todos ven lo mismo
  * en el mismo momento y el emisor no tiene que pintar nada por su cuenta.
  */
-export function broadcastReaction(
-  io: TypedIoServer,
-  room: Room,
-  payload: ReactionPayload,
-): void {
+export function broadcastReaction(io: TypedIoServer, room: Room, payload: ReactionPayload): void {
   for (const p of room.players.values()) {
     if (p.socketId) io.to(p.socketId).emit('reaction', payload);
   }
@@ -522,10 +520,7 @@ export function broadcastReaction(
 }
 
 /** Difunde el estado de conexión de los jugadores. */
-export function broadcastConnection(
-  io: TypedIoServer,
-  room: Room,
-): void {
+export function broadcastConnection(io: TypedIoServer, room: Room): void {
   const payload = {
     players: room.playersBySeat().map((p) => ({
       playerId: p.playerId,

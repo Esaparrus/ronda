@@ -27,16 +27,18 @@ const PHASE_LABEL: Record<string, string> = {
   reparto: 'Esperando el reparto',
   mus: '¿Mus?',
   descarte: 'Descarte',
-  declararPares: '¿Pares?',
-  declararJuego: '¿Juego?',
   recuento: 'Recuento',
 };
 
 export function MusMesaGameBoard({ view }: MusMesaGameBoardProps) {
+  const consultingTeam =
+    view.config.modo === 'online' && view.phase === 'mus' ? view.musConsultingTeam : null;
   const titulo =
-    view.phase === 'lance' && view.lance
-      ? (LANCE_LABEL[view.lance] ?? '')
-      : (PHASE_LABEL[view.phase] ?? '');
+    consultingTeam !== null
+      ? `Decide la pareja ${consultingTeam === 0 ? 'A' : 'B'}`
+      : view.phase === 'lance' && view.lance
+        ? (LANCE_LABEL[view.lance] ?? '')
+        : (PHASE_LABEL[view.phase] ?? '');
 
   return (
     <main className="flex min-h-dvh flex-1 items-center justify-center p-6">
@@ -49,6 +51,7 @@ export function MusMesaGameBoard({ view }: MusMesaGameBoardProps) {
             const marks: string[] = [];
             if (p.seat === view.manoSeat) marks.push('mano');
             if (p.seat === view.postreSeat) marks.push('postre');
+            if (consultingTeam === p.teamIndex) marks.push('hablando');
             if (view.phase === 'mus' && view.musSaid[p.seat] === true) marks.push('mus');
             if (view.phase === 'mus' && view.musSaid[p.seat] === false) marks.push('corta');
             if (view.paresDeclared[p.seat] === true) marks.push('pares');

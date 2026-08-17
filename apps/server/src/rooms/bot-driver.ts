@@ -120,6 +120,31 @@ function nextBotTurn(room: Room): BotTurn | null {
     return null;
   }
 
+  // En la consulta online de Mus actúa una pareja a la vez y `turnSeat` es
+  // null a propósito: ambos compañeros pueden responder. Buscamos el primer
+  // robot de la pareja activa que todavía tenga una frase o decisión legal.
+  if (
+    room.status === 'playing' &&
+    state.gameId === 'mus' &&
+    state.phase === 'mus' &&
+    state.config.modo === 'online' &&
+    state.musConsultingTeam !== null
+  ) {
+    const module = GAMES.mus;
+    if (!module) return null;
+    const activeBot = room.playersBySeat().find((runtime) => {
+      if (!runtime.isBot) return false;
+      const player = state.players.find((candidate) => candidate.playerId === runtime.playerId);
+      if (!player || player.teamIndex !== state.musConsultingTeam) return false;
+      const view = module.getPlayerView(state, runtime.playerId);
+      if (view.kind !== 'player') return false;
+      return view.me.availableActions.some(
+        (action) => action === 'musSignal' || action === 'mus' || action === 'noMus',
+      );
+    });
+    return activeBot ? { playerId: activeBot.playerId, kind: 'action' } : null;
+  }
+
   if (room.status === 'playing') {
     const seat = state.turnSeat;
     if (seat === null) return null;

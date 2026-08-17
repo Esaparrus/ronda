@@ -19,6 +19,7 @@
 import { z } from 'zod';
 import type { CardId, PlayerId, RoomCode } from './ids.ts';
 import type { Suit } from './cards.ts';
+import type { MusPartnerSignal } from './actions.ts';
 import type {
   ClassicConfig,
   ChinchonConfig,
@@ -43,12 +44,7 @@ export type PochaAvailableAction = 'bid' | 'playCard' | 'nextRound';
 /** Los cinco clásicos añadidos como una familia de vistas homogénea. */
 export type ClassicGameId = 'brisca' | 'escoba' | 'sieteymedia' | 'tute' | 'cinquillo';
 export type ClassicPhase = 'trick' | 'capture' | 'draw' | 'banker' | 'layout';
-export type ClassicAvailableAction =
-  | 'playCard'
-  | 'playCapture'
-  | 'drawDeck'
-  | 'stand'
-  | 'pass';
+export type ClassicAvailableAction = 'playCard' | 'playCapture' | 'drawDeck' | 'stand' | 'pass';
 
 /**
  * Jugador público (sin mano). Compartido por ambos juegos: los campos son
@@ -249,8 +245,6 @@ export type MusPhase =
   | 'reparto' // el postre confirma el reparto y el motor sirve las cartas
   | 'mus' // cada uno dice mus o corta (§12.5)
   | 'descarte' // los cuatro dijeron mus: se descarta de 1 a 4 (§12.5)
-  | 'declararPares' // declaración pública antes del lance de pares (§12.6)
-  | 'declararJuego' // declaración pública antes del lance de juego (§12.6)
   | 'lance' // envites del lance en curso (§12.7)
   | 'recuento'; // mano terminada, cartas descubiertas (§12.9)
 
@@ -258,9 +252,8 @@ export type MusAvailableAction =
   | 'repartir'
   | 'mus'
   | 'noMus'
+  | 'musSignal'
   | 'descartar'
-  | 'declararPares'
-  | 'declararJuego'
   | 'paso'
   | 'envidar'
   | 'querer'
@@ -298,11 +291,13 @@ export interface MusCommonView extends CommonViewBase {
   phase: MusPhase;
   lance: MusLance | null; // solo con phase === 'lance'
   bet: MusBet | null;
+  /** Pareja que está deliberando en privado. Solo se usa en modo online. */
+  musConsultingTeam: 0 | 1 | null;
   /** Quién dijo mus en la vuelta en curso, por asiento. null = no le ha tocado. */
   musSaid: (boolean | null)[];
-  /** Declaraciones públicas de pares, por asiento. null = no ha declarado. */
+  /** Resultado público del cálculo de pares, por asiento. null = aún no calculado. */
   paresDeclared: (boolean | null)[];
-  /** Declaraciones públicas de juego, por asiento. null = no ha declarado. */
+  /** Resultado público del cálculo de juego, por asiento. null = aún no calculado. */
   juegoDeclared: (boolean | null)[];
   /** Recuento de la mano. Solo en status 'roundEnd' | 'gameEnd'. */
   handResult: MusHandResult | null;
@@ -318,6 +313,20 @@ export interface MusPlayerViewMe {
   juego: { suma: number; tiene: boolean };
   /** Piedras mínimas que puede envidar ahora mismo, o null si no puede envidar. */
   minEnvite: number | null;
+  /**
+   * Consulta privada de la pareja activa. Nunca existe en la vista del rival
+   * ni en la TableView; las frases no pueden filtrarse por el campo común.
+   */
+  musConsultation: {
+    partnerPlayerId: PlayerId;
+    partnerNick: string;
+    mySignal: MusPartnerSignal | null;
+    partnerSignal: MusPartnerSignal | null;
+    myDecision: boolean | null;
+    partnerDecision: boolean | null;
+    myDelegated: boolean;
+    partnerDelegated: boolean;
+  } | null;
   availableActions: MusAvailableAction[];
 }
 
@@ -469,10 +478,7 @@ export interface EscalaCommonView extends PartyCommonViewBase {
 }
 
 export type PartyCommonView =
-  | OrdenCommonView
-  | ColoresCommonView
-  | MayoriaCommonView
-  | EscalaCommonView;
+  OrdenCommonView | ColoresCommonView | MayoriaCommonView | EscalaCommonView;
 
 export interface OrdenPlayerView extends OrdenCommonView {
   kind: 'player';
@@ -495,10 +501,7 @@ export interface EscalaPlayerView extends EscalaCommonView {
 }
 
 export type PartyPlayerView =
-  | OrdenPlayerView
-  | ColoresPlayerView
-  | MayoriaPlayerView
-  | EscalaPlayerView;
+  OrdenPlayerView | ColoresPlayerView | MayoriaPlayerView | EscalaPlayerView;
 
 export interface OrdenTableView extends OrdenCommonView {
   kind: 'table';
@@ -516,11 +519,7 @@ export interface EscalaTableView extends EscalaCommonView {
   kind: 'table';
 }
 
-export type PartyTableView =
-  | OrdenTableView
-  | ColoresTableView
-  | MayoriaTableView
-  | EscalaTableView;
+export type PartyTableView = OrdenTableView | ColoresTableView | MayoriaTableView | EscalaTableView;
 
 // --- La Ronda --------------------------------------------------------------
 

@@ -9,9 +9,8 @@
 //
 //   mus ──(los cuatro dicen mus)──> descarte ──> mus ──> ...
 //    │
-//    └──(uno corta)──> grande ──> chica ──> declararPares ──> pares
-//                                                              │
-//        recuento <── juego | punto <── declararJuego <────────┘
+//    └──(uno corta)──> grande ──> chica ──> pares ──> juego | punto ──> recuento
+//                                  Pares y juego se deducen de las cartas.
 //
 // Fuera de alcance del motor (§12.11), igual que en Chinchón y Pocha: la
 // suspensión de la partida cuando alguien abandona. `MusPlayer.left` existe
@@ -21,6 +20,7 @@ import {
   type GameAction,
   type GameEvent,
   type MusLance,
+  type MusPartnerSignal,
   type PlayerId,
   type Result,
   ok,
@@ -41,6 +41,7 @@ import {
   type MusState,
   findPlayer,
   isPlayerTurn,
+  otherTeam,
   postreSeat,
   seatsFromMano,
   teamOfSeat,
@@ -98,7 +99,9 @@ export function createInitialState(input: {
     // dice "exactamente 4, ni uno más ni uno menos" y `config.maxPlayers` ya
     // lo fija en 4, así que el servidor nunca debería llegar aquí con otro
     // número. Mismo criterio que `resolveTrick` de Pocha ante una baza vacía.
-    throw new Error(`mus: se necesitan exactamente ${MUS_PLAYERS} jugadores, llegaron ${players.length}`);
+    throw new Error(
+      `mus: se necesitan exactamente ${MUS_PLAYERS} jugadores, llegaron ${players.length}`,
+    );
   }
   const playersSorted = [...players].sort((a, b) => a.seat - b.seat);
 
@@ -121,6 +124,7 @@ export function createInitialState(input: {
     spoken: [false, false, false, false],
     bet: null,
     lances: [],
+    musConsultingTeam: null,
     turnSeat: null,
     players: playersSorted.map((p) => ({
       playerId: p.playerId,
@@ -130,6 +134,8 @@ export function createInitialState(input: {
       left: false,
       hand: [],
       musSaid: null,
+      musSignal: null,
+      musDelegated: false,
       discarded: false,
       paresDeclared: null,
       juegoDeclared: null,
@@ -187,8 +193,7 @@ export function dealHand(s: MusState): MusState {
   next.bet = null;
   next.spoken = next.players.map(() => false);
   next.handResult = null;
-  next.phase = 'mus';
-  next.turnSeat = next.manoSeat;
+  beginMusRound(next);
 
   return next;
 }
@@ -230,12 +235,10 @@ export function applyAction(
       return applyMus(state, playerId, true, events);
     case 'noMus':
       return applyMus(state, playerId, false, events);
+    case 'musSignal':
+      return applyMusSignal(state, playerId, action.signal, events);
     case 'descartar':
       return applyDescartar(state, playerId, action.cardIds, events);
-    case 'declararPares':
-      return applyDeclarar(state, playerId, 'pares', action.tiene, events);
-    case 'declararJuego':
-      return applyDeclarar(state, playerId, 'juego', action.tiene, events);
     case 'paso':
       return applyPaso(state, playerId, events);
     case 'envidar':
@@ -271,6 +274,100 @@ function applyRepartir(
 // Fase de mus y descarte (§12.5)
 // ---------------------------------------------------------------------------
 
+/** Abre una vuelta de mus individual (presencial) o por parejas (online). */
+function beginMusRound(state: MusState): void {
+  state.phase = 'mus';
+  for (const player of state.players) {
+    player.musSaid = null;
+    player.musSignal = null;
+    player.musDelegated = false;
+  }
+
+  if (state.config.modo === 'online') {
+    state.musConsultingTeam = teamOfSeat(state.manoSeat);
+    // La pareja del mano decide simultáneamente; no existe un asiento
+    // individual con la palabra mientras dura la consulta privada.
+    state.turnSeat = null;
+  } else {
+    state.musConsultingTeam = null;
+    state.turnSeat = state.manoSeat;
+  }
+}
+
+function clearMusSignals(state: MusState): void {
+  state.musConsultingTeam = null;
+  for (const player of state.players) {
+    player.musSignal = null;
+    player.musDelegated = false;
+  }
+}
+
+/**
+ * Cierra con mus la consulta de una pareja. La pareja mano cede la palabra a
+ * la rival; la segunda pareja abre el descarte.
+ */
+function completeOnlineTeamMus(state: MusState, teamIndex: 0 | 1, events: GameEvent[]): MusState {
+  for (const player of state.players) {
+    if (player.teamIndex === teamIndex) player.musSaid = true;
+  }
+  events.push({ t: 'musTeamDecided', teamIndex, mus: true });
+
+  const manoTeam = teamOfSeat(state.manoSeat);
+  if (teamIndex === manoTeam) {
+    state.musConsultingTeam = otherTeam(teamIndex);
+    state.turnSeat = null;
+    return state;
+  }
+
+  state.phase = 'descarte';
+  state.turnSeat = state.manoSeat;
+  clearMusSignals(state);
+  for (const player of state.players) player.discarded = false;
+  return state;
+}
+
+function applyMusSignal(
+  state: MusState,
+  playerId: PlayerId,
+  signal: MusPartnerSignal,
+  events: GameEvent[],
+): Result<{ state: MusState; events: GameEvent[] }> {
+  if (state.status !== 'playing' || state.phase !== 'mus') return err('NOT_IN_MUS_PHASE');
+  if (state.config.modo !== 'online' || state.musConsultingTeam === null) {
+    return err('INVALID_ACTION');
+  }
+
+  const player = findPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.teamIndex !== state.musConsultingTeam) return err('NOT_YOUR_TEAM_TURN');
+  if (player.musSaid !== null || player.musSignal !== null || player.musDelegated) {
+    return err('INVALID_ACTION');
+  }
+
+  const partner = state.players.find(
+    (candidate) => candidate.teamIndex === player.teamIndex && candidate.playerId !== playerId,
+  );
+  if (!partner) return err('INVALID_ACTION');
+  // Dos "Decide tú" dejarían la mano sin una decisión posible.
+  if (signal === 'decideTu' && partner.musDelegated) return err('INVALID_ACTION');
+
+  const next = bump(state);
+  const nextPlayer = findPlayer(next, playerId);
+  const nextPartner = next.players.find(
+    (candidate) => candidate.teamIndex === player.teamIndex && candidate.playerId !== playerId,
+  );
+  if (!nextPlayer || !nextPartner) return err('INVALID_ACTION');
+
+  nextPlayer.musSignal = signal;
+  if (signal === 'decideTu') {
+    nextPlayer.musDelegated = true;
+    if (nextPartner.musSaid === true) {
+      return ok({ state: completeOnlineTeamMus(next, player.teamIndex, events), events });
+    }
+  }
+  return ok({ state: next, events });
+}
+
 function applyMus(
   state: MusState,
   playerId: PlayerId,
@@ -279,6 +376,39 @@ function applyMus(
 ): Result<{ state: MusState; events: GameEvent[] }> {
   if (state.status !== 'playing') return err('INVALID_ACTION');
   if (state.phase !== 'mus') return err('NOT_IN_MUS_PHASE');
+
+  if (state.config.modo === 'online') {
+    const consultingTeam = state.musConsultingTeam;
+    if (consultingTeam === null) return err('INVALID_ACTION');
+    const current = findPlayer(state, playerId);
+    if (!current) return err('PLAYER_NOT_IN_ROOM');
+    if (current.teamIndex !== consultingTeam) return err('NOT_YOUR_TEAM_TURN');
+    if (current.musSaid !== null || current.musDelegated) return err('INVALID_ACTION');
+
+    const next = bump(state);
+    const player = findPlayer(next, playerId);
+    if (!player) return err('INVALID_ACTION');
+    player.musSaid = wantsMus;
+
+    // Basta con que uno de los dos corte. La pareja rival solo recibe esta
+    // decisión final, nunca las frases ni el voto parcial del compañero.
+    if (!wantsMus) {
+      events.push({ t: 'musTeamDecided', teamIndex: consultingTeam, mus: false });
+      clearMusSignals(next);
+      return ok({ state: beginLance(next, 'grande', events), events });
+    }
+
+    const partner = next.players.find(
+      (candidate) =>
+        candidate.teamIndex === consultingTeam && candidate.playerId !== player.playerId,
+    );
+    if (!partner) return err('INVALID_ACTION');
+    if (partner.musSaid === true || partner.musDelegated) {
+      return ok({ state: completeOnlineTeamMus(next, consultingTeam, events), events });
+    }
+    return ok({ state: next, events });
+  }
+
   if (!isPlayerTurn(state, playerId)) return err('NOT_YOUR_TURN');
 
   const seat = state.turnSeat;
@@ -348,65 +478,10 @@ function applyDescartar(
 
   // "Vuelve a empezar el punto 1": otra vuelta de mus (§12.5.2).
   for (const p of next.players) {
-    p.musSaid = null;
     p.discarded = false;
   }
-  next.phase = 'mus';
-  next.turnSeat = next.manoSeat;
+  beginMusRound(next);
   return ok({ state: next, events });
-}
-
-// ---------------------------------------------------------------------------
-// Declaraciones de pares y juego (§12.6.3, §12.6.4)
-// ---------------------------------------------------------------------------
-
-function applyDeclarar(
-  state: MusState,
-  playerId: PlayerId,
-  which: 'pares' | 'juego',
-  tiene: boolean,
-  events: GameEvent[],
-): Result<{ state: MusState; events: GameEvent[] }> {
-  const expected = which === 'pares' ? 'declararPares' : 'declararJuego';
-  if (state.status !== 'playing') return err('INVALID_ACTION');
-  if (state.phase !== expected) return err('INVALID_ACTION');
-  if (!isPlayerTurn(state, playerId)) return err('NOT_YOUR_TURN');
-
-  const seat = state.turnSeat;
-  if (seat === null) return err('INVALID_ACTION');
-  const player = state.players[seat];
-  if (!player) return err('INVALID_ACTION');
-
-  // La declaración es pública pero no es opinable: la verdad está en las
-  // cartas y el motor es la autoridad (§2, "el cliente nunca decide nada").
-  const real =
-    which === 'pares'
-      ? paresOf(player.hand, state.config.ochoReyes) !== null
-      : tieneJuego(juegoSuma(player.hand));
-  if (tiene !== real) return err('FALSE_DECLARATION');
-
-  const next = bump(state);
-  const np = next.players[seat];
-  if (!np) return err('INVALID_ACTION');
-  if (which === 'pares') np.paresDeclared = tiene;
-  else np.juegoDeclared = tiene;
-  events.push({ t: 'declaracion', playerId, lance: which, tiene });
-
-  const pending = seatsFromMano(next).find((s) => {
-    const p = next.players[s];
-    if (!p) return false;
-    return (which === 'pares' ? p.paresDeclared : p.juegoDeclared) === null;
-  });
-  if (pending !== undefined) {
-    next.turnSeat = pending;
-    return ok({ state: next, events });
-  }
-
-  if (which === 'pares') return ok({ state: beginLance(next, 'pares', events), events });
-
-  // Si NADIE tiene juego, ese lance no existe y se juega al punto (§12.6 bis).
-  const hayJuego = next.players.some((p) => !p.left && p.juegoDeclared === true);
-  return ok({ state: beginLance(next, hayJuego ? 'juego' : 'punto', events), events });
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +494,7 @@ function applyDeclarar(
  * tiene una pareja (se lo lleva sin comparación).
  */
 function beginLance(s: MusState, lance: MusLance, events: GameEvent[]): MusState {
+  clearMusSignals(s);
   s.phase = 'lance';
   s.lance = lance;
   s.bet = null;
@@ -432,9 +508,16 @@ function beginLance(s: MusState, lance: MusLance, events: GameEvent[]): MusState
       return afterLance(s, lance, events);
     }
     const first = seats[0];
-    const onlyOneTeam = first !== undefined && seats.every((x) => teamOfSeat(x) === teamOfSeat(first));
+    const onlyOneTeam =
+      first !== undefined && seats.every((x) => teamOfSeat(x) === teamOfSeat(first));
     if (onlyOneTeam) {
-      s.lances.push({ lance, outcome: 'soloUna', piedras: 1, team: teamOfSeat(first), paid: false });
+      s.lances.push({
+        lance,
+        outcome: 'soloUna',
+        piedras: 1,
+        team: teamOfSeat(first),
+        paid: false,
+      });
       return afterLance(s, lance, events);
     }
   }
@@ -444,27 +527,47 @@ function beginLance(s: MusState, lance: MusLance, events: GameEvent[]): MusState
   return s;
 }
 
+/** Publica de una vez la verdad que ya conoce el motor por las cuatro manos. */
+function declareAutomatically(
+  state: MusState,
+  which: 'pares' | 'juego',
+  events: GameEvent[],
+): void {
+  for (const player of state.players) {
+    const tiene =
+      !player.left &&
+      (which === 'pares'
+        ? paresOf(player.hand, state.config.ochoReyes) !== null
+        : tieneJuego(juegoSuma(player.hand)));
+    if (which === 'pares') player.paresDeclared = tiene;
+    else player.juegoDeclared = tiene;
+    events.push({ t: 'declaracion', playerId: player.playerId, lance: which, tiene });
+  }
+}
+
 /** Pasa al siguiente paso de la mano tras cerrarse un lance (§12.6). */
 function afterLance(s: MusState, lance: MusLance, events: GameEvent[]): MusState {
   if (lance === 'grande') return beginLance(s, 'chica', events);
   if (lance === 'chica') {
-    s.phase = 'declararPares';
-    s.lance = null;
-    s.turnSeat = s.manoSeat;
-    return s;
+    declareAutomatically(s, 'pares', events);
+    return beginLance(s, 'pares', events);
   }
   if (lance === 'pares') {
-    s.phase = 'declararJuego';
-    s.lance = null;
-    s.turnSeat = s.manoSeat;
-    return s;
+    declareAutomatically(s, 'juego', events);
+    const hayJuego = s.players.some((player) => !player.left && player.juegoDeclared === true);
+    return beginLance(s, hayJuego ? 'juego' : 'punto', events);
   }
   // juego o punto: era el último lance, toca el recuento (§12.9).
   return finishHand(s, events);
 }
 
 /** Siguiente asiento de la pareja contraria que juegue este lance (§12.7). */
-function nextEligibleOpponent(s: MusState, lance: MusLance, fromSeat: number, team: 0 | 1): number | null {
+function nextEligibleOpponent(
+  s: MusState,
+  lance: MusLance,
+  fromSeat: number,
+  team: 0 | 1,
+): number | null {
   const seats = eligibleSeats(s, lance);
   const n = s.players.length;
   for (let i = 1; i <= n; i++) {
@@ -522,7 +625,7 @@ function applyEnvidar(
   if (!player) return err('INVALID_ACTION');
   const lance = state.lance;
 
-  // En pares y juego solo envida quien haya declarado que tiene (§12.7).
+  // En pares y juego solo envida quien el motor haya calculado que tiene (§12.7).
   if (lance === 'pares' && player.paresDeclared !== true) return err('CANNOT_BID_WITHOUT_PARES');
   if (lance === 'juego' && player.juegoDeclared !== true) return err('CANNOT_BID_WITHOUT_JUEGO');
 
@@ -725,9 +828,12 @@ function applyNextRound(
   next.bet = null;
   next.lances = [];
   next.spoken = next.players.map(() => false);
+  next.musConsultingTeam = null;
   for (const p of next.players) {
     p.hand = [];
     p.musSaid = null;
+    p.musSignal = null;
+    p.musDelegated = false;
     p.discarded = false;
     p.paresDeclared = null;
     p.juegoDeclared = null;

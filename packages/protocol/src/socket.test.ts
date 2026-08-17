@@ -21,3 +21,34 @@ describe('esquemas de socket de La Ronda', () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe('acciones de consulta de Mus', () => {
+  it('acepta únicamente las frases privadas cerradas', () => {
+    const base = { clientActionId: 'mus-signal-1', expectedVersion: 3 };
+    expect(
+      clientPayloadSchemas['game:action'].safeParse({
+        ...base,
+        action: { type: 'musSignal', signal: 'tePuedoAyudar' },
+      }).success,
+    ).toBe(true);
+    expect(
+      clientPayloadSchemas['game:action'].safeParse({
+        ...base,
+        action: { type: 'musSignal', signal: 'tengo tres reyes' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rechaza las antiguas declaraciones manuales de pares y juego', () => {
+    const base = { clientActionId: 'mus-declaration-1', expectedVersion: 3 };
+
+    for (const type of ['declararPares', 'declararJuego']) {
+      expect(
+        clientPayloadSchemas['game:action'].safeParse({
+          ...base,
+          action: { type, tiene: true },
+        }).success,
+      ).toBe(false);
+    }
+  });
+});

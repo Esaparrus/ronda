@@ -55,6 +55,16 @@ function buildTeams(state: MusState): MusTeam[] {
   });
 }
 
+/** Los votos parciales de la pareja que delibera son privados hasta cerrar. */
+function buildPublicMusSaid(state: MusState): (boolean | null)[] {
+  if (state.config.modo !== 'online' || state.phase !== 'mus' || state.musConsultingTeam === null) {
+    return state.players.map((player) => player.musSaid);
+  }
+  return state.players.map((player) =>
+    player.teamIndex === state.musConsultingTeam ? null : player.musSaid,
+  );
+}
+
 function buildCommon(state: MusState): MusCommonView {
   const turnSeat = state.turnSeat;
   return {
@@ -81,7 +91,8 @@ function buildCommon(state: MusState): MusCommonView {
           isOrdago: state.bet.isOrdago,
         }
       : null,
-    musSaid: state.players.map((p) => p.musSaid),
+    musConsultingTeam: state.musConsultingTeam,
+    musSaid: buildPublicMusSaid(state),
     paresDeclared: state.players.map((p) => p.paresDeclared),
     juegoDeclared: state.players.map((p) => p.juegoDeclared),
     handResult: state.handResult,
@@ -106,6 +117,7 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
       pares: null,
       juego: { suma: 0, tiene: false },
       minEnvite: null,
+      musConsultation: null,
       availableActions: [],
     };
   }
@@ -115,9 +127,26 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
     state.turnSeat !== null &&
     state.turnSeat === player.seat &&
     !player.left;
+  const partner = state.players.find(
+    (candidate) =>
+      candidate.teamIndex === player.teamIndex && candidate.playerId !== player.playerId,
+  );
+  const isConsulting =
+    state.status === 'playing' &&
+    state.phase === 'mus' &&
+    state.config.modo === 'online' &&
+    state.musConsultingTeam === player.teamIndex &&
+    !player.left;
 
   const available: MusAvailableAction[] = [];
   let minEnvite: number | null = null;
+
+  if (isConsulting && player.musSaid === null && !player.musDelegated) {
+    if (player.musSignal === null && partner?.musDelegated !== true) {
+      available.push('musSignal');
+    }
+    available.push('mus', 'noMus');
+  }
 
   if (isMyTurn) {
     switch (state.phase) {
@@ -125,16 +154,10 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
         available.push('repartir');
         break;
       case 'mus':
-        available.push('mus', 'noMus');
+        if (state.config.modo === 'presencial') available.push('mus', 'noMus');
         break;
       case 'descarte':
         available.push('descartar');
-        break;
-      case 'declararPares':
-        available.push('declararPares');
-        break;
-      case 'declararJuego':
-        available.push('declararJuego');
         break;
       case 'lance': {
         const bet = state.bet;
@@ -177,6 +200,19 @@ function buildMe(state: MusState, playerId: PlayerId): MusPlayerViewMe {
     pares: pares ? { kind: pares.kind, piedras: pares.piedras } : null,
     juego: { suma, tiene: tieneJuego(suma) },
     minEnvite,
+    musConsultation:
+      isConsulting && partner
+        ? {
+            partnerPlayerId: partner.playerId,
+            partnerNick: partner.nick,
+            mySignal: player.musSignal,
+            partnerSignal: partner.musSignal,
+            myDecision: player.musSaid,
+            partnerDecision: partner.musSaid,
+            myDelegated: player.musDelegated,
+            partnerDelegated: partner.musDelegated,
+          }
+        : null,
     availableActions: available,
   };
 }

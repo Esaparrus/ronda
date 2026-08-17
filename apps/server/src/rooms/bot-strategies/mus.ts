@@ -224,6 +224,21 @@ function decideLance(view: MusPlayerView, actions: ReadonlySet<string>): GameAct
 export function decideMusAction(view: MusPlayerView): GameAction | null {
   const actions = new Set(view.me.availableActions);
   if (actions.has('repartir')) return { type: 'repartir' };
+  if (actions.has('musSignal') && view.me.musConsultation?.mySignal === null) {
+    const cuts = shouldCutMus(view);
+    const value = overallHandValue(view);
+    const signature = `${view.roomCode}:${view.round}:${view.me.playerId}:${view.me.hand.join(',')}`;
+    const signal = cuts
+      ? 'prefieroCortar'
+      : stableHash(`${signature}:delegar`) % 100 < 12
+        ? 'decideTu'
+        : value >= 0.62
+          ? 'tePuedoAyudar'
+          : value <= 0.4
+            ? 'voyFlojo'
+            : 'porMiMus';
+    return { type: 'musSignal', signal };
+  }
   if (actions.has('noMus') && shouldCutMus(view)) return { type: 'noMus' };
   if (actions.has('mus')) return { type: 'mus' };
   if (actions.has('noMus')) return { type: 'noMus' };
@@ -232,13 +247,6 @@ export function decideMusAction(view: MusPlayerView): GameAction | null {
     const cardIds = decideDiscards(view);
     return cardIds.length > 0 ? { type: 'descartar', cardIds } : null;
   }
-  if (actions.has('declararPares')) {
-    return { type: 'declararPares', tiene: view.me.pares !== null };
-  }
-  if (actions.has('declararJuego')) {
-    return { type: 'declararJuego', tiene: view.me.juego.tiene };
-  }
-
   if (
     actions.has('paso') ||
     actions.has('envidar') ||

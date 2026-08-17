@@ -21,6 +21,7 @@ import { buildMusDeck, MUS_DECK_SIZE } from './deck.ts';
 import { deepFreeze } from '../../core/freeze.ts';
 
 const DEFAULT_CFG = MusConfigSchema.parse({});
+const ONLINE_CFG = MusConfigSchema.parse({ modo: 'online' });
 
 /** Acceso indexado que falla el test en vez de devolver undefined (sin `!`). */
 function at<T>(arr: readonly T[], i: number): T {
@@ -149,6 +150,13 @@ describe('§12.13.4 — Pares', () => {
     const p = paresOf(reyTres, true);
     expect(p?.kind).toBe('duples'); // pareja de reyes + pareja de ases
     expect(paresOf(reyTres, false)).toBeNull(); // sin la variante son cuatro cartas distintas
+  });
+
+  it('la mano de la captura no tiene pares con la regla normal', () => {
+    const hand = ['oros-2', 'copas-1', 'copas-5', 'bastos-7'];
+    expect(DEFAULT_CFG.ochoReyes).toBe(false);
+    expect(paresOf(hand, DEFAULT_CFG.ochoReyes)).toBeNull();
+    expect(paresOf(hand, true)?.kind).toBe('pareja');
   });
 
   it('cuatro iguales son duples y se comparan como dos parejas de esa carta', () => {
@@ -321,7 +329,7 @@ describe('§12.13.9 — el recuento se corta al llegar a 40', () => {
     ['espadas-4', 'bastos-5', 'oros-6', 'copas-7'],
   ];
 
-  /** Juega la mano entera en paso y con las declaraciones que tocan. */
+  /** Juega la mano entera en paso; pares y juego se detectan solos. */
   function manoEnPaso(piedrasIniciales: number[]): MusState {
     let s: MusState = { ...withHands(hands), piedras: [...piedrasIniciales] };
     s = apply(s, 0, { type: 'noMus' });
@@ -331,14 +339,6 @@ describe('§12.13.9 — el recuento se corta al llegar a 40', () => {
       expect(s.lance).toBe(lance);
       for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'paso' });
     }
-
-    // Declaraciones: solo el asiento 0 tiene pares, y solo él tiene juego (31).
-    expect(s.phase).toBe('declararPares');
-    for (let i = 0; i < 4; i++)
-      s = apply(s, turn(s), { type: 'declararPares', tiene: turn(s) === 0 });
-    expect(s.phase).toBe('declararJuego');
-    for (let i = 0; i < 4; i++)
-      s = apply(s, turn(s), { type: 'declararJuego', tiene: turn(s) === 0 });
 
     return s;
   }
@@ -488,11 +488,102 @@ describe('fase de mus y descarte (§12.5)', () => {
   });
 });
 
+describe('consulta privada por parejas en modo online', () => {
+  it('empieza por la pareja del mano y permite actuar a sus dos miembros', () => {
+    const s = newGame('mus-online', ONLINE_CFG);
+    expect(s.phase).toBe('mus');
+    expect(s.turnSeat).toBeNull();
+    expect(s.musConsultingTeam).toBe(0);
+    for (const playerId of ['p0', 'p2']) {
+      expect(getPlayerView(s, playerId).me.availableActions).toEqual(
+        expect.arrayContaining(['musSignal', 'mus', 'noMus']),
+      );
+    }
+    expect(getPlayerView(s, 'p1').me.availableActions).not.toContain('mus');
+    expect(applyAction(s, 'p1', { type: 'mus' }, 0)).toMatchObject({
+      ok: false,
+      code: 'NOT_YOUR_TEAM_TURN',
+    });
+  });
+
+  it('la frase y los votos parciales solo llegan al compañero', () => {
+    let s = newGame('mus-online-private', ONLINE_CFG);
+    s = apply(s, 0, { type: 'musSignal', signal: 'tePuedoAyudar' });
+
+    expect(getPlayerView(s, 'p0').me.musConsultation?.mySignal).toBe('tePuedoAyudar');
+    expect(getPlayerView(s, 'p2').me.musConsultation?.partnerSignal).toBe('tePuedoAyudar');
+    expect(JSON.stringify(getPlayerView(s, 'p1'))).not.toContain('tePuedoAyudar');
+    expect(JSON.stringify(getTableView(s))).not.toContain('tePuedoAyudar');
+
+    s = apply(s, 0, { type: 'mus' });
+    expect(getPlayerView(s, 'p2').me.musConsultation?.partnerDecision).toBe(true);
+    expect(getPlayerView(s, 'p1').musSaid).toEqual([null, null, null, null]);
+    expect(getTableView(s).musSaid).toEqual([null, null, null, null]);
+  });
+
+  it('consulta primero a la pareja mano y después a la rival', () => {
+    let s = newGame('mus-online-order', ONLINE_CFG);
+    s = apply(s, 0, { type: 'mus' });
+    s = apply(s, 2, { type: 'mus' });
+
+    expect(s.phase).toBe('mus');
+    expect(s.musConsultingTeam).toBe(1);
+    expect(getTableView(s).musSaid).toEqual([true, null, true, null]);
+    expect(getPlayerView(s, 'p1').me.availableActions).toContain('musSignal');
+
+    s = apply(s, 1, { type: 'mus' });
+    s = apply(s, 3, { type: 'mus' });
+    expect(s.phase).toBe('descarte');
+    expect(s.musConsultingTeam).toBeNull();
+    expect(s.turnSeat).toBe(s.manoSeat);
+  });
+
+  it('si uno quiere mus y su compañero corta, prevalece no hay mus', () => {
+    let s = newGame('mus-online-cut', ONLINE_CFG);
+    s = apply(s, 0, { type: 'mus' });
+    s = apply(s, 2, { type: 'noMus' });
+    expect(s.phase).toBe('lance');
+    expect(s.lance).toBe('grande');
+    expect(s.musConsultingTeam).toBeNull();
+    expect(s.turnSeat).toBe(s.manoSeat);
+  });
+
+  it('«Decide tú» delega de verdad y no permite una delegación doble', () => {
+    let s = newGame('mus-online-delegate', ONLINE_CFG);
+    s = apply(s, 0, { type: 'musSignal', signal: 'decideTu' });
+    expect(getPlayerView(s, 'p2').me.musConsultation?.partnerDelegated).toBe(true);
+    expect(getPlayerView(s, 'p2').me.availableActions).not.toContain('musSignal');
+    expect(applyAction(s, 'p2', { type: 'musSignal', signal: 'decideTu' }, 0)).toMatchObject({
+      ok: false,
+    });
+
+    s = apply(s, 2, { type: 'mus' });
+    expect(s.musConsultingTeam).toBe(1);
+    expect(s.players.map((player) => player.musSaid)).toEqual([true, null, true, null]);
+  });
+
+  it('después del descarte abre una consulta nueva y limpia las frases', () => {
+    let s = newGame('mus-online-redraw', ONLINE_CFG);
+    s = apply(s, 0, { type: 'musSignal', signal: 'porMiMus' });
+    for (const seat of [0, 2, 1, 3]) s = apply(s, seat, { type: 'mus' });
+    for (let i = 0; i < 4; i++) {
+      const seat = turn(s);
+      s = apply(s, seat, { type: 'descartar', cardIds: [at(at(s.players, seat).hand, 0)] });
+    }
+
+    expect(s.phase).toBe('mus');
+    expect(s.musConsultingTeam).toBe(teamOfSeat(s.manoSeat));
+    expect(s.turnSeat).toBeNull();
+    expect(s.players.map((player) => player.musSignal)).toEqual([null, null, null, null]);
+    expect(s.players.map((player) => player.musDelegated)).toEqual([false, false, false, false]);
+  });
+});
+
 // ---------------------------------------------------------------------------
-// Declaraciones (§12.6.3, §12.6.4)
+// Detección automática de pares y juego (§12.6.3, §12.6.4)
 // ---------------------------------------------------------------------------
 
-describe('declaraciones de pares y juego (§12.6)', () => {
+describe('detección automática de pares y juego (§12.6)', () => {
   const hands = [
     ['oros-12', 'copas-12', 'espadas-10', 'bastos-1'], // pares (reyes), suma 31
     ['oros-4', 'copas-5', 'espadas-6', 'bastos-7'], // ni pares ni juego (22)
@@ -500,8 +591,8 @@ describe('declaraciones de pares y juego (§12.6)', () => {
     ['espadas-4', 'bastos-5', 'oros-6', 'copas-7'],
   ];
 
-  function hastaDeclararPares(): MusState {
-    let s = withHands(hands);
+  function despuesDeChica(customHands: string[][] = hands): MusState {
+    let s = withHands(customHands);
     s = apply(s, 0, { type: 'noMus' });
     for (const _lance of ['grande', 'chica']) {
       for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'paso' });
@@ -509,51 +600,33 @@ describe('declaraciones de pares y juego (§12.6)', () => {
     return s;
   }
 
-  it('mentir en la declaración se rechaza: la verdad está en las cartas', () => {
-    const s = hastaDeclararPares();
-    expect(s.phase).toBe('declararPares');
-    expect(applyAction(s, 'p0', { type: 'declararPares', tiene: false }, 0)).toMatchObject({
-      ok: false,
-      code: 'FALSE_DECLARATION',
-    });
-    const conPares = apply(s, 0, { type: 'declararPares', tiene: true });
-    expect(applyAction(conPares, 'p1', { type: 'declararPares', tiene: true }, 0)).toMatchObject({
-      ok: false,
-      code: 'FALSE_DECLARATION',
-    });
+  it('calcula las cuatro declaraciones sin pedir ninguna acción', () => {
+    const s = despuesDeChica();
+    expect(s.players.map((player) => player.paresDeclared)).toEqual([true, false, false, false]);
+    expect(s.players.map((player) => player.juegoDeclared)).toEqual([true, false, false, false]);
+    expect(getPlayerView(s, 'p0').me.availableActions).not.toContain('declararPares');
+    expect(getPlayerView(s, 'p0').me.availableActions).not.toContain('declararJuego');
+    expect(s.status).toBe('roundEnd');
   });
 
   it('si nadie tiene juego, el lance se sustituye por el punto', () => {
     // Manos sin juego para nadie: se quita el 31 del asiento 0.
     const sinJuego = [['oros-12', 'copas-12', 'espadas-2', 'bastos-3'], ...hands.slice(1)];
-    let s = withHands(sinJuego);
-    s = apply(s, 0, { type: 'noMus' });
-    for (const _lance of ['grande', 'chica']) {
-      for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'paso' });
-    }
-    for (let i = 0; i < 4; i++)
-      s = apply(s, turn(s), { type: 'declararPares', tiene: turn(s) === 0 });
-    for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'declararJuego', tiene: false });
+    const s = despuesDeChica(sinJuego);
+    expect(s.players.map((player) => player.juegoDeclared)).toEqual([false, false, false, false]);
     expect(s.lance).toBe('punto');
   });
 
-  it('solo ofrece envite en pares a quien ha declarado que tiene', () => {
-    let s = withHands([
+  it('solo ofrece envite en pares a quien realmente tiene', () => {
+    const s = despuesDeChica([
       ['oros-12', 'copas-12', 'espadas-10', 'bastos-1'],
       ['oros-11', 'copas-11', 'espadas-6', 'bastos-2'],
       ['oros-4', 'copas-5', 'espadas-6', 'bastos-7'],
       ['copas-4', 'espadas-5', 'bastos-6', 'oros-7'],
     ]);
-    s = apply(s, 0, { type: 'noMus' });
-    for (const _lance of ['grande', 'chica']) {
-      for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'paso' });
-    }
-    for (let i = 0; i < 4; i++) {
-      const seat = turn(s);
-      s = apply(s, seat, { type: 'declararPares', tiene: seat === 0 || seat === 1 });
-    }
 
     expect(s.lance).toBe('pares');
+    expect(s.players.map((player) => player.paresDeclared)).toEqual([true, true, false, false]);
     expect(getPlayerView(s, 'p0').me.availableActions).toContain('envidar');
 
     const turnoSinPares: MusState = { ...s, turnSeat: 2 };
@@ -637,7 +710,7 @@ describe('envites (§12.7)', () => {
     });
   });
 
-  it('en pares solo envida quien ha declarado que tiene', () => {
+  it('en pares solo envida quien tiene', () => {
     // Solo los asientos 0 y 1 tienen pares: hay una pareja de cada bando.
     const conPares = [
       ['oros-12', 'copas-12', 'espadas-7', 'bastos-4'],
@@ -649,10 +722,6 @@ describe('envites (§12.7)', () => {
     s = apply(s, 0, { type: 'noMus' });
     for (const _lance of ['grande', 'chica']) {
       for (let i = 0; i < 4; i++) s = apply(s, turn(s), { type: 'paso' });
-    }
-    for (let i = 0; i < 4; i++) {
-      const seat = turn(s);
-      s = apply(s, seat, { type: 'declararPares', tiene: seat === 0 || seat === 1 });
     }
     expect(s.lance).toBe('pares');
     expect(turn(s)).toBe(0);

@@ -93,7 +93,7 @@ export const MusConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('mus' satisfies GameId).default('mus'),
   maxPlayers: MUS_MAX_PLAYERS.default(4),
   modo: MUS_MODO.default('presencial'),
-  ochoReyes: z.boolean().default(true),
+  ochoReyes: z.boolean().default(false),
   juegos: MUS_JUEGOS.default(1),
   puntoVale: PUNTO_VALE.default(1),
 });
@@ -102,11 +102,7 @@ export type MusConfig = z.infer<typeof MusConfigSchema>;
 
 // --- Clásicos de baraja española -----------------------------------------
 
-const CLASSIC_TWO_TO_FOUR = z.union([
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-]);
+const CLASSIC_TWO_TO_FOUR = z.union([z.literal(2), z.literal(3), z.literal(4)]);
 
 const CLASSIC_TWO_TO_SEVEN = z.union([
   z.literal(2),
@@ -161,11 +157,7 @@ export const CinquilloConfigSchema = CommonGameConfigSchema.extend({
 export type CinquilloConfig = z.infer<typeof CinquilloConfigSchema>;
 
 export type ClassicConfig =
-  | BriscaConfig
-  | EscobaConfig
-  | SieteYMediaConfig
-  | TuteConfig
-  | CinquilloConfig;
+  BriscaConfig | EscobaConfig | SieteYMediaConfig | TuteConfig | CinquilloConfig;
 
 // --- Modos sociales ---------------------------------------------------------
 
@@ -292,12 +284,7 @@ export type LaRondaConfig = z.infer<typeof LaRondaConfigSchema>;
  * (§10.2). Antes de P22 era, en la práctica, un alias de `ChinchonConfig`.
  */
 export type GameConfig =
-  | ChinchonConfig
-  | PochaConfig
-  | MusConfig
-  | ClassicConfig
-  | PartyConfig
-  | LaRondaConfig;
+  ChinchonConfig | PochaConfig | MusConfig | ClassicConfig | PartyConfig | LaRondaConfig;
 
 export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ChinchonConfigSchema,

@@ -40,11 +40,13 @@ export function addPiedras(state: MusState, team: 0 | 1, n: number): void {
 
 /**
  * Asientos que juegan un lance, en orden desde el mano. Pares y juego solo
- * los juegan quienes hayan declarado que tienen (§12.7); grande, chica y
- * punto los juegan los cuatro.
+ * los juegan quienes el motor haya calculado que tienen (§12.7); grande,
+ * chica y punto los juegan los cuatro.
  */
 export function eligibleSeats(state: MusState, lance: MusLance): number[] {
-  const seats = seatsFromMano(state).filter((s) => state.players[s] !== undefined && !state.players[s].left);
+  const seats = seatsFromMano(state).filter(
+    (s) => state.players[s] !== undefined && !state.players[s].left,
+  );
   if (lance === 'pares') return seats.filter((s) => state.players[s]?.paresDeclared === true);
   if (lance === 'juego') return seats.filter((s) => state.players[s]?.juegoDeclared === true);
   return seats;
@@ -84,7 +86,11 @@ function compareSeats(state: MusState, lance: MusLance, a: number, b: number): n
  * ESTRICTAMENTE mejor: así el empate lo gana el primero de la lista, que es
  * exactamente "gana la mano más cercana al mano" (§12.9).
  */
-export function lanceWinnerSeat(state: MusState, lance: MusLance, seats: readonly number[]): number | null {
+export function lanceWinnerSeat(
+  state: MusState,
+  lance: MusLance,
+  seats: readonly number[],
+): number | null {
   let best: number | null = null;
   for (const seat of seats) {
     if (best === null) {

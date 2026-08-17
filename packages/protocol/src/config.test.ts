@@ -57,7 +57,9 @@ describe('GameConfigSchema', () => {
 
   it('acepta los tiempos predefinidos por turno y rechaza otros', () => {
     for (const seconds of [0, 10, 20, 30, 60]) {
-      expect(ChinchonConfigSchema.parse({ turnTimeSeconds: seconds }).turnTimeSeconds).toBe(seconds);
+      expect(ChinchonConfigSchema.parse({ turnTimeSeconds: seconds }).turnTimeSeconds).toBe(
+        seconds,
+      );
     }
     expect(() => ChinchonConfigSchema.parse({ turnTimeSeconds: 45 })).toThrow();
   });
@@ -84,6 +86,7 @@ describe('GameConfigSchema', () => {
 
   it('Mus distingue mesa presencial y partida online', () => {
     expect(MusConfigSchema.parse({}).modo).toBe('presencial');
+    expect(MusConfigSchema.parse({}).ochoReyes).toBe(false);
     expect(MusConfigSchema.parse({ modo: 'online' }).modo).toBe('online');
     expect(() => MusConfigSchema.parse({ modo: 'hibrido' })).toThrow();
   });

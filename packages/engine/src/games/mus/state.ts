@@ -8,7 +8,15 @@
 // Lo que hace a Mus distinto de los otros dos (§12.12): el marcador es de la
 // PAREJA, no del jugador. `piedras`, `juegosWon` y `winnerTeamIndex` van
 // indexados por `teamIndex`, y `MusPlayer` no tiene `score`.
-import type { CardId, MusHandResult, MusLance, MusPhase, PlayerId, RoomCode } from '@ronda/protocol';
+import type {
+  CardId,
+  MusHandResult,
+  MusLance,
+  MusPartnerSignal,
+  MusPhase,
+  PlayerId,
+  RoomCode,
+} from '@ronda/protocol';
 import type { MusConfig } from '@ronda/protocol';
 
 /** Status global de la partida. Sin 'lobby', igual que Chinchón y Pocha:
@@ -64,9 +72,13 @@ export interface MusPlayer {
   left: boolean;
   hand: CardId[];
   musSaid: boolean | null; // en la vuelta de mus en curso; null = no le ha tocado
+  /** Frase privada enviada al compañero durante la consulta online. */
+  musSignal: MusPartnerSignal | null;
+  /** Cedió al compañero la decisión de dar o cortar el mus. */
+  musDelegated: boolean;
   discarded: boolean; // ya descartó en la fase de descarte en curso
-  paresDeclared: boolean | null; // declaración pública (§12.6.3)
-  juegoDeclared: boolean | null; // declaración pública (§12.6.4)
+  paresDeclared: boolean | null; // resultado público calculado por el motor (§12.6.3)
+  juegoDeclared: boolean | null; // resultado público calculado por el motor (§12.6.4)
 }
 
 /** RNG dentro del estado: semilla + contador de llamadas. Serializable. */
@@ -111,6 +123,9 @@ export interface MusState {
   bet: MusBetState | null;
   /** Lances ya cerrados de esta mano, en el orden de §12.6. */
   lances: MusLanceState[];
+
+  /** Pareja que delibera en modo online; null en presencial y fuera del mus. */
+  musConsultingTeam: 0 | 1 | null;
 
   turnSeat: number | null;
   players: MusPlayer[];

@@ -8,6 +8,7 @@ import type {
   MusAvailableAction,
   MusConfig,
   MusLance,
+  MusPartnerSignal,
   MusPhase,
   MusPlayerViewMe,
 } from '@ronda/protocol';
@@ -31,11 +32,11 @@ export interface MusActionBarProps {
   turnPlayerConnected: boolean;
   /** Envite vivo: hay que quererlo, rechazarlo o subirlo. */
   bet: { piedras: number; isOrdago: boolean; ifRejected: number; byTeam: 0 | 1 } | null;
+  musConsultingTeam: 0 | 1 | null;
   onRepartir: () => void;
   onMus: (quiere: boolean) => void;
+  onMusSignal: (signal: MusPartnerSignal) => void;
   onDescartar: () => void;
-  onDeclararPares: () => void;
-  onDeclararJuego: () => void;
   onPaso: () => void;
   onEnvidar: (piedras: number) => void;
   onOrdago: () => void;
@@ -50,20 +51,22 @@ export const LANCE_LABEL: Record<MusLance, string> = {
   punto: 'Punto',
 };
 
-const PARES_LABEL = {
-  duples: 'Duples',
-  medias: 'Medias',
-  pareja: 'Pareja',
-} as const;
-
 const COMPACT_BUTTON = '!min-h-12 !rounded-xl px-3';
+
+export const MUS_SIGNAL_LABEL: Record<MusPartnerSignal, string> = {
+  porMiMus: 'Por mí, mus',
+  prefieroCortar: 'Prefiero cortar',
+  tePuedoAyudar: 'Te puedo ayudar',
+  voyFlojo: 'Voy flojo',
+  decideTu: 'Decide tú',
+};
+
+const MUS_SIGNALS = Object.keys(MUS_SIGNAL_LABEL) as MusPartnerSignal[];
 
 const PHASE_HINT: Record<MusPhase, string> = {
   reparto: 'Reparte cuatro cartas a cada jugador.',
   mus: '¿Mus?',
   descarte: 'Marca las cartas que te quieras quitar.',
-  declararPares: '¿Tienes pares?',
-  declararJuego: '¿Tienes juego?',
   lance: '',
   recuento: 'Contando la mano…',
 };
@@ -194,11 +197,11 @@ export function MusActionBar({
   turnPlayerNick,
   turnPlayerConnected,
   bet,
+  musConsultingTeam,
   onRepartir,
   onMus,
+  onMusSignal,
   onDescartar,
-  onDeclararPares,
-  onDeclararJuego,
   onPaso,
   onEnvidar,
   onOrdago,
@@ -228,6 +231,109 @@ export function MusActionBar({
     </p>
   );
 
+  if (modo === 'online' && phase === 'mus') {
+    const consultation = me.musConsultation;
+    if (!consultation) {
+      return (
+        <div className="action-dock flex shrink-0 flex-col gap-1.5 px-3 py-3 text-center">
+          <p className="text-10 font-semibold uppercase tracking-wider text-humo">
+            Consulta privada
+          </p>
+          <p className="text-14 font-semibold text-hueso">
+            {musConsultingTeam === null
+              ? 'Preparando la decisión'
+              : `${teamLabel(musConsultingTeam)} está decidiendo`}
+          </p>
+          <p className="text-10 text-humo">Sus mensajes solo los ve su compañero.</p>
+        </div>
+      );
+    }
+
+    const canSignal = can('musSignal');
+    const waitingForPartner = consultation.myDecision === true || consultation.myDelegated;
+
+    return (
+      <div className="action-dock flex shrink-0 flex-col gap-2 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-10 font-semibold uppercase tracking-wider text-oro">
+              Consulta privada
+            </p>
+            <p className="truncate text-13 font-semibold text-hueso">
+              Habla con {consultation.partnerNick}
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full border border-verde/60 bg-verde/15 px-2 py-1 text-9 font-semibold uppercase tracking-wide text-hueso">
+            Solo pareja
+          </span>
+        </div>
+
+        {consultation.partnerSignal ? (
+          <p className="rounded-xl border border-oro/50 bg-oro/10 px-3 py-1.5 text-12 text-hueso">
+            <span className="text-humo">{consultation.partnerNick}: </span>
+            {MUS_SIGNAL_LABEL[consultation.partnerSignal]}
+          </p>
+        ) : (
+          <p className="text-center text-10 text-humo">
+            {consultation.partnerDecision === true
+              ? `${consultation.partnerNick} ha dicho mus.`
+              : `Esperando la indicación de ${consultation.partnerNick}.`}
+          </p>
+        )}
+
+        <div>
+          <p className="mb-1 text-center text-10 text-humo">¿Qué le quieres decir?</p>
+          <div className="grid grid-cols-3 gap-1">
+            {MUS_SIGNALS.map((signal) => {
+              const selected = consultation.mySignal === signal;
+              return (
+                <button
+                  key={signal}
+                  type="button"
+                  disabled={!canSignal}
+                  aria-pressed={selected}
+                  onClick={() => onMusSignal(signal)}
+                  className={`min-h-9 rounded-lg border px-1.5 text-[10px] font-semibold leading-tight transition-colors disabled:opacity-45 ${
+                    selected
+                      ? 'border-oro bg-oro/20 text-hueso'
+                      : 'border-linea bg-mesa/70 text-humo hover:border-oro/60 hover:text-hueso'
+                  }`}
+                >
+                  {MUS_SIGNAL_LABEL[signal]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {waitingForPartner ? (
+          <p className="rounded-xl border border-linea bg-mesa/70 px-3 py-2 text-center text-12 text-hueso">
+            {consultation.myDelegated
+              ? `${consultation.partnerNick} decide por los dos.`
+              : `Has dicho mus. Esperando a ${consultation.partnerNick}.`}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {can('mus') ? (
+              <Button onClick={() => onMus(true)} className={`w-full ${COMPACT_BUTTON}`}>
+                Confirmar mus
+              </Button>
+            ) : null}
+            {can('noMus') ? (
+              <Button
+                variant="danger"
+                onClick={() => onMus(false)}
+                className={`w-full ${COMPACT_BUTTON}`}
+              >
+                No hay mus
+              </Button>
+            ) : null}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (!isMyTurn) {
     return (
       <div className="action-dock flex shrink-0 flex-col gap-1.5 px-3 py-2 text-center">
@@ -248,6 +354,73 @@ export function MusActionBar({
                 : `${formatMusAmount(bet.piedras)} · ${teamLabel(bet.byTeam)}`}
             </span>
           </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (phase === 'lance' && bet !== null) {
+    const bettingTeam = teamLabel(bet.byTeam);
+    return (
+      <div className="action-dock flex shrink-0 flex-col gap-2 px-3 py-2">
+        {liveRegion}
+        <div className="rounded-xl border border-oro/60 bg-mesa/75 px-3 py-2.5">
+          <p className="text-10 font-semibold uppercase tracking-wider text-humo">
+            {bettingTeam} te envida
+          </p>
+          <div className="mt-0.5 flex items-end justify-between gap-3">
+            <p className="shrink-0 font-display text-20 font-semibold text-hueso">
+              {bet.isOrdago ? 'Órdago' : formatMusAmount(bet.piedras)}
+            </p>
+            <p className="max-w-[52%] text-right text-11 leading-snug text-humo">
+              {bet.isOrdago
+                ? 'Está en juego la partida entera.'
+                : `Si no quieres, ${bettingTeam} gana ${formatMusAmount(bet.ifRejected)}.`}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {can('querer') ? (
+            <Button onClick={() => onQuerer(true)} className={`w-full ${COMPACT_BUTTON}`}>
+              Quiero
+            </Button>
+          ) : null}
+          {can('noQuerer') ? (
+            <Button
+              variant="ghost"
+              onClick={() => onQuerer(false)}
+              className={`w-full ${COMPACT_BUTTON}`}
+            >
+              No quiero
+            </Button>
+          ) : null}
+        </div>
+
+        {canEnvido || canOrdago ? (
+          <details className="group rounded-xl border border-linea bg-mesa/45">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-12 font-semibold text-hueso">
+              <span>¿Quieres subir la apuesta?</span>
+              <span className="shrink-0 text-oro group-open:hidden">Ver opciones</span>
+              <span className="hidden shrink-0 text-oro group-open:inline">Ocultar</span>
+            </summary>
+            <div className="border-t border-linea p-2">
+              {canEnvido ? (
+                <MusEnviteControls
+                  key={`subir-${me.minEnvite ?? 2}`}
+                  minEnvite={me.minEnvite ?? 2}
+                  canOrdago={canOrdago}
+                  actionLabel="Subir"
+                  onConfirm={onEnvidar}
+                  onOrdago={onOrdago}
+                />
+              ) : (
+                <Button variant="danger" onClick={onOrdago} className={`w-full ${COMPACT_BUTTON}`}>
+                  Órdago
+                </Button>
+              )}
+            </div>
+          </details>
         ) : null}
       </div>
     );
@@ -303,18 +476,6 @@ export function MusActionBar({
         </Button>
       ) : null}
 
-      {phase === 'declararPares' ? (
-        <Button onClick={onDeclararPares} className={`w-full ${COMPACT_BUTTON}`}>
-          {me.pares ? `Tengo pares · ${PARES_LABEL[me.pares.kind]}` : 'No tengo pares'}
-        </Button>
-      ) : null}
-
-      {phase === 'declararJuego' ? (
-        <Button onClick={onDeclararJuego} className={`w-full ${COMPACT_BUTTON}`}>
-          {me.juego.tiene ? `Tengo juego · ${me.juego.suma}` : 'No tengo juego'}
-        </Button>
-      ) : null}
-
       {phase === 'lance' && bet === null ? (
         <>
           <p className="text-center text-10 text-humo">Sin envite · elige la cantidad</p>
@@ -340,58 +501,6 @@ export function MusActionBar({
               ) : null}
             </div>
           )}
-        </>
-      ) : null}
-
-      {phase === 'lance' && bet !== null ? (
-        <>
-          <div className="flex items-center justify-center gap-2 rounded-lg border border-oro/60 bg-mesa px-3 py-1.5 text-center">
-            <span className="text-10 uppercase tracking-wider text-humo">Envite</span>
-            <span className="text-14 font-semibold text-hueso">
-              {bet.isOrdago ? 'Órdago' : formatMusAmount(bet.piedras)}
-            </span>
-            <span className="text-10 text-humo">
-              {bet.isOrdago
-                ? '· juego entero'
-                : `· no querer da ${formatMusAmount(bet.ifRejected)} a ${teamLabel(bet.byTeam)}`}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {can('querer') ? (
-              <Button onClick={() => onQuerer(true)} className={`w-full ${COMPACT_BUTTON}`}>
-                Quiero
-              </Button>
-            ) : null}
-            {can('noQuerer') ? (
-              <Button
-                variant="ghost"
-                onClick={() => onQuerer(false)}
-                className={`w-full ${COMPACT_BUTTON}`}
-              >
-                No quiero
-              </Button>
-            ) : null}
-          </div>
-
-          {canEnvido || canOrdago ? (
-            <div className="border-t border-linea pt-2">
-              {canEnvido ? (
-                <MusEnviteControls
-                  key={`subir-${me.minEnvite ?? 2}`}
-                  minEnvite={me.minEnvite ?? 2}
-                  canOrdago={canOrdago}
-                  actionLabel="Subir"
-                  onConfirm={onEnvidar}
-                  onOrdago={onOrdago}
-                />
-              ) : canOrdago ? (
-                <Button variant="danger" onClick={onOrdago} className={`w-full ${COMPACT_BUTTON}`}>
-                  Órdago
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
         </>
       ) : null}
     </div>

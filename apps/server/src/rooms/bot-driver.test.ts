@@ -289,12 +289,12 @@ describe('BotDriver', () => {
 
       expect(room.status).toBe('roundEnd');
       expect(room.state?.status).toBe('roundEnd');
-      expect(room.state?.version).toBeGreaterThan(10);
 
       // El humano confirma primero; después los tres robots confirman uno a
       // uno y dejan preparada la siguiente mano sin intervención adicional.
       const roundEnd = room.state;
       if (!roundEnd || roundEnd.gameId !== 'mus') throw new Error('sin fin de mano');
+      expect(roundEnd.handResult).not.toBeNull();
       const confirmed = manager.applyAction({
         roomCode: room.code,
         playerId: created.value.playerId,
@@ -314,6 +314,61 @@ describe('BotDriver', () => {
       if (!nextHand || nextHand.gameId !== 'mus') throw new Error('sin siguiente mano de Mus');
       expect(nextHand.status).toBe('playing');
       expect(nextHand.phase).toBe('reparto');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('deja actuar al robot durante la consulta online aunque no haya turnSeat', () => {
+    vi.useFakeTimers();
+    try {
+      const manager = new RoomManager();
+      const created = manager.createRoom({
+        gameId: 'mus',
+        config: { ...DEFAULT_MUS_CONFIG, modo: 'online' },
+        nick: 'Ana',
+        now: NOW,
+      });
+      if (!created.ok) throw new Error('no se pudo crear la sala');
+      for (let i = 0; i < 3; i++) {
+        const bot = manager.addBot({
+          roomCode: created.value.roomCode,
+          playerId: created.value.playerId,
+          now: NOW,
+        });
+        if (!bot.ok) throw new Error('no se pudo añadir un robot de Mus');
+      }
+      const started = manager.start({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!started.ok) throw new Error('no se pudo empezar la partida');
+
+      const deps: BotDriverDeps = {
+        io: { to: vi.fn() } as unknown as TypedIoServer,
+        mgr: manager,
+        now: () => NOW,
+      };
+      const room = manager.getRoomByCode(created.value.roomCode);
+      if (!room?.state || room.state.gameId !== 'mus') throw new Error('estado incorrecto');
+
+      // Primero reparte el bot que ocupa el postre; la consulta online empieza
+      // justo después y deja de haber un turno individual.
+      scheduleBotTurn(deps, room.code);
+      vi.advanceTimersByTime(700);
+      expect(room.state.turnSeat).toBeNull();
+      expect(room.state.musConsultingTeam).toBe(0);
+      expect(room.state.version).toBe(1);
+
+      vi.advanceTimersByTime(700);
+      expect(room.state.version).toBe(2);
+
+      vi.advanceTimersByTime(700);
+      if (!room.state || room.state.gameId !== 'mus') throw new Error('estado incorrecto');
+      const partnerBot = room.state.players.find((player) => player.seat === 2);
+      expect(room.state.version).toBe(3);
+      expect(partnerBot?.musSaid).not.toBeNull();
     } finally {
       vi.useRealTimers();
     }

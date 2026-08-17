@@ -4,6 +4,17 @@ import type { CardId } from './ids.ts';
 
 const cardIdField = z.string();
 
+/** Frases cerradas de la consulta privada de pareja en el Mus online. */
+export const MusPartnerSignalSchema = z.enum([
+  'porMiMus',
+  'prefieroCortar',
+  'tePuedoAyudar',
+  'voyFlojo',
+  'decideTu',
+]);
+
+export type MusPartnerSignal = z.infer<typeof MusPartnerSignalSchema>;
+
 /**
  * Acción de juego. El tipo se deriva del esquema para que no puedan divergir.
  *
@@ -40,6 +51,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   // o de Pocha y `applyAction` de Mus no las acepta. ---
   z.object({ type: z.literal('mus') }),
   z.object({ type: z.literal('noMus') }),
+  z.object({ type: z.literal('musSignal'), signal: MusPartnerSignalSchema }),
   z.object({ type: z.literal('descartar'), cardIds: z.array(cardIdField) }),
   // GAP DE §12.12 (encontrado en P28): la lista de acciones nuevas del
   // contrato omite `paso`, pero §12.7 lo describe como la primera fila de la
@@ -51,8 +63,6 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('querer') }),
   z.object({ type: z.literal('noQuerer') }),
   z.object({ type: z.literal('ordago') }),
-  z.object({ type: z.literal('declararPares'), tiene: z.boolean() }),
-  z.object({ type: z.literal('declararJuego'), tiene: z.boolean() }),
   z.object({ type: z.literal('repartir') }),
   // --- Modos sociales -------------------------------------------------------
   // `playNumber` no tiene turno: la primera acción que acepta el servidor
@@ -72,7 +82,9 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('playRondaCard'),
     cardId: cardIdField,
-    targetType: z.union([z.literal('carne'), z.literal('pescado'), z.literal('vegetal')]).optional(),
+    targetType: z
+      .union([z.literal('carne'), z.literal('pescado'), z.literal('vegetal')])
+      .optional(),
     premiumCardId: cardIdField.optional(),
   }),
   z.object({ type: z.literal('askRondaBill') }),

@@ -35,9 +35,19 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   // son COSMÉTICOS: `descarte` dice cuántas cartas, nunca cuáles, porque las
   // del rival son privadas. ---
   z.object({ t: z.literal('musSaid'), playerId: z.string(), mus: z.boolean() }),
+  z.object({
+    t: z.literal('musTeamDecided'),
+    teamIndex: z.union([z.literal(0), z.literal(1)]),
+    mus: z.boolean(),
+  }),
   z.object({ t: z.literal('descarte'), playerId: z.string(), count: z.number().int() }),
   z.object({ t: z.literal('lanceStarted'), lance: z.string() }),
-  z.object({ t: z.literal('declaracion'), playerId: z.string(), lance: z.string(), tiene: z.boolean() }),
+  z.object({
+    t: z.literal('declaracion'),
+    playerId: z.string(),
+    lance: z.string(),
+    tiene: z.boolean(),
+  }),
   z.object({ t: z.literal('envido'), playerId: z.string(), piedras: z.number().int() }),
   z.object({ t: z.literal('querido'), playerId: z.string() }),
   z.object({ t: z.literal('noQuerido'), playerId: z.string() }),
@@ -55,11 +65,7 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   z.object({
     t: z.literal('partyAnswerSubmitted'),
     playerId: z.string(),
-    gameId: z.union([
-      z.literal('colores'),
-      z.literal('mayoria'),
-      z.literal('escala'),
-    ]),
+    gameId: z.union([z.literal('colores'), z.literal('mayoria'), z.literal('escala')]),
   }),
   z.object({
     t: z.literal('partyRevealed'),

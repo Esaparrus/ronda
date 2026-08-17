@@ -730,32 +730,6 @@ summary {
   }
 }
 
-/* Mus no necesita la profundidad vertical de una mesa con baza: sobre el
- * tapete solo se muestra el lance. La altura manda para que nunca vuelva a
- * invadir el marcador o la mano en Safari móvil. */
-.mus-table-stage {
-  container-type: size;
-}
-
-.mus-table-layout {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 48px;
-  grid-template-rows: 44px minmax(0, 1fr);
-  width: min(100%, 376px);
-  height: min(100%, 220px);
-}
-
-.mus-table-frame {
-  width: min(100%, 280px);
-  aspect-ratio: 280 / 160;
-}
-
-@supports (width: 1cqh) {
-  .mus-table-frame {
-    width: min(100%, 280px, calc((100cqh - 44px) * 280 / 160));
-  }
-}
-
 /* Las cartas públicas no comparten una densidad universal. Escoba puede
  * pasar de cuatro naipes a toda la baraja; esta parrilla cambia tamaño y
  * número de columnas, manteniendo cada carta completa y sin scroll. */

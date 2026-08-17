@@ -152,6 +152,7 @@ function musView(
     phase: 'lance',
     lance: 'grande',
     bet: null,
+    musConsultingTeam: null,
     musSaid: [null, null, null, null],
     paresDeclared: [null, null, null, null],
     juegoDeclared: [null, null, null, null],
@@ -163,6 +164,7 @@ function musView(
       pares: null,
       juego: { suma: 10, tiene: false },
       minEnvite: null,
+      musConsultation: null,
       availableActions,
       ...me,
     },
@@ -170,6 +172,24 @@ function musView(
 }
 
 describe('decideMusAction', () => {
+  it('primero comunica una frase privada durante la consulta online', () => {
+    const action = decideMusAction(
+      musView(['musSignal', 'mus', 'noMus'], {
+        musConsultation: {
+          partnerPlayerId: 'p2',
+          partnerNick: 'Carla',
+          mySignal: null,
+          partnerSignal: null,
+          myDecision: null,
+          partnerDecision: null,
+          myDelegated: false,
+          partnerDelegated: false,
+        },
+      }),
+    );
+    expect(action?.type).toBe('musSignal');
+  });
+
   it('pide mus con una mano floja, corta con duples y pasa sin jugada', () => {
     expect(decideMusAction(musView(['repartir']))).toEqual({ type: 'repartir' });
     expect(
@@ -200,15 +220,6 @@ describe('decideMusAction', () => {
     expect(action.cardIds.length).toBeGreaterThanOrEqual(1);
     expect(action.cardIds.length).toBeLessThanOrEqual(4);
     expect(action.cardIds.every((cardId) => view.me.hand.includes(cardId))).toBe(true);
-  });
-
-  it('declara pares y juego según los datos calculados por el motor', () => {
-    expect(
-      decideMusAction(musView(['declararPares'], { pares: { kind: 'pareja', piedras: 1 } })),
-    ).toEqual({ type: 'declararPares', tiene: true });
-    expect(
-      decideMusAction(musView(['declararJuego'], { juego: { suma: 30, tiene: false } })),
-    ).toEqual({ type: 'declararJuego', tiene: false });
   });
 
   it('rechaza un envite a pares cuando no tiene pares', () => {

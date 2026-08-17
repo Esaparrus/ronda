@@ -18,6 +18,7 @@ export interface MusHandProps {
   onToggle: (cardId: CardId) => void;
   pares: MusPlayerViewMe['pares'];
   juego: MusPlayerViewMe['juego'];
+  ochoReyes: boolean;
 }
 
 const PARES_LABEL: Record<'duples' | 'medias' | 'pareja', string> = {
@@ -33,7 +34,15 @@ function sortKey(id: CardId): number {
   return suitIndex * 100 + parsed.value.rank;
 }
 
-export function MusHand({ hand, selectable, selected, onToggle, pares, juego }: MusHandProps) {
+export function MusHand({
+  hand,
+  selectable,
+  selected,
+  onToggle,
+  pares,
+  juego,
+  ochoReyes,
+}: MusHandProps) {
   const marked = new Set(selected);
   const ordered = [...hand].sort((a, b) => sortKey(a) - sortKey(b));
 
@@ -51,8 +60,10 @@ export function MusHand({ hand, selectable, selected, onToggle, pares, juego }: 
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-12 font-semibold text-hueso">Tu mano</h2>
         <p className="truncate font-mono text-10 text-humo">
-          {pares ? `${PARES_LABEL[pares.kind]} (${pares.piedras})` : 'Sin pares'} ·{' '}
-          {juego.tiene ? `Juego ${juego.suma}` : `Punto ${juego.suma}`}
+          {pares
+            ? `${PARES_LABEL[pares.kind]} (${pares.piedras})${ochoReyes ? ' · 8 reyes' : ''}`
+            : 'Sin pares'}{' '}
+          · {juego.tiene ? `Juego ${juego.suma}` : `Punto ${juego.suma}`}
         </p>
       </div>
       <div className="flex justify-center gap-[clamp(4px,1.5vw,8px)]">

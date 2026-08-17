@@ -33,10 +33,9 @@ const MESSAGES: Readonly<Record<ErrorCode, string>> = {
   NOT_IN_MUS_PHASE: 'Ya no se puede pedir mus en esta mano.',
   MUST_DISCARD_AT_LEAST_ONE: 'Descarta entre una y cuatro cartas.',
   BET_TOO_LOW: 'Envida al menos {n} piedras.',
-  CANNOT_BID_WITHOUT_PARES: 'Solo envida a pares quien ha declarado que tiene.',
-  CANNOT_BID_WITHOUT_JUEGO: 'Solo envida a juego quien ha declarado que tiene.',
+  CANNOT_BID_WITHOUT_PARES: 'Solo puede envidar a pares quien tiene pares.',
+  CANNOT_BID_WITHOUT_JUEGO: 'Solo puede envidar a juego quien tiene juego.',
   NOT_YOUR_TEAM_TURN: 'Le toca responder a la pareja contraria.',
-  FALSE_DECLARATION: 'Esa declaración no coincide con tus cartas.',
 };
 
 /**

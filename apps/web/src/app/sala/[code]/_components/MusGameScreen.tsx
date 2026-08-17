@@ -5,61 +5,43 @@
 // Lo que cambia respecto a los otros dos: el marcador es de la PAREJA
 // (§12.12), encima del tapete no hay cartas jugadas -- en Mus no se juegan
 // cartas, se habla -- y lo que se enseña ahí es en qué lance vais y qué se ha
-// declarado.
+// calculado. En móvil los otros tres jugadores se presentan en una fila
+// estable: conserva quién es pareja y quién rival sin competir con la mano ni
+// con los controles del envite por el mismo espacio vertical.
 //
-// P32 sienta a los cuatro alrededor de la mesa, y es donde más se nota: Mus
-// es siempre de cuatro, así que `orderAroundMe` deja al compañero (asiento+2)
-// justo en el centro de la fila de arriba, enfrente de ti, que es donde está
-// sentado de verdad. Los garbanzos de los cuatro asientos son los amarrakos
-// de SU pareja, no suyos: en Mus no existe la puntuación individual.
+// Mus es siempre de cuatro, así que `orderAroundMe` deja al compañero en el
+// centro de la fila, entre los dos rivales. Los garbanzos pertenecen a la
+// pareja, no al jugador: en Mus no existe la puntuación individual.
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { CardId, MusPlayerView, PublicPlayer } from '@ronda/protocol';
+import type { CardId, MusPartnerSignal, MusPlayerView, PublicPlayer } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { MusScoreboard } from './MusScoreboard';
 import { MusHand } from './MusHand';
 import { MusActionBar, LANCE_LABEL } from './MusActionBar';
 import { orderAroundMe } from './TableSeat';
-import { BarTable } from '@/components/ui/BarTable';
 import { Avatar, type SeatColorIndex } from '@/components/ui/Avatar';
-import { formatMusAmount } from '@/lib/mus';
 
 export interface MusGameScreenProps {
   view: MusPlayerView;
 }
 
-type OpponentPosition = 'left' | 'opposite' | 'right';
-
-const OPPONENT_POSITION_CLASS: Record<OpponentPosition, string> = {
-  left: 'col-start-1 row-start-2 justify-self-start',
-  opposite: 'col-start-2 row-start-1 self-end justify-self-center',
-  right: 'col-start-3 row-start-2 justify-self-end',
-};
-
 interface MusOpponentSeatProps {
   player: PublicPlayer;
-  position: OpponentPosition;
   info: string;
   isPartner: boolean;
   isTurn: boolean;
 }
 
-function MusOpponentSeat({ player, position, info, isPartner, isTurn }: MusOpponentSeatProps) {
-  const isSide = position !== 'opposite';
-
+function MusOpponentSeat({ player, info, isPartner, isTurn }: MusOpponentSeatProps) {
   return (
     <div
-      data-mus-seat={position}
       role="group"
       aria-label={`${player.nick}, ${info}`}
-      className={`z-10 flex min-w-0 border ${OPPONENT_POSITION_CLASS[position]} ${
-        isSide
-          ? 'w-[58px] self-center flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-center'
-          : 'w-full max-w-[140px] items-center gap-1.5 rounded-full px-2 py-1'
-      } ${
+      className={`relative flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 text-center ${
         isTurn
-          ? 'border-hueso bg-madera-clara'
+          ? 'border-oro bg-madera-clara shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-oro)_45%,transparent)]'
           : isPartner
             ? 'border-oro/70 bg-mesa/90'
             : 'border-linea bg-mesa/80'
@@ -68,15 +50,11 @@ function MusOpponentSeat({ player, position, info, isPartner, isTurn }: MusOppon
       <Avatar
         name={player.nick}
         colorIndex={(player.colorIndex % 6) as SeatColorIndex}
-        size={isSide ? 30 : 28}
+        size={28}
         className={player.connected ? '' : 'opacity-40'}
       />
       <div className="min-w-0 max-w-full">
-        <p
-          className={`truncate font-medium leading-tight text-hueso ${isSide ? 'text-[10px]' : 'text-[11px]'}`}
-        >
-          {player.nick}
-        </p>
+        <p className="truncate text-[10px] font-semibold leading-tight text-hueso">{player.nick}</p>
         <p className="truncate font-mono text-[9px] leading-tight text-humo">{info}</p>
       </div>
     </div>
@@ -89,8 +67,29 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
     : null;
-  const manoNick = view.players.find((p) => p.seat === view.manoSeat)?.nick ?? null;
-  const postreNick = view.players.find((p) => p.seat === view.postreSeat)?.nick ?? null;
+  const isPairConsulting =
+    view.config.modo === 'online' &&
+    view.phase === 'mus' &&
+    view.musConsultingTeam === me.teamIndex;
+  const turnStatus = isPairConsulting
+    ? 'Decidís en pareja'
+    : view.config.modo === 'online' && view.phase === 'mus' && view.musConsultingTeam !== null
+      ? 'Decide la pareja rival'
+      : isMyTurn
+        ? 'Tu turno'
+        : turnPlayer
+          ? `Turno · ${turnPlayer.nick}`
+          : 'En juego';
+  const phaseLabel =
+    view.phase === 'lance' && view.lance
+      ? LANCE_LABEL[view.lance]
+      : view.phase === 'reparto'
+        ? 'Reparto'
+        : view.phase === 'mus'
+          ? 'Mus'
+          : view.phase === 'descarte'
+            ? 'Descarte'
+            : 'Recuento';
 
   const [selected, setSelected] = useState<CardId[]>([]);
 
@@ -111,18 +110,14 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
     void useRondaStore.getState().sendAction({ type: quiere ? 'mus' : 'noMus' });
   }
 
+  function handleMusSignal(signal: MusPartnerSignal) {
+    void useRondaStore.getState().sendAction({ type: 'musSignal', signal });
+  }
+
   function handleDescartar() {
     if (selected.length === 0) return;
     void useRondaStore.getState().sendAction({ type: 'descartar', cardIds: selected });
     setSelected([]);
-  }
-
-  function handleDeclararPares() {
-    void useRondaStore.getState().sendAction({ type: 'declararPares', tiene: me.pares !== null });
-  }
-
-  function handleDeclararJuego() {
-    void useRondaStore.getState().sendAction({ type: 'declararJuego', tiene: me.juego.tiene });
   }
 
   function handleEnvidar(piedras: number) {
@@ -136,7 +131,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
   // Es la misma información que llevaba `renderInfo` de <PlayerStrip> antes
   // de P32, recortada a lo que cabe bajo un avatar de 72px.
   function seatInfo(seat: number, teamIndex: 0 | 1 | null): string {
-    const pareja = teamIndex === null ? '—' : teamIndex === 0 ? 'A' : 'B';
+    const relation = teamIndex === me.teamIndex ? 'Tu pareja' : 'Rival';
     const marks: string[] = [];
     if (seat === view.manoSeat) marks.push('mano');
     if (seat === view.postreSeat) marks.push('postre');
@@ -144,7 +139,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
     if (view.phase === 'mus' && view.musSaid[seat] === false) marks.push('corta');
     if (view.paresDeclared[seat] === true) marks.push('pares');
     if (view.juegoDeclared[seat] === true) marks.push('juego');
-    return `${pareja}${marks.length > 0 ? ` · ${marks.join(' ')}` : ''}`;
+    return `${relation}${marks.length > 0 ? ` · ${marks.join(' ')}` : ''}`;
   }
 
   return (
@@ -155,87 +150,45 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
         juegosParaGanar={view.config.juegos}
       />
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-linea bg-mesa/80 px-3 py-1.5">
-        <span className="font-mono text-11 uppercase tracking-wider text-humo">
+      <div className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-y border-linea bg-mesa/80 px-3 py-1.5">
+        <span className="font-mono text-10 uppercase tracking-wider text-humo">
           Mano {view.round}
         </span>
-        <span className="min-w-0 truncate font-mono text-11 uppercase tracking-wider text-oro">
-          {isMyTurn ? 'Tu turno' : turnPlayer ? `Turno · ${turnPlayer.nick}` : 'En juego'}
+        <span className="font-display text-16 font-semibold text-hueso">{phaseLabel}</span>
+        <span className="min-w-0 justify-self-end truncate text-10 font-semibold uppercase tracking-wider text-oro">
+          {turnStatus}
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 px-2 py-1.5">
-        <div className="mus-table-stage flex min-h-0 flex-1 items-center justify-center">
-          <div className="mus-table-layout">
-            {leftPlayer ? (
-              <MusOpponentSeat
-                player={leftPlayer}
-                position="left"
-                info={seatInfo(leftPlayer.seat, leftPlayer.teamIndex)}
-                isPartner={leftPlayer.teamIndex === me.teamIndex}
-                isTurn={leftPlayer.playerId === view.turnPlayerId}
-              />
-            ) : null}
-            {oppositePlayer ? (
-              <MusOpponentSeat
-                player={oppositePlayer}
-                position="opposite"
-                info={seatInfo(oppositePlayer.seat, oppositePlayer.teamIndex)}
-                isPartner={oppositePlayer.teamIndex === me.teamIndex}
-                isTurn={oppositePlayer.playerId === view.turnPlayerId}
-              />
-            ) : null}
-            {rightPlayer ? (
-              <MusOpponentSeat
-                player={rightPlayer}
-                position="right"
-                info={seatInfo(rightPlayer.seat, rightPlayer.teamIndex)}
-                isPartner={rightPlayer.teamIndex === me.teamIndex}
-                isTurn={rightPlayer.playerId === view.turnPlayerId}
-              />
-            ) : null}
-
-            <BarTable className="mus-table-frame col-start-2 row-start-2 !max-w-none self-center justify-self-center">
-              <section className="flex flex-col items-center justify-center gap-1 px-4 text-center">
-                {view.phase === 'reparto' ? (
-                  <>
-                    <p className="font-display text-24 leading-display text-hueso">Reparto</p>
-                    {postreNick ? <p className="text-12 text-oro">Reparte {postreNick}</p> : null}
-                  </>
-                ) : null}
-                {view.phase === 'mus' ? (
-                  <p className="font-display text-24 leading-display text-hueso">Mus</p>
-                ) : null}
-                {view.phase === 'descarte' ? (
-                  <p className="font-display text-24 leading-display text-hueso">Descarte</p>
-                ) : null}
-                {view.phase === 'declararPares' ? (
-                  <p className="font-display text-24 leading-display text-hueso">¿Pares?</p>
-                ) : null}
-                {view.phase === 'declararJuego' ? (
-                  <p className="font-display text-24 leading-display text-hueso">¿Juego?</p>
-                ) : null}
-                {view.phase === 'lance' && view.lance ? (
-                  <>
-                    <p className="font-display text-24 leading-display text-hueso">
-                      {LANCE_LABEL[view.lance]}
-                    </p>
-                    {view.bet ? (
-                      <p className="text-12 font-semibold text-oro">
-                        {view.bet.isOrdago
-                          ? '¡Órdago!'
-                          : `${formatMusAmount(view.bet.piedras)} · pareja ${
-                              view.bet.byTeam === 0 ? 'A' : 'B'
-                            }`}
-                      </p>
-                    ) : null}
-                  </>
-                ) : null}
-                {manoNick ? <p className="text-11 text-hueso/90">Mano · {manoNick}</p> : null}
-              </section>
-            </BarTable>
-          </div>
-        </div>
+      <div
+        role="group"
+        className="grid shrink-0 grid-cols-3 gap-1.5 px-3 py-2"
+        aria-label="Jugadores de la mesa"
+      >
+        {leftPlayer ? (
+          <MusOpponentSeat
+            player={leftPlayer}
+            info={seatInfo(leftPlayer.seat, leftPlayer.teamIndex)}
+            isPartner={leftPlayer.teamIndex === me.teamIndex}
+            isTurn={leftPlayer.playerId === view.turnPlayerId}
+          />
+        ) : null}
+        {oppositePlayer ? (
+          <MusOpponentSeat
+            player={oppositePlayer}
+            info={seatInfo(oppositePlayer.seat, oppositePlayer.teamIndex)}
+            isPartner={oppositePlayer.teamIndex === me.teamIndex}
+            isTurn={oppositePlayer.playerId === view.turnPlayerId}
+          />
+        ) : null}
+        {rightPlayer ? (
+          <MusOpponentSeat
+            player={rightPlayer}
+            info={seatInfo(rightPlayer.seat, rightPlayer.teamIndex)}
+            isPartner={rightPlayer.teamIndex === me.teamIndex}
+            isTurn={rightPlayer.playerId === view.turnPlayerId}
+          />
+        ) : null}
       </div>
 
       <div className="flex shrink-0 flex-col">
@@ -246,6 +199,7 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
           onToggle={toggleCard}
           pares={me.pares}
           juego={me.juego}
+          ochoReyes={view.config.ochoReyes}
         />
 
         <MusActionBar
@@ -258,11 +212,11 @@ export function MusGameScreen({ view }: MusGameScreenProps) {
           turnPlayerNick={turnPlayer?.nick ?? null}
           turnPlayerConnected={turnPlayer?.connected ?? true}
           bet={view.bet}
+          musConsultingTeam={view.musConsultingTeam}
           onRepartir={() => void useRondaStore.getState().sendAction({ type: 'repartir' })}
           onMus={handleMus}
+          onMusSignal={handleMusSignal}
           onDescartar={handleDescartar}
-          onDeclararPares={handleDeclararPares}
-          onDeclararJuego={handleDeclararJuego}
           onPaso={() => void useRondaStore.getState().sendAction({ type: 'paso' })}
           onEnvidar={handleEnvidar}
           onOrdago={() => void useRondaStore.getState().sendAction({ type: 'ordago' })}
