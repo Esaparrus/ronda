@@ -575,6 +575,8 @@ export interface MusicalCommonView extends CommonViewBase {
   currentTrack: MusicalTrackPublic | null;
   /** Jugador que ha pulsado primero en el modo velocidad. */
   buzzedPlayerId: PlayerId | null;
+  /** Jugadores que ya han fallado la canción actual. */
+  blockedPlayerIds: PlayerId[];
   guessCounts: Record<PlayerId, number>;
   roundResult: MusicalRoundResult | null;
 }

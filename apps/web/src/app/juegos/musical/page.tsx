@@ -8,7 +8,7 @@ export default function MusicalPage() {
       kind="Música y oído"
       players="1–8 jugadores"
       duration="10–25 min"
-      summary="Escucha un fragmento, reconoce artista y canción, y gana más puntos si lo sabes antes de que suenen los 20 segundos."
+      summary="Escucha fragmentos de 1 a 30 segundos, reconoce artista y canción, y compite solo o con tus amigos."
       mark="♪"
       note="Las previews se reproducen desde iTunes y llevan su enlace de tienda y atribución."
       primaryAction={{

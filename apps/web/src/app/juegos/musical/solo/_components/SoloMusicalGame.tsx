@@ -28,7 +28,7 @@ import { MusicYearRangeControl } from '@/components/ui/MusicYearRangeControl';
 type SoloPhase = 'setup' | 'playing' | 'reveal' | 'finished';
 type SoloListenMode = 'velocidad' | 'segundos';
 
-export const SOLO_MUSICAL_CLIP_STEPS = [1, 3, 5, 10] as const;
+export const SOLO_MUSICAL_CLIP_STEPS = [1, 3, 5, 10, 30] as const;
 
 interface Guess {
   artist: string;
@@ -37,6 +37,10 @@ interface Guess {
 }
 
 const EMPTY_GUESS: Guess = { artist: '', title: '', year: '' };
+
+function soloClipLabel(seconds: number): string {
+  return seconds >= 30 ? 'la preview completa (30 s)' : `${seconds} segundos`;
+}
 
 function resetAudioElement(audio: HTMLAudioElement) {
   audio.pause();
@@ -74,6 +78,7 @@ export function SoloMusicalGame() {
 
   const track = selectedTracks[currentIndex] ?? null;
   const clipSeconds = SOLO_MUSICAL_CLIP_STEPS[clipIndex] ?? SOLO_MUSICAL_CLIP_STEPS[0];
+  const nextClipSeconds = SOLO_MUSICAL_CLIP_STEPS[clipIndex + 1] ?? null;
   const isSpeedMode = listenMode === 'velocidad';
   const requiresArtist = answerMode !== 'title';
   const requiresYear = answerMode === 'artist_title_year';
@@ -158,6 +163,7 @@ export function SoloMusicalGame() {
     setClipReady(false);
     setMessage(null);
     setFeedback(null);
+    setGuess(EMPTY_GUESS);
   }
 
   function submitGuess() {
@@ -247,12 +253,12 @@ export function SoloMusicalGame() {
           />
           <SegmentedControl
             legend="Cómo escuchar"
-            helperText="Elige entre pulsar tú o escuchar tiempos fijos."
+            helperText="En segundos podrás avanzar de 1 a 3, 5, 10 y 30 s si no la reconoces."
             value={listenMode}
             onChange={setListenMode}
             options={[
               { value: 'velocidad' as const, label: 'Velocidad' },
-              { value: 'segundos' as const, label: '1 · 3 · 5 · 10 s' },
+              { value: 'segundos' as const, label: '1 · 3 · 5 · 10 · 30 s' },
             ]}
           />
           <SegmentedControl
@@ -353,7 +359,7 @@ export function SoloMusicalGame() {
           <div className="min-w-0">
             <span className="text-12 uppercase tracking-wider text-humo">Fragmento actual</span>
             <h1 className="mt-1 text-20 font-semibold text-hueso">
-              {isSpeedMode ? 'Escucha y para cuando quieras' : `Escucha ${clipSeconds} segundos`}
+              {isSpeedMode ? 'Escucha y para cuando quieras' : `Fragmento ${clipIndex + 1}/5 · ${soloClipLabel(clipSeconds)}`}
             </h1>
             <p className="mt-1 text-14 text-humo">
               {attempts} {attempts === 1 ? 'intento' : 'intentos'} · {pointsForMusicClip(clipIndex)}{' '}
@@ -394,12 +400,16 @@ export function SoloMusicalGame() {
             </Button>
           ) : (
             <Button onClick={playing ? stopPreview : playPreview} className="flex-1">
-              {playing ? 'Pausar' : `▶ Escuchar ${clipSeconds} s`}
+              {playing
+                ? 'Pausar'
+                : clipReady
+                  ? `▶ Repetir ${soloClipLabel(clipSeconds)}`
+                  : `▶ Escuchar ${soloClipLabel(clipSeconds)}`}
             </Button>
           )}
-          {!isSpeedMode && clipIndex < SOLO_MUSICAL_CLIP_STEPS.length - 1 ? (
+          {!isSpeedMode && nextClipSeconds !== null ? (
             <Button variant="ghost" onClick={listenMore}>
-              Más
+              No me la sé · {soloClipLabel(nextClipSeconds)}
             </Button>
           ) : null}
         </div>
@@ -444,6 +454,11 @@ export function SoloMusicalGame() {
                 ? 'Escribe artista y canción; puedes elegir una sugerencia.'
                 : 'Escribe el título; puedes elegir una sugerencia.'}
             </p>
+            {!isSpeedMode && nextClipSeconds !== null ? (
+              <p className="mt-2 text-13 text-oro">
+                Si no la reconoces, pulsa «No me la sé» para escuchar el siguiente fragmento.
+              </p>
+            ) : null}
           </div>
           {requiresArtist ? (
             <MusicAutocompleteInput
@@ -496,12 +511,12 @@ export function SoloMusicalGame() {
             {isSpeedMode ? '⏱' : '♪'}
           </span>
           <h2 className="text-20 font-semibold text-hueso">
-            {isSpeedMode ? 'Escucha el fragmento' : `Escuchad ${clipSeconds} segundos`}
+            {isSpeedMode ? 'Escucha el fragmento' : `Escucha ${soloClipLabel(clipSeconds)}`}
           </h2>
           <p className="text-14 text-humo">
             {isSpeedMode
               ? 'Cuando reconozcas la canción, pulsa “Parar y responder”.'
-              : `La respuesta se desbloquea al terminar los ${clipSeconds} segundos.`}
+              : `La respuesta se desbloquea al terminar ${soloClipLabel(clipSeconds)}. Si no la sabes, puedes pasar al siguiente fragmento.`}
           </p>
         </section>
       ) : (

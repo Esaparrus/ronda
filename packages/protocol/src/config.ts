@@ -356,7 +356,7 @@ export const MusicalConfigSchema = CommonGameConfigSchema.extend({
   decade: MusicalDecadeSchema.default('cualquiera'),
   yearFrom: z.number().int().min(MUSICAL_YEAR_MIN).max(2100).default(MUSICAL_YEAR_MIN),
   yearTo: z.number().int().min(MUSICAL_YEAR_MIN).max(2100).default(MUSICAL_YEAR_MAX),
-  popularity: MusicalPopularitySchema.default('variado'),
+  popularity: MusicalPopularitySchema.default('exitos'),
   regions: z.array(MusicalRegionSchema).min(1).max(MUSICAL_REGIONS.length).default(['mundo']),
 });
 

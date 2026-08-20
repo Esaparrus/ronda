@@ -52,6 +52,7 @@ export interface MusicalState {
   /** Marca de tiempo del servidor cuando el anfitrión inicia el clip. */
   clipStartedAt: number | null;
   buzzedPlayerId: PlayerId | null;
+  blockedPlayerIds: PlayerId[];
   clipIndex: number;
   guesses: Record<PlayerId, MusicalGuess[]>;
   roundResult: MusicalRoundResultState | null;

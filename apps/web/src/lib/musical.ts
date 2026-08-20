@@ -1,6 +1,6 @@
 import { MUSICAL_YEAR_MAX, MUSICAL_YEAR_MIN, type MusicalConfig } from '@ronda/protocol';
 
-export const MUSICAL_CLIP_STEPS = [2, 5, 10, 20] as const;
+export const MUSICAL_CLIP_STEPS = [1, 3, 5, 10, 30] as const;
 
 export type MusicFilters = Pick<
   MusicalConfig,
@@ -10,7 +10,7 @@ export type MusicalRegion = MusicFilters['regions'][number];
 
 export const DEFAULT_MUSIC_FILTERS: MusicFilters = {
   genre: 'mezcla',
-  popularity: 'variado',
+  popularity: 'exitos',
   yearFrom: MUSICAL_YEAR_MIN,
   yearTo: MUSICAL_YEAR_MAX,
   regions: ['mundo'],

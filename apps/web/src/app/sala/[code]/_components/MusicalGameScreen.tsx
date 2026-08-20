@@ -76,6 +76,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const currentTrack = view.currentTrack;
   const myGuessCount = view.guessCounts[view.me.playerId] ?? 0;
   const isOnlineMode = view.config.audioMode === 'online';
+  const isBlocked = view.blockedPlayerIds.includes(view.me.playerId);
   const isSpeedMode = view.config.mode === 'velocidad';
   const requiresArtist = view.config.answerMode !== 'title';
   const requiresYear = view.config.answerMode === 'artist_title_year';
@@ -459,6 +460,10 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                   >
                     ▶ Escuchar en tu móvil
                   </Button>
+                ) : isBlocked ? (
+                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-brasa/50 bg-brasa/10 px-4 py-3 text-center text-13 text-brasa">
+                    Respuesta incorrecta: estás fuera de esta canción
+                  </p>
                 ) : view.me.onlineClipResolvedAt === null ? (
                   <Button
                     onClick={resolveClipForPlayer}
@@ -468,9 +473,13 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                   >
                     ⏹ Resolver y escribir
                   </Button>
-                ) : (
+                ) : view.me.availableActions.includes('musicSubmitGuess') ? (
                   <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
                     Tiempo registrado: {formatElapsed(view.me.onlineClipElapsedMs)}
+                  </p>
+                ) : (
+                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-verde/40 bg-verde/10 px-4 py-3 text-center text-13 text-verde">
+                    Respuesta enviada · tiempo: {formatElapsed(view.me.onlineClipElapsedMs)}
                   </p>
                 )
               ) : isHost ? (
@@ -544,6 +553,16 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 La misma canción está preparada para todos. El cronómetro empezará en tu móvil.
               </p>
             </section>
+          ) : isOnlineMode && isBlocked ? (
+            <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
+              <span className="text-32 text-brasa" aria-hidden="true">
+                ✕
+              </span>
+              <h2 className="text-20 font-semibold text-hueso">Respuesta incorrecta</h2>
+              <p className="text-14 text-humo">
+                Ya no puedes responder esta canción. Espera al resultado.
+              </p>
+            </section>
           ) : isOnlineMode && view.me.onlineClipResolvedAt === null ? (
             <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
               <span className="text-32 text-oro" aria-hidden="true">
@@ -553,6 +572,16 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               <p className="text-14 text-humo">
                 La música seguirá hasta que creas saberla. Al resolver se parará en tu móvil y
                 podrás escribir la respuesta.
+              </p>
+            </section>
+          ) : !isOnlineMode && isBlocked ? (
+            <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
+              <span className="text-32 text-brasa" aria-hidden="true">
+                ✕
+              </span>
+              <h2 className="text-20 font-semibold text-hueso">Te has quedado fuera</h2>
+              <p className="text-14 text-humo">
+                Tu respuesta no era correcta. Los demás siguen jugando esta canción.
               </p>
             </section>
           ) : !isOnlineMode && view.clipStartedAt === null ? (

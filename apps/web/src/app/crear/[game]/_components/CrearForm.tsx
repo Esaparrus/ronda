@@ -715,10 +715,26 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
       <div className="surface-panel flex flex-col gap-2 p-4">
         <p className="text-16 font-semibold text-hueso">Partida en grupo</p>
         <p className="text-14 text-humo">
-          Elige cuántas personas pueden entrar y configura los filtros antes de crear la sala.
-          Después verás un QR y un código para invitarles. Las canciones se preparan sin mostrarlas.
+          Elige primero si estáis juntos o si cada persona jugará desde su móvil. Después configura
+          la sala; al crearla verás un QR y un código para invitarles.
         </p>
       </div>
+      <SegmentedControl
+        legend="Tipo de partida"
+        helperText="Elige dónde se escuchará la música antes de configurar el resto de la sala."
+        value={config.audioMode}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            audioMode: value as MusicalConfig['audioMode'],
+            mode: 'velocidad',
+          }))
+        }
+        options={[
+          { value: 'presencial', label: 'En persona' },
+          { value: 'online', label: 'Online' },
+        ]}
+      />
       <QuantityStepper
         legend="Jugadores"
         helperText="Máximo de personas en la sala."
@@ -780,46 +796,16 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
         }
         options={MUSICAL_POPULARITY_OPTIONS.map(({ value, label }) => ({ value, label }))}
       />
-      <SegmentedControl
-        legend="Audio de la partida"
-        helperText="En persona: un móvil reproduce para todos. Online: cada jugador escucha en su móvil."
-        value={config.audioMode}
-        onChange={(value) =>
-          setConfig((previous) => ({
-            ...previous,
-            audioMode: value as MusicalConfig['audioMode'],
-          }))
-        }
-        options={[
-          { value: 'presencial', label: 'En persona' },
-          { value: 'online', label: 'Online' },
-        ]}
-      />
-      {config.audioMode === 'presencial' ? (
-        <SegmentedControl
-          legend="Forma de competir"
-          helperText="Rápido: pulsa primero. Simultáneo: todos respondéis."
-          value={config.mode}
-          onChange={(value) =>
-            setConfig((previous) => ({
-              ...previous,
-              mode: value as MusicalConfig['mode'],
-            }))
-          }
-          options={[
-            { value: 'velocidad', label: 'Rápido · pulsador' },
-            { value: 'simultaneo', label: 'Simultáneo' },
-          ]}
-        />
-      ) : (
-        <div className="surface-panel flex flex-col gap-1 p-4">
-          <p className="text-14 font-semibold text-hueso">Reto online por tiempo</p>
-          <p className="text-13 text-humo">
-            Cada persona pulsa Play en su móvil y luego «Resolver» cuando sepa la canción. Gana el
-            primer acierto según su tiempo de escucha.
-          </p>
-        </div>
-      )}
+      <div className="surface-panel flex flex-col gap-1 p-4">
+        <p className="text-14 font-semibold text-hueso">
+          {config.audioMode === 'presencial' ? 'Velocidad · pulsador' : 'Online · tiempo individual'}
+        </p>
+        <p className="text-13 text-humo">
+          {config.audioMode === 'presencial'
+            ? 'Solo suena el móvil del administrador. El primero que pulsa puede responder; si falla, queda fuera de esa canción.'
+            : 'Cada jugador escucha la misma canción en su móvil. El tiempo cuenta desde Play hasta Resolver, sin contar la respuesta escrita.'}
+        </p>
+      </div>
       <SegmentedControl
         legend="Qué hay que acertar"
         helperText="Decide qué datos debe escribir cada jugador."

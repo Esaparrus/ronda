@@ -84,6 +84,7 @@ function common(state: MusicalState): MusicalCommonView {
     clipStartedAt: state.clipStartedAt,
     currentTrack: publicTrack(state),
     buzzedPlayerId: state.buzzedPlayerId,
+    blockedPlayerIds: [...state.blockedPlayerIds],
     guessCounts: Object.fromEntries(
       state.players.map((player) => [player.playerId, state.guesses[player.playerId]?.length ?? 0]),
     ) as Record<PlayerId, number>,
@@ -110,27 +111,33 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
     availableActions.push('musicSelectTrack');
   }
   if (state.status === 'playing' && state.phase === 'playing' && !player.left) {
+    const blocked = state.blockedPlayerIds.includes(playerId);
+    const hasCorrectGuess = (state.guesses[playerId] ?? []).some((guess) => guess.correct);
     if (state.config.audioMode === 'online') {
-      if (player.onlineClipStartedAt === null) {
-        availableActions.push('musicStartClip');
-      } else if (player.onlineClipResolvedAt === null) {
-        availableActions.push('musicResolveClip');
-      } else {
-        availableActions.push('musicSubmitGuess');
+      if (!blocked && !hasCorrectGuess) {
+        if (player.onlineClipStartedAt === null) {
+          availableActions.push('musicStartClip');
+        } else if (player.onlineClipResolvedAt === null) {
+          availableActions.push('musicResolveClip');
+        } else {
+          availableActions.push('musicSubmitGuess');
+        }
       }
       if (player.seat === 0) {
         availableActions.push('musicNextClip');
       }
     } else {
-      if (player.seat === 0 && state.clipStartedAt === null) {
-        availableActions.push('musicStartClip');
-      }
-      if (state.clipStartedAt !== null && state.config.mode === 'simultaneo') {
-        availableActions.push('musicSubmitGuess');
-      } else if (state.clipStartedAt !== null && state.buzzedPlayerId === null) {
-        availableActions.push('musicBuzz');
-      } else if (state.clipStartedAt !== null && state.buzzedPlayerId === playerId) {
-        availableActions.push('musicSubmitGuess');
+      if (!blocked) {
+        if (player.seat === 0 && state.clipStartedAt === null) {
+          availableActions.push('musicStartClip');
+        }
+        if (state.clipStartedAt !== null && state.config.mode === 'simultaneo') {
+          availableActions.push('musicSubmitGuess');
+        } else if (state.clipStartedAt !== null && state.buzzedPlayerId === null) {
+          availableActions.push('musicBuzz');
+        } else if (state.clipStartedAt !== null && state.buzzedPlayerId === playerId) {
+          availableActions.push('musicSubmitGuess');
+        }
       }
       if (player.seat === 0 && state.clipStartedAt !== null) {
         availableActions.push('musicNextClip');

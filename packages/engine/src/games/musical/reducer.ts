@@ -59,6 +59,7 @@ export function createInitialState(
     currentTrack: null,
     clipStartedAt: null,
     buzzedPlayerId: null,
+    blockedPlayerIds: [],
     clipIndex: 0,
     guesses: {},
     roundResult: null,
@@ -111,6 +112,7 @@ function selectTrack(
   next.currentTrack = cloneTrack(track);
   next.clipStartedAt = null;
   next.buzzedPlayerId = null;
+  next.blockedPlayerIds = [];
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
@@ -192,6 +194,7 @@ function buzz(state: MusicalState, playerId: PlayerId): MusicalActionResult {
   const player = findPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (player.left) return err('PLAYER_ELIMINATED');
+  if (state.blockedPlayerIds.includes(playerId)) return err('INVALID_ACTION');
 
   const next = bump(state);
   next.buzzedPlayerId = playerId;
@@ -214,6 +217,7 @@ function submitGuess(
   const player = findPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (player.left) return err('PLAYER_ELIMINATED');
+  if (state.blockedPlayerIds.includes(playerId)) return err('INVALID_ACTION');
   if (state.config.audioMode === 'online') {
     if (player.onlineClipResolvedAt === null || player.onlineClipElapsedMs === null) {
       return err('INVALID_ACTION');
@@ -261,9 +265,14 @@ function submitGuess(
       next.winnerId = decideWinner(next);
       if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
     }
-  } else if (next.config.audioMode !== 'online' && next.config.mode === 'velocidad') {
-    // Un fallo libera el pulsador para que otra persona pueda intentarlo.
-    next.buzzedPlayerId = null;
+  } else if (next.config.audioMode === 'online' || next.config.mode === 'velocidad') {
+    // Un fallo elimina al jugador de esta canción. En presencial el pulsador
+    // queda libre para que otra persona pueda intentarlo; en online ya no
+    // vuelve a abrirse el formulario de este jugador.
+    if (!next.blockedPlayerIds.includes(playerId)) {
+      next.blockedPlayerIds.push(playerId);
+    }
+    if (next.config.audioMode !== 'online') next.buzzedPlayerId = null;
   }
 
   return ok({ state: next, events });
@@ -331,6 +340,7 @@ function nextRound(state: MusicalState, playerId: PlayerId): MusicalActionResult
   next.currentTrack = null;
   next.clipStartedAt = null;
   next.buzzedPlayerId = null;
+  next.blockedPlayerIds = [];
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
@@ -492,12 +502,14 @@ function bump(state: MusicalState): MusicalState {
     currentTrack: state.currentTrack ? cloneTrack(state.currentTrack) : null,
     clipStartedAt: state.clipStartedAt,
     buzzedPlayerId: state.buzzedPlayerId,
+    blockedPlayerIds: [...state.blockedPlayerIds],
     guesses: cloneGuesses(state.guesses),
     roundResult: state.roundResult
       ? {
           ...state.roundResult,
           track: cloneTrack(state.roundResult.track),
           guesses: cloneGuesses(state.roundResult.guesses),
+          responseTimes: { ...state.roundResult.responseTimes },
         }
       : null,
     rematchVotes: [...state.rematchVotes],

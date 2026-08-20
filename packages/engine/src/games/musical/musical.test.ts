@@ -138,7 +138,7 @@ describe('Musical', () => {
     expect(notHost.code).toBe('NOT_HOST');
   });
 
-  it('en modo rapido reserva el pulsador y lo libera si hay un fallo', () => {
+  it('en modo rapido bloquea al jugador que falla y deja el pulsador al resto', () => {
     const selected = selectAndStart(createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'velocidad' }));
 
     const beforeBuzz = applyAction(
@@ -168,6 +168,11 @@ describe('Musical', () => {
     });
     expect(wrong.phase).toBe('playing');
     expect(wrong.buzzedPlayerId).toBeNull();
+    expect(wrong.blockedPlayerIds).toEqual(['p2']);
+    expect(getPlayerView(wrong, 'p2').me.availableActions).not.toContain('musicBuzz');
+
+    const blockedBuzz = applyAction(wrong, 'p2', { type: 'musicBuzz' }, 0);
+    expect(blockedBuzz.ok).toBe(false);
 
     const p1Buzz = apply(wrong, 'p1', { type: 'musicBuzz' });
     const correct = apply(p1Buzz, 'p1', {
@@ -227,6 +232,45 @@ describe('Musical', () => {
     expect(fastestAnswer.roundResult?.winnerId).toBe('p1');
     expect(fastestAnswer.roundResult?.responseTimes).toEqual({ p1: 5_000, p2: 6_000 });
     expect(fastestAnswer.players.find((player) => player.playerId === 'p1')?.score).toBe(5);
+  });
+
+  it('en online una respuesta incorrecta deja fuera al jugador', () => {
+    const selected = apply(
+      createState({ ...DEFAULT_MUSICAL_CONFIG, audioMode: 'online', mode: 'velocidad' }),
+      'p1',
+      { type: 'musicSelectTrack', track: TRACK },
+    );
+    const started = applyAt(selected, 'p1', { type: 'musicStartClip' }, 1_000);
+    const bothStarted = applyAt(started, 'p2', { type: 'musicStartClip' }, 1_100);
+    const p1Resolved = applyAt(bothStarted, 'p1', { type: 'musicResolveClip' }, 4_000);
+    const p2Resolved = applyAt(p1Resolved, 'p2', { type: 'musicResolveClip' }, 4_500);
+    const wrong = applyAt(p2Resolved, 'p2', {
+      type: 'musicSubmitGuess',
+      artist: 'Otra banda',
+      title: 'Otra canción',
+      year: null,
+    }, 5_000);
+
+    expect(wrong.phase).toBe('playing');
+    expect(wrong.blockedPlayerIds).toEqual(['p2']);
+    expect(getPlayerView(wrong, 'p2').me.availableActions).not.toContain('musicSubmitGuess');
+
+    const retry = applyAction(wrong, 'p2', {
+      type: 'musicSubmitGuess',
+      artist: TRACK.artist,
+      title: TRACK.title,
+      year: TRACK.year,
+    }, 5_500);
+    expect(retry.ok).toBe(false);
+
+    const finished = applyAt(wrong, 'p1', {
+      type: 'musicSubmitGuess',
+      artist: TRACK.artist,
+      title: TRACK.title,
+      year: TRACK.year,
+    }, 6_000);
+    expect(finished.phase).toBe('reveal');
+    expect(finished.roundResult?.winnerId).toBe('p1');
   });
 
   it('exige el ano cuando la partida lo configura', () => {
