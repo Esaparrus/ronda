@@ -697,9 +697,10 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
   return (
     <section className="flex flex-col gap-6">
       <div className="surface-panel flex flex-col gap-2 p-4">
-        <p className="text-16 font-semibold text-hueso">La música se elige al azar</p>
+        <p className="text-16 font-semibold text-hueso">Partida en grupo</p>
         <p className="text-14 text-humo">
-          Configura los filtros antes de empezar. Las canciones se preparan sin mostrarlas.
+          Elige cuántas personas pueden entrar y configura los filtros antes de crear la sala.
+          Después verás un QR y un código para invitarles. Las canciones se preparan sin mostrarlas.
         </p>
       </div>
       <QuantityStepper
@@ -766,7 +767,7 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
       />
       <SegmentedControl
         legend="Forma de competir"
-        helperText="La primera respuesta correcta se lleva la ronda."
+        helperText="Velocidad: gana el primer acierto. Simultáneo: todos podéis responder al fragmento."
         value={config.mode}
         onChange={(value) =>
           setConfig((previous) => ({

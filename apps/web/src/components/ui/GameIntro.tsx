@@ -4,6 +4,12 @@ import { GAME_GUIDES } from '@/lib/game-guides';
 import { BackToGames } from './BackToGames';
 import { GameGuide } from './GameGuide';
 
+export interface GameIntroAction {
+  href: string;
+  label: string;
+  description?: string;
+}
+
 export interface GameIntroProps {
   slug: GameId;
   title: string;
@@ -15,11 +21,8 @@ export interface GameIntroProps {
   note?: string;
   rulesHref?: string;
   mark?: string;
-  secondaryAction?: {
-    href: string;
-    label: string;
-    description: string;
-  };
+  primaryAction?: GameIntroAction;
+  secondaryAction?: GameIntroAction;
 }
 
 export function GameIntro({
@@ -32,9 +35,11 @@ export function GameIntro({
   note,
   rulesHref,
   mark = title.slice(0, 1),
+  primaryAction,
   secondaryAction,
 }: GameIntroProps) {
   const guide = GAME_GUIDES[slug];
+  const mainAction = primaryAction ?? { href: `/crear/${slug}`, label: 'Crear partida' };
 
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col gap-7 px-5">
@@ -69,10 +74,17 @@ export function GameIntro({
 
       <div className="mt-auto flex flex-col gap-3 pt-2">
         <Link
-          href={`/crear/${slug}`}
-          className="flex min-h-14 items-center justify-center rounded-2xl border border-brasa bg-brasa px-6 text-16 font-semibold text-crema shadow-lg transition-[transform,filter] hover:brightness-110 active:translate-y-0.5"
+          href={mainAction.href}
+          className={
+            primaryAction
+              ? 'interactive-surface flex min-h-20 flex-col justify-center gap-1 border-brasa bg-brasa/20 px-5'
+              : 'flex min-h-14 items-center justify-center rounded-2xl border border-brasa bg-brasa px-6 text-16 font-semibold text-crema shadow-lg transition-[transform,filter] hover:brightness-110 active:translate-y-0.5'
+          }
         >
-          Crear partida
+          <span className="text-16 font-semibold text-crema">{mainAction.label}</span>
+          {mainAction.description ? (
+            <span className="text-13 text-humo">{mainAction.description}</span>
+          ) : null}
         </Link>
         {secondaryAction ? (
           <Link
@@ -80,7 +92,9 @@ export function GameIntro({
             className="interactive-surface flex min-h-20 flex-col justify-center gap-1 px-5"
           >
             <span className="text-16 font-semibold text-hueso">{secondaryAction.label}</span>
-            <span className="text-13 text-humo">{secondaryAction.description}</span>
+            {secondaryAction.description ? (
+              <span className="text-13 text-humo">{secondaryAction.description}</span>
+            ) : null}
           </Link>
         ) : null}
         {rulesHref ? (
