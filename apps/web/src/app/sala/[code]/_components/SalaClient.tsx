@@ -262,7 +262,7 @@ export function SalaClient({ code }: SalaClientProps) {
         <MusGameScreen view={view} />
       ) : null}
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'laronda' ? (
-        <RondaGameScreen view={view} onRequestLeave={() => setConfirmLeave(true)} />
+        <RondaGameScreen view={view} />
       ) : null}
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'musical' ? (
         <MusicalGameScreen view={view} />
