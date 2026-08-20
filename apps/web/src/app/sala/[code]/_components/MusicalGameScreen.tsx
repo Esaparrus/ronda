@@ -465,14 +465,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                     Respuesta incorrecta: estás fuera de esta canción
                   </p>
                 ) : view.me.onlineClipResolvedAt === null ? (
-                  <Button
-                    onClick={resolveClipForPlayer}
-                    className="flex-1"
-                    loading={pendingAction}
-                    disabled={pendingAction}
-                  >
-                    ⏹ Resolver y escribir
-                  </Button>
+                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-oro/40 bg-oro/10 px-4 py-3 text-center text-13 text-oro">
+                    Audio activo · usa el pulsador grande para resolver
+                  </p>
                 ) : view.me.availableActions.includes('musicSubmitGuess') ? (
                   <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
                     Tiempo registrado: {formatElapsed(view.me.onlineClipElapsedMs)}
@@ -564,15 +559,26 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               </p>
             </section>
           ) : isOnlineMode && view.me.onlineClipResolvedAt === null ? (
-            <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
-              <span className="text-32 text-oro" aria-hidden="true">
-                ⏱
-              </span>
-              <h2 className="text-20 font-semibold text-hueso">Escucha y pulsa Resolver</h2>
-              <p className="text-14 text-humo">
-                La música seguirá hasta que creas saberla. Al resolver se parará en tu móvil y
-                podrás escribir la respuesta.
-              </p>
+            <section className="surface-panel flex flex-col items-center gap-4 p-5 text-center">
+              <div>
+                <span className="text-32 text-oro" aria-hidden="true">
+                  ⏱
+                </span>
+                <h2 className="mt-2 text-20 font-semibold text-hueso">¿Te la sabes?</h2>
+                <p className="mt-1 text-14 text-humo">
+                  La música seguirá hasta que pulses el botón. El tiempo se registra al resolver.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resolveClipForPlayer}
+                disabled={pendingAction}
+                aria-label="Resolver y responder"
+                className="grid min-h-40 w-40 place-items-center rounded-full border-4 border-oro bg-brasa px-5 text-center text-20 font-bold uppercase tracking-wide text-crema shadow-[0_7px_0_rgba(92,34,28,0.9)] transition-transform active:translate-y-1 active:shadow-[0_3px_0_rgba(92,34,28,0.9)] disabled:cursor-wait disabled:opacity-60"
+              >
+                {pendingAction ? '…' : 'Resolver'}
+              </button>
+              <p className="text-12 text-humo">Después podrás escribir artista y canción.</p>
             </section>
           ) : !isOnlineMode && isBlocked ? (
             <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">

@@ -1,4 +1,9 @@
-import { MUSICAL_YEAR_MAX, MUSICAL_YEAR_MIN, type MusicalConfig } from '@ronda/protocol';
+import {
+  MUSICAL_YEAR_MAX,
+  MUSICAL_YEAR_MIN,
+  musicalArtistMatches,
+  type MusicalConfig,
+} from '@ronda/protocol';
 
 export const MUSICAL_CLIP_STEPS = [1, 3, 5, 10, 30] as const;
 
@@ -254,7 +259,7 @@ export function isMusicAnswerCorrect(
   const yearMatches =
     answerMode !== 'artist_title_year' || (track.year !== null && guess.year === track.year);
   return (
-    (answerMode === 'title' || normalizedMatch(guess.artist, track.artist)) &&
+    (answerMode === 'title' || musicalArtistMatches(guess.artist, track.artist)) &&
     normalizedMatch(guess.title, track.title) &&
     yearMatches
   );

@@ -10,7 +10,7 @@ import type {
   PlayerId,
   Result,
 } from '@ronda/protocol';
-import { err, ok } from '@ronda/protocol';
+import { err, musicalArtistMatches, ok } from '@ronda/protocol';
 import {
   activePlayers,
   findPlayer,
@@ -427,7 +427,7 @@ function isCorrectGuess(
   answerMode: MusicalState['config']['answerMode'],
 ): boolean {
   const titleMatches = normalizedMatch(guess.title, track.title);
-  const artistMatches = answerMode === 'title' || normalizedMatch(guess.artist, track.artist);
+  const artistMatches = answerMode === 'title' || musicalArtistMatches(guess.artist, track.artist);
   const yearMatches =
     answerMode !== 'artist_title_year' || (track.year !== null && guess.year === track.year);
   return titleMatches && artistMatches && yearMatches;

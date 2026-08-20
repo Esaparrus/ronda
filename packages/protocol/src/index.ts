@@ -16,3 +16,4 @@ export * from './events.ts';
 export * from './reactions.ts';
 export * from './stats.ts';
 export * from './socket.ts';
+export * from './musical.ts';
