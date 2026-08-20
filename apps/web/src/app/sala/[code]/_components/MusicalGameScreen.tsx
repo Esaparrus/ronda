@@ -1,9 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MusicalPlayerView } from '@ronda/protocol';
 import { Button } from '@/components/ui/Button';
+import { MusicAutocompleteInput } from '@/components/ui/MusicAutocompleteInput';
+import { MusicalFeedback } from '@/components/ui/MusicalFeedback';
 import { musicFiltersLabel, pickRandomMusicTracks, type MusicFilters } from '@/lib/musical';
+import {
+  playMusicalFeedback,
+  prepareMusicalFeedbackAudio,
+  type MusicalFeedbackKind,
+} from '@/lib/musical-feedback';
 import { useRondaStore } from '@/lib/store';
 import { PlayerStrip } from './PlayerStrip';
 import { TableHeader } from './TableHeader';
@@ -40,12 +47,17 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const [playing, setPlaying] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<MusicalFeedbackKind | null>(null);
+  const [feedbackNonce, setFeedbackNonce] = useState(0);
   const selectionKeyRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const previousPhaseRef = useRef(view.phase);
+  const previousGuessCountRef = useRef(view.guessCounts[view.me.playerId] ?? 0);
 
   const isHost =
     view.players.find((player) => player.playerId === view.me.playerId)?.isHost ?? false;
   const currentTrack = view.currentTrack;
+  const myGuessCount = view.guessCounts[view.me.playerId] ?? 0;
   const filters: MusicFilters = {
     genre: view.config.genre,
     decade: view.config.decade,
@@ -96,10 +108,32 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   useEffect(() => {
     setGuess(EMPTY_GUESS);
     setMessage(null);
+    setFeedback(null);
     const audio = audioRef.current;
     if (audio) resetAudioElement(audio);
     setPlaying(false);
   }, [view.round, view.clipIndex, currentTrack?.id]);
+
+  const triggerFeedback = useCallback((kind: MusicalFeedbackKind) => {
+    setFeedback(kind);
+    setFeedbackNonce((current) => current + 1);
+    playMusicalFeedback(kind);
+  }, []);
+
+  useEffect(() => {
+    const previousPhase = previousPhaseRef.current;
+    const previousGuessCount = previousGuessCountRef.current;
+    const roundWasWonByMe = view.roundResult?.winnerId === view.me.playerId;
+
+    if (previousPhase === 'playing' && myGuessCount > previousGuessCount) {
+      triggerFeedback(view.phase === 'reveal' && roundWasWonByMe ? 'correct' : 'incorrect');
+    } else if (previousPhase === 'playing' && view.phase === 'reveal' && roundWasWonByMe) {
+      triggerFeedback('correct');
+    }
+
+    previousPhaseRef.current = view.phase;
+    previousGuessCountRef.current = myGuessCount;
+  }, [myGuessCount, triggerFeedback, view.me.playerId, view.phase, view.round, view.roundResult]);
 
   async function playPreview() {
     const audio = audioRef.current;
@@ -136,7 +170,8 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
       setMessage('El año debe ser un número.');
       return;
     }
-    setMessage('Respuesta enviada.');
+    prepareMusicalFeedbackAudio();
+    setMessage(null);
     void useRondaStore.getState().sendAction({
       type: 'musicSubmitGuess',
       artist,
@@ -300,6 +335,14 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
           </p>
         </section>
 
+        {feedback ? (
+          <MusicalFeedback
+            key={`${feedback}-${feedbackNonce}`}
+            kind={feedback}
+            points={feedback === 'correct' ? view.roundResult?.points : undefined}
+          />
+        ) : null}
+
         {view.phase === 'playing' ? (
           <form
             className="surface-panel flex flex-col gap-4 p-5"
@@ -310,30 +353,24 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
           >
             <div>
               <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
-              <p className="mt-1 text-14 text-humo">El servidor decide el primer acierto.</p>
+              <p className="mt-1 text-14 text-humo">
+                Escribe y elige una sugerencia; gana el primer acierto.
+              </p>
             </div>
-            <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
-              Artista
-              <input
-                value={guess.artist}
-                onChange={(event) =>
-                  setGuess((current) => ({ ...current, artist: event.target.value }))
-                }
-                className="form-control px-4 text-16"
-                autoComplete="off"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
-              Canción
-              <input
-                value={guess.title}
-                onChange={(event) =>
-                  setGuess((current) => ({ ...current, title: event.target.value }))
-                }
-                className="form-control px-4 text-16"
-                autoComplete="off"
-              />
-            </label>
+            <MusicAutocompleteInput
+              field="artist"
+              label="Artista"
+              value={guess.artist}
+              onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
+              placeholder="Por ejemplo, A…"
+            />
+            <MusicAutocompleteInput
+              field="title"
+              label="Canción"
+              value={guess.title}
+              onChange={(title) => setGuess((current) => ({ ...current, title }))}
+              placeholder="Nombre de la canción"
+            />
             <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
               Año <span className="font-normal text-humo">(opcional)</span>
               <input

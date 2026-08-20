@@ -73,6 +73,19 @@ describe('Musical', () => {
     expect(getTableView(correct).roundResult?.title).toBe(TRACK.title);
   });
 
+  it('tolera un error pequeño de escritura en artista y título', () => {
+    const selected = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
+    const result = apply(selected, 'p2', {
+      type: 'musicSubmitGuess',
+      artist: 'La Bnda',
+      title: 'La cancion',
+      year: null,
+    });
+
+    expect(result.phase).toBe('reveal');
+    expect(result.roundResult?.winnerId).toBe('p2');
+  });
+
   it('solo el anfitrión puede ampliar el fragmento y pasar de ronda', () => {
     const selected = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
     const advanced = apply(selected, 'p1', { type: 'musicNextClip' });

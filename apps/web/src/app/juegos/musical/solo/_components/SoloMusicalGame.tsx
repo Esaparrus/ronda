@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { BackToGames } from '@/components/ui/BackToGames';
 import { Button } from '@/components/ui/Button';
+import { MusicAutocompleteInput } from '@/components/ui/MusicAutocompleteInput';
+import { MusicalFeedback } from '@/components/ui/MusicalFeedback';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import {
   DEFAULT_MUSIC_FILTERS,
@@ -18,6 +20,7 @@ import {
   type MusicFilters,
   type MusicTrack,
 } from '@/lib/musical';
+import { playMusicalFeedback, type MusicalFeedbackKind } from '@/lib/musical-feedback';
 
 type SoloPhase = 'setup' | 'playing' | 'reveal' | 'finished';
 
@@ -55,11 +58,19 @@ export function SoloMusicalGame() {
   const [score, setScore] = useState(0);
   const [roundPoints, setRoundPoints] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<MusicalFeedbackKind | null>(null);
+  const [feedbackNonce, setFeedbackNonce] = useState(0);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const track = selectedTracks[currentIndex] ?? null;
   const clipSeconds = MUSICAL_CLIP_STEPS[clipIndex] ?? MUSICAL_CLIP_STEPS[0];
+
+  function triggerFeedback(kind: MusicalFeedbackKind) {
+    setFeedback(kind);
+    setFeedbackNonce((current) => current + 1);
+    playMusicalFeedback(kind);
+  }
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -82,6 +93,7 @@ export function SoloMusicalGame() {
       setScore(0);
       setRoundPoints(0);
       setMessage(null);
+      setFeedback(null);
       setPhase('playing');
     } catch (error) {
       setSetupError(error instanceof Error ? error.message : 'No se pudo preparar la partida.');
@@ -120,6 +132,7 @@ export function SoloMusicalGame() {
     if (clipIndex >= MUSICAL_CLIP_STEPS.length - 1) return;
     setClipIndex((current) => current + 1);
     setMessage(null);
+    setFeedback(null);
   }
 
   function submitGuess() {
@@ -140,17 +153,15 @@ export function SoloMusicalGame() {
       const points = pointsForMusicClip(clipIndex);
       setScore((current) => current + points);
       setRoundPoints(points);
-      setMessage(`¡Acertaste! +${points} puntos.`);
+      setMessage(null);
+      triggerFeedback('correct');
       stopPreview();
       setPhase('reveal');
       return;
     }
 
-    setMessage(
-      clipIndex < MUSICAL_CLIP_STEPS.length - 1
-        ? 'No es. Puedes probar otra vez o escuchar más segundos.'
-        : 'No es. Revela la respuesta cuando quieras.',
-    );
+    setMessage(null);
+    triggerFeedback('incorrect');
   }
 
   function revealAnswer() {
@@ -171,6 +182,7 @@ export function SoloMusicalGame() {
     setAttempts(0);
     setRoundPoints(0);
     setMessage(null);
+    setFeedback(null);
     setPhase('playing');
   }
 
@@ -333,6 +345,14 @@ export function SoloMusicalGame() {
         </p>
       </section>
 
+      {feedback ? (
+        <MusicalFeedback
+          key={`${feedback}-${feedbackNonce}`}
+          kind={feedback}
+          points={feedback === 'correct' ? roundPoints : undefined}
+        />
+      ) : null}
+
       {phase === 'playing' ? (
         <form
           className="surface-panel flex flex-col gap-4 p-5"
@@ -343,30 +363,24 @@ export function SoloMusicalGame() {
         >
           <div>
             <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
-            <p className="mt-1 text-14 text-humo">Rellena lo que sepas y corrige.</p>
+            <p className="mt-1 text-14 text-humo">
+              Empieza a escribir y elige una sugerencia si aparece.
+            </p>
           </div>
-          <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
-            Artista
-            <input
-              value={guess.artist}
-              onChange={(event) =>
-                setGuess((current) => ({ ...current, artist: event.target.value }))
-              }
-              className="form-control px-4 text-16"
-              autoComplete="off"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
-            Canción
-            <input
-              value={guess.title}
-              onChange={(event) =>
-                setGuess((current) => ({ ...current, title: event.target.value }))
-              }
-              className="form-control px-4 text-16"
-              autoComplete="off"
-            />
-          </label>
+          <MusicAutocompleteInput
+            field="artist"
+            label="Artista"
+            value={guess.artist}
+            onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
+            placeholder="Por ejemplo, A…"
+          />
+          <MusicAutocompleteInput
+            field="title"
+            label="Canción"
+            value={guess.title}
+            onChange={(title) => setGuess((current) => ({ ...current, title }))}
+            placeholder="Nombre de la canción"
+          />
           <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
             Año <span className="font-normal text-humo">(opcional)</span>
             <input

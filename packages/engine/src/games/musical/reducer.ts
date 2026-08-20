@@ -216,8 +216,7 @@ function isHost(state: MusicalState, playerId: PlayerId): boolean {
 function isCorrectGuess(guess: MusicalGuess, track: MusicalTrack): boolean {
   const titleMatches = normalizedMatch(guess.title, track.title);
   const artistMatches = normalizedMatch(guess.artist, track.artist);
-  const yearMatches =
-    guess.year === null || (track.year !== null && guess.year === track.year);
+  const yearMatches = guess.year === null || (track.year !== null && guess.year === track.year);
   return titleMatches && artistMatches && yearMatches;
 }
 
@@ -225,7 +224,32 @@ function normalizedMatch(value: string, expected: string): boolean {
   const a = normalizeText(value);
   const b = normalizeText(expected);
   if (!a || !b) return false;
-  return a === b || a.includes(b) || b.includes(a);
+  return a === b || a.includes(b) || b.includes(a) || isCloseTypo(a, b);
+}
+
+function isCloseTypo(a: string, b: string): boolean {
+  if (a.length < 4 || b.length < 4) return false;
+  const limit = Math.max(a.length, b.length) >= 9 ? 2 : 1;
+  return levenshteinDistance(a, b) <= limit;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let row = 1; row <= a.length; row += 1) {
+    let diagonal = previous[0] ?? 0;
+    previous[0] = row;
+    for (let column = 1; column <= b.length; column += 1) {
+      const above = previous[column] ?? 0;
+      const left = previous[column - 1] ?? 0;
+      previous[column] = Math.min(
+        above + 1,
+        left + 1,
+        diagonal + (a[row - 1] === b[column - 1] ? 0 : 1),
+      );
+      diagonal = above;
+    }
+  }
+  return previous[b.length] ?? 0;
 }
 
 function normalizeText(value: string): string {
@@ -240,8 +264,10 @@ function normalizeText(value: string): string {
 }
 
 function decideWinner(state: MusicalState): PlayerId | null {
-  return [...activePlayers(state)].sort((a, b) => b.score - a.score || a.seat - b.seat)[0]
-    ?.playerId ?? null;
+  return (
+    [...activePlayers(state)].sort((a, b) => b.score - a.score || a.seat - b.seat)[0]?.playerId ??
+    null
+  );
 }
 
 function bump(state: MusicalState): MusicalState {
@@ -266,14 +292,9 @@ function cloneTrack(track: MusicalTrack): MusicalTrack {
   return { ...track };
 }
 
-function cloneGuesses(
-  guesses: Record<PlayerId, MusicalGuess[]>,
-): Record<PlayerId, MusicalGuess[]> {
+function cloneGuesses(guesses: Record<PlayerId, MusicalGuess[]>): Record<PlayerId, MusicalGuess[]> {
   return Object.fromEntries(
-    Object.entries(guesses).map(([id, items]) => [
-      id,
-      items.map((guess) => ({ ...guess })),
-    ]),
+    Object.entries(guesses).map(([id, items]) => [id, items.map((guess) => ({ ...guess }))]),
   ) as Record<PlayerId, MusicalGuess[]>;
 }
 

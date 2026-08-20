@@ -27,6 +27,13 @@ export interface MusicSearchResponse {
   error?: string;
 }
 
+export type MusicSuggestionField = 'artist' | 'title';
+
+export interface MusicSuggestionsResponse {
+  suggestions?: string[];
+  error?: string;
+}
+
 export const MUSICAL_GENRE_OPTIONS = [
   { value: 'mezcla', label: 'Mezcla', query: 'pop español' },
   { value: 'pop', label: 'Pop', query: 'pop' },
@@ -85,6 +92,21 @@ export async function searchMusic(filters: MusicFilters): Promise<MusicTrack[]> 
   return payload.results ?? [];
 }
 
+export async function getMusicSuggestions(
+  field: MusicSuggestionField,
+  term: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const params = new URLSearchParams({ field, q: term.trim() });
+  const response = await fetch(`/api/music/suggestions?${params.toString()}`, {
+    cache: 'no-store',
+    signal,
+  });
+  const payload = (await response.json()) as MusicSuggestionsResponse;
+  if (!response.ok) throw new Error(payload.error ?? 'No se pudieron cargar sugerencias.');
+  return payload.suggestions ?? [];
+}
+
 export async function pickRandomMusicTracks(
   filters: MusicFilters,
   count: number,
@@ -129,7 +151,32 @@ export function pointsForMusicClip(clipIndex: number): number {
 export function normalizedMatch(value: string, expected: string): boolean {
   const a = normalizeMusicText(value);
   const b = normalizeMusicText(expected);
-  return Boolean(a && b && (a === b || a.includes(b) || b.includes(a)));
+  return Boolean(a && b && (a === b || a.includes(b) || b.includes(a) || isCloseTypo(a, b)));
+}
+
+function isCloseTypo(a: string, b: string): boolean {
+  if (a.length < 4 || b.length < 4) return false;
+  const limit = Math.max(a.length, b.length) >= 9 ? 2 : 1;
+  return levenshteinDistance(a, b) <= limit;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let row = 1; row <= a.length; row += 1) {
+    let diagonal = previous[0] ?? 0;
+    previous[0] = row;
+    for (let column = 1; column <= b.length; column += 1) {
+      const above = previous[column] ?? 0;
+      const left = previous[column - 1] ?? 0;
+      previous[column] = Math.min(
+        above + 1,
+        left + 1,
+        diagonal + (a[row - 1] === b[column - 1] ? 0 : 1),
+      );
+      diagonal = above;
+    }
+  }
+  return previous[b.length] ?? 0;
 }
 
 export function normalizeMusicText(value: string): string {
