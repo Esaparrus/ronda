@@ -79,9 +79,6 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
   const minimumPlayers = view.gameId === 'mus' ? 4 : view.gameId === 'laronda' ? 3 : 2;
   const canStart = view.players.length >= minimumPlayers;
   const minimumLabel = minimumPlayers === 4 ? 'cuatro' : minimumPlayers === 3 ? 'tres' : 'dos';
-  // Musical necesita que alguien elija las previews; no añadimos un bot que
-  // pudiera iniciar rondas sin una pista cargada.
-  const supportsBots = view.gameId !== 'musical';
   const hasFreeSeat = view.players.length < view.config.maxPlayers;
 
   return (
@@ -136,19 +133,23 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
             </li>
           ))}
         </ul>
-        {isHost && supportsBots && hasFreeSeat ? (
+        {isHost && hasFreeSeat ? (
           <div className="flex flex-col gap-2">
             <Button variant="ghost" onClick={handleAddBot} loading={addingBot}>
               {view.gameId === 'mus'
                 ? 'Completar mesa con IA'
-                : view.players.length === 1
-                  ? 'Jugar contra un bot'
-                  : 'Añadir bot'}
+                : view.gameId === 'musical'
+                  ? 'Jugar contra la IA'
+                  : view.players.length === 1
+                    ? 'Jugar contra un bot'
+                    : 'Añadir bot'}
             </Button>
             <p className="text-center text-12 text-humo">
               {view.gameId === 'mus'
                 ? 'Añade automáticamente los robots que falten hasta completar las dos parejas.'
-                : 'Añade jugadores automáticos para practicar o simular una partida.'}
+                : view.gameId === 'musical'
+                  ? 'La IA intenta reconocer la canción para que puedas jugar con una sola persona.'
+                  : 'Añade jugadores automáticos para practicar o simular una partida.'}
             </p>
           </div>
         ) : null}

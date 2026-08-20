@@ -33,6 +33,7 @@ import {
 } from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
+const MUSICAL_BOT_DELAY_MS = 2_500;
 
 export interface BotDriverDeps {
   io: TypedIoServer;
@@ -63,10 +64,11 @@ export function scheduleBotTurn(deps: BotDriverDeps, roomCode: string): void {
   const turn = nextBotTurn(room);
   if (!turn) return;
 
+  const delay = room.gameId === 'musical' ? MUSICAL_BOT_DELAY_MS : BOT_DELAY_MS;
   const timer = setTimeout(() => {
     pending.delete(roomCode);
     runBotTurn(deps, roomCode, turn);
-  }, BOT_DELAY_MS);
+  }, delay);
   pending.set(roomCode, timer);
 }
 
@@ -145,6 +147,11 @@ function nextBotTurn(room: Room): BotTurn | null {
     return activeBot ? { playerId: activeBot.playerId, kind: 'action' } : null;
   }
 
+  if (room.status === 'playing' && state.gameId === 'musical' && state.phase === 'playing') {
+    const bot = room.playersBySeat().find((player) => player.isBot);
+    return bot ? { playerId: bot.playerId, kind: 'action' } : null;
+  }
+
   if (room.status === 'playing') {
     const seat = state.turnSeat;
     if (seat === null) return null;
@@ -214,19 +221,28 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
         return;
       }
       const action =
-        view.gameId === 'mus'
-          ? decideMusAction(view as MusPlayerView)
-          : view.gameId === 'laronda'
-            ? decideRondaAction(view as RondaPlayerView)
-            : view.gameId === 'pocha'
-              ? decidePochaAction(view)
-              : view.gameId === 'brisca' ||
-                  view.gameId === 'escoba' ||
-                  view.gameId === 'sieteymedia' ||
-                  view.gameId === 'tute' ||
-                  view.gameId === 'cinquillo'
-                ? decideClassicAction(view as ClassicPlayerView)
-                : decideChinchonAction(view as ChinchonPlayerView);
+        view.gameId === 'musical'
+          ? state.gameId === 'musical' && state.currentTrack
+            ? {
+                type: 'musicSubmitGuess' as const,
+                artist: state.currentTrack.artist,
+                title: state.currentTrack.title,
+                year: state.currentTrack.year,
+              }
+            : null
+          : view.gameId === 'mus'
+            ? decideMusAction(view as MusPlayerView)
+            : view.gameId === 'laronda'
+              ? decideRondaAction(view as RondaPlayerView)
+              : view.gameId === 'pocha'
+                ? decidePochaAction(view)
+                : view.gameId === 'brisca' ||
+                    view.gameId === 'escoba' ||
+                    view.gameId === 'sieteymedia' ||
+                    view.gameId === 'tute' ||
+                    view.gameId === 'cinquillo'
+                  ? decideClassicAction(view as ClassicPlayerView)
+                  : decideChinchonAction(view as ChinchonPlayerView);
       if (!action) return;
       const r = deps.mgr.applyAction({
         roomCode,

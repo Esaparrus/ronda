@@ -15,6 +15,11 @@ export interface GameIntroProps {
   note?: string;
   rulesHref?: string;
   mark?: string;
+  secondaryAction?: {
+    href: string;
+    label: string;
+    description: string;
+  };
 }
 
 export function GameIntro({
@@ -27,6 +32,7 @@ export function GameIntro({
   note,
   rulesHref,
   mark = title.slice(0, 1),
+  secondaryAction,
 }: GameIntroProps) {
   const guide = GAME_GUIDES[slug];
 
@@ -68,6 +74,15 @@ export function GameIntro({
         >
           Crear partida
         </Link>
+        {secondaryAction ? (
+          <Link
+            href={secondaryAction.href}
+            className="interactive-surface flex min-h-20 flex-col justify-center gap-1 px-5"
+          >
+            <span className="text-16 font-semibold text-hueso">{secondaryAction.label}</span>
+            <span className="text-13 text-humo">{secondaryAction.description}</span>
+          </Link>
+        ) : null}
         {rulesHref ? (
           <Link
             href={rulesHref}
