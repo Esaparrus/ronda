@@ -29,6 +29,7 @@ import { MusGameScreen } from './MusGameScreen';
 import { MusRoundEndScreen } from './MusRoundEndScreen';
 import { MusGameEndScreen } from './MusGameEndScreen';
 import { PartyGameScreen } from './PartyGameScreen';
+import { MusicalGameScreen } from './MusicalGameScreen';
 import { ClassicGameScreen } from './ClassicGameScreen';
 import { RondaGameScreen } from './RondaGameScreen';
 import { RondaRoundEndScreen } from './RondaRoundEndScreen';
@@ -83,6 +84,7 @@ export function SalaClient({ code }: SalaClientProps) {
   const shouldShowBriefing =
     !briefingAccepted && (view?.status === 'lobby' || view?.status === 'playing');
   const isPlaying = view?.status === 'playing' && !shouldShowBriefing;
+  const usesIntegratedGameHeader = isPlaying && view.gameId === 'laronda';
 
   // Una partida es una superficie de juego, no una página desplazable. Se
   // bloquea el scroll de la raíz solo mientras se juega; lobby, fin de ronda
@@ -208,7 +210,7 @@ export function SalaClient({ code }: SalaClientProps) {
       }
     >
       <Banner status={connection} className="shrink-0" />
-      {isPlaying ? (
+      {isPlaying && !usesIntegratedGameHeader ? (
         <div className="flex shrink-0 justify-end border-b border-linea bg-tinta/70 px-3 py-1.5">
           <button
             type="button"
@@ -260,7 +262,10 @@ export function SalaClient({ code }: SalaClientProps) {
         <MusGameScreen view={view} />
       ) : null}
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'laronda' ? (
-        <RondaGameScreen view={view} />
+        <RondaGameScreen view={view} onRequestLeave={() => setConfirmLeave(true)} />
+      ) : null}
+      {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'musical' ? (
+        <MusicalGameScreen view={view} />
       ) : null}
       {!shouldShowBriefing &&
       view.status === 'playing' &&

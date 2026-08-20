@@ -16,6 +16,7 @@ const GAMES = [
   { slug: 'colores', name: 'Colores', players: '2–7 jugadores', duration: '15–25 min', mark: '●', kind: 'Social' },
   { slug: 'mayoria', name: 'Mayoría', players: '2–7 jugadores', duration: '10–20 min', mark: '≋', kind: 'Social' },
   { slug: 'escala', name: 'Escala', players: '2–7 jugadores', duration: '15–25 min', mark: '↔', kind: 'Social' },
+  { slug: 'musical', name: 'Musical', players: '1–8 jugadores', duration: '10–25 min', mark: '♪', kind: 'Música' },
 ] as const;
 
 export default function JuegosPage() {

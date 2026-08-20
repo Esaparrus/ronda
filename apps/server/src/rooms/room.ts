@@ -18,6 +18,7 @@ import type {
   ChinchonState,
   ClassicState,
   MusState,
+  MusicalState,
   PartyState,
   PochaState,
   RondaState,
@@ -30,6 +31,7 @@ export type EngineState =
   | ChinchonState
   | PochaState
   | MusState
+  | MusicalState
   | ClassicState
   | PartyState
   | RondaState;
@@ -37,7 +39,13 @@ export type EngineState =
 /** Estado de los juegos "un jugador, una puntuación" (§12.12): todos menos
  * Mus. Se usa donde el servidor lee `winnerId`, `round` o `player.score`,
  * que en Mus no existen porque el marcador es de la pareja. */
-export type ScoredEngineState = ChinchonState | PochaState | ClassicState | PartyState | RondaState;
+export type ScoredEngineState =
+  | ChinchonState
+  | PochaState
+  | MusicalState
+  | ClassicState
+  | PartyState
+  | RondaState;
 
 /** Estado runtime de un jugador en la sala. */
 export interface PlayerRuntime {

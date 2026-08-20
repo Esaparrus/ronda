@@ -28,6 +28,7 @@ import type {
   LaRondaConfig,
   MayoriaConfig,
   MusConfig,
+  MusicalConfig,
   OrdenConfig,
   PochaConfig,
 } from './config.ts';
@@ -521,6 +522,71 @@ export interface EscalaTableView extends EscalaCommonView {
 
 export type PartyTableView = OrdenTableView | ColoresTableView | MayoriaTableView | EscalaTableView;
 
+// --- Musical ---------------------------------------------------------------
+
+export type MusicalPhase = 'setup' | 'playing' | 'reveal';
+export type MusicalAvailableAction =
+  | 'musicSelectTrack'
+  | 'musicSubmitGuess'
+  | 'musicNextClip'
+  | 'musicNextRound';
+
+/** Datos necesarios para reproducir una preview, sin la respuesta. */
+export interface MusicalTrackPublic {
+  id: string;
+  previewUrl: string;
+  artworkUrl: string | null;
+  storeUrl: string;
+}
+
+export interface MusicalGuessReveal {
+  artist: string;
+  title: string;
+  year: number | null;
+  correct: boolean;
+}
+
+export interface MusicalRoundResult {
+  title: string;
+  artist: string;
+  year: number | null;
+  artworkUrl: string | null;
+  storeUrl: string;
+  winnerId: PlayerId | null;
+  points: number;
+  guesses: Record<PlayerId, MusicalGuessReveal[]>;
+}
+
+export interface MusicalCommonView extends CommonViewBase {
+  gameId: 'musical';
+  config: MusicalConfig;
+  phase: MusicalPhase;
+  /** Musical no usa turnos: el anfitrión controla la pista y el clip. */
+  turnPlayerId: null;
+  clipIndex: number;
+  clipSeconds: number;
+  currentTrack: MusicalTrackPublic | null;
+  guessCounts: Record<PlayerId, number>;
+  roundResult: MusicalRoundResult | null;
+}
+
+export interface MusicalPlayerViewMe {
+  playerId: PlayerId;
+  /** Siempre vacía; la propiedad mantiene una forma uniforme en utilidades de sala. */
+  hand: string[];
+  attempts: number;
+  availableActions: MusicalAvailableAction[];
+}
+
+export interface MusicalPlayerView extends MusicalCommonView {
+  kind: 'player';
+  me: MusicalPlayerViewMe;
+}
+
+export interface MusicalTableView extends MusicalCommonView {
+  kind: 'table';
+}
+
 // --- La Ronda --------------------------------------------------------------
 
 export type RondaTapaType = 'carne' | 'pescado' | 'vegetal';
@@ -634,21 +700,24 @@ export type CommonView =
   | MusCommonView
   | ClassicCommonView
   | PartyCommonView
-  | RondaCommonView;
+  | RondaCommonView
+  | MusicalCommonView;
 export type PlayerView =
   | ChinchonPlayerView
   | PochaPlayerView
   | MusPlayerView
   | ClassicPlayerView
   | PartyPlayerView
-  | RondaPlayerView;
+  | RondaPlayerView
+  | MusicalPlayerView;
 export type TableView =
   | ChinchonTableView
   | PochaTableView
   | MusTableView
   | ClassicTableView
   | PartyTableView
-  | RondaTableView;
+  | RondaTableView
+  | MusicalTableView;
 
 // --- Esquemas zod (tipo derivado por z.infer donde coincide) -----------------
 // Nota: no había (ni hay) un PlayerViewSchema/TableViewSchema en zod -- las

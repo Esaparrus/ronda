@@ -9,6 +9,9 @@ const nextConfig = {
   // Fijar la raíz evita que Next use por accidente otro package-lock.json
   // para el tracing de producción.
   outputFileTracingRoot: path.join(appDirectory, '../..'),
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: '*.mzstatic.com' }],
+  },
 };
 
 export default nextConfig;

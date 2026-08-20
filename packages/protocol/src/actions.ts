@@ -4,6 +4,21 @@ import type { CardId } from './ids.ts';
 
 const cardIdField = z.string();
 
+/** Metadata que el anfitrión selecciona en iTunes para una ronda musical. */
+export const MusicalTrackSchema = z.object({
+  id: z.string().min(1).max(80),
+  title: z.string().min(1).max(200),
+  artist: z.string().min(1).max(200),
+  year: z.number().int().min(1900).max(2100).nullable(),
+  previewUrl: z.string().url().max(600),
+  artworkUrl: z.string().url().max(600).nullable(),
+  storeUrl: z.string().url().max(600),
+});
+
+export type MusicalTrack = z.infer<typeof MusicalTrackSchema>;
+
+const musicalGuessField = z.string().trim().max(120);
+
 /** Frases cerradas de la consulta privada de pareja en el Mus online. */
 export const MusPartnerSignalSchema = z.enum([
   'porMiMus',
@@ -78,6 +93,19 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('finishColors') }),
   z.object({ type: z.literal('submitMajority'), answer: z.string().min(1).max(80) }),
   z.object({ type: z.literal('submitScale'), value: z.number().int().min(0).max(100) }),
+  // --- Musical -------------------------------------------------------------
+  // La URL de preview es pública para que cada móvil pueda reproducir el
+  // fragmento, pero el servidor nunca envía la respuesta fuera de la
+  // revelación de la ronda.
+  z.object({ type: z.literal('musicSelectTrack'), track: MusicalTrackSchema }),
+  z.object({
+    type: z.literal('musicSubmitGuess'),
+    artist: musicalGuessField,
+    title: musicalGuessField,
+    year: z.number().int().min(1900).max(2100).nullable(),
+  }),
+  z.object({ type: z.literal('musicNextClip') }),
+  z.object({ type: z.literal('musicNextRound') }),
   // --- La Ronda ------------------------------------------------------------
   z.object({
     type: z.literal('playRondaCard'),

@@ -30,6 +30,7 @@ import { MusMesaGameBoard } from './MusMesaGameBoard';
 import { MusMesaRoundEndScreen } from './MusMesaRoundEndScreen';
 import { MusMesaGameEndScreen } from './MusMesaGameEndScreen';
 import { PartyMesaGameBoard } from './PartyMesaGameBoard';
+import { MusicalMesaGameBoard } from './MusicalMesaGameBoard';
 import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
 import { RondaMesaScreen } from './RondaMesaScreen';
 
@@ -122,6 +123,9 @@ export function MesaClient({ code }: MesaClientProps) {
       ) : null}
       {tableView.status === 'playing' && tableView.gameId === 'mus' ? (
         <MusMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'playing' && tableView.gameId === 'musical' ? (
+        <MusicalMesaGameBoard view={tableView} />
       ) : null}
       {tableView.gameId === 'laronda' && tableView.status !== 'lobby' ? (
         <RondaMesaScreen view={tableView} />

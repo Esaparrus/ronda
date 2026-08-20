@@ -13,6 +13,7 @@ import {
   LaRondaConfigSchema,
   MayoriaConfigSchema,
   MusConfigSchema,
+  MusicalConfigSchema,
   OrdenConfigSchema,
   PochaConfigSchema,
   SieteYMediaConfigSchema,
@@ -274,6 +275,7 @@ const roomCreateSchema = z.object({
     z.literal('mayoria'),
     z.literal('escala'),
     z.literal('laronda'),
+    z.literal('musical'),
   ]),
   config: GameConfigSchema,
   nick: z.string(),
@@ -309,6 +311,7 @@ const roomConfigSchema = z.object({
     MayoriaConfigSchema.partial(),
     EscalaConfigSchema.partial(),
     LaRondaConfigSchema.partial(),
+    MusicalConfigSchema.partial(),
   ]),
 });
 

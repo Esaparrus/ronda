@@ -23,7 +23,8 @@ export type GameId =
   | 'colores'
   | 'mayoria'
   | 'escala'
-  | 'laronda';
+  | 'laronda'
+  | 'musical';
 
 /**
  * Identificador de carta: '<suit>-<rank>' con suit ∈ {oros,copas,espadas,

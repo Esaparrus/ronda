@@ -23,6 +23,9 @@ import type {
   MusCommonView,
   MusPlayerView,
   MusTableView,
+  MusicalCommonView,
+  MusicalPlayerView,
+  MusicalTableView,
   PartyCommonView,
   PartyPlayerView,
   PartyTableView,
@@ -183,6 +186,26 @@ function buildMusLobbyCommon(room: Room): MusCommonView {
     paresDeclared: [],
     juegoDeclared: [],
     handResult: null,
+  };
+}
+
+function buildMusicalLobbyCommon(room: Room): MusicalCommonView {
+  return {
+    roomCode: room.code,
+    gameId: 'musical',
+    config: room.config as MusicalCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    rematchVotes: [],
+    phase: 'setup',
+    clipIndex: 0,
+    clipSeconds: 2,
+    currentTrack: null,
+    guessCounts: {},
+    roundResult: null,
   };
 }
 
@@ -372,6 +395,14 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
     };
     return view;
   }
+  if (room.gameId === 'musical') {
+    const view: MusicalPlayerView = {
+      kind: 'player',
+      ...buildMusicalLobbyCommon(room),
+      me: { playerId, hand: [], attempts: 0, availableActions: [] },
+    };
+    return view;
+  }
   if (room.gameId === 'pocha') {
     const view: PochaPlayerView = {
       kind: 'player',
@@ -421,6 +452,10 @@ function lobbyTableView(room: Room): TableView {
   }
   if (room.gameId === 'mus') {
     const view: MusTableView = { kind: 'table', ...buildMusLobbyCommon(room) };
+    return view;
+  }
+  if (room.gameId === 'musical') {
+    const view: MusicalTableView = { kind: 'table', ...buildMusicalLobbyCommon(room) };
     return view;
   }
   if (room.gameId === 'pocha') {

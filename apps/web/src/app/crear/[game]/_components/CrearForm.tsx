@@ -15,6 +15,7 @@ import {
   DEFAULT_MAYORIA_CONFIG,
   DEFAULT_MUS_CONFIG,
   DEFAULT_LA_RONDA_CONFIG,
+  DEFAULT_MUSICAL_CONFIG,
   DEFAULT_ORDEN_CONFIG,
   DEFAULT_POCHA_CONFIG,
   DEFAULT_SIETE_Y_MEDIA_CONFIG,
@@ -25,6 +26,7 @@ import {
   type ColorTopic,
   type GameId,
   type MusConfig,
+  type MusicalConfig,
   type LaRondaConfig,
   type PartyConfig,
   type PochaConfig,
@@ -52,6 +54,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [chinchonConfig, setChinchonConfig] = useState<ChinchonConfig>(DEFAULT_CONFIG);
   const [pochaConfig, setPochaConfig] = useState<PochaConfig>(DEFAULT_POCHA_CONFIG);
   const [musConfig, setMusConfig] = useState<MusConfig>(DEFAULT_MUS_CONFIG);
+  const [musicalConfig, setMusicalConfig] = useState<MusicalConfig>(DEFAULT_MUSICAL_CONFIG);
   const [rondaConfig, setRondaConfig] = useState<LaRondaConfig>(DEFAULT_LA_RONDA_CONFIG);
   const [classicConfig, setClassicConfig] = useState<ClassicConfig>(() => classicDefaults(gameId));
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
@@ -74,8 +77,10 @@ export function CrearForm({ gameId }: CrearFormProps) {
         ? rondaConfig
         : gameId === 'mus'
           ? musConfig
-          : gameId === 'pocha'
+        : gameId === 'pocha'
             ? pochaConfig
+            : gameId === 'musical'
+              ? musicalConfig
             : isClassicGame(gameId)
               ? classicConfig
               : isPartyGame(gameId)
@@ -128,7 +133,9 @@ export function CrearForm({ gameId }: CrearFormProps) {
           {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
         </div>
 
-        {!isPartyGame(gameId) && gameId !== 'laronda' ? <CardStylePicker /> : null}
+        {!isPartyGame(gameId) && gameId !== 'laronda' && gameId !== 'musical' ? (
+          <CardStylePicker />
+        ) : null}
 
         {gameId === 'laronda' ? (
           <LaRondaVariants config={rondaConfig} setConfig={setRondaConfig} />
@@ -136,6 +143,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
           <MusVariants config={musConfig} setConfig={setMusConfig} />
         ) : gameId === 'pocha' ? (
           <PochaVariants config={pochaConfig} setConfig={setPochaConfig} />
+        ) : gameId === 'musical' ? (
+          <MusicalVariants config={musicalConfig} setConfig={setMusicalConfig} />
         ) : isClassicGame(gameId) ? (
           <ClassicVariants config={classicConfig} setConfig={setClassicConfig} />
         ) : isPartyGame(gameId) ? (
@@ -468,6 +477,7 @@ function gameTitle(gameId: GameId): string {
   if (gameId === 'cinquillo') return 'Cinquillo';
   if (gameId === 'mus') return 'Mus';
   if (gameId === 'pocha') return 'Pocha';
+  if (gameId === 'musical') return 'Musical';
   return 'Chinchón';
 }
 
@@ -669,6 +679,65 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
           />
         </>
       )}
+    </section>
+  );
+}
+
+interface MusicalVariantsProps {
+  config: MusicalConfig;
+  setConfig: (fn: (prev: MusicalConfig) => MusicalConfig) => void;
+}
+
+function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
+  return (
+    <section className="flex flex-col gap-6">
+      <div className="surface-panel flex flex-col gap-2 p-4">
+        <p className="text-16 font-semibold text-hueso">La música la pone el anfitrión</p>
+        <p className="text-14 text-humo">
+          En cada ronda busca una canción, carga la preview y el resto intenta reconocerla.
+        </p>
+      </div>
+      <QuantityStepper
+        legend="Jugadores"
+        helperText="Máximo de personas en la sala."
+        value={config.maxPlayers}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            maxPlayers: value as MusicalConfig['maxPlayers'],
+          }))
+        }
+        options={[2, 3, 4, 5, 6, 7, 8].map((value) => ({ value, label: String(value) }))}
+        valueSuffix="personas"
+      />
+      <QuantityStepper
+        legend="Canciones"
+        helperText="La partida termina después de este número de rondas."
+        value={config.rounds}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            rounds: value as MusicalConfig['rounds'],
+          }))
+        }
+        options={[5, 10, 15, 20].map((value) => ({ value, label: String(value) }))}
+        valueSuffix="canciones"
+      />
+      <SegmentedControl
+        legend="Forma de competir"
+        helperText="La primera respuesta correcta se lleva la ronda."
+        value={config.mode}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            mode: value as MusicalConfig['mode'],
+          }))
+        }
+        options={[
+          { value: 'velocidad', label: 'Velocidad' },
+          { value: 'simultaneo', label: 'Simultáneo' },
+        ]}
+      />
     </section>
   );
 }

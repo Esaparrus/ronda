@@ -19,6 +19,7 @@ const GAME_IDS = [
   'colores',
   'mayoria',
   'escala',
+  'musical',
 ] as const;
 type SupportedGameId = (typeof GAME_IDS)[number];
 

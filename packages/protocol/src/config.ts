@@ -277,6 +277,35 @@ export const LaRondaConfigSchema = CommonGameConfigSchema.extend({
 
 export type LaRondaConfig = z.infer<typeof LaRondaConfigSchema>;
 
+// --- Musical ---------------------------------------------------------------
+
+const MUSICAL_MAX_PLAYERS = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+  z.literal(8),
+]);
+const MUSICAL_ROUNDS = z.union([
+  z.literal(5),
+  z.literal(10),
+  z.literal(15),
+  z.literal(20),
+]);
+const MUSICAL_MODE = z.union([z.literal('velocidad'), z.literal('simultaneo')]);
+
+/** Adivinar canciones por turnos de escucha, con sala y modo solo. */
+export const MusicalConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('musical' satisfies GameId).default('musical'),
+  maxPlayers: MUSICAL_MAX_PLAYERS.default(6),
+  rounds: MUSICAL_ROUNDS.default(10),
+  mode: MUSICAL_MODE.default('velocidad'),
+});
+
+export type MusicalConfig = z.infer<typeof MusicalConfigSchema>;
+
 // --- Unión discriminada ------------------------------------------------------
 
 /**
@@ -284,7 +313,13 @@ export type LaRondaConfig = z.infer<typeof LaRondaConfigSchema>;
  * (§10.2). Antes de P22 era, en la práctica, un alias de `ChinchonConfig`.
  */
 export type GameConfig =
-  ChinchonConfig | PochaConfig | MusConfig | ClassicConfig | PartyConfig | LaRondaConfig;
+  | ChinchonConfig
+  | PochaConfig
+  | MusConfig
+  | ClassicConfig
+  | PartyConfig
+  | LaRondaConfig
+  | MusicalConfig;
 
 export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ChinchonConfigSchema,
@@ -300,6 +335,7 @@ export const GameConfigSchema = z.discriminatedUnion('gameId', [
   MayoriaConfigSchema,
   EscalaConfigSchema,
   LaRondaConfigSchema,
+  MusicalConfigSchema,
 ]);
 
 /**
@@ -329,3 +365,4 @@ export const DEFAULT_COLORES_CONFIG: ColoresConfig = ColoresConfigSchema.parse({
 export const DEFAULT_MAYORIA_CONFIG: MayoriaConfig = MayoriaConfigSchema.parse({});
 export const DEFAULT_ESCALA_CONFIG: EscalaConfig = EscalaConfigSchema.parse({});
 export const DEFAULT_LA_RONDA_CONFIG: LaRondaConfig = LaRondaConfigSchema.parse({});
+export const DEFAULT_MUSICAL_CONFIG: MusicalConfig = MusicalConfigSchema.parse({});

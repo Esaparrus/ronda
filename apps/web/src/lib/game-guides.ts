@@ -356,6 +356,34 @@ export const GAME_GUIDES = {
     keyRule:
       'La persona guía no coloca una apuesta en su propia ronda; su trabajo es dar una pista útil para todo el grupo.',
   },
+  musical: {
+    title: 'Musical',
+    kind: 'Música y oído',
+    mark: '♪',
+    objective: 'Reconoce artista y canción antes de que el fragmento se haga largo.',
+    steps: [
+      {
+        title: 'Escucha el primer corte',
+        body: 'Empiezas con 2 segundos. Puedes repetir el fragmento sin gastar una oportunidad.',
+      },
+      {
+        title: 'Escribe tu respuesta',
+        body: 'Indica artista y canción; el año es opcional y sirve como dato extra de comprobación.',
+      },
+      {
+        title: 'Pide más segundos',
+        body: 'Si fallas, el anfitrión puede abrir 5, 10 y hasta 20 segundos para toda la sala.',
+      },
+      {
+        title: 'Corrección y siguiente ronda',
+        body: 'El primer acierto se lleva los puntos de ese corte. Si nadie acierta, se revela la canción.',
+      },
+    ],
+    victory:
+      'Gana quien acumule más puntos tras las canciones configuradas. Los aciertos tempranos valen 5, 4, 3 o 2 puntos.',
+    keyRule:
+      'La respuesta permanece oculta hasta acertar o llegar al último fragmento; el servidor decide quién llegó primero.',
+  },
   laronda: {
     title: 'La Ronda',
     kind: 'Cartas y pique',

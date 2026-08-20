@@ -149,3 +149,20 @@ export {
   type RondaPlayer,
   type RondaCard,
 } from './games/laronda/index.ts';
+
+// Registro del juego Musical.
+import './games/musical/index.ts';
+export {
+  musicalModule,
+  createInitialState as musicalCreateInitialState,
+  applyAction as musicalApplyAction,
+  getPlayerView as musicalGetPlayerView,
+  getTableView as musicalGetTableView,
+  MUSICAL_CLIP_STEPS,
+  musicalGuessIsCorrect,
+  musicalPointsForClip,
+  type MusicalState,
+  type MusicalPlayer,
+  type MusicalPhase,
+  type MusicalStatus,
+} from './games/musical/index.ts';

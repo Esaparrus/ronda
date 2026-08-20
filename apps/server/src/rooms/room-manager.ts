@@ -442,7 +442,8 @@ export class RoomManager {
         (state.gameId === 'orden' ||
           state.gameId === 'colores' ||
           state.gameId === 'mayoria' ||
-          state.gameId === 'escala')
+          state.gameId === 'escala' ||
+          state.gameId === 'musical')
       ) {
         // Los modos sociales esperan a todos los jugadores activos para
         // revelar. Marcar la salida en el estado evita dejar una ronda
@@ -647,7 +648,10 @@ export class RoomManager {
     if (
       (input.action.type === 'setOrderCards' ||
         input.action.type === 'endOrder' ||
-        partyNextRound) &&
+        partyNextRound ||
+        input.action.type === 'musicSelectTrack' ||
+        input.action.type === 'musicNextClip' ||
+        input.action.type === 'musicNextRound') &&
       !player.isHost
     ) {
       return err('NOT_HOST');
