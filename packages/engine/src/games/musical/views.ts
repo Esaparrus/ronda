@@ -80,6 +80,7 @@ function common(state: MusicalState): MusicalCommonView {
     phase: state.phase,
     clipIndex: state.clipIndex,
     clipSeconds: MUSICAL_CLIP_STEPS[state.clipIndex] ?? MUSICAL_CLIP_STEPS[0],
+    clipStartedAt: state.clipStartedAt,
     currentTrack: publicTrack(state),
     buzzedPlayerId: state.buzzedPlayerId,
     guessCounts: Object.fromEntries(
@@ -98,14 +99,19 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
     availableActions.push('musicSelectTrack');
   }
   if (state.status === 'playing' && state.phase === 'playing' && !player.left) {
-    if (state.config.mode === 'simultaneo') {
+    if (player.seat === 0 && state.clipStartedAt === null) {
+      availableActions.push('musicStartClip');
+    }
+    if (state.clipStartedAt !== null && state.config.mode === 'simultaneo') {
       availableActions.push('musicSubmitGuess');
-    } else if (state.buzzedPlayerId === null) {
+    } else if (state.clipStartedAt !== null && state.buzzedPlayerId === null) {
       availableActions.push('musicBuzz');
-    } else if (state.buzzedPlayerId === playerId) {
+    } else if (state.clipStartedAt !== null && state.buzzedPlayerId === playerId) {
       availableActions.push('musicSubmitGuess');
     }
-    if (player.seat === 0) availableActions.push('musicNextClip');
+    if (player.seat === 0 && state.clipStartedAt !== null) {
+      availableActions.push('musicNextClip');
+    }
   }
   if (state.status === 'playing' && state.phase === 'reveal' && player.seat === 0) {
     availableActions.push('musicNextRound');

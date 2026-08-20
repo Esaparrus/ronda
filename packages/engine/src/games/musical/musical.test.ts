@@ -40,6 +40,11 @@ function apply(
   return result.value.state;
 }
 
+function selectAndStart(state: MusicalState): MusicalState {
+  const selected = apply(state, 'p1', { type: 'musicSelectTrack', track: TRACK });
+  return apply(selected, 'p1', { type: 'musicStartClip' });
+}
+
 describe('Musical', () => {
   it('oculta la respuesta mientras la ronda está sonando', () => {
     const state = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
@@ -52,8 +57,33 @@ describe('Musical', () => {
     expect(JSON.stringify(tableView)).not.toContain(TRACK.artist);
   });
 
-  it('permite reintentos y puntúa el primer acierto según el clip', () => {
+  it('solo activa las respuestas cuando el anfitrión inicia el clip', () => {
     const selected = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
+    const beforeStart = applyAction(
+      selected,
+      'p2',
+      {
+        type: 'musicSubmitGuess',
+        artist: TRACK.artist,
+        title: TRACK.title,
+        year: TRACK.year,
+      },
+      0,
+    );
+    expect(beforeStart.ok).toBe(false);
+
+    const nonHostStart = applyAction(selected, 'p2', { type: 'musicStartClip' }, 0);
+    expect(nonHostStart.ok).toBe(false);
+    if (nonHostStart.ok) return;
+    expect(nonHostStart.code).toBe('NOT_HOST');
+
+    const started = apply(selected, 'p1', { type: 'musicStartClip' });
+    expect(started.clipStartedAt).toBe(0);
+    expect(getPlayerView(started, 'p2').me.availableActions).toContain('musicSubmitGuess');
+  });
+
+  it('permite reintentos y puntúa el primer acierto según el clip', () => {
+    const selected = selectAndStart(createState());
     const wrong = apply(selected, 'p2', {
       type: 'musicSubmitGuess',
       artist: 'Otra Banda',
@@ -76,7 +106,7 @@ describe('Musical', () => {
   });
 
   it('tolera un error pequeño de escritura en artista y título', () => {
-    const selected = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
+    const selected = selectAndStart(createState());
     const result = apply(selected, 'p2', {
       type: 'musicSubmitGuess',
       artist: 'La Bnda',
@@ -89,7 +119,7 @@ describe('Musical', () => {
   });
 
   it('solo el anfitrión puede ampliar el fragmento y pasar de ronda', () => {
-    const selected = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
+    const selected = selectAndStart(createState());
     const advanced = apply(selected, 'p1', { type: 'musicNextClip' });
     expect(advanced.clipIndex).toBe(1);
 
@@ -100,10 +130,7 @@ describe('Musical', () => {
   });
 
   it('en modo rapido reserva el pulsador y lo libera si hay un fallo', () => {
-    const selected = apply(createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'velocidad' }), 'p1', {
-      type: 'musicSelectTrack',
-      track: TRACK,
-    });
+    const selected = selectAndStart(createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'velocidad' }));
 
     const beforeBuzz = applyAction(
       selected,
@@ -142,10 +169,8 @@ describe('Musical', () => {
   });
 
   it('permite configurar solo el titulo como respuesta', () => {
-    const selected = apply(
+    const selected = selectAndStart(
       createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'simultaneo', answerMode: 'title' }),
-      'p1',
-      { type: 'musicSelectTrack', track: TRACK },
     );
     const result = apply(selected, 'p2', {
       type: 'musicSubmitGuess',
@@ -159,14 +184,12 @@ describe('Musical', () => {
   });
 
   it('exige el ano cuando la partida lo configura', () => {
-    const selected = apply(
+    const selected = selectAndStart(
       createState({
         ...DEFAULT_MUSICAL_CONFIG,
         mode: 'simultaneo',
         answerMode: 'artist_title_year',
       }),
-      'p1',
-      { type: 'musicSelectTrack', track: TRACK },
     );
     const incomplete = applyAction(
       selected,
@@ -179,7 +202,7 @@ describe('Musical', () => {
   });
 
   it('rechaza volver a seleccionar una canción ya usada en la partida', () => {
-    const selected = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
+    const selected = selectAndStart(createState());
     const won = apply(selected, 'p2', {
       type: 'musicSubmitGuess',
       artist: TRACK.artist,

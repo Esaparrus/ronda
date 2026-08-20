@@ -247,7 +247,8 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: true,
-      botDelayMs: Math.min(15_000, Math.max(500, input.delayMs ?? 2_500)),
+      botDelayMs:
+        room.gameId === 'musical' ? 5_000 : Math.min(15_000, Math.max(500, input.delayMs ?? 2_500)),
     };
     room.players.set(playerId, player);
     room.touch(input.now);

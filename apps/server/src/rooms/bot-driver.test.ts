@@ -151,19 +151,29 @@ describe('BotDriver', () => {
       });
       if (!selected.ok) throw new Error('no se pudo seleccionar la canción');
 
+      const clipStarted = manager.applyAction({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        clientActionId: 'start-musical-clip',
+        expectedVersion: room.state?.version ?? -1,
+        action: { type: 'musicStartClip' },
+        now: NOW,
+      });
+      if (!clipStarted.ok) throw new Error('no se pudo iniciar el clip');
+
       const deps: BotDriverDeps = {
         io: { to: vi.fn() } as unknown as TypedIoServer,
         mgr: manager,
         now: () => NOW,
       };
       scheduleBotTurn(deps, created.value.roomCode);
-      vi.advanceTimersByTime(2_499);
+      vi.advanceTimersByTime(4_999);
       expect(room.state?.phase).toBe('playing');
       expect(room.state?.buzzedPlayerId).toBeNull();
       vi.advanceTimersByTime(1);
       expect(room.state?.phase).toBe('playing');
       expect(room.state?.buzzedPlayerId).toBe(bot.value.playerId);
-      vi.advanceTimersByTime(2_500);
+      vi.advanceTimersByTime(5_000);
       expect(room.state?.phase).toBe('reveal');
       expect(room.state?.roundResult?.winnerId).toBe(bot.value.playerId);
     } finally {

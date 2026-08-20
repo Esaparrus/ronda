@@ -21,7 +21,6 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const [addingBot, setAddingBot] = useState(false);
-  const [botDelayMs, setBotDelayMs] = useState(2_500);
 
   const me = view.players.find((player) => player.playerId === view.me.playerId);
   const isHost = me?.isHost ?? false;
@@ -69,7 +68,9 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
       // huecos para que se pueda entrar a probar la partida inmediatamente.
       const botsToAdd = view.gameId === 'mus' ? view.config.maxPlayers - view.players.length : 1;
       for (let i = 0; i < botsToAdd; i++) {
-        const added = await useRondaStore.getState().addBot(botDelayMs);
+        const added = await useRondaStore
+          .getState()
+          .addBot(view.gameId === 'musical' ? 5_000 : undefined);
         if (!added) break;
       }
     } finally {
@@ -141,39 +142,12 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
               <h3 className="text-16 font-semibold text-hueso">Añadir IA</h3>
               <p className="mt-1 text-12 text-humo">
                 {view.gameId === 'musical'
-                  ? 'Añade varios rivales y decide cuánto tardan en pulsar o responder.'
+                  ? 'La IA responde a los cinco segundos para que puedas probar la partida.'
                   : view.gameId === 'mus'
                     ? 'Completa automáticamente los huecos de la mesa.'
                     : 'Añade jugadores automáticos para practicar.'}
               </p>
             </div>
-            {view.gameId === 'musical' ? (
-              <fieldset className="flex flex-col gap-2">
-                <legend className="text-12 font-semibold uppercase tracking-wider text-humo">
-                  Reacción de la IA
-                </legend>
-                <div className="flex flex-wrap gap-1.5">
-                  {[1_000, 2_500, 5_000, 8_000].map((delay) => {
-                    const selected = botDelayMs === delay;
-                    return (
-                      <button
-                        key={delay}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => setBotDelayMs(delay)}
-                        className={`min-h-10 flex-1 rounded-xl border px-3 text-13 font-semibold transition-colors ${
-                          selected
-                            ? 'border-oro/70 bg-madera-clara text-crema'
-                            : 'border-linea bg-tinta/35 text-humo hover:bg-mesa hover:text-hueso'
-                        }`}
-                      >
-                        {delay / 1_000} s
-                      </button>
-                    );
-                  })}
-                </div>
-              </fieldset>
-            ) : null}
             <Button variant="ghost" onClick={handleAddBot} loading={addingBot}>
               {view.gameId === 'mus' ? 'Completar mesa con IA' : 'Añadir IA'}
             </Button>

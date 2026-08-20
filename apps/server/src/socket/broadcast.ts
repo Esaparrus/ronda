@@ -204,6 +204,7 @@ function buildMusicalLobbyCommon(room: Room): MusicalCommonView {
     phase: 'setup',
     clipIndex: 0,
     clipSeconds: 2,
+    clipStartedAt: null,
     currentTrack: null,
     buzzedPlayerId: null,
     guessCounts: {},

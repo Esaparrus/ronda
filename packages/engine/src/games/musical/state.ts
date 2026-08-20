@@ -44,6 +44,8 @@ export interface MusicalState {
   /** IDs ya usadas en esta partida. No se pueden volver a seleccionar. */
   playedTrackIds: string[];
   currentTrack: MusicalTrack | null;
+  /** Marca de tiempo del servidor cuando el anfitrión inicia el clip. */
+  clipStartedAt: number | null;
   buzzedPlayerId: PlayerId | null;
   clipIndex: number;
   guesses: Record<PlayerId, MusicalGuess[]>;

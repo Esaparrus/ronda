@@ -163,6 +163,23 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     setPlaying(false);
   }, [view.round, view.clipIndex, currentTrack?.id]);
 
+  useEffect(() => {
+    setClipReady(false);
+    if (view.clipStartedAt === null) return;
+
+    // En modo simultáneo todos reciben la misma marca de tiempo del servidor.
+    // Así el formulario se desbloquea aunque solo el móvil del anfitrión tenga
+    // el audio reproduciéndose.
+    if (isSpeedMode) {
+      setClipReady(true);
+      return;
+    }
+
+    const remaining = view.clipStartedAt + view.clipSeconds * 1000 - Date.now();
+    const timer = window.setTimeout(() => setClipReady(true), Math.max(0, remaining));
+    return () => window.clearTimeout(timer);
+  }, [isSpeedMode, view.clipSeconds, view.clipStartedAt]);
+
   const triggerFeedback = useCallback((kind: MusicalFeedbackKind) => {
     setFeedback(kind);
     setFeedbackNonce((current) => current + 1);
@@ -196,6 +213,14 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
       setPlaying(false);
       setMessage('No se pudo reproducir la preview. Comprueba el volumen y toca de nuevo.');
     }
+  }
+
+  function startClipForEveryone() {
+    setMessage(null);
+    void useRondaStore.getState().sendAction({ type: 'musicStartClip' });
+    // El play del anfitrión es una acción del usuario y por eso puede iniciar
+    // el audio local sin que el navegador lo bloquee por autoplay.
+    void playPreview();
   }
 
   function stopPreview() {
@@ -375,11 +400,31 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
           />
           {view.phase === 'playing' ? (
             <div className="flex gap-2">
-              <Button onClick={playing ? stopPreview : playPreview} className="flex-1">
-                {playing ? 'Pausar' : `▶ Escuchar ${view.clipSeconds} s`}
-              </Button>
               {isHost ? (
-                <Button variant="ghost" onClick={nextClip} loading={pendingAction}>
+                <Button
+                  onClick={view.clipStartedAt === null ? startClipForEveryone : playPreview}
+                  className="flex-1"
+                  loading={view.clipStartedAt === null && pendingAction}
+                  disabled={playing}
+                >
+                  {view.clipStartedAt === null
+                    ? '▶ Reproducir para todos'
+                    : playing
+                      ? 'Reproduciendo…'
+                      : '▶ Reproducir de nuevo'}
+                </Button>
+              ) : (
+                <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
+                  El anfitrión controla la música. Cuando pulse play, se activará vuestro pulsador.
+                </p>
+              )}
+              {isHost ? (
+                <Button
+                  variant="ghost"
+                  onClick={nextClip}
+                  loading={pendingAction}
+                  disabled={view.clipStartedAt === null}
+                >
                   {view.clipIndex >= 3 ? 'Revelar' : 'Más segundos'}
                 </Button>
               ) : null}
@@ -412,7 +457,19 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
         ) : null}
 
         {view.phase === 'playing' ? (
-          isSpeedMode && view.buzzedPlayerId === null ? (
+          view.clipStartedAt === null ? (
+            <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
+              <span className="text-32 text-oro" aria-hidden="true">
+                ♪
+              </span>
+              <h2 className="text-20 font-semibold text-hueso">Esperando al anfitrión</h2>
+              <p className="text-14 text-humo">
+                {isHost
+                  ? 'Pulsa «Reproducir para todos» cuando estéis listos.'
+                  : 'El anfitrión tiene que pulsar play para que empiece la competición.'}
+              </p>
+            </section>
+          ) : isSpeedMode && view.buzzedPlayerId === null ? (
             <section className="surface-panel flex flex-col items-center gap-4 p-5 text-center">
               <div>
                 <h2 className="text-20 font-semibold text-hueso">¿La sabes?</h2>

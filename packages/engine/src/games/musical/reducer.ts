@@ -54,6 +54,7 @@ export function createInitialState(
       })),
     playedTrackIds: [],
     currentTrack: null,
+    clipStartedAt: null,
     buzzedPlayerId: null,
     clipIndex: 0,
     guesses: {},
@@ -67,11 +68,13 @@ export function applyAction(
   state: MusicalState,
   playerId: PlayerId,
   action: GameAction,
-  _now: number,
+  now: number,
 ): MusicalActionResult {
   switch (action.type) {
     case 'musicSelectTrack':
       return selectTrack(state, playerId, action.track);
+    case 'musicStartClip':
+      return startClip(state, playerId, now);
     case 'musicBuzz':
       return buzz(state, playerId);
     case 'musicSubmitGuess':
@@ -101,6 +104,7 @@ function selectTrack(
   const next = bump(state);
   next.playedTrackIds = [...(state.playedTrackIds ?? []), track.id];
   next.currentTrack = cloneTrack(track);
+  next.clipStartedAt = null;
   next.buzzedPlayerId = null;
   next.clipIndex = 0;
   next.guesses = {};
@@ -112,12 +116,29 @@ function selectTrack(
   });
 }
 
+function startClip(state: MusicalState, playerId: PlayerId, now: number): MusicalActionResult {
+  if (
+    !isHost(state, playerId) ||
+    state.status !== 'playing' ||
+    state.phase !== 'playing' ||
+    !state.currentTrack ||
+    state.clipStartedAt !== null
+  ) {
+    return err(isHost(state, playerId) ? 'INVALID_ACTION' : 'NOT_HOST');
+  }
+
+  const next = bump(state);
+  next.clipStartedAt = now;
+  return ok({ state: next, events: [] });
+}
+
 function buzz(state: MusicalState, playerId: PlayerId): MusicalActionResult {
   if (
     state.status !== 'playing' ||
     state.phase !== 'playing' ||
     state.config.mode !== 'velocidad' ||
     !state.currentTrack ||
+    state.clipStartedAt === null ||
     state.buzzedPlayerId !== null
   ) {
     return err('INVALID_ACTION');
@@ -144,7 +165,10 @@ function submitGuess(
   if (state.status !== 'playing' || state.phase !== 'playing' || !state.currentTrack) {
     return err('INVALID_ACTION');
   }
-  if (state.config.mode === 'velocidad' && state.buzzedPlayerId !== playerId) {
+  if (
+    state.clipStartedAt === null ||
+    (state.config.mode === 'velocidad' && state.buzzedPlayerId !== playerId)
+  ) {
     return err('INVALID_ACTION');
   }
   const player = findPlayer(state, playerId);
@@ -192,9 +216,10 @@ function nextClip(state: MusicalState, playerId: PlayerId): MusicalActionResult 
   if (!isHost(state, playerId) || state.status !== 'playing' || state.phase !== 'playing') {
     return err(isHost(state, playerId) ? 'INVALID_ACTION' : 'NOT_HOST');
   }
-  if (!state.currentTrack) return err('INVALID_ACTION');
+  if (!state.currentTrack || state.clipStartedAt === null) return err('INVALID_ACTION');
 
   const next = bump(state);
+  next.clipStartedAt = null;
   next.buzzedPlayerId = null;
   if (next.clipIndex < MUSICAL_CLIP_STEPS.length - 1) {
     next.clipIndex += 1;
@@ -225,6 +250,7 @@ function nextRound(state: MusicalState, playerId: PlayerId): MusicalActionResult
   next.round += 1;
   next.phase = 'setup';
   next.currentTrack = null;
+  next.clipStartedAt = null;
   next.buzzedPlayerId = null;
   next.clipIndex = 0;
   next.guesses = {};
@@ -334,6 +360,7 @@ function bump(state: MusicalState): MusicalState {
     players: state.players.map((player) => ({ ...player })),
     playedTrackIds: [...(state.playedTrackIds ?? [])],
     currentTrack: state.currentTrack ? cloneTrack(state.currentTrack) : null,
+    clipStartedAt: state.clipStartedAt,
     buzzedPlayerId: state.buzzedPlayerId,
     guesses: cloneGuesses(state.guesses),
     roundResult: state.roundResult

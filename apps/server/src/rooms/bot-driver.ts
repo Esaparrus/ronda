@@ -33,7 +33,7 @@ import {
 } from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
-const MUSICAL_BOT_DELAY_MS = 2_500;
+const MUSICAL_BOT_DELAY_MS = 5_000;
 
 export interface BotDriverDeps {
   io: TypedIoServer;
@@ -150,7 +150,12 @@ function nextBotTurn(room: Room): BotTurn | null {
     return activeBot ? { playerId: activeBot.playerId, kind: 'action' } : null;
   }
 
-  if (room.status === 'playing' && state.gameId === 'musical' && state.phase === 'playing') {
+  if (
+    room.status === 'playing' &&
+    state.gameId === 'musical' &&
+    state.phase === 'playing' &&
+    state.clipStartedAt !== null
+  ) {
     const bots = room.playersBySeat().filter((player) => player.isBot);
     const buzzedBot =
       state.buzzedPlayerId !== null
@@ -160,8 +165,7 @@ function nextBotTurn(room: Room): BotTurn | null {
       buzzedBot ??
       [...bots].sort(
         (left, right) =>
-          (left.botDelayMs ?? MUSICAL_BOT_DELAY_MS) -
-          (right.botDelayMs ?? MUSICAL_BOT_DELAY_MS),
+          (left.botDelayMs ?? MUSICAL_BOT_DELAY_MS) - (right.botDelayMs ?? MUSICAL_BOT_DELAY_MS),
       )[0];
     if (
       !bot ||
