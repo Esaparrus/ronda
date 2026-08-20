@@ -80,6 +80,7 @@ function common(state: MusicalState): MusicalCommonView {
     clipIndex: state.clipIndex,
     clipSeconds: MUSICAL_CLIP_STEPS[state.clipIndex] ?? MUSICAL_CLIP_STEPS[0],
     currentTrack: publicTrack(state),
+    buzzedPlayerId: state.buzzedPlayerId,
     guessCounts: Object.fromEntries(
       state.players.map((player) => [player.playerId, state.guesses[player.playerId]?.length ?? 0]),
     ) as Record<PlayerId, number>,
@@ -96,7 +97,13 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
     availableActions.push('musicSelectTrack');
   }
   if (state.status === 'playing' && state.phase === 'playing' && !player.left) {
-    availableActions.push('musicSubmitGuess');
+    if (state.config.mode === 'simultaneo') {
+      availableActions.push('musicSubmitGuess');
+    } else if (state.buzzedPlayerId === null) {
+      availableActions.push('musicBuzz');
+    } else if (state.buzzedPlayerId === playerId) {
+      availableActions.push('musicSubmitGuess');
+    }
     if (player.seat === 0) availableActions.push('musicNextClip');
   }
   if (state.status === 'playing' && state.phase === 'reveal' && player.seat === 0) {

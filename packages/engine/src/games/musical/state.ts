@@ -1,13 +1,7 @@
 // Estado del juego Musical. Las previews son públicas para reproducirlas en
 // cada móvil; la respuesta completa de la pista solo sale en la revelación.
 
-import type {
-  GameConfig,
-  MusicalConfig,
-  MusicalTrack,
-  PlayerId,
-  RoomCode,
-} from '@ronda/protocol';
+import type { GameConfig, MusicalConfig, MusicalTrack, PlayerId, RoomCode } from '@ronda/protocol';
 
 export type MusicalStatus = 'playing' | 'gameEnd';
 export type MusicalPhase = 'setup' | 'playing' | 'reveal';
@@ -47,6 +41,7 @@ export interface MusicalState {
   turnSeat: null;
   players: MusicalPlayer[];
   currentTrack: MusicalTrack | null;
+  buzzedPlayerId: PlayerId | null;
   clipIndex: number;
   guesses: Record<PlayerId, MusicalGuess[]>;
   roundResult: MusicalRoundResultState | null;

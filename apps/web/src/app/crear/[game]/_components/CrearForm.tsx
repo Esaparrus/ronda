@@ -34,7 +34,7 @@ import {
 import { useRondaStore } from '@/lib/store';
 import { isValidNick, normalizeNick } from '@/lib/nick';
 import {
-  MUSICAL_DECADE_OPTIONS,
+  MUSICAL_ANSWER_MODE_OPTIONS,
   MUSICAL_GENRE_OPTIONS,
   MUSICAL_POPULARITY_OPTIONS,
 } from '@/lib/musical';
@@ -43,6 +43,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
 import { BackToGames } from '@/components/ui/BackToGames';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
+import { MusicYearRangeControl } from '@/components/ui/MusicYearRangeControl';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
 import { CreateRoomLoading } from './CreateRoomLoading';
 
@@ -741,17 +742,12 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
         }
         options={MUSICAL_GENRE_OPTIONS.map(({ value, label }) => ({ value, label }))}
       />
-      <SegmentedControl
-        legend="Época"
-        helperText="Limita las canciones a una década concreta."
-        value={config.decade}
-        onChange={(value) =>
-          setConfig((previous) => ({
-            ...previous,
-            decade: value as MusicalConfig['decade'],
-          }))
+      <MusicYearRangeControl
+        yearFrom={config.yearFrom}
+        yearTo={config.yearTo}
+        onChange={(yearFrom, yearTo) =>
+          setConfig((previous) => ({ ...previous, yearFrom, yearTo }))
         }
-        options={MUSICAL_DECADE_OPTIONS.map(({ value, label }) => ({ value, label }))}
       />
       <SegmentedControl
         legend="Popularidad"
@@ -767,7 +763,7 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
       />
       <SegmentedControl
         legend="Forma de competir"
-        helperText="Velocidad: gana el primer acierto. Simultáneo: todos podéis responder al fragmento."
+        helperText="Rápido: pulsa primero. Simultáneo: todos respondéis."
         value={config.mode}
         onChange={(value) =>
           setConfig((previous) => ({
@@ -776,9 +772,21 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
           }))
         }
         options={[
-          { value: 'velocidad', label: 'Velocidad' },
+          { value: 'velocidad', label: 'Rápido · pulsador' },
           { value: 'simultaneo', label: 'Simultáneo' },
         ]}
+      />
+      <SegmentedControl
+        legend="Qué hay que acertar"
+        helperText="Decide qué datos debe escribir cada jugador."
+        value={config.answerMode}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            answerMode: value as MusicalConfig['answerMode'],
+          }))
+        }
+        options={MUSICAL_ANSWER_MODE_OPTIONS.map(({ value, label }) => ({ value, label }))}
       />
     </section>
   );

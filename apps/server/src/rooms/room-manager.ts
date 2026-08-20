@@ -453,6 +453,9 @@ export class RoomManager {
           players: state.players.map((candidate) =>
             candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
           ),
+          ...(state.gameId === 'musical' && state.buzzedPlayerId === player.playerId
+            ? { buzzedPlayerId: null }
+            : {}),
         };
       }
       if (state?.gameId === 'laronda') {
@@ -850,6 +853,17 @@ export class RoomManager {
     p.socketId = input.socketId;
     p.lastSeenAt = input.now;
     p.disconnectedAt = input.connected ? null : input.now;
+    if (
+      !input.connected &&
+      room.state?.gameId === 'musical' &&
+      room.state.buzzedPlayerId === input.playerId
+    ) {
+      room.state = {
+        ...room.state,
+        version: room.state.version + 1,
+        buzzedPlayerId: null,
+      };
+    }
     // La presencia no cuenta como actividad de juego: dejar una pestaña
     // conectada no debe mantener viva una sala abandonada indefinidamente.
   }

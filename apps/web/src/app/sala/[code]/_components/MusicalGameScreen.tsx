@@ -45,6 +45,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const [guess, setGuess] = useState<GuessForm>(EMPTY_GUESS);
   const [message, setMessage] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [clipReady, setClipReady] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<MusicalFeedbackKind | null>(null);
@@ -58,15 +59,19 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     view.players.find((player) => player.playerId === view.me.playerId)?.isHost ?? false;
   const currentTrack = view.currentTrack;
   const myGuessCount = view.guessCounts[view.me.playerId] ?? 0;
+  const isSpeedMode = view.config.mode === 'velocidad';
+  const requiresArtist = view.config.answerMode !== 'title';
+  const requiresYear = view.config.answerMode === 'artist_title_year';
   const filters: MusicFilters = {
     genre: view.config.genre,
-    decade: view.config.decade,
     popularity: view.config.popularity,
+    yearFrom: view.config.yearFrom,
+    yearTo: view.config.yearTo,
   };
 
   useEffect(() => {
     if (view.phase !== 'setup' || !isHost) return;
-    const selectionKey = `${view.round}:${filters.genre}:${filters.decade}:${filters.popularity}`;
+    const selectionKey = `${view.round}:${filters.genre}:${filters.yearFrom}:${filters.yearTo}:${filters.popularity}`;
     if (selectionKeyRef.current === selectionKey) return;
     selectionKeyRef.current = selectionKey;
     let cancelled = false;
@@ -103,12 +108,21 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [filters.decade, filters.genre, filters.popularity, isHost, view.phase, view.round]);
+  }, [
+    filters.genre,
+    filters.popularity,
+    filters.yearFrom,
+    filters.yearTo,
+    isHost,
+    view.phase,
+    view.round,
+  ]);
 
   useEffect(() => {
     setGuess(EMPTY_GUESS);
     setMessage(null);
     setFeedback(null);
+    setClipReady(false);
     const audio = audioRef.current;
     if (audio) resetAudioElement(audio);
     setPlaying(false);
@@ -159,13 +173,23 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     if (!audio || audio.currentTime < view.clipSeconds) return;
     audio.pause();
     setPlaying(false);
+    setClipReady(true);
   }
 
   function submitGuess() {
     const artist = guess.artist.trim();
     const title = guess.title.trim();
-    if (!artist && !title) return;
+    if (!title || (requiresArtist && !artist)) {
+      setMessage(
+        requiresArtist ? 'Completa artista y canción.' : 'Escribe el título de la canción.',
+      );
+      return;
+    }
     const year = guess.year.trim() ? Number(guess.year) : null;
+    if (requiresYear && year === null) {
+      setMessage('Escribe también el año.');
+      return;
+    }
     if (year !== null && !Number.isInteger(year)) {
       setMessage('El año debe ser un número.');
       return;
@@ -178,6 +202,12 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
       title,
       year,
     });
+  }
+
+  function buzz() {
+    setMessage(null);
+    prepareMusicalFeedbackAudio();
+    void useRondaStore.getState().sendAction({ type: 'musicBuzz' });
   }
 
   function nextClip() {
@@ -297,7 +327,10 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
             src={currentTrack.previewUrl}
             preload="auto"
             onTimeUpdate={handleTimeUpdate}
-            onEnded={() => setPlaying(false)}
+            onEnded={() => {
+              setPlaying(false);
+              setClipReady(true);
+            }}
             onError={() => {
               setPlaying(false);
               setMessage('La preview no se pudo cargar. Prueba otra canción.');
@@ -344,54 +377,97 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
         ) : null}
 
         {view.phase === 'playing' ? (
-          <form
-            className="surface-panel flex flex-col gap-4 p-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitGuess();
-            }}
-          >
-            <div>
-              <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
-              <p className="mt-1 text-14 text-humo">
-                Escribe y elige una sugerencia; gana el primer acierto.
+          isSpeedMode && view.buzzedPlayerId === null ? (
+            <section className="surface-panel flex flex-col items-center gap-4 p-5 text-center">
+              <div>
+                <h2 className="text-20 font-semibold text-hueso">¿La sabes?</h2>
+                <p className="mt-1 text-14 text-humo">
+                  Pulsa primero y podrás escribir la respuesta.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={buzz}
+                disabled={pendingAction}
+                aria-label="Pulsar para responder"
+                className="grid min-h-40 w-40 place-items-center rounded-full border-4 border-oro bg-brasa px-5 text-center text-20 font-bold uppercase tracking-wide text-crema shadow-[0_7px_0_rgba(92,34,28,0.9)] transition-transform active:translate-y-1 active:shadow-[0_3px_0_rgba(92,34,28,0.9)] disabled:cursor-wait disabled:opacity-60"
+              >
+                {pendingAction ? '…' : '¡La sé!'}
+              </button>
+            </section>
+          ) : isSpeedMode && view.buzzedPlayerId !== view.me.playerId ? (
+            <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
+              <span className="text-32 text-oro" aria-hidden="true">
+                ⏳
+              </span>
+              <h2 className="text-20 font-semibold text-hueso">Alguien se ha adelantado</h2>
+              <p className="text-14 text-humo">Espera a ver si acierta.</p>
+            </section>
+          ) : !isSpeedMode && !clipReady ? (
+            <section className="surface-panel flex flex-col gap-2 p-5 text-center">
+              <h2 className="text-20 font-semibold text-hueso">Escuchad el fragmento</h2>
+              <p className="text-14 text-humo">
+                Cuando terminen los {view.clipSeconds} segundos, todos podréis responder.
               </p>
-            </div>
-            <MusicAutocompleteInput
-              field="artist"
-              label="Artista"
-              value={guess.artist}
-              onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
-              placeholder="Por ejemplo, A…"
-            />
-            <MusicAutocompleteInput
-              field="title"
-              label="Canción"
-              value={guess.title}
-              onChange={(title) => setGuess((current) => ({ ...current, title }))}
-              placeholder="Nombre de la canción"
-            />
-            <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
-              Año <span className="font-normal text-humo">(opcional)</span>
-              <input
-                value={guess.year}
-                onChange={(event) =>
-                  setGuess((current) => ({ ...current, year: event.target.value }))
-                }
-                className="form-control px-4 text-16"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="2020"
-              />
-            </label>
-            <Button
-              type="submit"
-              disabled={!guess.artist.trim() && !guess.title.trim()}
-              loading={pendingAction}
+            </section>
+          ) : (
+            <form
+              className="surface-panel flex flex-col gap-4 p-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitGuess();
+              }}
             >
-              Corregir
-            </Button>
-          </form>
+              <div>
+                <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
+                <p className="mt-1 text-14 text-humo">
+                  {isSpeedMode
+                    ? 'Ya tienes el pulsador. Escribe y corrige tu respuesta.'
+                    : 'Escribe y elige una sugerencia; el primer acierto gana.'}
+                </p>
+              </div>
+              {requiresArtist ? (
+                <MusicAutocompleteInput
+                  field="artist"
+                  label="Artista"
+                  value={guess.artist}
+                  onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
+                  placeholder="Por ejemplo, A…"
+                />
+              ) : null}
+              <MusicAutocompleteInput
+                field="title"
+                label="Canción"
+                value={guess.title}
+                onChange={(title) => setGuess((current) => ({ ...current, title }))}
+                placeholder="Nombre de la canción"
+              />
+              {requiresYear ? (
+                <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
+                  Año
+                  <input
+                    required
+                    type="number"
+                    value={guess.year}
+                    onChange={(event) =>
+                      setGuess((current) => ({ ...current, year: event.target.value }))
+                    }
+                    className="form-control px-4 text-16"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="2020"
+                  />
+                </label>
+              ) : null}
+              <Button
+                type="submit"
+                disabled={!guess.title.trim() || (requiresArtist && !guess.artist.trim())}
+                loading={pendingAction}
+              >
+                Corregir
+              </Button>
+            </form>
+          )
         ) : view.roundResult ? (
           <section className="surface-panel flex flex-col gap-4 p-5">
             <div>

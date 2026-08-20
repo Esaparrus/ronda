@@ -1,13 +1,14 @@
-import type { MusicalConfig } from '@ronda/protocol';
+import { MUSICAL_YEAR_MAX, MUSICAL_YEAR_MIN, type MusicalConfig } from '@ronda/protocol';
 
 export const MUSICAL_CLIP_STEPS = [2, 5, 10, 20] as const;
 
-export type MusicFilters = Pick<MusicalConfig, 'genre' | 'decade' | 'popularity'>;
+export type MusicFilters = Pick<MusicalConfig, 'genre' | 'popularity' | 'yearFrom' | 'yearTo'>;
 
 export const DEFAULT_MUSIC_FILTERS: MusicFilters = {
   genre: 'mezcla',
-  decade: 'cualquiera',
   popularity: 'variado',
+  yearFrom: MUSICAL_YEAR_MIN,
+  yearTo: MUSICAL_YEAR_MAX,
 };
 
 export interface MusicTrack {
@@ -60,10 +61,28 @@ export const MUSICAL_DECADE_OPTIONS = [
   { value: '2010', label: 'Años 2010', from: 2010, to: 2019 },
   { value: '2020', label: 'Años 2020', from: 2020, to: 2029 },
 ] as const satisfies ReadonlyArray<{
-  value: MusicFilters['decade'];
+  value: MusicalConfig['decade'];
   label: string;
   from: number | null;
   to: number | null;
+}>;
+
+export const MUSICAL_ANSWER_MODE_OPTIONS = [
+  {
+    value: 'artist_title_year',
+    label: 'Artista + canción + año',
+  },
+  {
+    value: 'artist_title',
+    label: 'Artista + canción',
+  },
+  {
+    value: 'title',
+    label: 'Solo canción',
+  },
+] as const satisfies ReadonlyArray<{
+  value: MusicalConfig['answerMode'];
+  label: string;
 }>;
 
 export const MUSICAL_POPULARITY_OPTIONS = [
@@ -79,12 +98,9 @@ export async function searchMusic(filters: MusicFilters): Promise<MusicTrack[]> 
   const genre =
     MUSICAL_GENRE_OPTIONS.find((option) => option.value === filters.genre) ??
     MUSICAL_GENRE_OPTIONS[0];
-  const decade =
-    MUSICAL_DECADE_OPTIONS.find((option) => option.value === filters.decade) ??
-    MUSICAL_DECADE_OPTIONS[0];
   const params = new URLSearchParams({ q: genre.query, limit: '100' });
-  if (decade.from !== null) params.set('from', String(decade.from));
-  if (decade.to !== null) params.set('to', String(decade.to));
+  params.set('from', String(filters.yearFrom));
+  params.set('to', String(filters.yearTo));
 
   const response = await fetch(`/api/music/search?${params.toString()}`);
   const payload = (await response.json()) as MusicSearchResponse;
@@ -125,20 +141,25 @@ export async function pickRandomMusicTracks(
 
 export function musicFiltersLabel(filters: MusicFilters): string {
   const genre = MUSICAL_GENRE_OPTIONS.find((option) => option.value === filters.genre);
-  const decade = MUSICAL_DECADE_OPTIONS.find((option) => option.value === filters.decade);
   const popularity = MUSICAL_POPULARITY_OPTIONS.find(
     (option) => option.value === filters.popularity,
   );
-  return [genre?.label, decade?.label, popularity?.label].filter(Boolean).join(' · ');
+  const years =
+    filters.yearFrom === MUSICAL_YEAR_MIN && filters.yearTo >= MUSICAL_YEAR_MAX
+      ? 'Cualquier época'
+      : `${filters.yearFrom}–${filters.yearTo}`;
+  return [genre?.label, years, popularity?.label].filter(Boolean).join(' · ');
 }
 
 export function isMusicAnswerCorrect(
   guess: { artist: string; title: string; year: number | null },
   track: MusicTrack,
+  answerMode: MusicalConfig['answerMode'] = 'artist_title',
 ): boolean {
-  const yearMatches = guess.year === null || (track.year !== null && guess.year === track.year);
+  const yearMatches =
+    answerMode !== 'artist_title_year' || (track.year !== null && guess.year === track.year);
   return (
-    normalizedMatch(guess.artist, track.artist) &&
+    (answerMode === 'title' || normalizedMatch(guess.artist, track.artist)) &&
     normalizedMatch(guess.title, track.title) &&
     yearMatches
   );

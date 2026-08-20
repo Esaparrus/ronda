@@ -79,6 +79,7 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   }),
   // --- Musical -------------------------------------------------------------
   z.object({ t: z.literal('musicTrackSelected'), round: z.number().int() }),
+  z.object({ t: z.literal('musicBuzzed'), playerId: z.string() }),
   z.object({ t: z.literal('musicGuessSubmitted'), playerId: z.string() }),
   z.object({ t: z.literal('musicClipAdvanced'), clipIndex: z.number().int() }),
   // --- La Ronda ------------------------------------------------------------

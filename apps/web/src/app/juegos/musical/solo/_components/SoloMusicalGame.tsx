@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import type { MusicalConfig } from '@ronda/protocol';
 import { BackToGames } from '@/components/ui/BackToGames';
 import { Button } from '@/components/ui/Button';
 import { MusicAutocompleteInput } from '@/components/ui/MusicAutocompleteInput';
@@ -12,7 +13,7 @@ import {
   isMusicAnswerCorrect,
   musicFiltersLabel,
   MUSICAL_CLIP_STEPS,
-  MUSICAL_DECADE_OPTIONS,
+  MUSICAL_ANSWER_MODE_OPTIONS,
   MUSICAL_GENRE_OPTIONS,
   MUSICAL_POPULARITY_OPTIONS,
   pickRandomMusicTracks,
@@ -21,6 +22,7 @@ import {
   type MusicTrack,
 } from '@/lib/musical';
 import { playMusicalFeedback, type MusicalFeedbackKind } from '@/lib/musical-feedback';
+import { MusicYearRangeControl } from '@/components/ui/MusicYearRangeControl';
 
 type SoloPhase = 'setup' | 'playing' | 'reveal' | 'finished';
 
@@ -48,6 +50,7 @@ export function SoloMusicalGame() {
   const [phase, setPhase] = useState<SoloPhase>('setup');
   const [rounds, setRounds] = useState(5);
   const [filters, setFilters] = useState<MusicFilters>(DEFAULT_MUSIC_FILTERS);
+  const [answerMode, setAnswerMode] = useState<MusicalConfig['answerMode']>('artist_title');
   const [selectedTracks, setSelectedTracks] = useState<MusicTrack[]>([]);
   const [starting, setStarting] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -65,6 +68,8 @@ export function SoloMusicalGame() {
 
   const track = selectedTracks[currentIndex] ?? null;
   const clipSeconds = MUSICAL_CLIP_STEPS[clipIndex] ?? MUSICAL_CLIP_STEPS[0];
+  const requiresArtist = answerMode !== 'title';
+  const requiresYear = answerMode === 'artist_title_year';
 
   function triggerFeedback(kind: MusicalFeedbackKind) {
     setFeedback(kind);
@@ -136,8 +141,20 @@ export function SoloMusicalGame() {
   }
 
   function submitGuess() {
-    if (!track || (!guess.artist.trim() && !guess.title.trim())) return;
+    if (!track) return;
+    const artist = guess.artist.trim();
+    const title = guess.title.trim();
+    if (!title || (requiresArtist && !artist)) {
+      setMessage(
+        requiresArtist ? 'Completa artista y canción.' : 'Escribe el título de la canción.',
+      );
+      return;
+    }
     const numericYear = guess.year.trim() ? Number(guess.year) : null;
+    if (requiresYear && numericYear === null) {
+      setMessage('Escribe también el año.');
+      return;
+    }
     const validYear = numericYear === null || Number.isInteger(numericYear);
     if (!validYear) {
       setMessage('El año debe ser un número.');
@@ -145,10 +162,7 @@ export function SoloMusicalGame() {
     }
     const nextAttempts = attempts + 1;
     setAttempts(nextAttempts);
-    const isCorrect = isMusicAnswerCorrect(
-      { artist: guess.artist, title: guess.title, year: numericYear },
-      track,
-    );
+    const isCorrect = isMusicAnswerCorrect({ artist, title, year: numericYear }, track, answerMode);
     if (isCorrect) {
       const points = pointsForMusicClip(clipIndex);
       setScore((current) => current + points);
@@ -214,12 +228,12 @@ export function SoloMusicalGame() {
             onChange={(genre) => setFilters((current) => ({ ...current, genre }))}
             options={MUSICAL_GENRE_OPTIONS.map(({ value, label }) => ({ value, label }))}
           />
-          <SegmentedControl
-            legend="Época"
-            helperText="Filtra por década de lanzamiento."
-            value={filters.decade}
-            onChange={(decade) => setFilters((current) => ({ ...current, decade }))}
-            options={MUSICAL_DECADE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+          <MusicYearRangeControl
+            yearFrom={filters.yearFrom}
+            yearTo={filters.yearTo}
+            onChange={(yearFrom, yearTo) =>
+              setFilters((current) => ({ ...current, yearFrom, yearTo }))
+            }
           />
           <SegmentedControl
             legend="Popularidad"
@@ -227,6 +241,13 @@ export function SoloMusicalGame() {
             value={filters.popularity}
             onChange={(popularity) => setFilters((current) => ({ ...current, popularity }))}
             options={MUSICAL_POPULARITY_OPTIONS.map(({ value, label }) => ({ value, label }))}
+          />
+          <SegmentedControl
+            legend="Qué hay que acertar"
+            helperText="Configura los datos obligatorios de cada respuesta."
+            value={answerMode}
+            onChange={setAnswerMode}
+            options={MUSICAL_ANSWER_MODE_OPTIONS.map(({ value, label }) => ({ value, label }))}
           />
           <p className="rounded-xl border border-oro/35 bg-oro/10 px-3 py-2 text-14 text-oro">
             Filtros elegidos: {musicFiltersLabel(filters)}
@@ -364,16 +385,20 @@ export function SoloMusicalGame() {
           <div>
             <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
             <p className="mt-1 text-14 text-humo">
-              Empieza a escribir y elige una sugerencia si aparece.
+              {requiresArtist
+                ? 'Escribe artista y canción; puedes elegir una sugerencia.'
+                : 'Escribe el título; puedes elegir una sugerencia.'}
             </p>
           </div>
-          <MusicAutocompleteInput
-            field="artist"
-            label="Artista"
-            value={guess.artist}
-            onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
-            placeholder="Por ejemplo, A…"
-          />
+          {requiresArtist ? (
+            <MusicAutocompleteInput
+              field="artist"
+              label="Artista"
+              value={guess.artist}
+              onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
+              placeholder="Por ejemplo, A…"
+            />
+          ) : null}
           <MusicAutocompleteInput
             field="title"
             label="Canción"
@@ -381,20 +406,27 @@ export function SoloMusicalGame() {
             onChange={(title) => setGuess((current) => ({ ...current, title }))}
             placeholder="Nombre de la canción"
           />
-          <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
-            Año <span className="font-normal text-humo">(opcional)</span>
-            <input
-              value={guess.year}
-              onChange={(event) =>
-                setGuess((current) => ({ ...current, year: event.target.value }))
-              }
-              className="form-control px-4 text-16"
-              inputMode="numeric"
-              maxLength={4}
-              placeholder="2020"
-            />
-          </label>
-          <Button type="submit" disabled={!guess.artist.trim() && !guess.title.trim()}>
+          {requiresYear ? (
+            <label className="flex flex-col gap-1.5 text-14 font-semibold text-hueso">
+              Año
+              <input
+                required
+                type="number"
+                value={guess.year}
+                onChange={(event) =>
+                  setGuess((current) => ({ ...current, year: event.target.value }))
+                }
+                className="form-control px-4 text-16"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="2020"
+              />
+            </label>
+          ) : null}
+          <Button
+            type="submit"
+            disabled={!guess.title.trim() || (requiresArtist && !guess.artist.trim())}
+          >
             Corregir
           </Button>
           {clipIndex === MUSICAL_CLIP_STEPS.length - 1 ? (

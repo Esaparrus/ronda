@@ -526,7 +526,7 @@ export type PartyTableView = OrdenTableView | ColoresTableView | MayoriaTableVie
 
 export type MusicalPhase = 'setup' | 'playing' | 'reveal';
 export type MusicalAvailableAction =
-  'musicSelectTrack' | 'musicSubmitGuess' | 'musicNextClip' | 'musicNextRound';
+  'musicSelectTrack' | 'musicBuzz' | 'musicSubmitGuess' | 'musicNextClip' | 'musicNextRound';
 
 /** Datos necesarios para reproducir una preview, sin la respuesta. */
 export interface MusicalTrackPublic {
@@ -561,6 +561,8 @@ export interface MusicalCommonView extends CommonViewBase {
   clipIndex: number;
   clipSeconds: number;
   currentTrack: MusicalTrackPublic | null;
+  /** Jugador que ha pulsado primero en el modo velocidad. */
+  buzzedPlayerId: PlayerId | null;
   guessCounts: Record<PlayerId, number>;
   roundResult: MusicalRoundResult | null;
 }

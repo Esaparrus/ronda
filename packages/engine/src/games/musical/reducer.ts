@@ -49,6 +49,7 @@ export function createInitialState(
         hand: [],
       })),
     currentTrack: null,
+    buzzedPlayerId: null,
     clipIndex: 0,
     guesses: {},
     roundResult: null,
@@ -66,6 +67,8 @@ export function applyAction(
   switch (action.type) {
     case 'musicSelectTrack':
       return selectTrack(state, playerId, action.track);
+    case 'musicBuzz':
+      return buzz(state, playerId);
     case 'musicSubmitGuess':
       return submitGuess(state, playerId, action.artist, action.title, action.year);
     case 'musicNextClip':
@@ -91,6 +94,7 @@ function selectTrack(
 
   const next = bump(state);
   next.currentTrack = cloneTrack(track);
+  next.buzzedPlayerId = null;
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
@@ -98,6 +102,28 @@ function selectTrack(
   return ok({
     state: next,
     events: [{ t: 'musicTrackSelected', round: next.round }],
+  });
+}
+
+function buzz(state: MusicalState, playerId: PlayerId): MusicalActionResult {
+  if (
+    state.status !== 'playing' ||
+    state.phase !== 'playing' ||
+    state.config.mode !== 'velocidad' ||
+    !state.currentTrack ||
+    state.buzzedPlayerId !== null
+  ) {
+    return err('INVALID_ACTION');
+  }
+  const player = findPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+
+  const next = bump(state);
+  next.buzzedPlayerId = playerId;
+  return ok({
+    state: next,
+    events: [{ t: 'musicBuzzed', playerId }],
   });
 }
 
@@ -111,6 +137,9 @@ function submitGuess(
   if (state.status !== 'playing' || state.phase !== 'playing' || !state.currentTrack) {
     return err('INVALID_ACTION');
   }
+  if (state.config.mode === 'velocidad' && state.buzzedPlayerId !== playerId) {
+    return err('INVALID_ACTION');
+  }
   const player = findPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (player.left) return err('PLAYER_ELIMINATED');
@@ -121,12 +150,12 @@ function submitGuess(
     year,
     correct: false,
   };
-  if (!guess.artist && !guess.title) return err('INVALID_ACTION');
+  if (!isGuessComplete(state.config.answerMode, guess)) return err('INVALID_ACTION');
 
   const next = bump(state);
   const nextTrack = next.currentTrack;
   if (!nextTrack) return err('INVALID_ACTION');
-  guess.correct = isCorrectGuess(guess, nextTrack);
+  guess.correct = isCorrectGuess(guess, nextTrack, next.config.answerMode);
   const guesses = next.guesses[playerId] ?? [];
   next.guesses[playerId] = [...guesses, guess];
   const events: GameEvent[] = [{ t: 'musicGuessSubmitted', playerId }];
@@ -136,6 +165,7 @@ function submitGuess(
     const nextPlayer = findPlayer(next, playerId);
     if (!nextPlayer) return err('PLAYER_NOT_IN_ROOM');
     nextPlayer.score += points;
+    next.buzzedPlayerId = null;
     next.phase = 'reveal';
     next.roundResult = buildRoundResult(next, playerId, points);
     if (next.round >= next.config.rounds) {
@@ -143,6 +173,9 @@ function submitGuess(
       next.winnerId = decideWinner(next);
       if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
     }
+  } else if (next.config.mode === 'velocidad') {
+    // Un fallo libera el pulsador para que otra persona pueda intentarlo.
+    next.buzzedPlayerId = null;
   }
 
   return ok({ state: next, events });
@@ -155,6 +188,7 @@ function nextClip(state: MusicalState, playerId: PlayerId): MusicalActionResult 
   if (!state.currentTrack) return err('INVALID_ACTION');
 
   const next = bump(state);
+  next.buzzedPlayerId = null;
   if (next.clipIndex < MUSICAL_CLIP_STEPS.length - 1) {
     next.clipIndex += 1;
     return ok({
@@ -184,6 +218,7 @@ function nextRound(state: MusicalState, playerId: PlayerId): MusicalActionResult
   next.round += 1;
   next.phase = 'setup';
   next.currentTrack = null;
+  next.buzzedPlayerId = null;
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
@@ -213,11 +248,26 @@ function isHost(state: MusicalState, playerId: PlayerId): boolean {
   return player?.seat === 0 && !player.left;
 }
 
-function isCorrectGuess(guess: MusicalGuess, track: MusicalTrack): boolean {
+function isCorrectGuess(
+  guess: MusicalGuess,
+  track: MusicalTrack,
+  answerMode: MusicalState['config']['answerMode'],
+): boolean {
   const titleMatches = normalizedMatch(guess.title, track.title);
-  const artistMatches = normalizedMatch(guess.artist, track.artist);
-  const yearMatches = guess.year === null || (track.year !== null && guess.year === track.year);
+  const artistMatches = answerMode === 'title' || normalizedMatch(guess.artist, track.artist);
+  const yearMatches =
+    answerMode !== 'artist_title_year' || (track.year !== null && guess.year === track.year);
   return titleMatches && artistMatches && yearMatches;
+}
+
+function isGuessComplete(
+  answerMode: MusicalState['config']['answerMode'],
+  guess: Pick<MusicalGuess, 'artist' | 'title' | 'year'>,
+): boolean {
+  const hasTitle = Boolean(guess.title.trim());
+  const hasArtist = answerMode === 'title' || Boolean(guess.artist.trim());
+  const hasYear = answerMode !== 'artist_title_year' || guess.year !== null;
+  return hasTitle && hasArtist && hasYear;
 }
 
 function normalizedMatch(value: string, expected: string): boolean {
@@ -276,6 +326,7 @@ function bump(state: MusicalState): MusicalState {
     version: state.version + 1,
     players: state.players.map((player) => ({ ...player })),
     currentTrack: state.currentTrack ? cloneTrack(state.currentTrack) : null,
+    buzzedPlayerId: state.buzzedPlayerId,
     guesses: cloneGuesses(state.guesses),
     roundResult: state.roundResult
       ? {
@@ -302,8 +353,9 @@ function cloneGuesses(guesses: Record<PlayerId, MusicalGuess[]>): Record<PlayerI
 export function musicalGuessIsCorrect(
   guess: Pick<MusicalGuess, 'artist' | 'title' | 'year'>,
   track: MusicalTrack,
+  answerMode: MusicalState['config']['answerMode'] = 'artist_title',
 ): boolean {
-  return isCorrectGuess({ ...guess, correct: false }, track);
+  return isCorrectGuess({ ...guess, correct: false }, track, answerMode);
 }
 
 export function musicalPointsForClip(clipIndex: number): number {

@@ -19,9 +19,11 @@ const TRACK: MusicalTrack = {
   storeUrl: 'https://example.com/store',
 };
 
-function createState(): MusicalState {
+function createState(
+  config: typeof DEFAULT_MUSICAL_CONFIG = { ...DEFAULT_MUSICAL_CONFIG, mode: 'simultaneo' },
+): MusicalState {
   return createInitialState({
-    config: DEFAULT_MUSICAL_CONFIG,
+    config,
     seed: 'musical-test',
     players: PLAYERS,
     roomCode: 'TEST',
@@ -95,5 +97,84 @@ describe('Musical', () => {
     expect(notHost.ok).toBe(false);
     if (notHost.ok) return;
     expect(notHost.code).toBe('NOT_HOST');
+  });
+
+  it('en modo rapido reserva el pulsador y lo libera si hay un fallo', () => {
+    const selected = apply(createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'velocidad' }), 'p1', {
+      type: 'musicSelectTrack',
+      track: TRACK,
+    });
+
+    const beforeBuzz = applyAction(
+      selected,
+      'p1',
+      { type: 'musicSubmitGuess', artist: 'La Banda', title: 'La canciÃ³n', year: 2020 },
+      0,
+    );
+    expect(beforeBuzz.ok).toBe(false);
+
+    const buzzed = apply(selected, 'p2', { type: 'musicBuzz' });
+    expect(buzzed.buzzedPlayerId).toBe('p2');
+    expect(getPlayerView(buzzed, 'p2').me.availableActions).toContain('musicSubmitGuess');
+    expect(getPlayerView(buzzed, 'p1').me.availableActions).not.toContain('musicSubmitGuess');
+
+    const secondBuzz = applyAction(buzzed, 'p1', { type: 'musicBuzz' }, 0);
+    expect(secondBuzz.ok).toBe(false);
+
+    const wrong = apply(buzzed, 'p2', {
+      type: 'musicSubmitGuess',
+      artist: 'Otra Banda',
+      title: 'Otra canciÃ³n',
+      year: null,
+    });
+    expect(wrong.phase).toBe('playing');
+    expect(wrong.buzzedPlayerId).toBeNull();
+
+    const p1Buzz = apply(wrong, 'p1', { type: 'musicBuzz' });
+    const correct = apply(p1Buzz, 'p1', {
+      type: 'musicSubmitGuess',
+      artist: 'La Banda',
+      title: 'La canciÃ³n',
+      year: null,
+    });
+    expect(correct.phase).toBe('reveal');
+    expect(correct.roundResult?.winnerId).toBe('p1');
+  });
+
+  it('permite configurar solo el titulo como respuesta', () => {
+    const selected = apply(
+      createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'simultaneo', answerMode: 'title' }),
+      'p1',
+      { type: 'musicSelectTrack', track: TRACK },
+    );
+    const result = apply(selected, 'p2', {
+      type: 'musicSubmitGuess',
+      artist: '',
+      title: 'La cancion',
+      year: null,
+    });
+
+    expect(result.phase).toBe('reveal');
+    expect(result.roundResult?.winnerId).toBe('p2');
+  });
+
+  it('exige el ano cuando la partida lo configura', () => {
+    const selected = apply(
+      createState({
+        ...DEFAULT_MUSICAL_CONFIG,
+        mode: 'simultaneo',
+        answerMode: 'artist_title_year',
+      }),
+      'p1',
+      { type: 'musicSelectTrack', track: TRACK },
+    );
+    const incomplete = applyAction(
+      selected,
+      'p2',
+      { type: 'musicSubmitGuess', artist: 'La Banda', title: 'La cancion', year: null },
+      0,
+    );
+
+    expect(incomplete.ok).toBe(false);
   });
 });

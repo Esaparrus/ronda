@@ -149,7 +149,15 @@ function nextBotTurn(room: Room): BotTurn | null {
 
   if (room.status === 'playing' && state.gameId === 'musical' && state.phase === 'playing') {
     const bot = room.playersBySeat().find((player) => player.isBot);
-    return bot ? { playerId: bot.playerId, kind: 'action' } : null;
+    if (
+      !bot ||
+      (state.config.mode === 'velocidad' &&
+        state.buzzedPlayerId !== null &&
+        state.buzzedPlayerId !== bot.playerId)
+    ) {
+      return null;
+    }
+    return { playerId: bot.playerId, kind: 'action' };
   }
 
   if (room.status === 'playing') {
@@ -223,12 +231,14 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
       const action =
         view.gameId === 'musical'
           ? state.gameId === 'musical' && state.currentTrack
-            ? {
-                type: 'musicSubmitGuess' as const,
-                artist: state.currentTrack.artist,
-                title: state.currentTrack.title,
-                year: state.currentTrack.year,
-              }
+            ? state.config.mode === 'velocidad' && state.buzzedPlayerId === null
+              ? { type: 'musicBuzz' as const }
+              : {
+                  type: 'musicSubmitGuess' as const,
+                  artist: state.currentTrack.artist,
+                  title: state.currentTrack.title,
+                  year: state.currentTrack.year,
+                }
             : null
           : view.gameId === 'mus'
             ? decideMusAction(view as MusPlayerView)

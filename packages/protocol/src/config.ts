@@ -290,6 +290,13 @@ const MUSICAL_MAX_PLAYERS = z.union([
 ]);
 const MUSICAL_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]);
 const MUSICAL_MODE = z.union([z.literal('velocidad'), z.literal('simultaneo')]);
+const MUSICAL_ANSWER_MODE = z.union([
+  z.literal('artist_title_year'),
+  z.literal('artist_title'),
+  z.literal('title'),
+]);
+export const MUSICAL_YEAR_MIN = 1960;
+export const MUSICAL_YEAR_MAX = new Date().getFullYear();
 export const MUSICAL_GENRES = [
   'mezcla',
   'pop',
@@ -316,14 +323,17 @@ export const MusicalGenreSchema = z.enum(MUSICAL_GENRES);
 export const MusicalDecadeSchema = z.enum(MUSICAL_DECADES);
 export const MusicalPopularitySchema = z.enum(MUSICAL_POPULARITIES);
 
-/** Adivinar canciones por turnos de escucha, con sala y modo solo. */
+/** Adivinar canciones por fragmentos, con sala y modo solo. */
 export const MusicalConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('musical' satisfies GameId).default('musical'),
   maxPlayers: MUSICAL_MAX_PLAYERS.default(6),
   rounds: MUSICAL_ROUNDS.default(10),
   mode: MUSICAL_MODE.default('velocidad'),
+  answerMode: MUSICAL_ANSWER_MODE.default('artist_title'),
   genre: MusicalGenreSchema.default('mezcla'),
   decade: MusicalDecadeSchema.default('cualquiera'),
+  yearFrom: z.number().int().min(MUSICAL_YEAR_MIN).max(2100).default(MUSICAL_YEAR_MIN),
+  yearTo: z.number().int().min(MUSICAL_YEAR_MIN).max(2100).default(MUSICAL_YEAR_MAX),
   popularity: MusicalPopularitySchema.default('variado'),
 });
 

@@ -159,7 +159,11 @@ describe('BotDriver', () => {
       scheduleBotTurn(deps, created.value.roomCode);
       vi.advanceTimersByTime(2_499);
       expect(room.state?.phase).toBe('playing');
+      expect(room.state?.buzzedPlayerId).toBeNull();
       vi.advanceTimersByTime(1);
+      expect(room.state?.phase).toBe('playing');
+      expect(room.state?.buzzedPlayerId).toBe(bot.value.playerId);
+      vi.advanceTimersByTime(2_500);
       expect(room.state?.phase).toBe('reveal');
       expect(room.state?.roundResult?.winnerId).toBe(bot.value.playerId);
     } finally {
