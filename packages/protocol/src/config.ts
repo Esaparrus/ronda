@@ -288,7 +288,15 @@ const MUSICAL_MAX_PLAYERS = z.union([
   z.literal(7),
   z.literal(8),
 ]);
-const MUSICAL_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]);
+const MUSICAL_ROUNDS = z.union([
+  z.literal(5),
+  z.literal(10),
+  z.literal(15),
+  z.literal(20),
+  z.literal(30),
+  z.literal(40),
+  z.literal(50),
+]);
 const MUSICAL_MODE = z.union([z.literal('velocidad'), z.literal('simultaneo')]);
 const MUSICAL_ANSWER_MODE = z.union([
   z.literal('artist_title_year'),
@@ -319,9 +327,20 @@ export const MUSICAL_DECADES = [
   '2020',
 ] as const;
 export const MUSICAL_POPULARITIES = ['variado', 'exitos'] as const;
+export const MUSICAL_REGIONS = [
+  'mundo',
+  'espana',
+  'latinoamerica',
+  'centroamerica',
+  'norteamerica',
+  'europa',
+  'italia',
+  'francia',
+] as const;
 export const MusicalGenreSchema = z.enum(MUSICAL_GENRES);
 export const MusicalDecadeSchema = z.enum(MUSICAL_DECADES);
 export const MusicalPopularitySchema = z.enum(MUSICAL_POPULARITIES);
+export const MusicalRegionSchema = z.enum(MUSICAL_REGIONS);
 
 /** Adivinar canciones por fragmentos, con sala y modo solo. */
 export const MusicalConfigSchema = CommonGameConfigSchema.extend({
@@ -335,6 +354,7 @@ export const MusicalConfigSchema = CommonGameConfigSchema.extend({
   yearFrom: z.number().int().min(MUSICAL_YEAR_MIN).max(2100).default(MUSICAL_YEAR_MIN),
   yearTo: z.number().int().min(MUSICAL_YEAR_MIN).max(2100).default(MUSICAL_YEAR_MAX),
   popularity: MusicalPopularitySchema.default('variado'),
+  regions: z.array(MusicalRegionSchema).min(1).max(MUSICAL_REGIONS.length).default(['mundo']),
 });
 
 export type MusicalConfig = z.infer<typeof MusicalConfigSchema>;

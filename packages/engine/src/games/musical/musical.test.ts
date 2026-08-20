@@ -177,4 +177,20 @@ describe('Musical', () => {
 
     expect(incomplete.ok).toBe(false);
   });
+
+  it('rechaza volver a seleccionar una canción ya usada en la partida', () => {
+    const selected = apply(createState(), 'p1', { type: 'musicSelectTrack', track: TRACK });
+    const won = apply(selected, 'p2', {
+      type: 'musicSubmitGuess',
+      artist: TRACK.artist,
+      title: TRACK.title,
+      year: TRACK.year,
+    });
+    const nextRound = apply(won, 'p1', { type: 'musicNextRound' });
+    const repeated = applyAction(nextRound, 'p1', { type: 'musicSelectTrack', track: TRACK }, 0);
+
+    expect(repeated.ok).toBe(false);
+    if (repeated.ok) return;
+    expect(repeated.code).toBe('INVALID_ACTION');
+  });
 });

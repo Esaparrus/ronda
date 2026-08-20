@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rawTerm = searchParams.get('q')?.trim() ?? '';
   const term = rawTerm.slice(0, MAX_TERM_LENGTH);
+  const country = parseCountryParam(searchParams.get('country')) ?? 'ES';
   const fromYear = parseYearParam(searchParams.get('from'));
   const toYear = parseYearParam(searchParams.get('to'));
   const requestedLimit = Number(searchParams.get('limit'));
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
 
   const query = new URL('https://itunes.apple.com/search');
   query.searchParams.set('term', term);
-  query.searchParams.set('country', 'es');
+  query.searchParams.set('country', country);
   query.searchParams.set('media', 'music');
   query.searchParams.set('entity', 'song');
   query.searchParams.set('limit', String(limit));
@@ -107,6 +108,11 @@ function parseYearParam(value: string | null): number | null {
   if (!value || !/^\d{4}$/.test(value)) return null;
   const year = Number(value);
   return year >= 1900 && year <= 2100 ? year : null;
+}
+
+function parseCountryParam(value: string | null): string | null {
+  if (!value || !/^[a-z]{2}$/i.test(value)) return null;
+  return value.toUpperCase();
 }
 
 function upgradeArtworkUrl(value: string | undefined): string | null {

@@ -2,13 +2,18 @@ import { MUSICAL_YEAR_MAX, MUSICAL_YEAR_MIN, type MusicalConfig } from '@ronda/p
 
 export const MUSICAL_CLIP_STEPS = [2, 5, 10, 20] as const;
 
-export type MusicFilters = Pick<MusicalConfig, 'genre' | 'popularity' | 'yearFrom' | 'yearTo'>;
+export type MusicFilters = Pick<
+  MusicalConfig,
+  'genre' | 'popularity' | 'yearFrom' | 'yearTo' | 'regions'
+>;
+export type MusicalRegion = MusicFilters['regions'][number];
 
 export const DEFAULT_MUSIC_FILTERS: MusicFilters = {
   genre: 'mezcla',
   popularity: 'variado',
   yearFrom: MUSICAL_YEAR_MIN,
   yearTo: MUSICAL_YEAR_MAX,
+  regions: ['mundo'],
 };
 
 export interface MusicTrack {
@@ -94,14 +99,84 @@ export const MUSICAL_POPULARITY_OPTIONS = [
   helper: string;
 }>;
 
+export const MUSICAL_REGION_OPTIONS = [
+  { value: 'mundo', label: 'Todo el mundo' },
+  { value: 'espana', label: 'España' },
+  { value: 'latinoamerica', label: 'Latinoamérica' },
+  { value: 'centroamerica', label: 'Centroamérica' },
+  { value: 'norteamerica', label: 'Norteamérica' },
+  { value: 'europa', label: 'Europa' },
+  { value: 'italia', label: 'Italia' },
+  { value: 'francia', label: 'Francia' },
+] as const satisfies ReadonlyArray<{ value: MusicalRegion; label: string }>;
+
+/** Mercados de iTunes que representan cada filtro geográfico. */
+const REGION_MARKETS: Record<MusicalRegion, readonly string[]> = {
+  mundo: ['ES', 'US', 'GB', 'MX', 'AR', 'BR', 'FR', 'IT', 'DE', 'CA', 'JP', 'AU'],
+  espana: ['ES'],
+  latinoamerica: ['MX', 'AR', 'BR', 'CO', 'CL', 'PE', 'UY', 'EC'],
+  centroamerica: ['CR', 'GT', 'HN', 'NI', 'PA', 'SV', 'DO', 'PR'],
+  norteamerica: ['US', 'CA', 'MX'],
+  europa: ['GB', 'DE', 'ES', 'FR', 'IT', 'PT', 'NL', 'SE'],
+  italia: ['IT'],
+  francia: ['FR'],
+};
+
+const MAX_COUNTRY_REQUESTS = 12;
+
+export function normalizeMusicRegions(
+  regions: readonly MusicalRegion[] | undefined,
+): MusicalRegion[] {
+  const unique = [...new Set(regions ?? [])];
+  if (unique.length === 0 || unique.includes('mundo')) return ['mundo'];
+  return unique;
+}
+
+export function toggleMusicRegion(
+  regions: readonly MusicalRegion[] | undefined,
+  region: MusicalRegion,
+): MusicalRegion[] {
+  const current = normalizeMusicRegions(regions);
+  if (region === 'mundo') return ['mundo'];
+  if (current.includes('mundo')) return [region];
+  const next = current.includes(region)
+    ? current.filter((candidate) => candidate !== region)
+    : [...current, region];
+  return next.length > 0 ? next : ['mundo'];
+}
+
 export async function searchMusic(filters: MusicFilters): Promise<MusicTrack[]> {
   const genre =
     MUSICAL_GENRE_OPTIONS.find((option) => option.value === filters.genre) ??
     MUSICAL_GENRE_OPTIONS[0];
-  const params = new URLSearchParams({ q: genre.query, limit: '100' });
+  const countries = [...new Set(
+    normalizeMusicRegions(filters.regions).flatMap((region) => REGION_MARKETS[region]),
+  )].slice(0, MAX_COUNTRY_REQUESTS);
+  const responses = await Promise.allSettled(
+    countries.map((country) => searchMusicInCountry(filters, genre.query, country)),
+  );
+  const successful = responses.flatMap((response) =>
+    response.status === 'fulfilled' ? response.value : [],
+  );
+  if (successful.length === 0) {
+    const failed = responses.find((response) => response.status === 'rejected');
+    throw new Error(
+      failed?.status === 'rejected' && failed.reason instanceof Error
+        ? failed.reason.message
+        : 'No se pudo buscar música.',
+    );
+  }
+  return uniqueMusicTracks(successful);
+}
+
+async function searchMusicInCountry(
+  filters: MusicFilters,
+  term: string,
+  country: string,
+): Promise<MusicTrack[]> {
+  const params = new URLSearchParams({ q: term, limit: '100', country });
   params.set('from', String(filters.yearFrom));
   params.set('to', String(filters.yearTo));
-
   const response = await fetch(`/api/music/search?${params.toString()}`);
   const payload = (await response.json()) as MusicSearchResponse;
   if (!response.ok) throw new Error(payload.error ?? 'No se pudo buscar música.');
@@ -139,6 +214,17 @@ export async function pickRandomMusicTracks(
   return selected;
 }
 
+function uniqueMusicTracks(tracks: readonly MusicTrack[]): MusicTrack[] {
+  const seen = new Set<string>();
+  return tracks.filter((track) => {
+    const identity = `${normalizeMusicText(track.artist)}::${normalizeMusicText(track.title)}`;
+    if (seen.has(track.id) || seen.has(identity)) return false;
+    seen.add(track.id);
+    seen.add(identity);
+    return true;
+  });
+}
+
 export function musicFiltersLabel(filters: MusicFilters): string {
   const genre = MUSICAL_GENRE_OPTIONS.find((option) => option.value === filters.genre);
   const popularity = MUSICAL_POPULARITY_OPTIONS.find(
@@ -148,7 +234,11 @@ export function musicFiltersLabel(filters: MusicFilters): string {
     filters.yearFrom === MUSICAL_YEAR_MIN && filters.yearTo >= MUSICAL_YEAR_MAX
       ? 'Cualquier época'
       : `${filters.yearFrom}–${filters.yearTo}`;
-  return [genre?.label, years, popularity?.label].filter(Boolean).join(' · ');
+  const regions = normalizeMusicRegions(filters.regions)
+    .map((region) => MUSICAL_REGION_OPTIONS.find((option) => option.value === region)?.label)
+    .filter(Boolean)
+    .join(', ');
+  return [genre?.label, years, regions, popularity?.label].filter(Boolean).join(' · ');
 }
 
 export function isMusicAnswerCorrect(

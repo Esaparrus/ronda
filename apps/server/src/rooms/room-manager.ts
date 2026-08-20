@@ -218,7 +218,12 @@ export class RoomManager {
    * lobby, y el jugador queda marcado `isBot`. bot-driver.ts es quien lo
    * mueve después; nunca tiene socket propio.
    */
-  addBot(input: { roomCode: string; playerId: PlayerId; now: number }): Result<JoinResult> {
+  addBot(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    now: number;
+    delayMs?: number;
+  }): Result<JoinResult> {
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
     if (room.status !== 'lobby') return err('ROOM_ALREADY_STARTED');
@@ -242,6 +247,7 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: true,
+      botDelayMs: Math.min(15_000, Math.max(500, input.delayMs ?? 2_500)),
     };
     room.players.set(playerId, player);
     room.touch(input.now);
@@ -1223,6 +1229,7 @@ function dealInput(room: Room) {
       playerId: p.playerId,
       nick: p.nick,
       seat: p.seat,
+      isBot: p.isBot,
     })),
     seed: room.seed,
     roomCode: room.code,

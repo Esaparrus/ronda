@@ -23,6 +23,7 @@ function buildPublicPlayers(state: MusicalState): PublicPlayer[] {
     playerId: player.playerId,
     nick: player.nick,
     seat: player.seat,
+    isBot: player.isBot,
     colorIndex: colorIndex(player.seat),
     score: player.score,
     handCount: 0,

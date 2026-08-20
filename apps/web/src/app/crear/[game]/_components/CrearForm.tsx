@@ -44,6 +44,7 @@ import { NickLegalNote } from '@/components/ui/NickLegalNote';
 import { BackToGames } from '@/components/ui/BackToGames';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
 import { MusicYearRangeControl } from '@/components/ui/MusicYearRangeControl';
+import { MusicRegionSelector } from '@/components/ui/MusicRegionSelector';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
 import { CreateRoomLoading } from './CreateRoomLoading';
 
@@ -727,7 +728,7 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
             rounds: value as MusicalConfig['rounds'],
           }))
         }
-        options={[5, 10, 15, 20].map((value) => ({ value, label: String(value) }))}
+        options={[5, 10, 15, 20, 30, 40, 50].map((value) => ({ value, label: String(value) }))}
         valueSuffix="canciones"
       />
       <SegmentedControl
@@ -748,6 +749,10 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
         onChange={(yearFrom, yearTo) =>
           setConfig((previous) => ({ ...previous, yearFrom, yearTo }))
         }
+      />
+      <MusicRegionSelector
+        value={config.regions}
+        onChange={(regions) => setConfig((previous) => ({ ...previous, regions }))}
       />
       <SegmentedControl
         legend="Popularidad"

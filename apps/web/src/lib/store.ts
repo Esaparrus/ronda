@@ -101,7 +101,7 @@ export interface RondaState {
    * MVP original, pedido explícitamente para poder probar sin una segunda
    * persona. Solo anfitrión, solo en lobby.
    */
-  addBot: () => Promise<boolean>;
+  addBot: (delayMs?: number) => Promise<boolean>;
   /**
    * Intercambia el asiento de dos jugadores. Solo anfitrión, solo en lobby.
    * Existe por Mus: las parejas salen del asiento (`seat % 2`, §12.2) y las
@@ -468,9 +468,9 @@ export const useRondaStore = create<RondaState>((set, get) => {
       return true;
     },
 
-    async addBot() {
+    async addBot(delayMs = 2_500) {
       if (get().connection !== 'online') return false;
-      const res = await emitWithAck(socket, 'room:addBot', {});
+      const res = await emitWithAck(socket, 'room:addBot', { delayMs });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
         return false;

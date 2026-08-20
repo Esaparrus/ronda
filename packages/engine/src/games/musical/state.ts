@@ -17,6 +17,7 @@ export interface MusicalPlayer {
   playerId: PlayerId;
   nick: string;
   seat: number;
+  isBot?: boolean;
   score: number;
   left: boolean;
   /** Campo vacío para mantener la forma cómoda de inspeccionar jugadores. */
@@ -40,6 +41,8 @@ export interface MusicalState {
   round: number;
   turnSeat: null;
   players: MusicalPlayer[];
+  /** IDs ya usadas en esta partida. No se pueden volver a seleccionar. */
+  playedTrackIds: string[];
   currentTrack: MusicalTrack | null;
   buzzedPlayerId: PlayerId | null;
   clipIndex: number;

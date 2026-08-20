@@ -64,7 +64,10 @@ export function scheduleBotTurn(deps: BotDriverDeps, roomCode: string): void {
   const turn = nextBotTurn(room);
   if (!turn) return;
 
-  const delay = room.gameId === 'musical' ? MUSICAL_BOT_DELAY_MS : BOT_DELAY_MS;
+  const delay =
+    room.gameId === 'musical'
+      ? (room.players.get(turn.playerId)?.botDelayMs ?? MUSICAL_BOT_DELAY_MS)
+      : BOT_DELAY_MS;
   const timer = setTimeout(() => {
     pending.delete(roomCode);
     runBotTurn(deps, roomCode, turn);
@@ -148,7 +151,18 @@ function nextBotTurn(room: Room): BotTurn | null {
   }
 
   if (room.status === 'playing' && state.gameId === 'musical' && state.phase === 'playing') {
-    const bot = room.playersBySeat().find((player) => player.isBot);
+    const bots = room.playersBySeat().filter((player) => player.isBot);
+    const buzzedBot =
+      state.buzzedPlayerId !== null
+        ? bots.find((player) => player.playerId === state.buzzedPlayerId)
+        : undefined;
+    const bot =
+      buzzedBot ??
+      [...bots].sort(
+        (left, right) =>
+          (left.botDelayMs ?? MUSICAL_BOT_DELAY_MS) -
+          (right.botDelayMs ?? MUSICAL_BOT_DELAY_MS),
+      )[0];
     if (
       !bot ||
       (state.config.mode === 'velocidad' &&

@@ -156,7 +156,10 @@ export interface ClientToServerEvents {
    * MVP original pero pedido explícitamente para poder probar sin una
    * segunda persona). Solo el anfitrión, solo en lobby, solo con hueco.
    */
-  'room:addBot': (payload: Record<string, never>, ack: (res: Result<JoinAck>) => void) => void;
+  'room:addBot': (
+    payload: { delayMs?: number },
+    ack: (res: Result<JoinAck>) => void,
+  ) => void;
   /**
    * Intercambia el asiento de dos jugadores. Solo el anfitrión y solo en
    * lobby. Existe por Mus: es un juego POR PAREJAS y la decisión 1 de P28
@@ -317,6 +320,13 @@ const roomConfigSchema = z.object({
 
 const emptySchema = z.object({}).strict();
 
+const addBotSchema = z
+  .object({
+    /** Retraso configurable para practicar las carreras de Musical. */
+    delayMs: z.number().int().min(500).max(15_000).optional(),
+  })
+  .strict();
+
 const roomKickSchema = z.object({
   playerId: z.string(),
 });
@@ -352,7 +362,7 @@ export const clientPayloadSchemas = {
   'room:resume': roomResumeSchema,
   'room:config': roomConfigSchema,
   'room:start': emptySchema,
-  'room:addBot': emptySchema,
+  'room:addBot': addBotSchema,
   'room:swapSeats': roomSwapSeatsSchema,
   'room:kick': roomKickSchema,
   'room:leave': emptySchema,

@@ -55,6 +55,7 @@ function buildLobbyPlayers(room: Room): PublicPlayer[] {
     handCount: 0,
     connected: p.connected,
     isHost: p.isHost,
+    isBot: p.isBot,
     eliminated: false,
     // Parejas: solo Mus las tiene (§12.12). El motor las deriva de
     // `seat % 2` al empezar (§12.2), así que el lobby puede adelantarlas con

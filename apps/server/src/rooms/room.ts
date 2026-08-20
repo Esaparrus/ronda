@@ -62,6 +62,8 @@ export interface PlayerRuntime {
   socketId: string | null;
   /** Jugador robot (modo "contra la máquina"): lo mueve bot-driver.ts, nunca un socket. */
   isBot: boolean;
+  /** Retraso elegido para este bot (principalmente útil en Musical). */
+  botDelayMs?: number;
 }
 
 export type RoomStatus = 'lobby' | 'playing' | 'roundEnd' | 'gameEnd' | 'closed';

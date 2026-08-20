@@ -5,7 +5,12 @@ import type { MusicalPlayerView } from '@ronda/protocol';
 import { Button } from '@/components/ui/Button';
 import { MusicAutocompleteInput } from '@/components/ui/MusicAutocompleteInput';
 import { MusicalFeedback } from '@/components/ui/MusicalFeedback';
-import { musicFiltersLabel, pickRandomMusicTracks, type MusicFilters } from '@/lib/musical';
+import {
+  musicFiltersLabel,
+  pickRandomMusicTracks,
+  type MusicFilters,
+  type MusicTrack,
+} from '@/lib/musical';
 import {
   playMusicalFeedback,
   prepareMusicalFeedbackAudio,
@@ -50,7 +55,11 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<MusicalFeedbackKind | null>(null);
   const [feedbackNonce, setFeedbackNonce] = useState(0);
-  const selectionKeyRef = useRef<string | null>(null);
+  const [selectionRetry, setSelectionRetry] = useState(0);
+  const playlistKeyRef = useRef<string | null>(null);
+  const playlistPromiseKeyRef = useRef<string | null>(null);
+  const selectedTrackKeyRef = useRef<string | null>(null);
+  const playlistRef = useRef<MusicTrack[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousPhaseRef = useRef(view.phase);
   const previousGuessCountRef = useRef(view.guessCounts[view.me.playerId] ?? 0);
@@ -67,36 +76,59 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     popularity: view.config.popularity,
     yearFrom: view.config.yearFrom,
     yearTo: view.config.yearTo,
+    regions: view.config.regions,
   };
+  const regionsKey = view.config.regions.join(',');
 
   useEffect(() => {
     if (view.phase !== 'setup' || !isHost) return;
-    const selectionKey = `${view.round}:${filters.genre}:${filters.yearFrom}:${filters.yearTo}:${filters.popularity}`;
-    if (selectionKeyRef.current === selectionKey) return;
-    selectionKeyRef.current = selectionKey;
+    const playlistKey = `${filters.genre}:${filters.yearFrom}:${filters.yearTo}:${filters.popularity}:${regionsKey}:${view.config.rounds}`;
+    if (playlistKeyRef.current !== playlistKey) {
+      playlistKeyRef.current = playlistKey;
+      playlistPromiseKeyRef.current = null;
+      selectedTrackKeyRef.current = null;
+      playlistRef.current = [];
+    }
+
+    const sendTrack = (track: MusicTrack, round: number) => {
+      const selectionKey = `${playlistKey}:${round}:${track.id}`;
+      if (selectedTrackKeyRef.current === selectionKey) return;
+      selectedTrackKeyRef.current = selectionKey;
+      void useRondaStore.getState().sendAction({
+        type: 'musicSelectTrack',
+        track: {
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          year: track.year,
+          previewUrl: track.previewUrl,
+          artworkUrl: track.artworkUrl,
+          storeUrl: track.storeUrl,
+        },
+      });
+    };
+
+    const readyTrack = playlistRef.current[view.round - 1];
+    if (readyTrack) {
+      sendTrack(readyTrack, view.round);
+      return;
+    }
+    if (playlistPromiseKeyRef.current === playlistKey) return;
+    playlistPromiseKeyRef.current = playlistKey;
     let cancelled = false;
     setSelecting(true);
     setSelectionError(null);
 
-    void pickRandomMusicTracks(filters, 1)
-      .then(([track]) => {
-        if (cancelled || !track) return;
-        void useRondaStore.getState().sendAction({
-          type: 'musicSelectTrack',
-          track: {
-            id: track.id,
-            title: track.title,
-            artist: track.artist,
-            year: track.year,
-            previewUrl: track.previewUrl,
-            artworkUrl: track.artworkUrl,
-            storeUrl: track.storeUrl,
-          },
-        });
+    void pickRandomMusicTracks(filters, view.config.rounds)
+      .then((playlist) => {
+        if (cancelled) return;
+        playlistRef.current = playlist;
+        const track = playlist[view.round - 1];
+        if (track) sendTrack(track, view.round);
       })
       .catch((error) => {
         if (cancelled) return;
-        selectionKeyRef.current = null;
+        playlistPromiseKeyRef.current = null;
         setSelectionError(
           error instanceof Error ? error.message : 'No se pudo preparar la canción.',
         );
@@ -114,6 +146,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     filters.yearFrom,
     filters.yearTo,
     isHost,
+    regionsKey,
+    selectionRetry,
+    view.config.rounds,
     view.phase,
     view.round,
   ]);
@@ -270,8 +305,8 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    selectionKeyRef.current = null;
                     setSelectionError(null);
+                    setSelectionRetry((current) => current + 1);
                   }}
                 >
                   Reintentar

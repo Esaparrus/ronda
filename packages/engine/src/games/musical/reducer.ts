@@ -26,7 +26,10 @@ export const MUSICAL_CLIP_STEPS = [2, 5, 10, 20] as const;
 export type MusicalActionResult = Result<{ state: MusicalState; events: GameEvent[] }>;
 
 export function createInitialState(
-  input: CreateInitialStateInput & { roomCode?: string },
+  input: CreateInitialStateInput & {
+    roomCode?: string;
+    players: (CreateInitialStateInput['players'][number] & { isBot?: boolean })[];
+  },
 ): MusicalState {
   const config = musicalConfigForGame(input.config);
   return {
@@ -44,10 +47,12 @@ export function createInitialState(
         playerId: player.playerId,
         nick: player.nick,
         seat: player.seat,
+        isBot: player.isBot ?? false,
         score: 0,
         left: false,
         hand: [],
       })),
+    playedTrackIds: [],
     currentTrack: null,
     buzzedPlayerId: null,
     clipIndex: 0,
@@ -91,8 +96,10 @@ function selectTrack(
   if (!track.previewUrl || !track.title.trim() || !track.artist.trim()) {
     return err('INVALID_ACTION');
   }
+  if ((state.playedTrackIds ?? []).includes(track.id)) return err('INVALID_ACTION');
 
   const next = bump(state);
+  next.playedTrackIds = [...(state.playedTrackIds ?? []), track.id];
   next.currentTrack = cloneTrack(track);
   next.buzzedPlayerId = null;
   next.clipIndex = 0;
@@ -325,6 +332,7 @@ function bump(state: MusicalState): MusicalState {
     ...state,
     version: state.version + 1,
     players: state.players.map((player) => ({ ...player })),
+    playedTrackIds: [...(state.playedTrackIds ?? [])],
     currentTrack: state.currentTrack ? cloneTrack(state.currentTrack) : null,
     buzzedPlayerId: state.buzzedPlayerId,
     guesses: cloneGuesses(state.guesses),

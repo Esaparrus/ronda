@@ -135,7 +135,12 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     if (!guard(deps, sid, 'room:addBot', payload, respond)) return;
     const st = requirePlayer(deps, sid, respond);
     if (!st) return;
-    const r = deps.mgr.addBot({ roomCode: st.roomCode, playerId: st.playerId, now: deps.now() });
+    const r = deps.mgr.addBot({
+      roomCode: st.roomCode,
+      playerId: st.playerId,
+      now: deps.now(),
+      delayMs: payload.delayMs,
+    });
     if (r.ok) rebroadcast(deps, st.roomCode);
     ack(r);
   });

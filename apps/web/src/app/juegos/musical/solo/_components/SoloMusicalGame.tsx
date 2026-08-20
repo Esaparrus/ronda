@@ -7,12 +7,12 @@ import { BackToGames } from '@/components/ui/BackToGames';
 import { Button } from '@/components/ui/Button';
 import { MusicAutocompleteInput } from '@/components/ui/MusicAutocompleteInput';
 import { MusicalFeedback } from '@/components/ui/MusicalFeedback';
+import { MusicRegionSelector } from '@/components/ui/MusicRegionSelector';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import {
   DEFAULT_MUSIC_FILTERS,
   isMusicAnswerCorrect,
   musicFiltersLabel,
-  MUSICAL_CLIP_STEPS,
   MUSICAL_ANSWER_MODE_OPTIONS,
   MUSICAL_GENRE_OPTIONS,
   MUSICAL_POPULARITY_OPTIONS,
@@ -25,6 +25,9 @@ import { playMusicalFeedback, type MusicalFeedbackKind } from '@/lib/musical-fee
 import { MusicYearRangeControl } from '@/components/ui/MusicYearRangeControl';
 
 type SoloPhase = 'setup' | 'playing' | 'reveal' | 'finished';
+type SoloListenMode = 'velocidad' | 'segundos';
+
+export const SOLO_MUSICAL_CLIP_STEPS = [1, 3, 5, 10] as const;
 
 interface Guess {
   artist: string;
@@ -50,6 +53,7 @@ export function SoloMusicalGame() {
   const [phase, setPhase] = useState<SoloPhase>('setup');
   const [rounds, setRounds] = useState(5);
   const [filters, setFilters] = useState<MusicFilters>(DEFAULT_MUSIC_FILTERS);
+  const [listenMode, setListenMode] = useState<SoloListenMode>('segundos');
   const [answerMode, setAnswerMode] = useState<MusicalConfig['answerMode']>('artist_title');
   const [selectedTracks, setSelectedTracks] = useState<MusicTrack[]>([]);
   const [starting, setStarting] = useState(false);
@@ -64,10 +68,13 @@ export function SoloMusicalGame() {
   const [feedback, setFeedback] = useState<MusicalFeedbackKind | null>(null);
   const [feedbackNonce, setFeedbackNonce] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [clipReady, setClipReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const track = selectedTracks[currentIndex] ?? null;
-  const clipSeconds = MUSICAL_CLIP_STEPS[clipIndex] ?? MUSICAL_CLIP_STEPS[0];
+  const clipSeconds =
+    SOLO_MUSICAL_CLIP_STEPS[clipIndex] ?? SOLO_MUSICAL_CLIP_STEPS[0];
+  const isSpeedMode = listenMode === 'velocidad';
   const requiresArtist = answerMode !== 'title';
   const requiresYear = answerMode === 'artist_title_year';
 
@@ -82,7 +89,16 @@ export function SoloMusicalGame() {
     if (!audio) return;
     resetAudioElement(audio);
     setPlaying(false);
-  }, [currentIndex, clipIndex, track?.id]);
+    setClipReady(false);
+  }, [currentIndex, clipIndex, track?.id, listenMode]);
+
+  useEffect(() => {
+    if (phase !== 'playing' || !track) return;
+    // Intenta empezar automáticamente para que el modo por segundos sea
+    // realmente 1 → 3 → 5 → 10. El botón sigue disponible si el navegador
+    // bloquea el autoplay.
+    void playPreview();
+  }, [phase, currentIndex, clipIndex, track?.id, listenMode]);
 
   async function startGame() {
     if (starting) return;
@@ -99,6 +115,7 @@ export function SoloMusicalGame() {
       setRoundPoints(0);
       setMessage(null);
       setFeedback(null);
+      setClipReady(false);
       setPhase('playing');
     } catch (error) {
       setSetupError(error instanceof Error ? error.message : 'No se pudo preparar la partida.');
@@ -111,6 +128,7 @@ export function SoloMusicalGame() {
     const audio = audioRef.current;
     if (!audio) return;
     setMessage(null);
+    setClipReady(false);
     resetAudioElement(audio);
     try {
       await audio.play();
@@ -126,16 +144,26 @@ export function SoloMusicalGame() {
     setPlaying(false);
   }
 
+  function stopSpeedAndAnswer() {
+    audioRef.current?.pause();
+    setPlaying(false);
+    setClipReady(true);
+    setMessage(null);
+  }
+
   function handleTimeUpdate() {
     const audio = audioRef.current;
+    if (isSpeedMode) return;
     if (!audio || audio.currentTime < clipSeconds) return;
     audio.pause();
     setPlaying(false);
+    setClipReady(true);
   }
 
   function listenMore() {
-    if (clipIndex >= MUSICAL_CLIP_STEPS.length - 1) return;
+    if (isSpeedMode || clipIndex >= SOLO_MUSICAL_CLIP_STEPS.length - 1) return;
     setClipIndex((current) => current + 1);
+    setClipReady(false);
     setMessage(null);
     setFeedback(null);
   }
@@ -181,6 +209,7 @@ export function SoloMusicalGame() {
   function revealAnswer() {
     stopPreview();
     setRoundPoints(0);
+    setClipReady(false);
     setMessage('Respuesta revelada.');
     setPhase('reveal');
   }
@@ -216,10 +245,23 @@ export function SoloMusicalGame() {
         <section className="surface-panel flex flex-col gap-5 p-5">
           <SegmentedControl
             legend="Canciones de la partida"
-            helperText="Elige 5, 10, 15 o 20 rondas."
+            helperText="Elige entre 5 y 50 canciones sin repetir."
             value={rounds}
             onChange={setRounds}
-            options={[5, 10, 15, 20].map((value) => ({ value, label: String(value) }))}
+            options={[5, 10, 15, 20, 30, 40, 50].map((value) => ({
+              value,
+              label: String(value),
+            }))}
+          />
+          <SegmentedControl
+            legend="Cómo escuchar"
+            helperText="Elige entre pulsar tú o escuchar tiempos fijos."
+            value={listenMode}
+            onChange={setListenMode}
+            options={[
+              { value: 'velocidad' as const, label: 'Velocidad' },
+              { value: 'segundos' as const, label: '1 · 3 · 5 · 10 s' },
+            ]}
           />
           <SegmentedControl
             legend="Estilo"
@@ -234,6 +276,10 @@ export function SoloMusicalGame() {
             onChange={(yearFrom, yearTo) =>
               setFilters((current) => ({ ...current, yearFrom, yearTo }))
             }
+          />
+          <MusicRegionSelector
+            value={filters.regions}
+            onChange={(regions) => setFilters((current) => ({ ...current, regions }))}
           />
           <SegmentedControl
             legend="Popularidad"
@@ -315,7 +361,7 @@ export function SoloMusicalGame() {
           <div className="min-w-0">
             <span className="text-12 uppercase tracking-wider text-humo">Fragmento actual</span>
             <h1 className="mt-1 text-20 font-semibold text-hueso">
-              Escucha {clipSeconds} segundos
+              {isSpeedMode ? 'Escucha y para cuando quieras' : `Escucha ${clipSeconds} segundos`}
             </h1>
             <p className="mt-1 text-14 text-humo">
               {attempts} {attempts === 1 ? 'intento' : 'intentos'} · {pointsForMusicClip(clipIndex)}{' '}
@@ -330,7 +376,10 @@ export function SoloMusicalGame() {
           src={track.previewUrl}
           preload="auto"
           onTimeUpdate={handleTimeUpdate}
-          onEnded={() => setPlaying(false)}
+          onEnded={() => {
+            setPlaying(false);
+            setClipReady(true);
+          }}
           onError={() => {
             setPlaying(false);
             setMessage('La preview no se pudo cargar. Prueba otra canción.');
@@ -339,10 +388,23 @@ export function SoloMusicalGame() {
           className="hidden"
         />
         <div className="flex gap-2">
-          <Button onClick={playing ? stopPreview : playPreview} className="flex-1">
-            {playing ? 'Pausar' : `▶ Escuchar ${clipSeconds} s`}
-          </Button>
-          {clipIndex < MUSICAL_CLIP_STEPS.length - 1 ? (
+          {isSpeedMode ? (
+            <Button
+              onClick={clipReady ? playPreview : playing ? stopSpeedAndAnswer : playPreview}
+              className="flex-1"
+            >
+              {clipReady
+                ? '▶ Escuchar de nuevo'
+                : playing
+                  ? '⏹ Parar y responder'
+                  : '▶ Empezar a escuchar'}
+            </Button>
+          ) : (
+            <Button onClick={playing ? stopPreview : playPreview} className="flex-1">
+              {playing ? 'Pausar' : `▶ Escuchar ${clipSeconds} s`}
+            </Button>
+          )}
+          {!isSpeedMode && clipIndex < SOLO_MUSICAL_CLIP_STEPS.length - 1 ? (
             <Button variant="ghost" onClick={listenMore}>
               Más
             </Button>
@@ -374,7 +436,7 @@ export function SoloMusicalGame() {
         />
       ) : null}
 
-      {phase === 'playing' ? (
+      {phase === 'playing' && clipReady ? (
         <form
           className="surface-panel flex flex-col gap-4 p-5"
           onSubmit={(event) => {
@@ -429,12 +491,26 @@ export function SoloMusicalGame() {
           >
             Corregir
           </Button>
-          {clipIndex === MUSICAL_CLIP_STEPS.length - 1 ? (
+          {!isSpeedMode && clipIndex === SOLO_MUSICAL_CLIP_STEPS.length - 1 ? (
             <button type="button" onClick={revealAnswer} className="text-14 text-humo underline">
               Revelar respuesta
             </button>
           ) : null}
         </form>
+      ) : phase === 'playing' ? (
+        <section className="surface-panel flex flex-col items-center gap-3 p-5 text-center">
+          <span className="text-32 text-oro" aria-hidden="true">
+            {isSpeedMode ? '⏱' : '♪'}
+          </span>
+          <h2 className="text-20 font-semibold text-hueso">
+            {isSpeedMode ? 'Escucha el fragmento' : `Escuchad ${clipSeconds} segundos`}
+          </h2>
+          <p className="text-14 text-humo">
+            {isSpeedMode
+              ? 'Cuando reconozcas la canción, pulsa “Parar y responder”.'
+              : `La respuesta se desbloquea al terminar los ${clipSeconds} segundos.`}
+          </p>
+        </section>
       ) : (
         <section className="surface-panel flex flex-col gap-4 p-5">
           <div>

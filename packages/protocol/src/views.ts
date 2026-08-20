@@ -63,6 +63,8 @@ export interface PublicPlayer {
   handCount: number; // nº de cartas, nunca cuáles
   connected: boolean;
   isHost: boolean;
+  /** Solo se rellena cuando la sala conoce que el jugador es un robot. */
+  isBot?: boolean;
   eliminated: boolean;
   /**
    * Pareja a la que pertenece (§12.12, P28). `null` en los juegos sin
