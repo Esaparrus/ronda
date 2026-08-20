@@ -38,8 +38,6 @@ function publicTrack(state: MusicalState): MusicalTrackPublic | null {
   return {
     id: state.currentTrack.id,
     previewUrl: state.currentTrack.previewUrl,
-    artworkUrl: state.currentTrack.artworkUrl,
-    storeUrl: state.currentTrack.storeUrl,
   };
 }
 
@@ -56,14 +54,12 @@ function roundResult(state: MusicalState): MusicalCommonView['roundResult'] {
     guesses: Object.fromEntries(
       Object.entries(state.roundResult.guesses).map(([playerId, guesses]) => [
         playerId,
-        guesses.map(
-          (guess): MusicalGuessReveal => ({
-            artist: guess.artist,
-            title: guess.title,
-            year: guess.year,
-            correct: guess.correct,
-          }),
-        ),
+        guesses.map((guess): MusicalGuessReveal => ({
+          artist: guess.artist,
+          title: guess.title,
+          year: guess.year,
+          correct: guess.correct,
+        })),
       ]),
     ) as Record<PlayerId, MusicalGuessReveal[]>,
   };

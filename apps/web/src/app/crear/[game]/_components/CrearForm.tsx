@@ -33,6 +33,11 @@ import {
 } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { isValidNick, normalizeNick } from '@/lib/nick';
+import {
+  MUSICAL_DECADE_OPTIONS,
+  MUSICAL_GENRE_OPTIONS,
+  MUSICAL_POPULARITY_OPTIONS,
+} from '@/lib/musical';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
@@ -77,15 +82,15 @@ export function CrearForm({ gameId }: CrearFormProps) {
         ? rondaConfig
         : gameId === 'mus'
           ? musConfig
-        : gameId === 'pocha'
+          : gameId === 'pocha'
             ? pochaConfig
             : gameId === 'musical'
               ? musicalConfig
-            : isClassicGame(gameId)
-              ? classicConfig
-              : isPartyGame(gameId)
-                ? partyConfig
-                : chinchonConfig;
+              : isClassicGame(gameId)
+                ? classicConfig
+                : isPartyGame(gameId)
+                  ? partyConfig
+                  : chinchonConfig;
     const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
     if (created) {
       const code = useRondaStore.getState().roomCode;
@@ -692,9 +697,9 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
   return (
     <section className="flex flex-col gap-6">
       <div className="surface-panel flex flex-col gap-2 p-4">
-        <p className="text-16 font-semibold text-hueso">La música la pone el anfitrión</p>
+        <p className="text-16 font-semibold text-hueso">La música se elige al azar</p>
         <p className="text-14 text-humo">
-          En cada ronda busca una canción, carga la preview y el resto intenta reconocerla.
+          Configura los filtros antes de empezar. Las canciones se preparan sin mostrarlas.
         </p>
       </div>
       <QuantityStepper
@@ -722,6 +727,42 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
         }
         options={[5, 10, 15, 20].map((value) => ({ value, label: String(value) }))}
         valueSuffix="canciones"
+      />
+      <SegmentedControl
+        legend="Estilo musical"
+        helperText="Filtra el catálogo por estilo musical."
+        value={config.genre}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            genre: value as MusicalConfig['genre'],
+          }))
+        }
+        options={MUSICAL_GENRE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+      />
+      <SegmentedControl
+        legend="Época"
+        helperText="Limita las canciones a una década concreta."
+        value={config.decade}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            decade: value as MusicalConfig['decade'],
+          }))
+        }
+        options={MUSICAL_DECADE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+      />
+      <SegmentedControl
+        legend="Popularidad"
+        helperText="Elige variedad o prioriza los éxitos."
+        value={config.popularity}
+        onChange={(value) =>
+          setConfig((previous) => ({
+            ...previous,
+            popularity: value as MusicalConfig['popularity'],
+          }))
+        }
+        options={MUSICAL_POPULARITY_OPTIONS.map(({ value, label }) => ({ value, label }))}
       />
       <SegmentedControl
         legend="Forma de competir"

@@ -3,6 +3,7 @@
 
 import type { MusicalTableView } from '@ronda/protocol';
 import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
+import { musicFiltersLabel } from '@/lib/musical';
 
 export interface MusicalMesaGameBoardProps {
   view: MusicalTableView;
@@ -20,9 +21,10 @@ export function MusicalMesaGameBoard({ view }: MusicalMesaGameBoardProps) {
         {view.phase === 'setup' ? (
           <>
             <h1 className="text-[clamp(2rem,5vw,4rem)] font-semibold text-hueso">
-              El anfitrión está eligiendo canción
+              Preparando una canción al azar
             </h1>
-            <p className="text-20 text-humo">La siguiente ronda empieza en unos segundos.</p>
+            <p className="text-20 text-humo">Filtros: {musicFiltersLabel(view.config)}</p>
+            <p className="text-14 text-humo">La siguiente ronda empieza en unos segundos.</p>
           </>
         ) : view.phase === 'playing' ? (
           <>
@@ -30,8 +32,8 @@ export function MusicalMesaGameBoard({ view }: MusicalMesaGameBoardProps) {
               Escuchad {view.clipSeconds} segundos
             </h1>
             <p className="text-20 text-humo">
-              {Object.values(view.guessCounts).filter((count) => count > 0).length}{' '}
-              personas ya han probado suerte
+              {Object.values(view.guessCounts).filter((count) => count > 0).length} personas ya han
+              probado suerte
             </p>
           </>
         ) : result ? (
@@ -50,7 +52,10 @@ export function MusicalMesaGameBoard({ view }: MusicalMesaGameBoardProps) {
         ) : null}
         <div className="flex flex-wrap justify-center gap-3">
           {view.players.map((player) => (
-            <span key={player.playerId} className="rounded-full border border-linea bg-mesa px-4 py-2 text-16 text-hueso">
+            <span
+              key={player.playerId}
+              className="rounded-full border border-linea bg-mesa px-4 py-2 text-16 text-hueso"
+            >
               {player.nick} · <span className="font-mono text-oro">{player.score}</span>
             </span>
           ))}

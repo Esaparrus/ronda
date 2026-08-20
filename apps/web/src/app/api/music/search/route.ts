@@ -3,6 +3,7 @@
 // normalizar resultados distintos.
 
 const MAX_TERM_LENGTH = 80;
+const MAX_RESULTS = 100;
 
 interface ItunesSearchResponse {
   results?: ItunesTrack[];
@@ -24,6 +25,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rawTerm = searchParams.get('q')?.trim() ?? '';
   const term = rawTerm.slice(0, MAX_TERM_LENGTH);
+  const fromYear = parseYearParam(searchParams.get('from'));
+  const toYear = parseYearParam(searchParams.get('to'));
+  const requestedLimit = Number(searchParams.get('limit'));
+  const limit = Number.isInteger(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), MAX_RESULTS)
+    : 30;
 
   if (term.length < 2) {
     return Response.json({ error: 'Escribe al menos dos letras.' }, { status: 400 });
@@ -34,7 +41,7 @@ export async function GET(request: Request) {
   query.searchParams.set('country', 'es');
   query.searchParams.set('media', 'music');
   query.searchParams.set('entity', 'song');
-  query.searchParams.set('limit', '30');
+  query.searchParams.set('limit', String(limit));
   query.searchParams.set('explicit', 'No');
 
   try {
@@ -49,9 +56,12 @@ export async function GET(request: Request) {
     const payload = (await response.json()) as ItunesSearchResponse;
     const results = (payload.results ?? [])
       .filter(
-        (track): track is Required<
+        (
+          track,
+        ): track is Required<
           Pick<ItunesTrack, 'trackId' | 'trackName' | 'artistName' | 'previewUrl' | 'trackViewUrl'>
-        > & ItunesTrack =>
+        > &
+          ItunesTrack =>
           typeof track.trackId === 'number' &&
           Boolean(track.trackName?.trim()) &&
           Boolean(track.artistName?.trim()) &&
@@ -68,7 +78,12 @@ export async function GET(request: Request) {
         storeUrl: track.trackViewUrl,
         collectionName: track.collectionName?.trim() ?? '',
         genre: track.primaryGenreName?.trim() ?? 'Música',
-      }));
+      }))
+      .filter((track) => {
+        if (fromYear !== null && (track.year === null || track.year < fromYear)) return false;
+        if (toYear !== null && (track.year === null || track.year > toYear)) return false;
+        return true;
+      });
 
     return Response.json(
       { results },
@@ -86,6 +101,12 @@ export async function GET(request: Request) {
 function parseYear(value: string | undefined): number | null {
   const year = value ? Number(value.slice(0, 4)) : NaN;
   return Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : null;
+}
+
+function parseYearParam(value: string | null): number | null {
+  if (!value || !/^\d{4}$/.test(value)) return null;
+  const year = Number(value);
+  return year >= 1900 && year <= 2100 ? year : null;
 }
 
 function upgradeArtworkUrl(value: string | undefined): string | null {

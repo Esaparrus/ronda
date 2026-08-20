@@ -45,7 +45,7 @@ describe('Musical', () => {
     const tableView = getTableView(state);
 
     expect(playerView.phase).toBe('playing');
-    expect(playerView.currentTrack?.previewUrl).toBe(TRACK.previewUrl);
+    expect(playerView.currentTrack).toEqual({ id: TRACK.id, previewUrl: TRACK.previewUrl });
     expect(JSON.stringify(playerView)).not.toContain(TRACK.title);
     expect(JSON.stringify(tableView)).not.toContain(TRACK.artist);
   });

@@ -1,18 +1,21 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { BackToGames } from '@/components/ui/BackToGames';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import {
+  DEFAULT_MUSIC_FILTERS,
   isMusicAnswerCorrect,
+  musicFiltersLabel,
   MUSICAL_CLIP_STEPS,
+  MUSICAL_DECADE_OPTIONS,
+  MUSICAL_GENRE_OPTIONS,
+  MUSICAL_POPULARITY_OPTIONS,
+  pickRandomMusicTracks,
   pointsForMusicClip,
-  searchMusic,
-  shuffleTracks,
-  SURPRISE_QUERIES,
+  type MusicFilters,
   type MusicTrack,
 } from '@/lib/musical';
 
@@ -41,10 +44,9 @@ function resetAudioElement(audio: HTMLAudioElement) {
 export function SoloMusicalGame() {
   const [phase, setPhase] = useState<SoloPhase>('setup');
   const [rounds, setRounds] = useState(5);
-  const [searchTerm, setSearchTerm] = useState('pop español');
-  const [searchResults, setSearchResults] = useState<MusicTrack[]>([]);
+  const [filters, setFilters] = useState<MusicFilters>(DEFAULT_MUSIC_FILTERS);
   const [selectedTracks, setSelectedTracks] = useState<MusicTrack[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [clipIndex, setClipIndex] = useState(0);
@@ -60,67 +62,32 @@ export function SoloMusicalGame() {
   const clipSeconds = MUSICAL_CLIP_STEPS[clipIndex] ?? MUSICAL_CLIP_STEPS[0];
 
   useEffect(() => {
-    void runSearch('pop español', true);
-    // Solo se carga una consulta inicial; las búsquedas posteriores dependen
-    // de la intención de la persona y no deben ejecutarse automáticamente.
-  }, []);
-
-  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     resetAudioElement(audio);
     setPlaying(false);
   }, [currentIndex, clipIndex, track?.id]);
 
-  async function runSearch(term: string, silent = false) {
-    if (term.trim().length < 2) return;
-    setSearching(true);
+  async function startGame() {
+    if (starting) return;
+    setStarting(true);
     setSetupError(null);
     try {
-      const results = await searchMusic(term);
-      setSearchResults(results);
-      if (!results.length && !silent) setSetupError('No encontré previews con esa búsqueda.');
+      const pool = await pickRandomMusicTracks(filters, rounds);
+      setSelectedTracks(pool);
+      setCurrentIndex(0);
+      setClipIndex(0);
+      setGuess(EMPTY_GUESS);
+      setAttempts(0);
+      setScore(0);
+      setRoundPoints(0);
+      setMessage(null);
+      setPhase('playing');
     } catch (error) {
-      setSetupError(error instanceof Error ? error.message : 'No se pudo buscar música.');
+      setSetupError(error instanceof Error ? error.message : 'No se pudo preparar la partida.');
     } finally {
-      setSearching(false);
+      setStarting(false);
     }
-  }
-
-  function addTrack(candidate: MusicTrack) {
-    setSelectedTracks((current) =>
-      current.some((trackItem) => trackItem.id === candidate.id)
-        ? current
-        : [...current, candidate],
-    );
-  }
-
-  function removeTrack(trackId: string) {
-    setSelectedTracks((current) => current.filter((candidate) => candidate.id !== trackId));
-  }
-
-  function addSearchResults() {
-    setSelectedTracks((current) => {
-      const known = new Set(current.map((candidate) => candidate.id));
-      return [...current, ...searchResults.filter((candidate) => !known.has(candidate.id))];
-    });
-  }
-
-  function startGame() {
-    const pool = shuffleTracks(selectedTracks).slice(0, rounds);
-    if (pool.length < rounds) {
-      setSetupError(`Añade al menos ${rounds} canciones para empezar.`);
-      return;
-    }
-    setSelectedTracks(pool);
-    setCurrentIndex(0);
-    setClipIndex(0);
-    setGuess(EMPTY_GUESS);
-    setAttempts(0);
-    setScore(0);
-    setRoundPoints(0);
-    setMessage(null);
-    setPhase('playing');
   }
 
   async function playPreview() {
@@ -215,153 +182,53 @@ export function SoloMusicalGame() {
           <span className="eyebrow">Modo solo · Musical</span>
           <h1 className="font-display text-40 leading-display text-crema">Pon a prueba el oído</h1>
           <p className="max-w-xl text-16 text-humo">
-            Escucha unos segundos, escribe artista y canción, y gana más puntos cuanto antes la
-            reconozcas.
+            Configura el tipo de música. Las canciones se escogerán al azar y no verás ninguna pista
+            antes de escucharla.
           </p>
         </header>
 
         <section className="surface-panel flex flex-col gap-5 p-5">
           <SegmentedControl
             legend="Canciones de la partida"
-            helperText="Puedes preparar 5, 10, 15 o 20 rondas."
+            helperText="Elige 5, 10, 15 o 20 rondas."
             value={rounds}
             onChange={setRounds}
             options={[5, 10, 15, 20].map((value) => ({ value, label: String(value) }))}
           />
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="music-search" className="text-16 font-semibold text-hueso">
-              Busca un estilo, artista o época
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="music-search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') void runSearch(searchTerm);
-                }}
-                className="form-control min-w-0 flex-1 px-4 text-16"
-                placeholder="pop español, rock, Shakira…"
-                autoComplete="off"
-              />
-              <Button
-                variant="ghost"
-                onClick={() => void runSearch(searchTerm)}
-                loading={searching}
-                className="shrink-0 px-4"
-              >
-                Buscar
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {SURPRISE_QUERIES.slice(0, 4).map((query) => (
-                <button
-                  key={query}
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm(query);
-                    void runSearch(query);
-                  }}
-                  className="rounded-full border border-linea bg-tinta/35 px-3 py-1.5 text-12 text-humo hover:border-oro/60 hover:text-hueso"
-                >
-                  {query}
-                </button>
-              ))}
-            </div>
-          </div>
+          <SegmentedControl
+            legend="Estilo"
+            helperText="La selección se genera sin mostrar canciones."
+            value={filters.genre}
+            onChange={(genre) => setFilters((current) => ({ ...current, genre }))}
+            options={MUSICAL_GENRE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+          />
+          <SegmentedControl
+            legend="Época"
+            helperText="Filtra por década de lanzamiento."
+            value={filters.decade}
+            onChange={(decade) => setFilters((current) => ({ ...current, decade }))}
+            options={MUSICAL_DECADE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+          />
+          <SegmentedControl
+            legend="Popularidad"
+            helperText="Prioriza éxitos o mezcla resultados."
+            value={filters.popularity}
+            onChange={(popularity) => setFilters((current) => ({ ...current, popularity }))}
+            options={MUSICAL_POPULARITY_OPTIONS.map(({ value, label }) => ({ value, label }))}
+          />
+          <p className="rounded-xl border border-oro/35 bg-oro/10 px-3 py-2 text-14 text-oro">
+            Filtros elegidos: {musicFiltersLabel(filters)}
+          </p>
         </section>
 
         {setupError ? <p className="text-14 text-brasa">{setupError}</p> : null}
 
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-20 font-semibold text-hueso">Resultados</h2>
-            {searchResults.length ? (
-              <button type="button" onClick={addSearchResults} className="text-13 text-oro underline">
-                Añadir todos
-              </button>
-            ) : null}
-          </div>
-          {searching && !searchResults.length ? (
-            <p className="text-14 text-humo">Buscando previews…</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {searchResults.slice(0, 12).map((candidate) => {
-                const selected = selectedTracks.some((item) => item.id === candidate.id);
-                return (
-                  <button
-                    key={candidate.id}
-                    type="button"
-                    onClick={() => addTrack(candidate)}
-                    className={`interactive-surface flex min-h-16 items-center gap-3 p-3 text-left ${
-                      selected ? 'border-oro/70 bg-oro/10' : ''
-                    }`}
-                  >
-                    {candidate.artworkUrl ? (
-                      <Image
-                        src={candidate.artworkUrl}
-                        alt=""
-                        width={44}
-                        height={44}
-                        className="h-11 w-11 rounded-lg object-cover"
-                        unoptimized
-                      />
-                    ) : null}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-14 font-semibold text-hueso">
-                        {candidate.title}
-                      </span>
-                      <span className="block truncate text-12 text-humo">
-                        {candidate.artist} · {candidate.year ?? 'año desconocido'}
-                      </span>
-                    </span>
-                    <span className="text-20 text-oro" aria-hidden="true">
-                      {selected ? '✓' : '+'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="surface-panel flex flex-col gap-3 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-20 font-semibold text-hueso">Tu selección</h2>
-            <span className="font-mono text-14 text-oro">
-              {selectedTracks.length}/{rounds}
-            </span>
-          </div>
-          {selectedTracks.length ? (
-            <ul className="flex flex-col gap-2">
-              {selectedTracks.map((selectedTrack, index) => (
-                <li key={selectedTrack.id} className="flex items-center gap-3 rounded-xl bg-tinta/35 px-3 py-2">
-                  <span className="w-5 font-mono text-12 text-humo">{index + 1}</span>
-                  <span className="min-w-0 flex-1 truncate text-14 text-hueso">
-                    {selectedTrack.artist} · {selectedTrack.title}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeTrack(selectedTrack.id)}
-                    className="text-12 text-humo underline hover:text-crema"
-                  >
-                    Quitar
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-14 text-humo">Toca canciones de los resultados para añadirlas.</p>
-          )}
-        </section>
-
-        <Button onClick={startGame} disabled={selectedTracks.length < rounds}>
-          Empezar partida
+        <Button onClick={() => void startGame()} loading={starting}>
+          {starting ? 'Preparando canciones…' : 'Empezar partida'}
         </Button>
         <p className="text-center text-12 text-humo">
-          Las previews son cortes promocionales de iTunes. La ficha de cada canción incluye el
-          enlace para verla en la tienda.
+          Las previews se cargan desde iTunes. Los títulos y artistas solo aparecen después de
+          corregir.
         </p>
       </main>
     );
@@ -406,20 +273,12 @@ export function SoloMusicalGame() {
 
       <section className="surface-panel flex flex-col gap-5 p-5">
         <div className="flex items-center gap-4">
-          {track.artworkUrl ? (
-            <Image
-              src={track.artworkUrl}
-              alt=""
-              width={96}
-              height={96}
-              className="h-24 w-24 rounded-2xl object-cover shadow-lg"
-              unoptimized
-            />
-          ) : (
-            <span className="grid h-24 w-24 place-items-center rounded-2xl border border-oro/40 bg-madera-clara text-40 text-oro">
-              ♪
-            </span>
-          )}
+          <span
+            className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl border border-oro/40 bg-madera-clara text-40 text-oro"
+            aria-hidden="true"
+          >
+            ♪
+          </span>
           <div className="min-w-0">
             <span className="text-12 uppercase tracking-wider text-humo">Fragmento actual</span>
             <h1 className="mt-1 text-20 font-semibold text-hueso">
@@ -457,10 +316,20 @@ export function SoloMusicalGame() {
           ) : null}
         </div>
         <p className="text-12 text-humo">
-          Preview proporcionada por iTunes ·{' '}
-          <a href={track.storeUrl} target="_blank" rel="noreferrer" className="text-oro underline">
-            Ver canción en la tienda
-          </a>
+          Preview proporcionada por iTunes
+          {phase === 'reveal' ? (
+            <>
+              {' · '}
+              <a
+                href={track.storeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-oro underline"
+              >
+                Ver canción en la tienda
+              </a>
+            </>
+          ) : null}
         </p>
       </section>
 
@@ -480,7 +349,9 @@ export function SoloMusicalGame() {
             Artista
             <input
               value={guess.artist}
-              onChange={(event) => setGuess((current) => ({ ...current, artist: event.target.value }))}
+              onChange={(event) =>
+                setGuess((current) => ({ ...current, artist: event.target.value }))
+              }
               className="form-control px-4 text-16"
               autoComplete="off"
             />
@@ -489,7 +360,9 @@ export function SoloMusicalGame() {
             Canción
             <input
               value={guess.title}
-              onChange={(event) => setGuess((current) => ({ ...current, title: event.target.value }))}
+              onChange={(event) =>
+                setGuess((current) => ({ ...current, title: event.target.value }))
+              }
               className="form-control px-4 text-16"
               autoComplete="off"
             />
@@ -498,7 +371,9 @@ export function SoloMusicalGame() {
             Año <span className="font-normal text-humo">(opcional)</span>
             <input
               value={guess.year}
-              onChange={(event) => setGuess((current) => ({ ...current, year: event.target.value }))}
+              onChange={(event) =>
+                setGuess((current) => ({ ...current, year: event.target.value }))
+              }
               className="form-control px-4 text-16"
               inputMode="numeric"
               maxLength={4}
@@ -529,7 +404,9 @@ export function SoloMusicalGame() {
         </section>
       )}
 
-      {message && phase === 'playing' ? <p className="text-center text-14 text-oro">{message}</p> : null}
+      {message && phase === 'playing' ? (
+        <p className="text-center text-14 text-oro">{message}</p>
+      ) : null}
       <p className="text-center text-12 text-humo">Puntuación de esta canción: +{roundPoints}</p>
     </main>
   );

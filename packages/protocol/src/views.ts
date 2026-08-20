@@ -526,17 +526,12 @@ export type PartyTableView = OrdenTableView | ColoresTableView | MayoriaTableVie
 
 export type MusicalPhase = 'setup' | 'playing' | 'reveal';
 export type MusicalAvailableAction =
-  | 'musicSelectTrack'
-  | 'musicSubmitGuess'
-  | 'musicNextClip'
-  | 'musicNextRound';
+  'musicSelectTrack' | 'musicSubmitGuess' | 'musicNextClip' | 'musicNextRound';
 
 /** Datos necesarios para reproducir una preview, sin la respuesta. */
 export interface MusicalTrackPublic {
   id: string;
   previewUrl: string;
-  artworkUrl: string | null;
-  storeUrl: string;
 }
 
 export interface MusicalGuessReveal {

@@ -1,13 +1,12 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import type { MusicalPlayerView } from '@ronda/protocol';
 import { Button } from '@/components/ui/Button';
-import { TableHeader } from './TableHeader';
-import { PlayerStrip } from './PlayerStrip';
+import { musicFiltersLabel, pickRandomMusicTracks, type MusicFilters } from '@/lib/musical';
 import { useRondaStore } from '@/lib/store';
-import { searchMusic, type MusicTrack } from '@/lib/musical';
+import { PlayerStrip } from './PlayerStrip';
+import { TableHeader } from './TableHeader';
 
 interface MusicalGameScreenProps {
   view: MusicalPlayerView;
@@ -36,67 +35,71 @@ function resetAudioElement(audio: HTMLAudioElement) {
 export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
-  const [searchTerm, setSearchTerm] = useState('pop español');
-  const [results, setResults] = useState<MusicTrack[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [hostTrack, setHostTrack] = useState<MusicTrack | null>(null);
   const [guess, setGuess] = useState<GuessForm>(EMPTY_GUESS);
   const [message, setMessage] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const selectionKeyRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const isHost = view.players.find((player) => player.playerId === view.me.playerId)?.isHost ?? false;
+  const isHost =
+    view.players.find((player) => player.playerId === view.me.playerId)?.isHost ?? false;
   const currentTrack = view.currentTrack;
+  const filters: MusicFilters = {
+    genre: view.config.genre,
+    decade: view.config.decade,
+    popularity: view.config.popularity,
+  };
 
   useEffect(() => {
-    if (view.phase === 'setup' && isHost && results.length === 0) {
-      void runSearch('pop español', true);
-    }
-    // La búsqueda no depende del snapshot: solo se inicializa al entrar en
-    // una pantalla de selección de pista.
-  }, [view.phase, isHost]);
+    if (view.phase !== 'setup' || !isHost) return;
+    const selectionKey = `${view.round}:${filters.genre}:${filters.decade}:${filters.popularity}`;
+    if (selectionKeyRef.current === selectionKey) return;
+    selectionKeyRef.current = selectionKey;
+    let cancelled = false;
+    setSelecting(true);
+    setSelectionError(null);
+
+    void pickRandomMusicTracks(filters, 1)
+      .then(([track]) => {
+        if (cancelled || !track) return;
+        void useRondaStore.getState().sendAction({
+          type: 'musicSelectTrack',
+          track: {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            year: track.year,
+            previewUrl: track.previewUrl,
+            artworkUrl: track.artworkUrl,
+            storeUrl: track.storeUrl,
+          },
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        selectionKeyRef.current = null;
+        setSelectionError(
+          error instanceof Error ? error.message : 'No se pudo preparar la canción.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setSelecting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.decade, filters.genre, filters.popularity, isHost, view.phase, view.round]);
 
   useEffect(() => {
     setGuess(EMPTY_GUESS);
     setMessage(null);
     const audio = audioRef.current;
-    if (audio) {
-      resetAudioElement(audio);
-    }
+    if (audio) resetAudioElement(audio);
     setPlaying(false);
   }, [view.round, view.clipIndex, currentTrack?.id]);
-
-  async function runSearch(term: string, silent = false) {
-    if (term.trim().length < 2) return;
-    setSearching(true);
-    setSearchError(null);
-    try {
-      const nextResults = await searchMusic(term);
-      setResults(nextResults);
-      if (!nextResults.length && !silent) setSearchError('No encontré previews con esa búsqueda.');
-    } catch (error) {
-      setSearchError(error instanceof Error ? error.message : 'No se pudo buscar música.');
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  function selectTrack(track: MusicTrack) {
-    setHostTrack(track);
-    void useRondaStore.getState().sendAction({
-      type: 'musicSelectTrack',
-      track: {
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        year: track.year,
-        previewUrl: track.previewUrl,
-        artworkUrl: track.artworkUrl,
-        storeUrl: track.storeUrl,
-      },
-    });
-  }
 
   async function playPreview() {
     const audio = audioRef.current;
@@ -167,7 +170,10 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   if (view.phase === 'setup') {
     return (
       <div className="game-shell flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <TableHeader left={`Musical · canción ${view.round}/${view.config.rounds}`} turnNick={null} />
+        <TableHeader
+          left={`Musical · canción ${view.round}/${view.config.rounds}`}
+          turnNick={null}
+        />
         <PlayerStrip
           players={view.players}
           turnPlayerId={null}
@@ -179,80 +185,35 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
             <span className="text-40 text-oro" aria-hidden="true">
               ♪
             </span>
-            <h1 className="text-28 font-semibold text-crema">Elige la canción</h1>
+            <h1 className="text-28 font-semibold text-crema">Preparando una canción</h1>
             <p className="text-14 text-humo">
               {isHost
-                ? 'Busca una preview y cárgala para toda la sala.'
-                : 'Espera a que el anfitrión elija una preview.'}
+                ? selecting
+                  ? 'Buscando una canción al azar según los filtros…'
+                  : 'La siguiente canción se ha preparado automáticamente.'
+                : 'El anfitrión está preparando una canción al azar.'}
             </p>
-            <p className="text-12 text-humo">Modo: {view.config.mode}</p>
+            <p className="text-12 text-humo">Filtros: {musicFiltersLabel(filters)}</p>
+            <p className="text-12 text-humo">
+              Las canciones no se muestran antes de empezar el clip.
+            </p>
           </section>
-
-          {isHost ? (
-            <>
-              <div className="flex gap-2">
-                <input
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void runSearch(searchTerm);
-                  }}
-                  className="form-control min-w-0 flex-1 px-4 text-16"
-                  placeholder="artista, estilo o canción"
-                  autoComplete="off"
-                />
+          {selectionError ? (
+            <section className="surface-panel flex flex-col gap-3 p-4 text-center">
+              <p className="text-14 text-brasa">{selectionError}</p>
+              {isHost ? (
                 <Button
                   variant="ghost"
-                  onClick={() => void runSearch(searchTerm)}
-                  loading={searching}
-                  className="shrink-0 px-4"
+                  onClick={() => {
+                    selectionKeyRef.current = null;
+                    setSelectionError(null);
+                  }}
                 >
-                  Buscar
+                  Reintentar
                 </Button>
-              </div>
-              {searchError ? <p className="text-14 text-brasa">{searchError}</p> : null}
-              <div className="grid gap-2 sm:grid-cols-2">
-                {results.slice(0, 12).map((result) => (
-                  <button
-                    key={result.id}
-                    type="button"
-                    onClick={() => selectTrack(result)}
-                    disabled={pendingAction}
-                    className="interactive-surface flex min-h-16 items-center gap-3 p-3 text-left transition-[border-color,background-color] hover:border-oro/70"
-                  >
-                    {result.artworkUrl ? (
-                      <Image
-                        src={result.artworkUrl}
-                        alt=""
-                        width={44}
-                        height={44}
-                        className="h-11 w-11 rounded-lg object-cover"
-                        unoptimized
-                      />
-                    ) : null}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-14 font-semibold text-hueso">
-                        {result.title}
-                      </span>
-                      <span className="block truncate text-12 text-humo">{result.artist}</span>
-                    </span>
-                    <span className="text-20 text-oro" aria-hidden="true">
-                      +
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {hostTrack ? (
-                <p className="rounded-xl border border-oro/50 bg-oro/10 px-3 py-2 text-14 text-oro">
-                  Cargando: {hostTrack.artist} · {hostTrack.title}
-                </p>
               ) : null}
-            </>
-          ) : (
-            <p className="rounded-xl border border-linea bg-mesa/60 px-4 py-3 text-center text-16 text-humo">
-              El anfitrión está preparando la siguiente ronda…
-            </p>
-          )}
+            </section>
+          ) : null}
           {scores}
         </main>
       </div>
@@ -263,10 +224,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <TableHeader
-        left={`Musical · ronda ${view.round}/${view.config.rounds}`}
-        turnNick={null}
-      />
+      <TableHeader left={`Musical · ronda ${view.round}/${view.config.rounds}`} turnNick={null} />
       <PlayerStrip
         players={view.players}
         turnPlayerId={null}
@@ -276,20 +234,12 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
       <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
         <section className="surface-panel flex flex-col gap-5 p-5">
           <div className="flex items-center gap-4">
-            {currentTrack.artworkUrl ? (
-              <Image
-                src={currentTrack.artworkUrl}
-                alt=""
-                width={96}
-                height={96}
-                className="h-24 w-24 rounded-2xl object-cover shadow-lg"
-                unoptimized
-              />
-            ) : (
-              <span className="grid h-24 w-24 place-items-center rounded-2xl border border-oro/40 bg-madera-clara text-40 text-oro">
-                ♪
-              </span>
-            )}
+            <span
+              className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl border border-oro/40 bg-madera-clara text-40 text-oro"
+              aria-hidden="true"
+            >
+              ♪
+            </span>
             <div className="min-w-0">
               <span className="text-12 uppercase tracking-wider text-humo">Fragmento</span>
               <h1 className="mt-1 text-20 font-semibold text-crema">
@@ -333,10 +283,20 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
             </div>
           ) : null}
           <p className="text-12 text-humo">
-            Preview proporcionada por iTunes ·{' '}
-            <a href={currentTrack.storeUrl} target="_blank" rel="noreferrer" className="text-oro underline">
-              Ver canción en la tienda
-            </a>
+            Preview proporcionada por iTunes
+            {view.phase === 'reveal' && view.roundResult?.storeUrl ? (
+              <>
+                {' · '}
+                <a
+                  href={view.roundResult.storeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-oro underline"
+                >
+                  Ver canción en la tienda
+                </a>
+              </>
+            ) : null}
           </p>
         </section>
 
@@ -356,7 +316,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               Artista
               <input
                 value={guess.artist}
-                onChange={(event) => setGuess((current) => ({ ...current, artist: event.target.value }))}
+                onChange={(event) =>
+                  setGuess((current) => ({ ...current, artist: event.target.value }))
+                }
                 className="form-control px-4 text-16"
                 autoComplete="off"
               />
@@ -365,7 +327,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               Canción
               <input
                 value={guess.title}
-                onChange={(event) => setGuess((current) => ({ ...current, title: event.target.value }))}
+                onChange={(event) =>
+                  setGuess((current) => ({ ...current, title: event.target.value }))
+                }
                 className="form-control px-4 text-16"
                 autoComplete="off"
               />
@@ -374,7 +338,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               Año <span className="font-normal text-humo">(opcional)</span>
               <input
                 value={guess.year}
-                onChange={(event) => setGuess((current) => ({ ...current, year: event.target.value }))}
+                onChange={(event) =>
+                  setGuess((current) => ({ ...current, year: event.target.value }))
+                }
                 className="form-control px-4 text-16"
                 inputMode="numeric"
                 maxLength={4}
@@ -407,7 +373,10 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 const guesses = view.roundResult?.guesses[player.playerId] ?? [];
                 const lastGuess = guesses[guesses.length - 1];
                 return (
-                  <div key={player.playerId} className="flex items-center justify-between gap-3 rounded-xl bg-tinta/35 px-3 py-2 text-14">
+                  <div
+                    key={player.playerId}
+                    className="flex items-center justify-between gap-3 rounded-xl bg-tinta/35 px-3 py-2 text-14"
+                  >
                     <span className="text-hueso">{player.nick}</span>
                     <span className="text-right text-humo">
                       {lastGuess ? `${lastGuess.artist} · ${lastGuess.title}` : 'Sin respuesta'}

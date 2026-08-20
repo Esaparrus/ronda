@@ -288,13 +288,33 @@ const MUSICAL_MAX_PLAYERS = z.union([
   z.literal(7),
   z.literal(8),
 ]);
-const MUSICAL_ROUNDS = z.union([
-  z.literal(5),
-  z.literal(10),
-  z.literal(15),
-  z.literal(20),
-]);
+const MUSICAL_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]);
 const MUSICAL_MODE = z.union([z.literal('velocidad'), z.literal('simultaneo')]);
+export const MUSICAL_GENRES = [
+  'mezcla',
+  'pop',
+  'rock',
+  'urbano',
+  'dance',
+  'indie',
+  'espanol',
+  'latino',
+  'clasica',
+] as const;
+export const MUSICAL_DECADES = [
+  'cualquiera',
+  '1960',
+  '1970',
+  '1980',
+  '1990',
+  '2000',
+  '2010',
+  '2020',
+] as const;
+export const MUSICAL_POPULARITIES = ['variado', 'exitos'] as const;
+export const MusicalGenreSchema = z.enum(MUSICAL_GENRES);
+export const MusicalDecadeSchema = z.enum(MUSICAL_DECADES);
+export const MusicalPopularitySchema = z.enum(MUSICAL_POPULARITIES);
 
 /** Adivinar canciones por turnos de escucha, con sala y modo solo. */
 export const MusicalConfigSchema = CommonGameConfigSchema.extend({
@@ -302,6 +322,9 @@ export const MusicalConfigSchema = CommonGameConfigSchema.extend({
   maxPlayers: MUSICAL_MAX_PLAYERS.default(6),
   rounds: MUSICAL_ROUNDS.default(10),
   mode: MUSICAL_MODE.default('velocidad'),
+  genre: MusicalGenreSchema.default('mezcla'),
+  decade: MusicalDecadeSchema.default('cualquiera'),
+  popularity: MusicalPopularitySchema.default('variado'),
 });
 
 export type MusicalConfig = z.infer<typeof MusicalConfigSchema>;
