@@ -221,6 +221,17 @@ function nextClip(state: MusicalState, playerId: PlayerId): MusicalActionResult 
   const next = bump(state);
   next.clipStartedAt = null;
   next.buzzedPlayerId = null;
+  if (next.config.mode === 'velocidad') {
+    next.phase = 'reveal';
+    next.roundResult = buildRoundResult(next, null, 0);
+    const events: GameEvent[] = [{ t: 'musicClipAdvanced', clipIndex: next.clipIndex }];
+    if (next.round >= next.config.rounds) {
+      next.status = 'gameEnd';
+      next.winnerId = decideWinner(next);
+      if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
+    }
+    return ok({ state: next, events });
+  }
   if (next.clipIndex < MUSICAL_CLIP_STEPS.length - 1) {
     next.clipIndex += 1;
     return ok({

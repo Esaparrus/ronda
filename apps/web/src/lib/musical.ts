@@ -33,6 +33,11 @@ export interface MusicSearchResponse {
   error?: string;
 }
 
+/** Usa el proxy local para que las previews tengan un MIME reproducible en móvil. */
+export function musicPreviewUrl(previewUrl: string): string {
+  return `/api/music/preview?url=${encodeURIComponent(previewUrl)}`;
+}
+
 export type MusicSuggestionField = 'artist' | 'title';
 
 export interface MusicSuggestionsResponse {
@@ -149,9 +154,9 @@ export async function searchMusic(filters: MusicFilters): Promise<MusicTrack[]> 
   const genre =
     MUSICAL_GENRE_OPTIONS.find((option) => option.value === filters.genre) ??
     MUSICAL_GENRE_OPTIONS[0];
-  const countries = [...new Set(
-    normalizeMusicRegions(filters.regions).flatMap((region) => REGION_MARKETS[region]),
-  )].slice(0, MAX_COUNTRY_REQUESTS);
+  const countries = [
+    ...new Set(normalizeMusicRegions(filters.regions).flatMap((region) => REGION_MARKETS[region])),
+  ].slice(0, MAX_COUNTRY_REQUESTS);
   const responses = await Promise.allSettled(
     countries.map((country) => searchMusicInCountry(filters, genre.query, country)),
   );

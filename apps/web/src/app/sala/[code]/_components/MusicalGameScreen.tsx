@@ -7,6 +7,7 @@ import { MusicAutocompleteInput } from '@/components/ui/MusicAutocompleteInput';
 import { MusicalFeedback } from '@/components/ui/MusicalFeedback';
 import {
   musicFiltersLabel,
+  musicPreviewUrl,
   pickRandomMusicTracks,
   type MusicFilters,
   type MusicTrack,
@@ -50,6 +51,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const [guess, setGuess] = useState<GuessForm>(EMPTY_GUESS);
   const [message, setMessage] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [startingClip, setStartingClip] = useState(false);
   const [clipReady, setClipReady] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selectionError, setSelectionError] = useState<string | null>(null);
@@ -180,6 +182,14 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     return () => window.clearTimeout(timer);
   }, [isSpeedMode, view.clipSeconds, view.clipStartedAt]);
 
+  useEffect(() => {
+    if (!isSpeedMode || view.buzzedPlayerId === null) return;
+    // Solo el móvil del anfitrión reproduce el audio, pero todos reciben el
+    // mismo estado. Al aceptar el primer pulsador, el anfitrión lo detiene.
+    audioRef.current?.pause();
+    setPlaying(false);
+  }, [isSpeedMode, view.buzzedPlayerId]);
+
   const triggerFeedback = useCallback((kind: MusicalFeedbackKind) => {
     setFeedback(kind);
     setFeedbackNonce((current) => current + 1);
@@ -201,26 +211,36 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     previousGuessCountRef.current = myGuessCount;
   }, [myGuessCount, triggerFeedback, view.me.playerId, view.phase, view.round, view.roundResult]);
 
-  async function playPreview() {
+  async function playPreview(): Promise<boolean> {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio) return false;
     setMessage(null);
     resetAudioElement(audio);
     try {
       await audio.play();
       setPlaying(true);
+      return true;
     } catch {
       setPlaying(false);
-      setMessage('No se pudo reproducir la preview. Comprueba el volumen y toca de nuevo.');
+      setMessage('No se pudo reproducir la preview. Toca de nuevo y comprueba el volumen.');
+      return false;
     }
   }
 
-  function startClipForEveryone() {
+  async function startClipForEveryone() {
+    if (startingClip) return;
+    setStartingClip(true);
     setMessage(null);
-    void useRondaStore.getState().sendAction({ type: 'musicStartClip' });
-    // El play del anfitrión es una acción del usuario y por eso puede iniciar
-    // el audio local sin que el navegador lo bloquee por autoplay.
-    void playPreview();
+    try {
+      // El play del anfitrión es una acción del usuario y por eso puede iniciar
+      // el audio local sin que el navegador lo bloquee por autoplay.
+      const started = await playPreview();
+      if (started) {
+        await useRondaStore.getState().sendAction({ type: 'musicStartClip' });
+      }
+    } finally {
+      setStartingClip(false);
+    }
   }
 
   function stopPreview() {
@@ -230,7 +250,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
 
   function handleTimeUpdate() {
     const audio = audioRef.current;
-    if (!audio || audio.currentTime < view.clipSeconds) return;
+    if (!audio || isSpeedMode || audio.currentTime < view.clipSeconds) return;
     audio.pause();
     setPlaying(false);
     setClipReady(true);
@@ -369,7 +389,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               <span className="text-12 uppercase tracking-wider text-humo">Fragmento</span>
               <h1 className="mt-1 text-20 font-semibold text-crema">
                 {view.phase === 'playing'
-                  ? `Escucha ${view.clipSeconds} segundos`
+                  ? isSpeedMode
+                    ? 'Escucha la preview completa'
+                    : `Escucha ${view.clipSeconds} segundos`
                   : 'Respuesta revelada'}
               </h1>
               {view.phase === 'playing' ? (
@@ -384,8 +406,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
           <audio
             key={currentTrack.id}
             ref={audioRef}
-            src={currentTrack.previewUrl}
+            src={musicPreviewUrl(currentTrack.previewUrl)}
             preload="auto"
+            playsInline
             onTimeUpdate={handleTimeUpdate}
             onEnded={() => {
               setPlaying(false);
@@ -404,7 +427,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 <Button
                   onClick={view.clipStartedAt === null ? startClipForEveryone : playPreview}
                   className="flex-1"
-                  loading={view.clipStartedAt === null && pendingAction}
+                  loading={view.clipStartedAt === null && (pendingAction || startingClip)}
                   disabled={playing}
                 >
                   {view.clipStartedAt === null
@@ -425,7 +448,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                   loading={pendingAction}
                   disabled={view.clipStartedAt === null}
                 >
-                  {view.clipIndex >= 3 ? 'Revelar' : 'Más segundos'}
+                  {isSpeedMode ? 'Revelar' : view.clipIndex >= 3 ? 'Revelar' : 'Más segundos'}
                 </Button>
               ) : null}
             </div>

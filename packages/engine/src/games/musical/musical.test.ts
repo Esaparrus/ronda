@@ -140,6 +140,9 @@ describe('Musical', () => {
     );
     expect(beforeBuzz.ok).toBe(false);
 
+    const revealed = apply(selected, 'p1', { type: 'musicNextClip' });
+    expect(revealed.phase).toBe('reveal');
+
     const buzzed = apply(selected, 'p2', { type: 'musicBuzz' });
     expect(buzzed.buzzedPlayerId).toBe('p2');
     expect(getPlayerView(buzzed, 'p2').me.availableActions).toContain('musicSubmitGuess');

@@ -68,6 +68,11 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [submitting, setSubmitting] = useState(false);
 
   const title = `Crear partida de ${gameTitle(gameId)}`;
+  const nickErrorMessage = nickError
+    ? nick.trim().length === 0
+      ? 'Falta poner tu nombre para crear la sala.'
+      : nickError
+    : null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -130,14 +135,18 @@ export function CrearForm({ gameId }: CrearFormProps) {
             id="nick"
             name="nick"
             value={nick}
-            onChange={(e) => setNick(e.target.value)}
+            onChange={(e) => {
+              setNick(e.target.value);
+              if (nickError) setNickError(null);
+            }}
             maxLength={12}
             autoComplete="off"
-            className="form-control px-4 text-16"
+            aria-invalid={Boolean(nickError)}
+            aria-describedby={nickError ? 'nick-error' : undefined}
+            className={`form-control px-4 text-16 ${nickError ? 'border-brasa' : ''}`}
             placeholder="Cómo te van a ver los demás"
           />
           <NickLegalNote />
-          {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
         </div>
 
         {!isPartyGame(gameId) && gameId !== 'laronda' && gameId !== 'musical' ? (
@@ -165,6 +174,11 @@ export function CrearForm({ gameId }: CrearFormProps) {
         <Button type="submit" loading={submitting}>
           Crear partida
         </Button>
+        {nickErrorMessage ? (
+          <p id="nick-error" role="alert" className="-mt-4 text-center text-14 text-brasa">
+            {nickErrorMessage}
+          </p>
+        ) : null}
       </form>
     </main>
   );

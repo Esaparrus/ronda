@@ -13,6 +13,7 @@ import {
   DEFAULT_MUSIC_FILTERS,
   isMusicAnswerCorrect,
   musicFiltersLabel,
+  musicPreviewUrl,
   MUSICAL_ANSWER_MODE_OPTIONS,
   MUSICAL_GENRE_OPTIONS,
   MUSICAL_POPULARITY_OPTIONS,
@@ -72,8 +73,7 @@ export function SoloMusicalGame() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const track = selectedTracks[currentIndex] ?? null;
-  const clipSeconds =
-    SOLO_MUSICAL_CLIP_STEPS[clipIndex] ?? SOLO_MUSICAL_CLIP_STEPS[0];
+  const clipSeconds = SOLO_MUSICAL_CLIP_STEPS[clipIndex] ?? SOLO_MUSICAL_CLIP_STEPS[0];
   const isSpeedMode = listenMode === 'velocidad';
   const requiresArtist = answerMode !== 'title';
   const requiresYear = answerMode === 'artist_title_year';
@@ -91,14 +91,6 @@ export function SoloMusicalGame() {
     setPlaying(false);
     setClipReady(false);
   }, [currentIndex, clipIndex, track?.id, listenMode]);
-
-  useEffect(() => {
-    if (phase !== 'playing' || !track) return;
-    // Intenta empezar automáticamente para que el modo por segundos sea
-    // realmente 1 → 3 → 5 → 10. El botón sigue disponible si el navegador
-    // bloquea el autoplay.
-    void playPreview();
-  }, [phase, currentIndex, clipIndex, track?.id, listenMode]);
 
   async function startGame() {
     if (starting) return;
@@ -373,8 +365,9 @@ export function SoloMusicalGame() {
         <audio
           key={track.id}
           ref={audioRef}
-          src={track.previewUrl}
+          src={musicPreviewUrl(track.previewUrl)}
           preload="auto"
+          playsInline
           onTimeUpdate={handleTimeUpdate}
           onEnded={() => {
             setPlaying(false);
