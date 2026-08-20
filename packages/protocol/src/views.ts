@@ -530,6 +530,7 @@ export type MusicalPhase = 'setup' | 'playing' | 'reveal';
 export type MusicalAvailableAction =
   | 'musicSelectTrack'
   | 'musicStartClip'
+  | 'musicResolveClip'
   | 'musicBuzz'
   | 'musicSubmitGuess'
   | 'musicNextClip'
@@ -557,6 +558,8 @@ export interface MusicalRoundResult {
   winnerId: PlayerId | null;
   points: number;
   guesses: Record<PlayerId, MusicalGuessReveal[]>;
+  /** Tiempo local de escucha de cada jugador en modo online, en ms. */
+  responseTimes: Record<PlayerId, number | null>;
 }
 
 export interface MusicalCommonView extends CommonViewBase {
@@ -567,7 +570,7 @@ export interface MusicalCommonView extends CommonViewBase {
   turnPlayerId: null;
   clipIndex: number;
   clipSeconds: number;
-  /** Instante de servidor en que el anfitrión dio al play, o null si espera. */
+  /** Instante de servidor del play común en modo presencial, o null en online. */
   clipStartedAt: number | null;
   currentTrack: MusicalTrackPublic | null;
   /** Jugador que ha pulsado primero en el modo velocidad. */
@@ -582,6 +585,10 @@ export interface MusicalPlayerViewMe {
   hand: string[];
   attempts: number;
   availableActions: MusicalAvailableAction[];
+  /** Reloj privado del jugador en modo online. */
+  onlineClipStartedAt: number | null;
+  onlineClipResolvedAt: number | null;
+  onlineClipElapsedMs: number | null;
 }
 
 export interface MusicalPlayerView extends MusicalCommonView {

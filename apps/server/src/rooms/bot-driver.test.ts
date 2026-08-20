@@ -181,6 +181,71 @@ describe('BotDriver', () => {
     }
   });
 
+  it('permite probar Musical online con una IA que inicia, resuelve y responde', () => {
+    vi.useFakeTimers();
+    try {
+      const manager = new RoomManager();
+      const created = manager.createRoom({
+        gameId: 'musical',
+        config: { ...DEFAULT_MUSICAL_CONFIG, audioMode: 'online' },
+        nick: 'Ana',
+        now: NOW,
+      });
+      if (!created.ok) throw new Error('no se pudo crear la sala');
+      const bot = manager.addBot({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!bot.ok) throw new Error('no se pudo añadir el robot');
+      const started = manager.start({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!started.ok) throw new Error('no se pudo empezar la partida');
+
+      const room = manager.getRoomByCode(created.value.roomCode);
+      if (!room?.state || room.state.gameId !== 'musical') throw new Error('estado incorrecto');
+      const selected = manager.applyAction({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        clientActionId: 'select-online-track',
+        expectedVersion: room.state.version,
+        action: {
+          type: 'musicSelectTrack',
+          track: {
+            id: 'online-track-1',
+            title: 'La canción',
+            artist: 'El artista',
+            year: 2020,
+            previewUrl: 'https://example.com/preview.m4a',
+            artworkUrl: null,
+            storeUrl: 'https://example.com/track',
+          },
+        },
+        now: NOW,
+      });
+      if (!selected.ok) throw new Error('no se pudo seleccionar la canción');
+
+      const deps: BotDriverDeps = {
+        io: { to: vi.fn() } as unknown as TypedIoServer,
+        mgr: manager,
+        now: () => NOW,
+      };
+      scheduleBotTurn(deps, created.value.roomCode);
+      vi.advanceTimersByTime(5_000);
+      expect(room.state?.gameId === 'musical' && room.state.players.find((p) => p.playerId === bot.value.playerId)?.onlineClipStartedAt).toBe(NOW);
+      vi.advanceTimersByTime(5_000);
+      expect(room.state?.gameId === 'musical' && room.state.players.find((p) => p.playerId === bot.value.playerId)?.onlineClipResolvedAt).toBe(NOW);
+      vi.advanceTimersByTime(5_000);
+      expect(room.state?.phase).toBe('reveal');
+      expect(room.state?.roundResult?.winnerId).toBe(bot.value.playerId);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('deja visible el resultado de Colores hasta que avance el anfitrión', () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);

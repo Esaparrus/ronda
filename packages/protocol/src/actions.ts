@@ -99,6 +99,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   // revelación de la ronda.
   z.object({ type: z.literal('musicSelectTrack'), track: MusicalTrackSchema }),
   z.object({ type: z.literal('musicStartClip') }),
+  z.object({ type: z.literal('musicResolveClip') }),
   z.object({ type: z.literal('musicBuzz') }),
   z.object({
     type: z.literal('musicSubmitGuess'),

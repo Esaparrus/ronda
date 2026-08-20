@@ -22,6 +22,10 @@ export interface MusicalPlayer {
   left: boolean;
   /** Campo vacío para mantener la forma cómoda de inspeccionar jugadores. */
   hand: string[];
+  /** Marcas privadas del reproductor de este jugador en modo online. */
+  onlineClipStartedAt: number | null;
+  onlineClipResolvedAt: number | null;
+  onlineClipElapsedMs: number | null;
 }
 
 export interface MusicalRoundResultState {
@@ -29,6 +33,7 @@ export interface MusicalRoundResultState {
   winnerId: PlayerId | null;
   points: number;
   guesses: Record<PlayerId, MusicalGuess[]>;
+  responseTimes: Record<PlayerId, number | null>;
 }
 
 export interface MusicalState {

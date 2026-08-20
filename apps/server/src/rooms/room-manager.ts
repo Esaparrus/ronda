@@ -455,15 +455,22 @@ export class RoomManager {
         // Los modos sociales esperan a todos los jugadores activos para
         // revelar. Marcar la salida en el estado evita dejar una ronda
         // bloqueada esperando una respuesta que ya no llegará.
-        room.state = {
-          ...state,
-          players: state.players.map((candidate) =>
-            candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
-          ),
-          ...(state.gameId === 'musical' && state.buzzedPlayerId === player.playerId
-            ? { buzzedPlayerId: null }
-            : {}),
-        };
+        if (state.gameId === 'musical') {
+          room.state = {
+            ...state,
+            players: state.players.map((candidate) =>
+              candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
+            ),
+            ...(state.buzzedPlayerId === player.playerId ? { buzzedPlayerId: null } : {}),
+          };
+        } else {
+          room.state = {
+            ...state,
+            players: state.players.map((candidate) =>
+              candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
+            ),
+          };
+        }
       }
       if (state?.gameId === 'laronda') {
         const leavingSeat = state.players.find(

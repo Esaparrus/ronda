@@ -35,7 +35,16 @@ function apply(
   playerId: PlayerId,
   action: Parameters<typeof applyAction>[2],
 ): MusicalState {
-  const result = applyAction(state, playerId, action, 0);
+  return applyAt(state, playerId, action, 0);
+}
+
+function applyAt(
+  state: MusicalState,
+  playerId: PlayerId,
+  action: Parameters<typeof applyAction>[2],
+  now: number,
+): MusicalState {
+  const result = applyAction(state, playerId, action, now);
   if (!result.ok) throw new Error(`${result.code}: ${result.detail ?? ''}`);
   return result.value.state;
 }
@@ -184,6 +193,40 @@ describe('Musical', () => {
 
     expect(result.phase).toBe('reveal');
     expect(result.roundResult?.winnerId).toBe('p2');
+  });
+
+  it('en online mide el tiempo de cada móvil y gana el acierto más rápido', () => {
+    const selected = apply(
+      createState({ ...DEFAULT_MUSICAL_CONFIG, audioMode: 'online', mode: 'velocidad' }),
+      'p1',
+      { type: 'musicSelectTrack', track: TRACK },
+    );
+    const p1Started = applyAt(selected, 'p1', { type: 'musicStartClip' }, 1_000);
+    const bothStarted = applyAt(p1Started, 'p2', { type: 'musicStartClip' }, 1_200);
+    const p1Resolved = applyAt(bothStarted, 'p1', { type: 'musicResolveClip' }, 6_000);
+    const p2Resolved = applyAt(p1Resolved, 'p2', { type: 'musicResolveClip' }, 7_200);
+
+    expect(getPlayerView(p1Resolved, 'p1').me.availableActions).toContain('musicSubmitGuess');
+    expect(getPlayerView(p2Resolved, 'p2').me.onlineClipElapsedMs).toBe(6_000);
+
+    const slowerAnswer = applyAt(p2Resolved, 'p2', {
+      type: 'musicSubmitGuess',
+      artist: TRACK.artist,
+      title: TRACK.title,
+      year: TRACK.year,
+    }, 8_000);
+    expect(slowerAnswer.phase).toBe('playing');
+
+    const fastestAnswer = applyAt(slowerAnswer, 'p1', {
+      type: 'musicSubmitGuess',
+      artist: TRACK.artist,
+      title: TRACK.title,
+      year: TRACK.year,
+    }, 9_000);
+    expect(fastestAnswer.phase).toBe('reveal');
+    expect(fastestAnswer.roundResult?.winnerId).toBe('p1');
+    expect(fastestAnswer.roundResult?.responseTimes).toEqual({ p1: 5_000, p2: 6_000 });
+    expect(fastestAnswer.players.find((player) => player.playerId === 'p1')?.score).toBe(5);
   });
 
   it('exige el ano cuando la partida lo configura', () => {

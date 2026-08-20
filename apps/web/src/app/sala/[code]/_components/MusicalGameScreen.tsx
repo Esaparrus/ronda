@@ -45,6 +45,11 @@ function resetAudioElement(audio: HTMLAudioElement) {
   }
 }
 
+function formatElapsed(milliseconds: number | null | undefined): string {
+  if (milliseconds === null || milliseconds === undefined) return '—';
+  return `${(milliseconds / 1000).toFixed(1)} s`;
+}
+
 export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
@@ -70,6 +75,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     view.players.find((player) => player.playerId === view.me.playerId)?.isHost ?? false;
   const currentTrack = view.currentTrack;
   const myGuessCount = view.guessCounts[view.me.playerId] ?? 0;
+  const isOnlineMode = view.config.audioMode === 'online';
   const isSpeedMode = view.config.mode === 'velocidad';
   const requiresArtist = view.config.answerMode !== 'title';
   const requiresYear = view.config.answerMode === 'artist_title_year';
@@ -166,7 +172,17 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   }, [view.round, view.clipIndex, currentTrack?.id]);
 
   useEffect(() => {
+    if (view.phase === 'playing') return;
+    audioRef.current?.pause();
+    setPlaying(false);
+  }, [view.phase]);
+
+  useEffect(() => {
     setClipReady(false);
+    if (isOnlineMode) {
+      setClipReady(view.me.onlineClipResolvedAt !== null);
+      return;
+    }
     if (view.clipStartedAt === null) return;
 
     // En modo simultáneo todos reciben la misma marca de tiempo del servidor.
@@ -180,15 +196,15 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     const remaining = view.clipStartedAt + view.clipSeconds * 1000 - Date.now();
     const timer = window.setTimeout(() => setClipReady(true), Math.max(0, remaining));
     return () => window.clearTimeout(timer);
-  }, [isSpeedMode, view.clipSeconds, view.clipStartedAt]);
+  }, [isOnlineMode, isSpeedMode, view.clipSeconds, view.clipStartedAt, view.me.onlineClipResolvedAt]);
 
   useEffect(() => {
-    if (!isSpeedMode || view.buzzedPlayerId === null) return;
+    if (isOnlineMode || !isSpeedMode || view.buzzedPlayerId === null) return;
     // Solo el móvil del anfitrión reproduce el audio, pero todos reciben el
     // mismo estado. Al aceptar el primer pulsador, el anfitrión lo detiene.
     audioRef.current?.pause();
     setPlaying(false);
-  }, [isSpeedMode, view.buzzedPlayerId]);
+  }, [isOnlineMode, isSpeedMode, view.buzzedPlayerId]);
 
   const triggerFeedback = useCallback((kind: MusicalFeedbackKind) => {
     setFeedback(kind);
@@ -227,13 +243,13 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     }
   }
 
-  async function startClipForEveryone() {
+  async function startClipForPlayer() {
     if (startingClip) return;
     setStartingClip(true);
     setMessage(null);
     try {
-      // El play del anfitrión es una acción del usuario y por eso puede iniciar
-      // el audio local sin que el navegador lo bloquee por autoplay.
+      // El play nace de un gesto del usuario, así que el navegador permite el
+      // audio tanto en el móvil del anfitrión como en el de cada jugador online.
       const started = await playPreview();
       if (started) {
         await useRondaStore.getState().sendAction({ type: 'musicStartClip' });
@@ -243,6 +259,14 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     }
   }
 
+  function resolveClipForPlayer() {
+    if (pendingAction) return;
+    stopPreview();
+    setClipReady(true);
+    setMessage(null);
+    void useRondaStore.getState().sendAction({ type: 'musicResolveClip' });
+  }
+
   function stopPreview() {
     audioRef.current?.pause();
     setPlaying(false);
@@ -250,7 +274,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
 
   function handleTimeUpdate() {
     const audio = audioRef.current;
-    if (!audio || isSpeedMode || audio.currentTime < view.clipSeconds) return;
+    if (!audio || isOnlineMode || isSpeedMode || audio.currentTime < view.clipSeconds) return;
     audio.pause();
     setPlaying(false);
     setClipReady(true);
@@ -389,7 +413,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               <span className="text-12 uppercase tracking-wider text-humo">Fragmento</span>
               <h1 className="mt-1 text-20 font-semibold text-crema">
                 {view.phase === 'playing'
-                  ? isSpeedMode
+                  ? isOnlineMode
+                    ? 'Escucha hasta saberla'
+                    : isSpeedMode
                     ? 'Escucha la preview completa'
                     : `Escucha ${view.clipSeconds} segundos`
                   : 'Respuesta revelada'}
@@ -423,9 +449,33 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
           />
           {view.phase === 'playing' ? (
             <div className="flex gap-2">
-              {isHost ? (
+              {isOnlineMode ? (
+                view.me.onlineClipStartedAt === null ? (
+                  <Button
+                    onClick={startClipForPlayer}
+                    className="flex-1"
+                    loading={pendingAction || startingClip}
+                    disabled={playing}
+                  >
+                    ▶ Escuchar en tu móvil
+                  </Button>
+                ) : view.me.onlineClipResolvedAt === null ? (
+                  <Button
+                    onClick={resolveClipForPlayer}
+                    className="flex-1"
+                    loading={pendingAction}
+                    disabled={pendingAction}
+                  >
+                    ⏹ Resolver y escribir
+                  </Button>
+                ) : (
+                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
+                    Tiempo registrado: {formatElapsed(view.me.onlineClipElapsedMs)}
+                  </p>
+                )
+              ) : isHost ? (
                 <Button
-                  onClick={view.clipStartedAt === null ? startClipForEveryone : playPreview}
+                  onClick={view.clipStartedAt === null ? startClipForPlayer : playPreview}
                   className="flex-1"
                   loading={view.clipStartedAt === null && (pendingAction || startingClip)}
                   disabled={playing}
@@ -446,9 +496,13 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                   variant="ghost"
                   onClick={nextClip}
                   loading={pendingAction}
-                  disabled={view.clipStartedAt === null}
+                  disabled={pendingAction || (!isOnlineMode && view.clipStartedAt === null)}
                 >
-                  {isSpeedMode ? 'Revelar' : view.clipIndex >= 3 ? 'Revelar' : 'Más segundos'}
+                  {isOnlineMode || isSpeedMode
+                    ? 'Revelar'
+                    : view.clipIndex >= 3
+                      ? 'Revelar'
+                      : 'Más segundos'}
                 </Button>
               ) : null}
             </div>
@@ -480,7 +534,28 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
         ) : null}
 
         {view.phase === 'playing' ? (
-          view.clipStartedAt === null ? (
+          isOnlineMode && view.me.onlineClipStartedAt === null ? (
+            <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
+              <span className="text-32 text-oro" aria-hidden="true">
+                ♪
+              </span>
+              <h2 className="text-20 font-semibold text-hueso">Pulsa Play cuando estés listo</h2>
+              <p className="text-14 text-humo">
+                La misma canción está preparada para todos. El cronómetro empezará en tu móvil.
+              </p>
+            </section>
+          ) : isOnlineMode && view.me.onlineClipResolvedAt === null ? (
+            <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
+              <span className="text-32 text-oro" aria-hidden="true">
+                ⏱
+              </span>
+              <h2 className="text-20 font-semibold text-hueso">Escucha y pulsa Resolver</h2>
+              <p className="text-14 text-humo">
+                La música seguirá hasta que creas saberla. Al resolver se parará en tu móvil y
+                podrás escribir la respuesta.
+              </p>
+            </section>
+          ) : !isOnlineMode && view.clipStartedAt === null ? (
             <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
               <span className="text-32 text-oro" aria-hidden="true">
                 ♪
@@ -492,7 +567,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                   : 'El anfitrión tiene que pulsar play para que empiece la competición.'}
               </p>
             </section>
-          ) : isSpeedMode && view.buzzedPlayerId === null ? (
+          ) : !isOnlineMode && isSpeedMode && view.buzzedPlayerId === null ? (
             <section className="surface-panel flex flex-col items-center gap-4 p-5 text-center">
               <div>
                 <h2 className="text-20 font-semibold text-hueso">¿La sabes?</h2>
@@ -510,7 +585,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 {pendingAction ? '…' : '¡La sé!'}
               </button>
             </section>
-          ) : isSpeedMode && view.buzzedPlayerId !== view.me.playerId ? (
+          ) : !isOnlineMode && isSpeedMode && view.buzzedPlayerId !== view.me.playerId ? (
             <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
               <span className="text-32 text-oro" aria-hidden="true">
                 ⏳
@@ -518,7 +593,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               <h2 className="text-20 font-semibold text-hueso">Alguien se ha adelantado</h2>
               <p className="text-14 text-humo">Espera a ver si acierta.</p>
             </section>
-          ) : !isSpeedMode && !clipReady ? (
+          ) : !isOnlineMode && !isSpeedMode && !clipReady ? (
             <section className="surface-panel flex flex-col gap-2 p-5 text-center">
               <h2 className="text-20 font-semibold text-hueso">Escuchad el fragmento</h2>
               <p className="text-14 text-humo">
@@ -536,7 +611,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               <div>
                 <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
                 <p className="mt-1 text-14 text-humo">
-                  {isSpeedMode
+                  {isOnlineMode
+                    ? 'Has parado tu audio. Escribe y corrige tu respuesta.'
+                    : isSpeedMode
                     ? 'Ya tienes el pulsador. Escribe y corrige tu respuesta.'
                     : 'Escribe y elige una sugerencia; el primer acierto gana.'}
                 </p>
@@ -592,7 +669,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               <p className="text-14 text-humo">
                 {view.roundResult.year ?? 'Año no disponible'} ·{' '}
                 {view.roundResult.winnerId
-                  ? `${view.players.find((player) => player.playerId === view.roundResult?.winnerId)?.nick ?? 'Alguien'} gana +${view.roundResult.points}`
+                  ? `${view.players.find((player) => player.playerId === view.roundResult?.winnerId)?.nick ?? 'Alguien'} gana +${view.roundResult.points}${isOnlineMode ? ` · ${formatElapsed(view.roundResult.responseTimes[view.roundResult.winnerId])}` : ''}`
                   : 'Nadie se lleva puntos'}
               </p>
             </div>
@@ -608,6 +685,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                     <span className="text-hueso">{player.nick}</span>
                     <span className="text-right text-humo">
                       {lastGuess ? `${lastGuess.artist} · ${lastGuess.title}` : 'Sin respuesta'}
+                      {isOnlineMode && view.roundResult?.responseTimes[player.playerId] !== null
+                        ? ` · ${formatElapsed(view.roundResult?.responseTimes[player.playerId] ?? null)}`
+                        : null}
                     </span>
                   </div>
                 );

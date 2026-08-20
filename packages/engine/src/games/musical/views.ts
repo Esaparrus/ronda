@@ -63,6 +63,7 @@ function roundResult(state: MusicalState): MusicalCommonView['roundResult'] {
         })),
       ]),
     ) as Record<PlayerId, MusicalGuessReveal[]>,
+    responseTimes: { ...state.roundResult.responseTimes },
   };
 }
 
@@ -92,25 +93,48 @@ function common(state: MusicalState): MusicalCommonView {
 
 function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
   const player = findPlayer(state, playerId);
-  if (!player) return { playerId, hand: [], attempts: 0, availableActions: [] };
+  if (!player) {
+    return {
+      playerId,
+      hand: [],
+      attempts: 0,
+      availableActions: [],
+      onlineClipStartedAt: null,
+      onlineClipResolvedAt: null,
+      onlineClipElapsedMs: null,
+    };
+  }
 
   const availableActions: MusicalPlayerViewMe['availableActions'] = [];
   if (state.status === 'playing' && state.phase === 'setup' && player.seat === 0) {
     availableActions.push('musicSelectTrack');
   }
   if (state.status === 'playing' && state.phase === 'playing' && !player.left) {
-    if (player.seat === 0 && state.clipStartedAt === null) {
-      availableActions.push('musicStartClip');
-    }
-    if (state.clipStartedAt !== null && state.config.mode === 'simultaneo') {
-      availableActions.push('musicSubmitGuess');
-    } else if (state.clipStartedAt !== null && state.buzzedPlayerId === null) {
-      availableActions.push('musicBuzz');
-    } else if (state.clipStartedAt !== null && state.buzzedPlayerId === playerId) {
-      availableActions.push('musicSubmitGuess');
-    }
-    if (player.seat === 0 && state.clipStartedAt !== null) {
-      availableActions.push('musicNextClip');
+    if (state.config.audioMode === 'online') {
+      if (player.onlineClipStartedAt === null) {
+        availableActions.push('musicStartClip');
+      } else if (player.onlineClipResolvedAt === null) {
+        availableActions.push('musicResolveClip');
+      } else {
+        availableActions.push('musicSubmitGuess');
+      }
+      if (player.seat === 0) {
+        availableActions.push('musicNextClip');
+      }
+    } else {
+      if (player.seat === 0 && state.clipStartedAt === null) {
+        availableActions.push('musicStartClip');
+      }
+      if (state.clipStartedAt !== null && state.config.mode === 'simultaneo') {
+        availableActions.push('musicSubmitGuess');
+      } else if (state.clipStartedAt !== null && state.buzzedPlayerId === null) {
+        availableActions.push('musicBuzz');
+      } else if (state.clipStartedAt !== null && state.buzzedPlayerId === playerId) {
+        availableActions.push('musicSubmitGuess');
+      }
+      if (player.seat === 0 && state.clipStartedAt !== null) {
+        availableActions.push('musicNextClip');
+      }
     }
   }
   if (state.status === 'playing' && state.phase === 'reveal' && player.seat === 0) {
@@ -122,6 +146,9 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
     hand: [],
     attempts: state.guesses[playerId]?.length ?? 0,
     availableActions,
+    onlineClipStartedAt: player.onlineClipStartedAt,
+    onlineClipResolvedAt: player.onlineClipResolvedAt,
+    onlineClipElapsedMs: player.onlineClipElapsedMs,
   };
 }
 

@@ -781,20 +781,45 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
         options={MUSICAL_POPULARITY_OPTIONS.map(({ value, label }) => ({ value, label }))}
       />
       <SegmentedControl
-        legend="Forma de competir"
-        helperText="Rápido: pulsa primero. Simultáneo: todos respondéis."
-        value={config.mode}
+        legend="Audio de la partida"
+        helperText="En persona: un móvil reproduce para todos. Online: cada jugador escucha en su móvil."
+        value={config.audioMode}
         onChange={(value) =>
           setConfig((previous) => ({
             ...previous,
-            mode: value as MusicalConfig['mode'],
+            audioMode: value as MusicalConfig['audioMode'],
           }))
         }
         options={[
-          { value: 'velocidad', label: 'Rápido · pulsador' },
-          { value: 'simultaneo', label: 'Simultáneo' },
+          { value: 'presencial', label: 'En persona' },
+          { value: 'online', label: 'Online' },
         ]}
       />
+      {config.audioMode === 'presencial' ? (
+        <SegmentedControl
+          legend="Forma de competir"
+          helperText="Rápido: pulsa primero. Simultáneo: todos respondéis."
+          value={config.mode}
+          onChange={(value) =>
+            setConfig((previous) => ({
+              ...previous,
+              mode: value as MusicalConfig['mode'],
+            }))
+          }
+          options={[
+            { value: 'velocidad', label: 'Rápido · pulsador' },
+            { value: 'simultaneo', label: 'Simultáneo' },
+          ]}
+        />
+      ) : (
+        <div className="surface-panel flex flex-col gap-1 p-4">
+          <p className="text-14 font-semibold text-hueso">Reto online por tiempo</p>
+          <p className="text-13 text-humo">
+            Cada persona pulsa Play en su móvil y luego «Resolver» cuando sepa la canción. Gana el
+            primer acierto según su tiempo de escucha.
+          </p>
+        </div>
+      )}
       <SegmentedControl
         legend="Qué hay que acertar"
         helperText="Decide qué datos debe escribir cada jugador."

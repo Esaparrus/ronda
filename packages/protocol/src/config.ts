@@ -303,6 +303,8 @@ const MUSICAL_ANSWER_MODE = z.union([
   z.literal('artist_title'),
   z.literal('title'),
 ]);
+export const MUSICAL_AUDIO_MODES = ['presencial', 'online'] as const;
+export const MusicalAudioModeSchema = z.enum(MUSICAL_AUDIO_MODES);
 export const MUSICAL_YEAR_MIN = 1960;
 export const MUSICAL_YEAR_MAX = new Date().getFullYear();
 export const MUSICAL_GENRES = [
@@ -347,6 +349,7 @@ export const MusicalConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('musical' satisfies GameId).default('musical'),
   maxPlayers: MUSICAL_MAX_PLAYERS.default(6),
   rounds: MUSICAL_ROUNDS.default(10),
+  audioMode: MusicalAudioModeSchema.default('presencial'),
   mode: MUSICAL_MODE.default('velocidad'),
   answerMode: MUSICAL_ANSWER_MODE.default('artist_title'),
   genre: MusicalGenreSchema.default('mezcla'),

@@ -402,7 +402,15 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
     const view: MusicalPlayerView = {
       kind: 'player',
       ...buildMusicalLobbyCommon(room),
-      me: { playerId, hand: [], attempts: 0, availableActions: [] },
+      me: {
+        playerId,
+        hand: [],
+        attempts: 0,
+        availableActions: [],
+        onlineClipStartedAt: null,
+        onlineClipResolvedAt: null,
+        onlineClipElapsedMs: null,
+      },
     };
     return view;
   }

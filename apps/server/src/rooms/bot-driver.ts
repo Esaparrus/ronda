@@ -153,10 +153,31 @@ function nextBotTurn(room: Room): BotTurn | null {
   if (
     room.status === 'playing' &&
     state.gameId === 'musical' &&
-    state.phase === 'playing' &&
-    state.clipStartedAt !== null
+    state.phase === 'playing'
   ) {
     const bots = room.playersBySeat().filter((player) => player.isBot);
+    const module = GAMES.musical;
+    if (!module) return null;
+    if (state.config.audioMode === 'online') {
+      const bot = [...bots]
+        .sort(
+          (left, right) =>
+            (left.botDelayMs ?? MUSICAL_BOT_DELAY_MS) -
+            (right.botDelayMs ?? MUSICAL_BOT_DELAY_MS),
+        )
+        .find((candidate) => {
+          const view = module.getPlayerView(state, candidate.playerId);
+          return view.kind === 'player' &&
+            view.me.availableActions.some(
+              (action) =>
+                action === 'musicStartClip' ||
+                action === 'musicResolveClip' ||
+                action === 'musicSubmitGuess',
+            );
+        });
+      return bot ? { playerId: bot.playerId, kind: 'action' } : null;
+    }
+    if (state.clipStartedAt === null) return null;
     const buzzedBot =
       state.buzzedPlayerId !== null
         ? bots.find((player) => player.playerId === state.buzzedPlayerId)
@@ -249,14 +270,25 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
       const action =
         view.gameId === 'musical'
           ? state.gameId === 'musical' && state.currentTrack
-            ? state.config.mode === 'velocidad' && state.buzzedPlayerId === null
-              ? { type: 'musicBuzz' as const }
-              : {
-                  type: 'musicSubmitGuess' as const,
-                  artist: state.currentTrack.artist,
-                  title: state.currentTrack.title,
-                  year: state.currentTrack.year,
-                }
+            ? state.config.audioMode === 'online'
+              ? view.me.availableActions.includes('musicStartClip')
+                ? { type: 'musicStartClip' as const }
+                : view.me.availableActions.includes('musicResolveClip')
+                  ? { type: 'musicResolveClip' as const }
+                  : {
+                      type: 'musicSubmitGuess' as const,
+                      artist: state.currentTrack.artist,
+                      title: state.currentTrack.title,
+                      year: state.currentTrack.year,
+                    }
+              : state.config.mode === 'velocidad' && state.buzzedPlayerId === null
+                ? { type: 'musicBuzz' as const }
+                : {
+                    type: 'musicSubmitGuess' as const,
+                    artist: state.currentTrack.artist,
+                    title: state.currentTrack.title,
+                    year: state.currentTrack.year,
+                  }
             : null
           : view.gameId === 'mus'
             ? decideMusAction(view as MusPlayerView)

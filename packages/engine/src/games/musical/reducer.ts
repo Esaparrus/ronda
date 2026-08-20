@@ -51,6 +51,9 @@ export function createInitialState(
         score: 0,
         left: false,
         hand: [],
+        onlineClipStartedAt: null,
+        onlineClipResolvedAt: null,
+        onlineClipElapsedMs: null,
       })),
     playedTrackIds: [],
     currentTrack: null,
@@ -75,6 +78,8 @@ export function applyAction(
       return selectTrack(state, playerId, action.track);
     case 'musicStartClip':
       return startClip(state, playerId, now);
+    case 'musicResolveClip':
+      return resolveClip(state, playerId, now);
     case 'musicBuzz':
       return buzz(state, playerId);
     case 'musicSubmitGuess':
@@ -109,6 +114,7 @@ function selectTrack(
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
+  resetOnlineClocks(next);
   next.phase = 'playing';
   return ok({
     state: next,
@@ -117,6 +123,22 @@ function selectTrack(
 }
 
 function startClip(state: MusicalState, playerId: PlayerId, now: number): MusicalActionResult {
+  if (state.config.audioMode === 'online') {
+    if (state.status !== 'playing' || state.phase !== 'playing' || !state.currentTrack) {
+      return err('INVALID_ACTION');
+    }
+    const player = findPlayer(state, playerId);
+    if (!player) return err('PLAYER_NOT_IN_ROOM');
+    if (player.left) return err('PLAYER_ELIMINATED');
+    if (player.onlineClipStartedAt !== null) return err('INVALID_ACTION');
+
+    const next = bump(state);
+    const nextPlayer = findPlayer(next, playerId);
+    if (!nextPlayer) return err('PLAYER_NOT_IN_ROOM');
+    nextPlayer.onlineClipStartedAt = now;
+    return ok({ state: next, events: [] });
+  }
+
   if (
     !isHost(state, playerId) ||
     state.status !== 'playing' ||
@@ -129,6 +151,30 @@ function startClip(state: MusicalState, playerId: PlayerId, now: number): Musica
 
   const next = bump(state);
   next.clipStartedAt = now;
+  return ok({ state: next, events: [] });
+}
+
+function resolveClip(state: MusicalState, playerId: PlayerId, now: number): MusicalActionResult {
+  if (
+    state.config.audioMode !== 'online' ||
+    state.status !== 'playing' ||
+    state.phase !== 'playing' ||
+    !state.currentTrack
+  ) {
+    return err('INVALID_ACTION');
+  }
+  const player = findPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (player.onlineClipStartedAt === null || player.onlineClipResolvedAt !== null) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  const nextPlayer = findPlayer(next, playerId);
+  if (!nextPlayer || nextPlayer.onlineClipStartedAt === null) return err('INVALID_ACTION');
+  nextPlayer.onlineClipResolvedAt = now;
+  nextPlayer.onlineClipElapsedMs = Math.max(0, now - nextPlayer.onlineClipStartedAt);
   return ok({ state: next, events: [] });
 }
 
@@ -165,15 +211,19 @@ function submitGuess(
   if (state.status !== 'playing' || state.phase !== 'playing' || !state.currentTrack) {
     return err('INVALID_ACTION');
   }
-  if (
+  const player = findPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (state.config.audioMode === 'online') {
+    if (player.onlineClipResolvedAt === null || player.onlineClipElapsedMs === null) {
+      return err('INVALID_ACTION');
+    }
+  } else if (
     state.clipStartedAt === null ||
     (state.config.mode === 'velocidad' && state.buzzedPlayerId !== playerId)
   ) {
     return err('INVALID_ACTION');
   }
-  const player = findPlayer(state, playerId);
-  if (!player) return err('PLAYER_NOT_IN_ROOM');
-  if (player.left) return err('PLAYER_ELIMINATED');
 
   const guess: MusicalGuess = {
     artist: artist.trim(),
@@ -191,7 +241,14 @@ function submitGuess(
   next.guesses[playerId] = [...guesses, guess];
   const events: GameEvent[] = [{ t: 'musicGuessSubmitted', playerId }];
 
-  if (guess.correct) {
+  if (guess.correct && next.config.audioMode === 'online') {
+    // En online no gana quien consigue enviar antes el formulario, sino el
+    // acierto con menor tiempo de escucha. Esperamos a las respuestas de las
+    // personas que ya han entrado en la carrera para poder compararlas.
+    if (allOnlineParticipantsHaveGuessed(next)) {
+      finishOnlineRound(next, events);
+    }
+  } else if (guess.correct) {
     const points = pointsForClip(next.clipIndex);
     const nextPlayer = findPlayer(next, playerId);
     if (!nextPlayer) return err('PLAYER_NOT_IN_ROOM');
@@ -204,7 +261,7 @@ function submitGuess(
       next.winnerId = decideWinner(next);
       if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
     }
-  } else if (next.config.mode === 'velocidad') {
+  } else if (next.config.audioMode !== 'online' && next.config.mode === 'velocidad') {
     // Un fallo libera el pulsador para que otra persona pueda intentarlo.
     next.buzzedPlayerId = null;
   }
@@ -216,11 +273,22 @@ function nextClip(state: MusicalState, playerId: PlayerId): MusicalActionResult 
   if (!isHost(state, playerId) || state.status !== 'playing' || state.phase !== 'playing') {
     return err(isHost(state, playerId) ? 'INVALID_ACTION' : 'NOT_HOST');
   }
-  if (!state.currentTrack || state.clipStartedAt === null) return err('INVALID_ACTION');
+  if (!state.currentTrack) return err('INVALID_ACTION');
+  if (state.config.audioMode !== 'online' && state.clipStartedAt === null) {
+    return err('INVALID_ACTION');
+  }
 
   const next = bump(state);
   next.clipStartedAt = null;
   next.buzzedPlayerId = null;
+  if (next.config.audioMode === 'online') {
+    const events: GameEvent[] = [{ t: 'musicClipAdvanced', clipIndex: next.clipIndex }];
+    finishOnlineRound(next, events);
+    return ok({
+      state: next,
+      events,
+    });
+  }
   if (next.config.mode === 'velocidad') {
     next.phase = 'reveal';
     next.roundResult = buildRoundResult(next, null, 0);
@@ -266,6 +334,7 @@ function nextRound(state: MusicalState, playerId: PlayerId): MusicalActionResult
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
+  resetOnlineClocks(next);
   next.rematchVotes = [];
   return ok({ state: next, events: [{ t: 'dealt', round: next.round }] });
 }
@@ -280,7 +349,57 @@ function buildRoundResult(
     winnerId,
     points,
     guesses: cloneGuesses(state.guesses),
+    responseTimes: Object.fromEntries(
+      state.players.map((player) => [player.playerId, player.onlineClipElapsedMs]),
+    ) as Record<PlayerId, number | null>,
   };
+}
+
+function resetOnlineClocks(state: MusicalState): void {
+  for (const player of state.players) {
+    player.onlineClipStartedAt = null;
+    player.onlineClipResolvedAt = null;
+    player.onlineClipElapsedMs = null;
+  }
+}
+
+function allOnlineParticipantsHaveGuessed(state: MusicalState): boolean {
+  const participants = activePlayers(state).filter(
+    (player) => player.onlineClipStartedAt !== null,
+  );
+  return (
+    participants.length > 0 &&
+    participants.every((player) => (state.guesses[player.playerId]?.length ?? 0) > 0)
+  );
+}
+
+function finishOnlineRound(state: MusicalState, events: GameEvent[]): void {
+  const winnerId = onlineWinnerId(state);
+  const points = winnerId === null ? 0 : pointsForClip(state.clipIndex);
+  if (winnerId !== null) {
+    const winner = findPlayer(state, winnerId);
+    if (winner) winner.score += points;
+  }
+  state.phase = 'reveal';
+  state.buzzedPlayerId = null;
+  state.roundResult = buildRoundResult(state, winnerId, points);
+  if (state.round >= state.config.rounds) {
+    state.status = 'gameEnd';
+    state.winnerId = decideWinner(state);
+    if (state.winnerId) events.push({ t: 'gameOver', winnerId: state.winnerId });
+  }
+}
+
+function onlineWinnerId(state: MusicalState): PlayerId | null {
+  const candidates = activePlayers(state)
+    .filter((player) => player.onlineClipElapsedMs !== null)
+    .filter((player) => (state.guesses[player.playerId] ?? []).some((guess) => guess.correct))
+    .sort(
+      (left, right) =>
+        (left.onlineClipElapsedMs ?? Number.POSITIVE_INFINITY) -
+        (right.onlineClipElapsedMs ?? Number.POSITIVE_INFINITY),
+    );
+  return candidates[0]?.playerId ?? null;
 }
 
 function pointsForClip(clipIndex: number): number {
