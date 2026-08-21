@@ -15,41 +15,41 @@ const ARTWORK = {
     image: '/games/matiz/popeye-camiseta-base.png',
     mask: '/games/matiz/popeye-camiseta-mask.png',
   },
-  'humpty-pantalon': {
-    image: '/games/matiz/humpty-pantalon-base.png',
-    mask: '/games/matiz/humpty-pantalon-mask.png',
+  'pikachu-piel': {
+    image: '/games/matiz/pikachu-piel-base.png',
+    mask: '/games/matiz/pikachu-piel-mask.png',
   },
-  'zhenya-vestido': {
-    image: '/games/matiz/zhenya-vestido-base.png',
-    mask: '/games/matiz/zhenya-vestido-mask.png',
+  'homer-piel': {
+    image: '/games/matiz/homer-piel-base.png',
+    mask: '/games/matiz/homer-piel-mask.png',
   },
-  'porky-tambor': {
-    image: '/games/matiz/porky-tambor-base.png',
-    mask: '/games/matiz/porky-tambor-mask.png',
+  'bart-piel': {
+    image: '/games/matiz/bart-piel-base.png',
+    mask: '/games/matiz/bart-piel-mask.png',
   },
-  'hunky-hocico': {
-    image: '/games/matiz/hunky-hocico-base.png',
-    mask: '/games/matiz/hunky-hocico-mask.png',
+  'bob-cuerpo': {
+    image: '/games/matiz/bob-cuerpo-base.png',
+    mask: '/games/matiz/bob-cuerpo-mask.png',
   },
-  'robot-retro': {
-    image: '/games/matiz/robot-retro-base.svg',
-    mask: '/games/matiz/robot-retro-mask.svg',
+  'bulbasaur-piel': {
+    image: '/games/matiz/bulbasaur-piel-base.png',
+    mask: '/games/matiz/bulbasaur-piel-mask.png',
   },
-  'gato-astral': {
-    image: '/games/matiz/gato-astral-base.svg',
-    mask: '/games/matiz/gato-astral-mask.svg',
+  'charmander-cuerpo': {
+    image: '/games/matiz/charmander-cuerpo-base.png',
+    mask: '/games/matiz/charmander-cuerpo-mask.png',
   },
-  'monstruo-pizza': {
-    image: '/games/matiz/monstruo-pizza-base.svg',
-    mask: '/games/matiz/monstruo-pizza-mask.svg',
+  'squirtle-cuerpo': {
+    image: '/games/matiz/squirtle-cuerpo-base.png',
+    mask: '/games/matiz/squirtle-cuerpo-mask.png',
   },
-  'cohete-color': {
-    image: '/games/matiz/cohete-color-base.svg',
-    mask: '/games/matiz/cohete-color-mask.svg',
+  'eevee-pelo': {
+    image: '/games/matiz/eevee-pelo-base.png',
+    mask: '/games/matiz/eevee-pelo-mask.png',
   },
-  'logo-rayo': {
-    image: '/games/matiz/logo-rayo-base.svg',
-    mask: '/games/matiz/logo-rayo-mask.svg',
+  'psyduck-cuerpo': {
+    image: '/games/matiz/psyduck-cuerpo-base.png',
+    mask: '/games/matiz/psyduck-cuerpo-mask.png',
   },
 } as const;
 

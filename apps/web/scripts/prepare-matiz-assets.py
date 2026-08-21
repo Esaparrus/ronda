@@ -16,6 +16,7 @@ pueda pintarla con el color que el jugador elija.
 from __future__ import annotations
 
 import argparse
+import colorsys
 import json
 import math
 from collections import deque
@@ -33,11 +34,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tolerance", default=42, type=float)
     parser.add_argument("--region", nargs=4, type=int, metavar=("LEFT", "TOP", "RIGHT", "BOTTOM"))
     parser.add_argument("--connected", action="store_true", help="Solo la zona conectada al píxel elegido")
+    parser.add_argument("--hue-tolerance", type=float, help="Tolerancia de tono en grados HSV")
+    parser.add_argument("--min-saturation", default=0, type=float, help="Saturación mínima en porcentaje cuando se filtra por tono")
     return parser.parse_args()
 
 
 def color_distance(left: tuple[int, int, int], right: tuple[int, int, int]) -> float:
     return math.sqrt(sum((left[index] - right[index]) ** 2 for index in range(3)))
+
+
+def hsv_color(color: tuple[int, int, int]) -> tuple[float, float, float]:
+    red, green, blue = (channel / 255 for channel in color)
+    hue, saturation, value = colorsys.rgb_to_hsv(red, green, blue)
+    return hue * 360, saturation * 100, value * 100
 
 
 def in_region(x: int, y: int, region: tuple[int, int, int, int] | None) -> bool:
@@ -53,6 +62,8 @@ def select_pixels(
     tolerance: float,
     region: tuple[int, int, int, int] | None,
     connected: bool,
+    hue_tolerance: float | None,
+    min_saturation: float,
 ) -> bytearray:
     rgb = image.convert("RGB")
     width, height = rgb.size
@@ -62,10 +73,21 @@ def select_pixels(
         raise ValueError(f"La semilla queda fuera de la imagen: {seed}")
 
     target = pixels[seed_x, seed_y]
+    target_hue, _, _ = hsv_color(target)
     selected = bytearray(width * height)
 
     def matches(x: int, y: int) -> bool:
-        return in_region(x, y, region) and color_distance(pixels[x, y], target) <= tolerance
+        if not in_region(x, y, region):
+            return False
+        candidate = pixels[x, y]
+        if color_distance(candidate, target) > tolerance and hue_tolerance is None:
+            return False
+        if hue_tolerance is None:
+            return True
+        candidate_hue, candidate_saturation, _ = hsv_color(candidate)
+        hue_distance = abs(candidate_hue - target_hue)
+        hue_distance = min(hue_distance, 360 - hue_distance)
+        return candidate_saturation >= min_saturation and hue_distance <= hue_tolerance
 
     if connected:
         if not matches(seed_x, seed_y):
@@ -133,6 +155,8 @@ def main() -> None:
         tolerance=args.tolerance,
         region=tuple(args.region) if args.region else None,
         connected=args.connected,
+        hue_tolerance=args.hue_tolerance,
+        min_saturation=args.min_saturation,
     )
     asset = write_assets(image, selected, args.output_dir, args.name)
     metadata_path = args.output_dir / f"{args.name}.json"

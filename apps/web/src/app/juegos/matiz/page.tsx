@@ -24,7 +24,7 @@ export default function MatizPage() {
         label: 'Preparar tus imágenes',
         description: 'Sube una imagen y genera su máscara automáticamente.',
       }}
-      note="Diez retos con escenas de animación y dibujos originales. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima, y la consigna solo indica la zona que debes igualar."
+      note="Diez personajes aislados —Pokémon, Los Simpson y Bob Esponja— con una zona de color sencilla. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima, y la consigna solo indica la zona que debes igualar."
     />
   );
 }
