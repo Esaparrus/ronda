@@ -92,6 +92,17 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   /** Acción interna del reloj del servidor; antes del plazo el motor la rechaza. */
   z.object({ type: z.literal('finishColors') }),
   z.object({ type: z.literal('submitMajority'), answer: z.string().min(1).max(80) }),
+  /**
+   * El anfitrión confirma qué respuestas abiertas significan lo mismo. Solo
+   * se envían ids de jugadores: el servidor conserva siempre el texto original.
+   */
+  z.object({
+    type: z.literal('resolveMajority'),
+    groups: z
+      .array(z.array(z.string().min(1).max(80)).min(1).max(8))
+      .min(1)
+      .max(8),
+  }),
   z.object({ type: z.literal('submitScale'), value: z.number().int().min(0).max(100) }),
   // --- Musical -------------------------------------------------------------
   // La URL de preview es pública para que cada móvil pueda reproducir el

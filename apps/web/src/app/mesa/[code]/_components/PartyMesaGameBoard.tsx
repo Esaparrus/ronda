@@ -140,10 +140,11 @@ const LIGHT_COLOR_NAMES = new Set(['amarillo', 'naranja', 'rosa', 'blanco']);
 
 function MayoriaMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'mayoria' }> }) {
   const party = view.party;
+  const resolved = party.groups !== null;
   return (
     <main className="flex min-h-dvh flex-1 flex-col">
       <TableHeader left={`Mayoría · ronda ${view.round}`} turnNick={null} />
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-10 text-center">
+      <div className="flex flex-1 flex-col items-center gap-6 overflow-y-auto px-10 py-10 text-center">
         <h1 className="max-w-4xl text-[clamp(2rem,5vw,4rem)] font-semibold text-hueso">
           {party.prompt}
         </h1>
@@ -151,12 +152,62 @@ function MayoriaMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'm
           <p className="text-20 text-humo">
             {party.submittedPlayerIds.length}/{view.players.length} respuestas guardadas
           </p>
+        ) : !resolved ? (
+          <>
+            <div>
+              <p className="text-28 font-semibold text-oro">Respuestas reveladas</p>
+              <p className="mt-2 text-16 text-humo">
+                El anfitrión está agrupando las respuestas que significan lo mismo.
+              </p>
+            </div>
+            <div className="grid w-full max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(party.answers ?? {}).map(([playerId, answer]) => (
+                <div
+                  key={playerId}
+                  className="flex flex-col gap-1 rounded-2xl border border-linea bg-mesa/80 px-4 py-3 text-left"
+                >
+                  <span className="text-12 font-semibold uppercase tracking-wider text-humo">
+                    {playerNick(view, playerId)}
+                  </span>
+                  <span className="text-18 font-semibold text-hueso">{answer}</span>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
-          <p className="text-28 font-semibold text-oro">
-            {party.majorityAnswers?.length
-              ? party.majorityAnswers.join(', ')
-              : 'Empate: nadie puntúa'}
-          </p>
+          <>
+            <p className="text-28 font-semibold text-oro">
+              {party.majorityAnswers?.length
+                ? `Mayoría: ${party.majorityAnswers.join(', ')}`
+                : 'Empate: nadie puntúa'}
+            </p>
+            {party.pinkCowPlayerId ? (
+              <p className="text-18 font-semibold text-rosa">
+                🐄 Vaca rosa: {playerNick(view, party.pinkCowPlayerId)}
+              </p>
+            ) : null}
+            <div className="grid w-full max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(party.groups ?? []).map((group) => {
+                const winning = party.majorityAnswers?.includes(group.answer) ?? false;
+                return (
+                  <div
+                    key={group.playerIds.join('-')}
+                    className={`flex flex-col gap-2 rounded-2xl border px-5 py-4 text-left ${
+                      winning ? 'border-oro bg-oro/10' : 'border-linea bg-mesa/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-20 font-semibold text-hueso">{group.answer}</span>
+                      <span className="font-mono text-20 text-oro">{group.playerIds.length}</span>
+                    </div>
+                    <span className="text-14 text-humo">
+                      {group.playerIds.map((playerId) => playerNick(view, playerId)).join(', ')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </main>

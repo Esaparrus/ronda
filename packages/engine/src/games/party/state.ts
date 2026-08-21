@@ -9,6 +9,7 @@ import type {
   PartyGameId,
   PlayerId,
   RoomCode,
+  MajorityGroup,
 } from '@ronda/protocol';
 import { COLOR_QUESTIONS, MAJORITY_QUESTIONS, SCALE_QUESTIONS } from './content.ts';
 
@@ -65,6 +66,10 @@ export interface MajorityRoundState {
   questionId: string;
   submissions: Record<PlayerId, string>;
   majorityAnswers: string[] | null;
+  /** Agrupación confirmada por el anfitrión; null mientras se revisa. */
+  groups: MajorityGroup[] | null;
+  /** Puntos ganados en la ronda; null mientras se revisa. */
+  scoreDeltas: Record<PlayerId, number> | null;
 }
 
 export interface ScaleRoundState {
@@ -95,6 +100,8 @@ export interface PartyState {
   colors: ColorsRoundState | null;
   majority: MajorityRoundState | null;
   scale: ScaleRoundState | null;
+  /** Jugador que conserva la vaca rosa en Mayoría, si la hay. */
+  pinkCowPlayerId: PlayerId | null;
   winnerId: PlayerId | null;
   rematchVotes: PlayerId[];
 }

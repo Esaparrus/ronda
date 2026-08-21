@@ -8,7 +8,7 @@ export default function MayoriaPage() {
       kind="Social"
       players="2–7 jugadores"
       duration="10–20 min"
-      summary="Responded sin mirar a nadie. Si piensas como la mayoría, puntúas; si sorprendes a la mesa, al menos habrá conversación."
+      summary="Responded sin mirar a nadie. La mesa agrupa las respuestas equivalentes, la mayoría gana vacas y una respuesta única puede llevarse la vaca rosa."
       mark="≋"
     />
   );

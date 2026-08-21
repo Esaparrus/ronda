@@ -144,6 +144,28 @@ function majorityAnswer(view: Extract<PartyPlayerView, { gameId: 'mayoria' }>): 
   return options[useAlternative ? 1 : 0] ?? options[0] ?? 'no sé';
 }
 
+function normalizeMajorityAnswer(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase('es-ES')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function majorityGroups(view: Extract<PartyPlayerView, { gameId: 'mayoria' }>): string[][] {
+  const groups = new Map<string, string[]>();
+  for (const [playerId, answer] of Object.entries(view.party.answers ?? {})) {
+    const key = normalizeMajorityAnswer(answer);
+    const group = groups.get(key);
+    if (group) group.push(playerId);
+    else groups.set(key, [playerId]);
+  }
+  return [...groups.values()];
+}
+
 export function decidePartyAction(view: PartyPlayerView): GameAction | null {
   if (view.gameId === 'orden') {
     // Es cooperativo: jugar el mínimo propio es la política correcta y no se
@@ -152,7 +174,12 @@ export function decidePartyAction(view: PartyPlayerView): GameAction | null {
     return value === undefined ? null : { type: 'playNumber', value };
   }
   if (view.gameId === 'colores') return { type: 'submitColors', colors: colorAnswer(view) };
-  if (view.gameId === 'mayoria') return { type: 'submitMajority', answer: majorityAnswer(view) };
+  if (view.gameId === 'mayoria') {
+    if (view.me.availableActions.includes('resolveMajority')) {
+      return { type: 'resolveMajority', groups: majorityGroups(view) };
+    }
+    return { type: 'submitMajority', answer: majorityAnswer(view) };
+  }
   if (view.party.cluePlayerId === view.me.playerId) return null;
 
   // La pista de Escala se comunica de viva voz y no llega al servidor. Sin

@@ -665,6 +665,7 @@ export class RoomManager {
     if (
       (input.action.type === 'setOrderCards' ||
         input.action.type === 'endOrder' ||
+        input.action.type === 'resolveMajority' ||
         partyNextRound ||
         input.action.type === 'musicSelectTrack' ||
         input.action.type === 'musicNextClip' ||

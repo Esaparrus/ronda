@@ -92,9 +92,9 @@ function nextBotTurn(room: Room): BotTurn | null {
   const state = room.state;
   if (!state) return null;
 
-  // En los modos sociales los bots pueden responder para facilitar pruebas,
-  // pero nunca deciden cuándo abandonar la pantalla de resultados: esa
-  // transición pertenece al anfitrión humano.
+  // En los modos sociales los bots pueden responder para facilitar pruebas.
+  // En Mayoría, el bot anfitrión también confirma la agrupación automática
+  // para que una sala de simulación no se quede bloqueada en la revisión.
   if (
     state.gameId === 'orden' ||
     state.gameId === 'colores' ||
@@ -103,9 +103,19 @@ function nextBotTurn(room: Room): BotTurn | null {
   ) {
     if (room.status !== 'playing' || state.status !== 'playing') return null;
     const bots = room.playersBySeat().filter((player) => player.isBot);
-    if (state.phase === 'reveal') return null;
     const module = GAMES[room.gameId];
     if (!module) return null;
+    if (state.phase === 'reveal') {
+      if (state.gameId !== 'mayoria' || state.majority?.groups !== null) return null;
+      const host = bots.find((bot) => bot.seat === 0);
+      if (!host) return null;
+      const view = module.getPlayerView(state, host.playerId);
+      if (view.kind !== 'player') return null;
+      const partyView = view as PartyPlayerView;
+      return partyView.me.availableActions.includes('resolveMajority')
+        ? { playerId: host.playerId, kind: 'action' }
+        : null;
+    }
     for (const bot of bots) {
       const view = module.getPlayerView(state, bot.playerId);
       if (view.kind !== 'player') continue;
@@ -150,11 +160,7 @@ function nextBotTurn(room: Room): BotTurn | null {
     return activeBot ? { playerId: activeBot.playerId, kind: 'action' } : null;
   }
 
-  if (
-    room.status === 'playing' &&
-    state.gameId === 'musical' &&
-    state.phase === 'playing'
-  ) {
+  if (room.status === 'playing' && state.gameId === 'musical' && state.phase === 'playing') {
     const bots = room.playersBySeat().filter((player) => player.isBot);
     const module = GAMES.musical;
     if (!module) return null;
@@ -162,18 +168,19 @@ function nextBotTurn(room: Room): BotTurn | null {
       const bot = [...bots]
         .sort(
           (left, right) =>
-            (left.botDelayMs ?? MUSICAL_BOT_DELAY_MS) -
-            (right.botDelayMs ?? MUSICAL_BOT_DELAY_MS),
+            (left.botDelayMs ?? MUSICAL_BOT_DELAY_MS) - (right.botDelayMs ?? MUSICAL_BOT_DELAY_MS),
         )
         .find((candidate) => {
           const view = module.getPlayerView(state, candidate.playerId);
-          return view.kind === 'player' &&
+          return (
+            view.kind === 'player' &&
             view.me.availableActions.some(
               (action) =>
                 action === 'musicStartClip' ||
                 action === 'musicResolveClip' ||
                 action === 'musicSubmitGuess',
-            );
+            )
+          );
         });
       return bot ? { playerId: bot.playerId, kind: 'action' } : null;
     }

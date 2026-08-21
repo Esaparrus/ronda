@@ -46,12 +46,7 @@ export type PochaAvailableAction = 'bid' | 'playCard' | 'nextRound';
 export type ClassicGameId = 'brisca' | 'escoba' | 'sieteymedia' | 'tute' | 'cinquillo';
 export type ClassicPhase = 'trick' | 'capture' | 'draw' | 'banker' | 'layout';
 export type ClassicAvailableAction =
-  | 'playCard'
-  | 'playCapture'
-  | 'drawDeck'
-  | 'stand'
-  | 'pass'
-  | 'nextRound';
+  'playCard' | 'playCapture' | 'drawDeck' | 'stand' | 'pass' | 'nextRound';
 
 /**
  * Jugador público (sin mano). Compartido por ambos juegos: los campos son
@@ -383,6 +378,7 @@ export type PartyAvailableAction =
   | 'playNumber'
   | 'submitColors'
   | 'submitMajority'
+  | 'resolveMajority'
   | 'submitScale'
   | 'setOrderCards'
   | 'endOrder'
@@ -432,6 +428,16 @@ export interface MayoriaPublic {
   submittedPlayerIds: PlayerId[];
   answers: Record<PlayerId, string> | null;
   majorityAnswers: string[] | null;
+  /** Agrupación confirmada por el anfitrión; null mientras se revisa. */
+  groups: MajorityGroup[] | null;
+  /** Puntos ganados en esta ronda; null mientras se revisa. */
+  scoreDeltas: Record<PlayerId, number> | null;
+  pinkCowPlayerId: PlayerId | null;
+}
+
+export interface MajorityGroup {
+  answer: string;
+  playerIds: PlayerId[];
 }
 
 export interface EscalaPublic {

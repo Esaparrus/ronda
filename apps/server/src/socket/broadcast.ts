@@ -283,6 +283,9 @@ function buildPartyLobbyCommon(room: Room): PartyCommonView {
         submittedPlayerIds: [],
         answers: null,
         majorityAnswers: null,
+        groups: null,
+        scoreDeltas: null,
+        pinkCowPlayerId: null,
       },
     };
   }

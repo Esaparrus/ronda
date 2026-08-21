@@ -135,7 +135,10 @@ export function CrearForm({ gameId }: CrearFormProps) {
 
       <form className="flex flex-col gap-7" onSubmit={handleSubmit}>
         <div className="surface-panel flex flex-col gap-2 p-4">
-          <label htmlFor="nick" className="flex items-center gap-2 text-16 font-semibold text-hueso">
+          <label
+            htmlFor="nick"
+            className="flex items-center gap-2 text-16 font-semibold text-hueso"
+          >
             <span className="icon-disc size-8">
               <Icon name="person" size={15} />
             </span>
@@ -684,31 +687,47 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
               </select>
             </div>
           ) : null}
+          {config.gameId === 'mayoria' ? (
+            <p className="rounded-xl border border-oro/30 bg-oro/10 px-4 py-3 text-14 leading-relaxed text-humo">
+              En Mayoría no hay un número fijo de rondas: la partida continúa hasta que alguien
+              alcanza el objetivo sin tener la vaca rosa.
+            </p>
+          ) : (
+            <QuantityStepper
+              legend="Rondas máximas"
+              helperText={
+                config.gameId === 'colores'
+                  ? 'Límite de seguridad si nadie alcanza antes los puntos para ganar.'
+                  : 'Número máximo de preguntas de la partida.'
+              }
+              value={config.rounds}
+              onChange={(value) => setField('rounds', value)}
+              options={(config.gameId === 'colores' ? [10, 15, 20] : [5, 7, 10, 12]).map(
+                (value) => ({
+                  value,
+                  label: String(value),
+                }),
+              )}
+              valueSuffix="rondas"
+            />
+          )}
           <QuantityStepper
-            legend="Rondas máximas"
+            legend={config.gameId === 'mayoria' ? 'Vacas para ganar' : 'Puntos para ganar'}
             helperText={
-              config.gameId === 'colores'
-                ? 'Límite de seguridad si nadie alcanza antes los puntos para ganar.'
-                : 'Número máximo de preguntas de la partida.'
+              config.gameId === 'mayoria'
+                ? 'La primera persona que llegue a este marcador sin la vaca rosa gana.'
+                : 'La primera persona que llegue a este marcador gana.'
             }
-            value={config.rounds}
-            onChange={(value) => setField('rounds', value)}
-            options={(config.gameId === 'colores' ? [10, 15, 20] : [5, 7, 10, 12]).map((value) => ({
-              value,
-              label: String(value),
-            }))}
-            valueSuffix="rondas"
-          />
-          <QuantityStepper
-            legend="Puntos para ganar"
-            helperText="La primera persona que llegue a este marcador gana."
             value={config.pointsToWin}
             onChange={(value) => setField('pointsToWin', value)}
-            options={[5, 10, 15, 20, 25, 30, 40].map((value) => ({
+            options={(config.gameId === 'mayoria'
+              ? [5, 8, 10, 15, 20, 25, 30, 40]
+              : [5, 10, 15, 20, 25, 30, 40]
+            ).map((value) => ({
               value,
               label: String(value),
             }))}
-            valueSuffix="puntos"
+            valueSuffix={config.gameId === 'mayoria' ? 'vacas' : 'puntos'}
           />
         </>
       )}
@@ -810,7 +829,9 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
       />
       <div className="surface-panel flex flex-col gap-1 p-4">
         <p className="text-14 font-semibold text-hueso">
-          {config.audioMode === 'presencial' ? 'Velocidad · pulsador' : 'Online · tiempo individual'}
+          {config.audioMode === 'presencial'
+            ? 'Velocidad · pulsador'
+            : 'Online · tiempo individual'}
         </p>
         <p className="text-13 text-humo">
           {config.audioMode === 'presencial'

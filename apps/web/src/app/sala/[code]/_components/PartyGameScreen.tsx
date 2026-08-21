@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import type {
   ColoresPlayerView,
   EscalaPlayerView,
+  MajorityGroup,
   MayoriaPlayerView,
   OrdenPlayerView,
   PartyPlayerView,
@@ -425,14 +426,16 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TableHeader
-        left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
+        left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} vacas`}
         turnNick={null}
       />
       <PlayerStrip
         players={view.players}
         turnPlayerId={null}
         myPlayerId={me.playerId}
-        renderInfo={(player) => `${player.score} puntos`}
+        renderInfo={(player) =>
+          `${player.score} vacas${player.playerId === party.pinkCowPlayerId ? ' · 🐄' : ''}`
+        }
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-6">
         <section className="surface-panel w-full max-w-md p-5 text-center">
@@ -452,6 +455,9 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
               onChange={(event) => setAnswer(event.target.value)}
               className="form-control px-4 text-16"
             />
+            <p className="text-12 text-humo">
+              El anfitrión podrá unir respuestas que signifiquen lo mismo.
+            </p>
             <Button onClick={submit} disabled={!answer.trim()} loading={pendingAction}>
               Guardar respuesta
             </Button>
@@ -461,7 +467,7 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
         ) : (
           <MajorityReveal view={view} />
         )}
-        {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
+        {party.phase === 'reveal' && view.status === 'playing' && party.groups && isHost ? (
           <Button
             onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
             loading={pendingAction}
@@ -469,8 +475,13 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
             Siguiente ronda
           </Button>
         ) : null}
-        {party.phase === 'reveal' && view.status === 'playing' && !isHost ? (
+        {party.phase === 'reveal' && view.status === 'playing' && !party.groups && !isHost ? (
           <p className="text-center text-14 text-humo">Esperando al anfitrión.</p>
+        ) : null}
+        {party.phase === 'reveal' && view.status === 'playing' && party.groups && !isHost ? (
+          <p className="text-center text-14 text-humo">
+            Resultados confirmados. Esperando al anfitrión.
+          </p>
         ) : null}
       </main>
     </div>
@@ -479,22 +490,133 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
 
 function MajorityReveal({ view }: { view: MayoriaPlayerView }) {
   const answers = view.party.answers;
+  const pendingAction = useRondaStore((state) => state.pendingAction);
+  const isHost =
+    view.players.find((player) => player.playerId === view.me.playerId)?.isHost ?? false;
+  const [draftGroups, setDraftGroups] = useState<MajorityDraftGroup[]>(() =>
+    suggestedMajorityGroups(answers),
+  );
+
+  if (!answers) return null;
+
+  const resolved = view.party.groups !== null;
+
+  function mergeGroups(sourceIndex: number, targetIndex: number) {
+    setDraftGroups((current) => {
+      const source = current[sourceIndex];
+      const target = current[targetIndex];
+      if (!source || !target || sourceIndex === targetIndex) return current;
+      return current
+        .map((group, index) =>
+          index === targetIndex
+            ? { ...group, playerIds: [...group.playerIds, ...source.playerIds] }
+            : group,
+        )
+        .filter((_, index) => index !== sourceIndex);
+    });
+  }
+
+  function resolve() {
+    void useRondaStore.getState().sendAction({
+      type: 'resolveMajority',
+      groups: draftGroups.map((group) => group.playerIds),
+    });
+  }
+
   return (
     <section className="surface-panel flex w-full max-w-md flex-col gap-3 p-4">
-      <p className="text-16 font-semibold text-oro">
-        {view.party.majorityAnswers?.length
-          ? `Mayoría: ${view.party.majorityAnswers.join(', ')}`
-          : 'No hubo mayoría: empate.'}
-      </p>
-      {answers
-        ? Object.entries(answers).map(([playerId, answer]) => (
-            <p key={playerId} className="text-14 text-humo">
-              {playerNick(view, playerId)}: {answer}
-            </p>
-          ))
-        : null}
+      {resolved ? (
+        <p className="text-16 font-semibold text-oro">
+          {view.party.majorityAnswers?.length
+            ? `Mayoría: ${view.party.majorityAnswers.join(', ')}`
+            : 'No hubo mayoría: empate.'}
+        </p>
+      ) : (
+        <>
+          <p className="text-16 font-semibold text-oro">Revisad las respuestas</p>
+          <p className="text-12 text-humo">
+            El anfitrión puede unir grupos cuando una falta, un apodo o un nombre abreviado se
+            refieren claramente a lo mismo.
+          </p>
+        </>
+      )}
+
+      <div className="flex flex-col gap-3">
+        {(resolved ? (view.party.groups ?? []) : draftGroups).map((group, groupIndex) => (
+          <div
+            key={`${groupIndex}-${group.answer}`}
+            className="rounded-xl border border-linea bg-tinta/30 p-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-16 font-semibold text-hueso">{group.answer}</span>
+              <span className="font-mono text-14 text-oro">{group.playerIds.length}</span>
+            </div>
+            <div className="mt-2 flex flex-col gap-1">
+              {group.playerIds.map((playerId) => (
+                <span key={playerId} className="text-13 text-humo">
+                  {playerNick(view, playerId)}: {answers[playerId]}
+                  {resolved && view.party.scoreDeltas?.[playerId] ? ' · +1' : ''}
+                </span>
+              ))}
+            </div>
+            {!resolved && isHost ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {draftGroups.map((otherGroup, otherIndex) =>
+                  otherIndex === groupIndex ? null : (
+                    <button
+                      key={`${groupIndex}-${otherIndex}`}
+                      type="button"
+                      onClick={() => mergeGroups(groupIndex, otherIndex)}
+                      className="rounded-full border border-oro/50 px-3 py-2 text-12 font-semibold text-oro transition-colors hover:bg-oro/10"
+                    >
+                      Unir con «{otherGroup.answer}»
+                    </button>
+                  ),
+                )}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      {!resolved && isHost ? (
+        <Button onClick={resolve} loading={pendingAction}>
+          Confirmar grupos y puntuar
+        </Button>
+      ) : null}
+
+      {resolved && view.party.pinkCowPlayerId ? (
+        <p className="text-center text-14 text-rosa">
+          🐄 Vaca rosa: {playerNick(view, view.party.pinkCowPlayerId)}. No puede ganar mientras la
+          tenga.
+        </p>
+      ) : null}
     </section>
   );
+}
+
+type MajorityDraftGroup = Pick<MajorityGroup, 'answer' | 'playerIds'>;
+
+function suggestedMajorityGroups(answers: Record<PlayerId, string> | null): MajorityDraftGroup[] {
+  const groups = new Map<string, MajorityDraftGroup>();
+  for (const [playerId, answer] of Object.entries(answers ?? {})) {
+    const key = normalizeMajorityText(answer);
+    const group = groups.get(key);
+    if (group) group.playerIds.push(playerId);
+    else groups.set(key, { answer, playerIds: [playerId] });
+  }
+  return [...groups.values()];
+}
+
+function normalizeMajorityText(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase('es-ES')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function EscalaGame({ view }: { view: EscalaPlayerView }) {

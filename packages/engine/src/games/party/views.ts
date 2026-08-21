@@ -14,6 +14,7 @@ import {
   type MayoriaCommonView,
   type MayoriaPlayerView,
   type MayoriaTableView,
+  type MajorityGroup,
   type OrdenCommonView,
   type OrdenPlayerView,
   type OrdenTableView,
@@ -24,11 +25,7 @@ import {
   type PlayerId,
   type PublicPlayer,
 } from '@ronda/protocol';
-import {
-  colorQuestionById,
-  majorityQuestionById,
-  scaleQuestionById,
-} from './content.ts';
+import { colorQuestionById, majorityQuestionById, scaleQuestionById } from './content.ts';
 import type { PartyState } from './state.ts';
 
 function colorIndex(seat: number): 0 | 1 | 2 | 3 | 4 | 5 | 6 {
@@ -130,9 +127,14 @@ function buildMayoriaCommon(state: PartyState): MayoriaCommonView {
       prompt: question.prompt,
       submittedPlayerIds: Object.keys(state.majority.submissions),
       answers: revealed ? { ...state.majority.submissions } : null,
-      majorityAnswers: revealed && state.majority.majorityAnswers
-        ? [...state.majority.majorityAnswers]
-        : null,
+      majorityAnswers:
+        revealed && state.majority.majorityAnswers !== null
+          ? [...state.majority.majorityAnswers]
+          : null,
+      groups: revealed && state.majority.groups ? cloneMajorityGroups(state.majority.groups) : null,
+      scoreDeltas:
+        revealed && state.majority.scoreDeltas ? { ...state.majority.scoreDeltas } : null,
+      pinkCowPlayerId: state.pinkCowPlayerId,
     },
   };
 }
@@ -189,7 +191,11 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
       availableActions.push('playNumber');
     } else if (state.gameId === 'colores' && state.colors && !state.colors.submissions[playerId]) {
       availableActions.push('submitColors');
-    } else if (state.gameId === 'mayoria' && state.majority && !state.majority.submissions[playerId]) {
+    } else if (
+      state.gameId === 'mayoria' &&
+      state.majority &&
+      !state.majority.submissions[playerId]
+    ) {
       availableActions.push('submitMajority');
     } else if (
       state.gameId === 'escala' &&
@@ -200,12 +206,19 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
       availableActions.push('submitScale');
     }
   }
+  if (state.status === 'playing' && state.phase === 'reveal' && state.gameId !== 'orden') {
+    if (state.gameId !== 'mayoria' || state.majority?.groups !== null) {
+      availableActions.push('nextRound');
+    }
+  }
   if (
     state.status === 'playing' &&
     state.phase === 'reveal' &&
-    state.gameId !== 'orden'
+    state.gameId === 'mayoria' &&
+    state.majority?.groups === null &&
+    player.seat === 0
   ) {
-    availableActions.push('nextRound');
+    availableActions.push('resolveMajority');
   }
 
   const submitted =
@@ -272,4 +285,8 @@ function cloneColorAnswers(answers: Record<PlayerId, string[]>): Record<PlayerId
   return Object.fromEntries(
     Object.entries(answers).map(([playerId, colors]) => [playerId, [...colors]]),
   ) as Record<PlayerId, string[]>;
+}
+
+function cloneMajorityGroups(groups: readonly MajorityGroup[]): MajorityGroup[] {
+  return groups.map((group) => ({ answer: group.answer, playerIds: [...group.playerIds] }));
 }

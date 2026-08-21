@@ -18,42 +18,58 @@ const PLAYERS = [
 ];
 
 function createOrder(): PartyState {
-  return createPartyState({
-    config: { ...DEFAULT_ORDEN_CONFIG, cardsPerPlayer: 1 },
-    seed: 'party-test',
-    players: PLAYERS,
-    roomCode: 'TEST',
-  }, 'orden');
+  return createPartyState(
+    {
+      config: { ...DEFAULT_ORDEN_CONFIG, cardsPerPlayer: 1 },
+      seed: 'party-test',
+      players: PLAYERS,
+      roomCode: 'TEST',
+    },
+    'orden',
+  );
 }
 
 function createColors(): PartyState {
-  return createPartyState({
-    config: DEFAULT_COLORES_CONFIG,
-    seed: 'colors-test',
-    players: PLAYERS,
-    roomCode: 'TEST',
-  }, 'colores');
+  return createPartyState(
+    {
+      config: DEFAULT_COLORES_CONFIG,
+      seed: 'colors-test',
+      players: PLAYERS,
+      roomCode: 'TEST',
+    },
+    'colores',
+  );
 }
 
 function createMajority(): PartyState {
-  return createPartyState({
-    config: DEFAULT_MAYORIA_CONFIG,
-    seed: 'majority-test',
-    players: PLAYERS,
-    roomCode: 'TEST',
-  }, 'mayoria');
+  return createPartyState(
+    {
+      config: DEFAULT_MAYORIA_CONFIG,
+      seed: 'majority-test',
+      players: PLAYERS,
+      roomCode: 'TEST',
+    },
+    'mayoria',
+  );
 }
 
 function createScale(): PartyState {
-  return createPartyState({
-    config: DEFAULT_ESCALA_CONFIG,
-    seed: 'scale-test',
-    players: PLAYERS,
-    roomCode: 'TEST',
-  }, 'escala');
+  return createPartyState(
+    {
+      config: DEFAULT_ESCALA_CONFIG,
+      seed: 'scale-test',
+      players: PLAYERS,
+      roomCode: 'TEST',
+    },
+    'escala',
+  );
 }
 
-function apply(state: PartyState, playerId: PlayerId, action: Parameters<typeof applyAction>[2]): PartyState {
+function apply(
+  state: PartyState,
+  playerId: PlayerId,
+  action: Parameters<typeof applyAction>[2],
+): PartyState {
   return applyAt(state, playerId, action, 0);
 }
 
@@ -103,7 +119,10 @@ describe('modos sociales', () => {
 
   it('detiene Orden en el primer fallo y permite repartir de nuevo o terminar', () => {
     const state = createOrder();
-    const cards = state.players.map((player) => ({ playerId: player.playerId, value: Number(player.hand[0]) }));
+    const cards = state.players.map((player) => ({
+      playerId: player.playerId,
+      value: Number(player.hand[0]),
+    }));
     const high = cards.reduce((best, card) => (card.value > best.value ? card : best));
     const low = cards.reduce((best, card) => (card.value < best.value ? card : best));
 
@@ -115,10 +134,15 @@ describe('modos sociales', () => {
 
     const remaining = failed.players.find((player) => player.hand.length > 0);
     if (!remaining) throw new Error('faltaba una carta por jugar');
-    const stopped = applyAction(failed, remaining.playerId, {
-      type: 'playNumber',
-      value: Number(remaining.hand[0]),
-    }, 0);
+    const stopped = applyAction(
+      failed,
+      remaining.playerId,
+      {
+        type: 'playNumber',
+        value: Number(remaining.hand[0]),
+      },
+      0,
+    );
     expect(stopped).toEqual({ ok: false, code: 'INVALID_ACTION' });
 
     const nonHostRestart = applyAction(failed, 'p2', { type: 'nextRound' }, 0);
@@ -211,12 +235,15 @@ describe('modos sociales', () => {
   });
 
   it('baraja únicamente el tema elegido en Colores', () => {
-    const state = createPartyState({
-      config: { ...DEFAULT_COLORES_CONFIG, topic: 'banderas' },
-      seed: 'flags-only',
-      players: PLAYERS,
-      roomCode: 'TEST',
-    }, 'colores');
+    const state = createPartyState(
+      {
+        config: { ...DEFAULT_COLORES_CONFIG, topic: 'banderas' },
+        seed: 'flags-only',
+        players: PLAYERS,
+        roomCode: 'TEST',
+      },
+      'colores',
+    );
     const categoryById = new Map(
       COLOR_QUESTIONS.map((question) => [question.id, question.category]),
     );
@@ -225,18 +252,78 @@ describe('modos sociales', () => {
       COLOR_QUESTIONS.filter((question) => question.category === 'banderas').length,
     );
     expect(
-      state.colors?.questionOrder.every((questionId) => categoryById.get(questionId) === 'banderas'),
+      state.colors?.questionOrder.every(
+        (questionId) => categoryById.get(questionId) === 'banderas',
+      ),
     ).toBe(true);
   });
 
-  it('agrupa Mayoría ignorando mayúsculas, tildes y puntuación', () => {
+  it('revela Mayoría y deja la puntuación en manos del anfitrión', () => {
     let state = createMajority();
     state = apply(state, 'p1', { type: 'submitMajority', answer: 'Salsa!' });
     state = apply(state, 'p2', { type: 'submitMajority', answer: ' salsa ' });
     state = apply(state, 'p3', { type: 'submitMajority', answer: 'SÁLSA' });
     expect(state.phase).toBe('reveal');
+    expect(state.majority?.groups).toBeNull();
+    expect(state.players.map((player) => player.score)).toEqual([0, 0, 0]);
+
+    const guestResolve = applyAction(
+      state,
+      'p2',
+      { type: 'resolveMajority', groups: [['p1', 'p2', 'p3']] },
+      0,
+    );
+    expect(guestResolve).toMatchObject({ ok: false, code: 'NOT_HOST' });
+
+    state = apply(state, 'p1', {
+      type: 'resolveMajority',
+      groups: [['p1', 'p2', 'p3']],
+    });
+    expect(state.majority?.groups).toEqual([{ answer: 'Salsa!', playerIds: ['p1', 'p2', 'p3'] }]);
     expect(state.majority?.majorityAnswers).toEqual(['Salsa!']);
-    expect(state.players.every((player) => player.score === 1)).toBe(true);
+    expect(state.majority?.scoreDeltas).toEqual({ p1: 1, p2: 1, p3: 1 });
+    expect(state.players.map((player) => player.score)).toEqual([1, 1, 1]);
+  });
+
+  it('permite unir respuestas equivalentes y conserva la vaca rosa', () => {
+    let state = createMajority();
+    state = apply(state, 'p1', { type: 'submitMajority', answer: 'Harry Potter' });
+    state = apply(state, 'p2', { type: 'submitMajority', answer: 'Harry' });
+    state = apply(state, 'p3', { type: 'submitMajority', answer: 'Batman' });
+    state = apply(state, 'p1', {
+      type: 'resolveMajority',
+      groups: [['p1', 'p2'], ['p3']],
+    });
+
+    expect(state.majority?.groups).toEqual([
+      { answer: 'Harry Potter', playerIds: ['p1', 'p2'] },
+      { answer: 'Batman', playerIds: ['p3'] },
+    ]);
+    expect(state.players.map((player) => player.score)).toEqual([1, 1, 0]);
+    expect(state.pinkCowPlayerId).toBe('p3');
+
+    const beforeNextRound = applyAction(state, 'p2', { type: 'nextRound' }, 0);
+    expect(beforeNextRound).toMatchObject({ ok: false, code: 'NOT_HOST' });
+    state = apply(state, 'p1', { type: 'nextRound' });
+    expect(state.phase).toBe('input');
+    expect(state.round).toBe(2);
+    expect(state.pinkCowPlayerId).toBe('p3');
+  });
+
+  it('no entrega vaca rosa ni puntos cuando hay empate', () => {
+    let state = createMajority();
+    state = apply(state, 'p1', { type: 'submitMajority', answer: 'A' });
+    state = apply(state, 'p2', { type: 'submitMajority', answer: 'B' });
+    state = apply(state, 'p3', { type: 'submitMajority', answer: 'C' });
+    state = apply(state, 'p1', {
+      type: 'resolveMajority',
+      groups: [['p1'], ['p2'], ['p3']],
+    });
+
+    expect(state.majority?.majorityAnswers).toEqual([]);
+    expect(state.majority?.scoreDeltas).toEqual({ p1: 0, p2: 0, p3: 0 });
+    expect(state.players.map((player) => player.score)).toEqual([0, 0, 0]);
+    expect(state.pinkCowPlayerId).toBeNull();
   });
 
   it('oculta el objetivo de Escala hasta que todos estiman', () => {

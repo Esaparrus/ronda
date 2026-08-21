@@ -33,7 +33,10 @@ import {
 
 type PartyActionResult = Result<{ state: PartyState; events: GameEvent[] }>;
 
-function cloneRecord<T>(record: Record<PlayerId, T>, cloneValue: (value: T) => T): Record<PlayerId, T> {
+function cloneRecord<T>(
+  record: Record<PlayerId, T>,
+  cloneValue: (value: T) => T,
+): Record<PlayerId, T> {
   return Object.fromEntries(
     Object.entries(record).map(([playerId, value]) => [playerId, cloneValue(value)]),
   ) as Record<PlayerId, T>;
@@ -68,6 +71,13 @@ function cloneState(state: PartyState): PartyState {
           majorityAnswers: state.majority.majorityAnswers
             ? [...state.majority.majorityAnswers]
             : null,
+          groups: state.majority.groups
+            ? state.majority.groups.map((group) => ({
+                answer: group.answer,
+                playerIds: [...group.playerIds],
+              }))
+            : null,
+          scoreDeltas: state.majority.scoreDeltas ? { ...state.majority.scoreDeltas } : null,
         }
       : null,
     scale: state.scale
@@ -151,6 +161,7 @@ export function createPartyState(
     colors: null,
     majority: null,
     scale: null,
+    pinkCowPlayerId: null,
     winnerId: null,
     rematchVotes: [],
   };
@@ -196,6 +207,8 @@ export function createPartyState(
       questionId,
       submissions: {},
       majorityAnswers: null,
+      groups: null,
+      scoreDeltas: null,
     };
   } else {
     const firstPlayer = activePlayers(state)[0];
@@ -232,6 +245,8 @@ export function applyAction(
       return applyFinishColors(state, now);
     case 'submitMajority':
       return applySubmitMajority(state, playerId, action.answer);
+    case 'resolveMajority':
+      return applyResolveMajority(state, playerId, action.groups);
     case 'submitScale':
       return applySubmitScale(state, playerId, action.value);
     case 'nextRound':
@@ -241,10 +256,7 @@ export function applyAction(
   }
 }
 
-function requireInputPlayer(
-  state: PartyState,
-  playerId: PlayerId,
-): Result<PartyPlayer> {
+function requireInputPlayer(state: PartyState, playerId: PlayerId): Result<PartyPlayer> {
   if (state.status !== 'playing' || state.phase !== 'input') return err('INVALID_ACTION');
   const player = findPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
@@ -254,14 +266,12 @@ function requireInputPlayer(
 
 function allSubmitted(state: PartyState, submissions: Record<PlayerId, unknown>): boolean {
   const players = activePlayers(state);
-  return players.length > 0 && players.every((player) => submissions[player.playerId] !== undefined);
+  return (
+    players.length > 0 && players.every((player) => submissions[player.playerId] !== undefined)
+  );
 }
 
-function applyPlayNumber(
-  state: PartyState,
-  playerId: PlayerId,
-  value: number,
-): PartyActionResult {
+function applyPlayNumber(state: PartyState, playerId: PlayerId, value: number): PartyActionResult {
   if (state.gameId !== 'orden' || !state.order) return err('INVALID_ACTION');
   const playerResult = requireInputPlayer(state, playerId);
   if (!playerResult.ok) return playerResult;
@@ -366,9 +376,7 @@ function applySubmitColors(
   if (!round) return err('INVALID_ACTION');
   round.submissions[playerId] = colors;
   round.deadlineAt ??= now + COLOR_ANSWER_SECONDS * 1000;
-  const events: GameEvent[] = [
-    { t: 'partyAnswerSubmitted', playerId, gameId: 'colores' },
-  ];
+  const events: GameEvent[] = [{ t: 'partyAnswerSubmitted', playerId, gameId: 'colores' }];
 
   if (allSubmitted(next, round.submissions)) {
     revealColorsRound(next, events);
@@ -405,9 +413,10 @@ function revealColorsRound(state: PartyState, events: GameEvent[]): void {
       .filter((player) => isExactColorAnswer(round.submissions[player.playerId], correctColors))
       .map((player) => player.playerId),
   );
-  const scoreDeltas = Object.fromEntries(
-    players.map((player) => [player.playerId, 0]),
-  ) as Record<PlayerId, number>;
+  const scoreDeltas = Object.fromEntries(players.map((player) => [player.playerId, 0])) as Record<
+    PlayerId,
+    number
+  >;
 
   if (correctIds.size === players.length && players.length > 0) {
     round.rollover += 1;
@@ -458,47 +467,98 @@ function applySubmitMajority(
   const round = next.majority;
   if (!round) return err('INVALID_ACTION');
   round.submissions[playerId] = trimmed;
-  const events: GameEvent[] = [
-    { t: 'partyAnswerSubmitted', playerId, gameId: 'mayoria' },
-  ];
+  const events: GameEvent[] = [{ t: 'partyAnswerSubmitted', playerId, gameId: 'mayoria' }];
 
   if (allSubmitted(next, round.submissions)) {
-    scoreMajority(next);
     next.phase = 'reveal';
     events.push({ t: 'partyRevealed', gameId: 'mayoria', round: next.round });
-    finishScoredRound(next, events);
   }
 
   return ok({ state: next, events });
 }
 
-function scoreMajority(state: PartyState): void {
-  if (!state.majority) return;
-  const groups = new Map<string, { display: string; count: number }>();
-  for (const answer of Object.values(state.majority.submissions)) {
-    const key = normalizeText(answer);
-    const group = groups.get(key);
-    if (group) group.count += 1;
-    else groups.set(key, { display: answer, count: 1 });
-  }
-
-  const max = Math.max(...[...groups.values()].map((group) => group.count));
-  const winners = [...groups.values()].filter((group) => group.count === max);
-  state.majority.majorityAnswers = winners.length === 1 ? [winners[0]?.display ?? ''] : [];
-
-  if (winners.length !== 1) return;
-  const winningKey = normalizeText(winners[0]?.display ?? '');
-  for (const player of activePlayers(state)) {
-    const answer = state.majority.submissions[player.playerId];
-    if (answer && normalizeText(answer) === winningKey) player.score += 1;
-  }
-}
-
-function applySubmitScale(
+function applyResolveMajority(
   state: PartyState,
   playerId: PlayerId,
-  value: number,
+  groups: readonly (readonly string[])[],
 ): PartyActionResult {
+  if (state.gameId !== 'mayoria' || !state.majority) return err('INVALID_ACTION');
+  if (state.status !== 'playing' || state.phase !== 'reveal') return err('INVALID_ACTION');
+
+  const player = findPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (player.seat !== 0) return err('NOT_HOST');
+  if (state.majority.groups !== null) return err('INVALID_ACTION');
+
+  const active = activePlayers(state);
+  const activeIds = new Set(active.map((candidate) => candidate.playerId));
+  const seen = new Set<PlayerId>();
+  const resolvedGroups: MajorityRoundState['groups'] = [];
+
+  for (const groupPlayerIds of groups) {
+    if (groupPlayerIds.length === 0) return err('INVALID_ACTION');
+    const groupIds: PlayerId[] = [];
+    for (const candidateId of groupPlayerIds) {
+      const id = candidateId as PlayerId;
+      if (!activeIds.has(id) || seen.has(id) || state.majority.submissions[id] === undefined) {
+        return err('INVALID_ACTION');
+      }
+      seen.add(id);
+      groupIds.push(id);
+    }
+    const firstId = groupIds[0];
+    if (!firstId) return err('INVALID_ACTION');
+    const firstAnswer = state.majority.submissions[firstId];
+    if (firstAnswer === undefined) return err('INVALID_ACTION');
+    resolvedGroups.push({
+      answer: firstAnswer,
+      playerIds: groupIds,
+    });
+  }
+
+  if (seen.size !== activeIds.size) return err('INVALID_ACTION');
+
+  const next = bump(state);
+  const round = next.majority;
+  if (!round) return err('INVALID_ACTION');
+  round.groups = resolvedGroups;
+  scoreMajority(next);
+  const events: GameEvent[] = [];
+  finishScoredRound(next, events);
+  return ok({ state: next, events });
+}
+
+function scoreMajority(state: PartyState): void {
+  if (!state.majority) return;
+  const groups = state.majority.groups;
+  if (!groups?.length) return;
+
+  const scoreDeltas = Object.fromEntries(
+    activePlayers(state).map((player) => [player.playerId, 0]),
+  ) as Record<PlayerId, number>;
+  const max = Math.max(...groups.map((group) => group.playerIds.length));
+  const winners = groups.filter((group) => group.playerIds.length === max);
+  state.majority.majorityAnswers = winners.length === 1 ? [winners[0]?.answer ?? ''] : [];
+
+  if (winners.length === 1) {
+    for (const playerId of winners[0]?.playerIds ?? []) {
+      const player = state.players.find((candidate) => candidate.playerId === playerId);
+      if (!player) continue;
+      player.score += 1;
+      scoreDeltas[playerId] = 1;
+    }
+
+    const uniqueGroups = groups.filter((group) => group.playerIds.length === 1);
+    if (uniqueGroups.length === 1) {
+      state.pinkCowPlayerId = uniqueGroups[0]?.playerIds[0] ?? state.pinkCowPlayerId;
+    }
+  }
+
+  state.majority.scoreDeltas = scoreDeltas;
+}
+
+function applySubmitScale(state: PartyState, playerId: PlayerId, value: number): PartyActionResult {
   if (state.gameId !== 'escala' || !state.scale) return err('INVALID_ACTION');
   const playerResult = requireInputPlayer(state, playerId);
   if (!playerResult.ok) return playerResult;
@@ -511,12 +571,13 @@ function applySubmitScale(
   const round = next.scale;
   if (!round) return err('INVALID_ACTION');
   round.guesses[playerId] = value;
-  const events: GameEvent[] = [
-    { t: 'partyAnswerSubmitted', playerId, gameId: 'escala' },
-  ];
+  const events: GameEvent[] = [{ t: 'partyAnswerSubmitted', playerId, gameId: 'escala' }];
 
   const estimators = activePlayers(next).filter((player) => player.playerId !== round.cluePlayerId);
-  if (estimators.length > 0 && estimators.every((player) => round.guesses[player.playerId] !== undefined)) {
+  if (
+    estimators.length > 0 &&
+    estimators.every((player) => round.guesses[player.playerId] !== undefined)
+  ) {
     scoreScale(next);
     next.phase = 'reveal';
     events.push({ t: 'partyRevealed', gameId: 'escala', round: next.round });
@@ -533,12 +594,26 @@ function scoreScale(state: PartyState): void {
     const guess = state.scale.guesses[player.playerId];
     if (guess === undefined) continue;
     const distance = Math.abs(guess - state.scale.target);
-    player.score += distance <= 10 ? 4 : distance <= 20 ? 3 : distance <= 30 ? 2 : distance <= 40 ? 1 : 0;
+    player.score +=
+      distance <= 10 ? 4 : distance <= 20 ? 3 : distance <= 30 ? 2 : distance <= 40 ? 1 : 0;
   }
 }
 
 function finishScoredRound(state: PartyState, events: GameEvent[]): void {
   const target = state.config.gameId === 'orden' ? 0 : state.config.pointsToWin;
+  if (state.config.gameId === 'mayoria') {
+    const eligible = activePlayers(state).filter(
+      (player) => player.playerId !== state.pinkCowPlayerId,
+    );
+    const highestEligibleScore = Math.max(...eligible.map((player) => player.score), 0);
+    const leaders = eligible.filter((player) => player.score === highestEligibleScore);
+    if (highestEligibleScore < target || leaders.length !== 1) return;
+    state.status = 'gameEnd';
+    state.winnerId = leaders[0]?.playerId ?? null;
+    if (state.winnerId) events.push({ t: 'gameOver', winnerId: state.winnerId });
+    return;
+  }
+
   const highestScore = Math.max(...activePlayers(state).map((player) => player.score), 0);
   if (highestScore < target && state.round < partyRounds(state)) return;
   state.status = 'gameEnd';
@@ -555,7 +630,9 @@ function decideWinner(state: PartyState): PlayerId | null {
 }
 
 function partyRounds(state: PartyState): number {
-  return state.config.gameId === 'orden' ? Number.MAX_SAFE_INTEGER : state.config.rounds;
+  return state.config.gameId === 'orden' || state.config.gameId === 'mayoria'
+    ? Number.MAX_SAFE_INTEGER
+    : state.config.rounds;
 }
 
 function applyNextRound(state: PartyState, playerId: PlayerId): PartyActionResult {
@@ -563,6 +640,10 @@ function applyNextRound(state: PartyState, playerId: PlayerId): PartyActionResul
   const player = findPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (player.left) return err('PLAYER_ELIMINATED');
+  if (state.gameId === 'mayoria') {
+    if (player.seat !== 0) return err('NOT_HOST');
+    if (!state.majority || state.majority.groups === null) return err('INVALID_ACTION');
+  }
 
   const next = bump(state);
   next.phase = 'input';
@@ -640,6 +721,8 @@ function nextMajorityRound(current: MajorityRoundState, questionIndex: number): 
     questionId: nextQuestionId(current.questionOrder, questionIndex),
     submissions: {},
     majorityAnswers: null,
+    groups: null,
+    scoreDeltas: null,
   };
 }
 

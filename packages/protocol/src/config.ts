@@ -181,6 +181,7 @@ const PARTY_ROUNDS = z.union([
 ]);
 const PARTY_POINTS = z.union([
   z.literal(5),
+  z.literal(8),
   z.literal(10),
   z.literal(15),
   z.literal(20),
@@ -242,7 +243,7 @@ export const MayoriaConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('mayoria' satisfies GameId).default('mayoria'),
   maxPlayers: PARTY_MAX_PLAYERS.default(7),
   rounds: PARTY_ROUNDS.default(10),
-  pointsToWin: PARTY_POINTS.default(10),
+  pointsToWin: PARTY_POINTS.default(8),
 });
 
 export type MayoriaConfig = z.infer<typeof MayoriaConfigSchema>;

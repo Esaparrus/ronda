@@ -321,16 +321,17 @@ export const GAME_GUIDES = {
       },
       {
         title: 'Revelad las respuestas',
-        body: 'La app agrupa respuestas equivalentes aunque cambien mayúsculas, tildes o puntuación.',
+        body: 'Cuando todo el mundo termina, todas las respuestas aparecen a la vez y se pueden comparar.',
       },
       {
-        title: 'Encuentra la mayoría',
-        body: 'La respuesta más repetida es la ganadora y da un punto a quienes la hayan escrito.',
+        title: 'Agrupa y puntúa',
+        body: 'El anfitrión une las respuestas que significan claramente lo mismo. El grupo más grande gana una vaca para cada persona que lo escribió.',
       },
     ],
-    victory: 'La primera persona que alcanza el objetivo de puntos gana la partida.',
+    victory:
+      'La primera persona que llega a 8 vacas sin tener la vaca rosa gana. El objetivo se puede cambiar al crear la partida.',
     keyRule:
-      'Si dos o más respuestas empatan como las más repetidas, no hay mayoría y nadie puntúa esa ronda.',
+      'Si hay empate por el grupo más grande, nadie puntúa. Si solo una persona queda fuera de la mayoría, recibe la vaca rosa y no puede ganar mientras la tenga.',
   },
   escala: {
     title: 'Escala',
