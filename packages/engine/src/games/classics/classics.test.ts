@@ -209,4 +209,22 @@ describe('clásicos de baraja española', () => {
     expect(nextRound.value.state.round).toBe(2);
     expect(nextRound.value.state.bankerSeat).toBe(1);
   });
+
+  it('Siete y media solo publica las manos que ya han terminado', () => {
+    const state = stateFor('sieteymedia', 3);
+    const active = state.players[0];
+    const finished = state.players[1];
+    if (!active || !finished) throw new Error('faltan jugadores para la prueba');
+    active.hand = ['oros-2'];
+    active.revealed = false;
+    finished.hand = ['copas-3'];
+    finished.revealed = true;
+
+    const playerView = getClassicPlayerView(state, active.playerId);
+    expect(playerView.revealedHands).toEqual([{ playerId: finished.playerId, cards: ['copas-3'] }]);
+    expect(playerView.revealedHands.some((hand) => hand.playerId === active.playerId)).toBe(false);
+
+    const tableView = getClassicTableView(state);
+    expect(tableView.revealedHands).toEqual([{ playerId: finished.playerId, cards: ['copas-3'] }]);
+  });
 });

@@ -187,6 +187,10 @@ export const GAME_GUIDES = {
         title: 'Juega contra la banca',
         body: 'Cuando terminan los demás, la banca pide o se planta y compara su mano con cada rival.',
       },
+      {
+        title: 'Cartas visibles',
+        body: 'Mientras una persona sigue jugando, su mano permanece oculta. Al plantarse o pasarse, sus cartas y su total se muestran al resto de la mesa.',
+      },
     ],
     victory:
       'Cada duelo ganado suma un punto. Cuando todas las personas han sido banca una vez, vence la puntuación más alta.',

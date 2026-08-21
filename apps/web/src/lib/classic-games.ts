@@ -72,8 +72,9 @@ export const CLASSIC_GAMES: Record<ClassicGameCopy['slug'], ClassicGameCopy> = {
     ],
     sections: [
       { title: 'Objetivo', body: 'Acércate a 7,5 sin superar esa cifra. As a siete valen su número y sota, caballo y rey valen medio punto.' },
-      { title: 'Turnos', body: 'Los jugadores contrarios a la banca actúan uno a uno. Pueden pedir tantas cartas como quieran o plantarse. Llegar exactamente a 7,5 planta automáticamente; superar la cifra pierde el duelo.' },
+      { title: 'Turnos', body: 'Los jugadores contrarios a la banca actúan uno a uno. Pueden pedir tantas cartas como quieran o plantarse. Llegar exactamente a 7,5 planta automáticamente; superar la cifra pierde el duelo. Mientras sigues jugando, tu mano permanece oculta.' },
       { title: 'La banca', body: 'Cuando todos terminan, actúa la banca con las mismas opciones. La banca gana los empates.' },
+      { title: 'Cartas visibles', body: 'Al plantarte o pasarte, tus cartas se revelan a toda la mesa. Así se ve qué ha ocurrido sin enseñar información de una mano que todavía sigue en juego.' },
       { title: 'Partida', body: 'Cada rival que supera a la banca consigue un punto. La banca consigue uno por cada rival al que vence. El puesto de banca rota y, cuando todos lo han ocupado una vez, gana la mayor puntuación.' },
     ],
   },

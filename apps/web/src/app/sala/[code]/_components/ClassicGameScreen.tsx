@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { parseCardId, type CardId, type ClassicPlayerView, type PublicPlayer } from '@ronda/protocol';
 import { CinquilloTable } from '@/components/cards/CinquilloTable';
+import { CardBack } from '@/components/cards/CardBack';
 import { MiniCardFan } from '@/components/cards/MiniCardFan';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { BarTable } from '@/components/ui/BarTable';
@@ -167,6 +168,9 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const banker = view.players.find((player) => player.playerId === view.bankerPlayerId);
   const denseTable = view.players.length > 4;
+  const revealedHands = new Map(
+    view.revealedHands.map((hand) => [hand.playerId, hand.cards] as const),
+  );
   return (
     <>
       <div className="seven-half-board">
@@ -183,29 +187,31 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
         <p className="seven-half-board__rule">
           Pide carta para acercarte a 7,5. Las figuras valen 0,5; si te pasas, pierdes la ronda.
         </p>
-        <BarTable className="w-full max-w-[340px]">
-          <ul className={`seven-half-table seven-half-table--compact ${denseTable ? 'seven-half-table--dense' : ''}`}>
+        <section className="seven-half-board__players" aria-label="Estado de los jugadores">
+          <div className="seven-half-board__players-heading">
+            <strong>Estado de la mesa</strong>
+            <span>Se revelan al plantarse</span>
+          </div>
+          <ul className={`seven-half-players ${denseTable ? 'seven-half-players--dense' : ''}`}>
             {view.players.map((player, index) => (
-              <li
+              <SevenHalfPlayerCard
                 key={player.playerId}
-                className={`seven-half-table__player ${player.playerId === view.me.playerId ? 'seven-half-table__player--me' : ''}`}
-              >
-                <div className="seven-half-table__player-head">
-                  <span className="seven-half-table__player-name">
-                    {player.nick}
-                    {player.playerId === view.bankerPlayerId ? ' · banca' : ''}
-                  </span>
-                  <span
-                    className={`seven-half-table__player-status ${view.bustPlayerIds.includes(player.playerId) ? 'seven-half-table__player-status--bust' : ''}`}
-                  >
-                    {sevenHalfPlayerStatus(view, player.playerId, index)}
-                  </span>
-                </div>
-                <MiniCardFan cards={view.revealedHands.find((hand) => hand.playerId === player.playerId)?.cards ?? []} />
-              </li>
+                player={player}
+                isMe={player.playerId === view.me.playerId}
+                isBanker={player.playerId === view.bankerPlayerId}
+                isTurn={player.playerId === view.turnPlayerId}
+                isBust={view.bustPlayerIds.includes(player.playerId)}
+                total={player.playerId === view.me.playerId ? view.me.total : (view.totals[index] ?? null)}
+                cards={revealedHands.get(player.playerId) ?? []}
+                handCount={player.handCount}
+                compact={denseTable}
+              />
             ))}
           </ul>
-        </BarTable>
+          <p className="seven-half-board__visibility">
+            Las manos activas permanecen ocultas. Cuando alguien se planta o se pasa, sus cartas quedan visibles.
+          </p>
+        </section>
       </div>
       <SevenHalfHand view={view} />
       <div className="seven-half-actions action-dock grid shrink-0 grid-cols-2 gap-2 px-4 pt-3">
@@ -229,6 +235,91 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
   );
 }
 
+function SevenHalfPlayerCard({
+  player,
+  isMe,
+  isBanker,
+  isTurn,
+  isBust,
+  total,
+  cards,
+  handCount,
+  compact,
+}: {
+  player: PublicPlayer;
+  isMe: boolean;
+  isBanker: boolean;
+  isTurn: boolean;
+  isBust: boolean;
+  total: number | null;
+  cards: readonly CardId[];
+  handCount: number;
+  compact: boolean;
+}) {
+  const revealed = cards.length > 0;
+  const status = isBust
+    ? 'Se pasó'
+    : total !== null
+      ? formatSevenHalfTotal(total)
+      : isTurn
+        ? isMe
+          ? 'Tu turno'
+          : 'En juego'
+        : isBanker
+          ? 'Banca'
+          : 'Esperando';
+
+  return (
+    <li
+      className={`seven-half-player ${isMe ? 'seven-half-player--me' : ''} ${isBust ? 'seven-half-player--bust' : ''}`}
+    >
+      <div className="seven-half-player__head">
+        <span className="seven-half-player__name">
+          {player.nick}
+          {isMe ? ' · tú' : ''}
+        </span>
+        <span className="seven-half-player__status">{status}</span>
+      </div>
+      <div className="seven-half-player__cards">
+        {isMe ? (
+          <span className="seven-half-player__hidden">Tu mano está abajo</span>
+        ) : revealed ? (
+          <MiniCardFan cards={cards} overlap={false} />
+        ) : (
+          <SevenHalfHiddenHand count={handCount} compact={compact} isBanker={isBanker} />
+        )}
+      </div>
+      {!isMe && revealed ? <span className="seven-half-player__revealed">Cartas visibles</span> : null}
+    </li>
+  );
+}
+
+function SevenHalfHiddenHand({
+  count,
+  compact,
+  isBanker,
+}: {
+  count: number;
+  compact: boolean;
+  isBanker: boolean;
+}) {
+  const backCount = Math.min(count, compact ? 1 : 2);
+  const label = `${isBanker ? 'Banca · ' : ''}${count} carta${count === 1 ? '' : 's'} oculta${count === 1 ? '' : 's'}`;
+
+  return (
+    <div className="seven-half-hidden-hand" aria-label={label}>
+      <div className="seven-half-hidden-hand__backs" aria-hidden="true">
+        {Array.from({ length: backCount }, (_, index) => (
+          <span key={index} className="seven-half-hidden-hand__back">
+            <CardBack width={compact ? 18 : 22} height={compact ? 27 : 33} />
+          </span>
+        ))}
+      </div>
+      <span className="seven-half-player__hidden">{label}</span>
+    </div>
+  );
+}
+
 function formatSevenHalfTotal(total: number | null): string {
   return total === null ? '—' : String(total).replace('.', ',');
 }
@@ -239,15 +330,7 @@ function sevenHalfPlayerInfo(view: ClassicPlayerView, player: PublicPlayer): str
   if (view.bustPlayerIds.includes(player.playerId)) return 'se pasó';
   if (total !== null) return formatSevenHalfTotal(total);
   if (view.turnPlayerId === player.playerId) return 'en juego';
-  return `${player.handCount} carta${player.handCount === 1 ? '' : 's'}`;
-}
-
-function sevenHalfPlayerStatus(view: ClassicPlayerView, playerId: string, index: number): string {
-  const total = playerId === view.me.playerId ? view.me.total : (view.totals[index] ?? null);
-  if (view.bustPlayerIds.includes(playerId)) return 'se pasó';
-  if (total !== null) return formatSevenHalfTotal(total);
-  if (view.turnPlayerId === playerId) return 'en juego';
-  return 'oculto';
+  return `${player.handCount} carta${player.handCount === 1 ? '' : 's'} oculta${player.handCount === 1 ? '' : 's'}`;
 }
 
 function SevenHalfHand({ view }: { view: ClassicPlayerView }) {
