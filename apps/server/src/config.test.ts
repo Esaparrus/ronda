@@ -18,6 +18,7 @@ describe('loadConfig', () => {
     expect(cfg.CORS_ORIGIN).toBe('http://localhost:3000');
     expect(cfg.NODE_ENV).toBe('development');
     expect(cfg.ROOM_INACTIVITY_MINUTES).toBe(30);
+    expect(cfg.ROOM_PRESENCE_TIMEOUT_SECONDS).toBe(90);
   });
 
   it('aplica PORT, CORS_ORIGIN y NODE_ENV si se pasan', () => {
@@ -41,6 +42,17 @@ describe('loadConfig', () => {
   it('acepta un límite de inactividad configurable en minutos', () => {
     const cfg = loadConfig({ DATABASE_URL: 'x', ROOM_INACTIVITY_MINUTES: '15' });
     expect(cfg.ROOM_INACTIVITY_MINUTES).toBe(15);
+  });
+
+  it('acepta un límite de presencia configurable en segundos', () => {
+    const cfg = loadConfig({ DATABASE_URL: 'x', ROOM_PRESENCE_TIMEOUT_SECONDS: '45' });
+    expect(cfg.ROOM_PRESENCE_TIMEOUT_SECONDS).toBe(45);
+  });
+
+  it('rechaza un límite de presencia no positivo', () => {
+    expect(() =>
+      loadConfig({ DATABASE_URL: 'x', ROOM_PRESENCE_TIMEOUT_SECONDS: '0' }),
+    ).toThrow(/ROOM_PRESENCE_TIMEOUT_SECONDS/);
   });
 
   it('rechaza un límite de inactividad no positivo', () => {

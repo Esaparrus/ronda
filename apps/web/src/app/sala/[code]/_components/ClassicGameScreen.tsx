@@ -31,15 +31,24 @@ function escobaValue(cardId: CardId): number {
 
 export function ClassicGameScreen({ view }: { view: ClassicPlayerView }) {
   const turn = view.players.find((player) => player.playerId === view.turnPlayerId) ?? null;
+  const isSevenHalf = view.gameId === 'sieteymedia';
+  const meIsBust = isSevenHalf && view.bustPlayerIds.includes(view.me.playerId);
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
-      <TableHeader left={`${TITLES[view.gameId]} · Ronda ${view.round}`} turnNick={turn?.nick ?? null} />
+      <TableHeader
+        left={`${TITLES[view.gameId]} · Ronda ${view.round}`}
+        turnNick={meIsBust ? null : (turn?.nick ?? null)}
+        statusLabel={meIsBust ? 'Te has pasado' : null}
+        statusTone={meIsBust ? 'critical' : 'calm'}
+      />
       <PlayerStrip
         players={view.players}
         turnPlayerId={view.turnPlayerId}
         myPlayerId={view.me.playerId}
+        alertPlayerIds={isSevenHalf ? view.bustPlayerIds : undefined}
+        className={view.gameId === 'escoba' ? 'classic-player-strip--escoba' : undefined}
         renderInfo={
-          view.gameId === 'sieteymedia'
+          isSevenHalf
             ? (player) => sevenHalfPlayerInfo(view, player)
             : undefined
         }
@@ -61,7 +70,7 @@ function TrickBoard({ view }: { view: ClassicPlayerView }) {
   const canPlay = view.me.availableActions.includes('playCard');
   return (
     <>
-      <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-2">
+      <div className="classic-table-stage flex min-h-0 flex-1 items-center justify-center">
         <div data-card-drop-target={canPlay ? 'pocha' : undefined} className="w-full max-w-[340px]">
           <BarTable>
             <PochaTrickArea
@@ -97,6 +106,14 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
     setSelectedTable([]);
   }, [view.turnPlayerId, view.tableCards]);
 
+  useEffect(() => {
+    // Si se quita la carta de la mano, las cartas de la mesa dejan de formar
+    // una jugada pendiente y no deben conservar el estado visual de selección.
+    if (handCard === null) {
+      setSelectedTable((current) => (current.length > 0 ? [] : current));
+    }
+  }, [handCard]);
+
   const total =
     (handCard ? escobaValue(handCard) : 0) +
     selectedTable.reduce((sum, cardId) => sum + escobaValue(cardId), 0);
@@ -106,6 +123,10 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
     setSelectedTable((current) =>
       current.includes(cardId) ? current.filter((id) => id !== cardId) : [...current, cardId],
     );
+  }
+
+  function toggleHandCard(cardId: CardId) {
+    setHandCard((current) => (current === cardId ? null : cardId));
   }
 
   function play(capture: boolean) {
@@ -119,8 +140,8 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-2">
-        <BarTable className="w-full max-w-[340px]">
+      <div className="classic-table-stage classic-table-stage--escoba flex min-h-0 flex-1 items-center justify-center">
+        <BarTable className="escoba-table-frame w-full max-w-[320px]">
           <div className="escoba-table-layout">
             <div className="escoba-table-cards" data-density={tableDensity}>
               {view.tableCards.map((cardId) => (
@@ -141,15 +162,20 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
               ))}
             </div>
             <div className="escoba-table-status">
-              <p className="font-mono text-12 text-hueso" aria-live="polite">
+              <p className="escoba-table-status__message font-mono text-12" aria-live="polite">
                 {handCard ? `Suma: ${total}` : 'Elige una carta de tu mano'}
               </p>
-              <p className="whitespace-nowrap text-12 text-humo">Mazo · {view.deckCount}</p>
+              <p className="escoba-table-status__deck whitespace-nowrap text-12">Mazo · {view.deckCount}</p>
             </div>
           </div>
         </BarTable>
       </div>
-      <SimpleHand hand={view.me.hand} selected={handCard} enabled={canPlay} onSelect={setHandCard} />
+      <SimpleHand
+        hand={view.me.hand}
+        selected={handCard}
+        enabled={canPlay}
+        onSelect={toggleHandCard}
+      />
       <div className="grid shrink-0 grid-cols-2 gap-2 px-4 pb-4">
         <Button variant="ghost" disabled={!handCard} onClick={() => play(false)}>
           Dejar en mesa
@@ -165,9 +191,12 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
 function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
   const canDraw = view.me.availableActions.includes('drawDeck');
   const canStand = view.me.availableActions.includes('stand');
+  const meIsBust = view.bustPlayerIds.includes(view.me.playerId);
+  const showStatusMessage = meIsBust || view.status !== 'playing';
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const banker = view.players.find((player) => player.playerId === view.bankerPlayerId);
-  const denseTable = view.players.length > 4;
+  const tableLayout = sevenHalfTableLayout(view.players.length);
+  const compactTable = tableLayout === 'five-six' || tableLayout === 'seven';
   const revealedHands = new Map(
     view.revealedHands.map((hand) => [hand.playerId, hand.cards] as const),
   );
@@ -187,12 +216,15 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
         <p className="seven-half-board__rule">
           Pide carta para acercarte a 7,5. Las figuras valen 0,5; si te pasas, pierdes la ronda.
         </p>
-        <section className="seven-half-board__players" aria-label="Estado de los jugadores">
+        <section
+          className={`seven-half-board__players seven-half-board__players--${tableLayout}`}
+          aria-label="Estado de los jugadores"
+        >
           <div className="seven-half-board__players-heading">
             <strong>Estado de la mesa</strong>
             <span>Se revelan al plantarse</span>
           </div>
-          <ul className={`seven-half-players ${denseTable ? 'seven-half-players--dense' : ''}`}>
+          <ul className={`seven-half-players seven-half-players--${tableLayout}`}>
             {view.players.map((player, index) => (
               <SevenHalfPlayerCard
                 key={player.playerId}
@@ -204,7 +236,7 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
                 total={player.playerId === view.me.playerId ? view.me.total : (view.totals[index] ?? null)}
                 cards={revealedHands.get(player.playerId) ?? []}
                 handCount={player.handCount}
-                compact={denseTable}
+                compact={compactTable}
               />
             ))}
           </ul>
@@ -213,24 +245,33 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
           </p>
         </section>
       </div>
-      <SevenHalfHand view={view} />
-      <div className="seven-half-actions action-dock grid shrink-0 grid-cols-2 gap-2 px-4 pt-3">
-        <Button
-          variant="ghost"
-          disabled={!canStand || pendingAction}
-          loading={pendingAction}
-          onClick={() => void useRondaStore.getState().sendAction({ type: 'stand' })}
-        >
-          Plantarse · {formatSevenHalfTotal(view.me.total)}
-        </Button>
-        <Button
-          disabled={!canDraw || pendingAction}
-          loading={pendingAction}
-          onClick={() => void useRondaStore.getState().sendAction({ type: 'drawDeck' })}
-        >
-          Pedir carta
-        </Button>
-      </div>
+      <SevenHalfHand view={view} layout={tableLayout} />
+      {showStatusMessage ? (
+        <div className="seven-half-actions seven-half-actions--notice action-dock flex shrink-0 items-center justify-center px-4 py-3">
+          <p className="seven-half-reveal-message" role="status" aria-live="polite">
+            <strong>{meIsBust ? 'Te has pasado' : 'Ronda terminada'}</strong>
+            <span>{meIsBust ? 'No puedes pedir más cartas.' : 'Mostrando las cartas de la mesa.'}</span>
+          </p>
+        </div>
+      ) : (
+        <div className="seven-half-actions action-dock grid shrink-0 grid-cols-2 gap-2 px-4 pt-3">
+          <Button
+            variant="ghost"
+            disabled={!canStand || pendingAction}
+            loading={pendingAction}
+            onClick={() => void useRondaStore.getState().sendAction({ type: 'stand' })}
+          >
+            Plantarse · {formatSevenHalfTotal(view.me.total)}
+          </Button>
+          <Button
+            disabled={!canDraw || pendingAction}
+            loading={pendingAction}
+            onClick={() => void useRondaStore.getState().sendAction({ type: 'drawDeck' })}
+          >
+            Pedir carta
+          </Button>
+        </div>
+      )}
     </>
   );
 }
@@ -284,7 +325,7 @@ function SevenHalfPlayerCard({
         {isMe ? (
           <span className="seven-half-player__hidden">Tu mano está abajo</span>
         ) : revealed ? (
-          <MiniCardFan cards={cards} overlap={false} />
+          <MiniCardFan cards={cards} overlap={cards.length > 3} />
         ) : (
           <SevenHalfHiddenHand count={handCount} compact={compact} isBanker={isBanker} />
         )}
@@ -324,6 +365,15 @@ function formatSevenHalfTotal(total: number | null): string {
   return total === null ? '—' : String(total).replace('.', ',');
 }
 
+type SevenHalfTableLayout = 'two' | 'three-four' | 'five-six' | 'seven';
+
+function sevenHalfTableLayout(playerCount: number): SevenHalfTableLayout {
+  if (playerCount <= 2) return 'two';
+  if (playerCount <= 4) return 'three-four';
+  if (playerCount <= 6) return 'five-six';
+  return 'seven';
+}
+
 function sevenHalfPlayerInfo(view: ClassicPlayerView, player: PublicPlayer): string {
   const index = view.players.findIndex((candidate) => candidate.playerId === player.playerId);
   const total = player.playerId === view.me.playerId ? view.me.total : (view.totals[index] ?? null);
@@ -333,7 +383,13 @@ function sevenHalfPlayerInfo(view: ClassicPlayerView, player: PublicPlayer): str
   return `${player.handCount} carta${player.handCount === 1 ? '' : 's'} oculta${player.handCount === 1 ? '' : 's'}`;
 }
 
-function SevenHalfHand({ view }: { view: ClassicPlayerView }) {
+function SevenHalfHand({
+  view,
+  layout,
+}: {
+  view: ClassicPlayerView;
+  layout: SevenHalfTableLayout;
+}) {
   const bust = view.bustPlayerIds.includes(view.me.playerId);
   const status = bust
     ? 'Te has pasado'
@@ -342,15 +398,15 @@ function SevenHalfHand({ view }: { view: ClassicPlayerView }) {
       : `${formatSevenHalfTotal(view.me.total)} puntos`;
 
   return (
-    <section className="game-hand seven-half-hand shrink-0 px-4 py-3">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
+    <section className={`game-hand seven-half-hand seven-half-hand--${layout} shrink-0`}>
+      <div className="seven-half-hand__header">
         <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
         <span className={`font-mono text-12 ${bust ? 'text-brasa' : 'text-humo'}`}>{status}</span>
       </div>
-      <div className="flex items-end gap-1 overflow-x-auto pb-2">
+      <div className="seven-half-hand__cards">
         {view.me.hand.map((cardId) => (
-          <span key={cardId} className="shrink-0">
-            <PlayingCard cardId={cardId} size="md" />
+          <span key={cardId} className="seven-half-hand__card">
+            <PlayingCard cardId={cardId} size="sm" />
           </span>
         ))}
       </div>
@@ -363,7 +419,7 @@ function CinquilloBoard({ view }: { view: ClassicPlayerView }) {
   const canPass = view.me.availableActions.includes('pass');
   return (
     <>
-      <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-2">
+      <div className="classic-table-stage flex min-h-0 flex-1 items-center justify-center">
         <BarTable className="w-full max-w-[360px]">
           <CinquilloTable cards={view.tableCards} variant="compact" />
         </BarTable>
@@ -399,11 +455,24 @@ function SimpleHand({
   onSelect: (cardId: CardId) => void;
 }) {
   return (
-    <section className="game-hand shrink-0 px-4 py-3">
-      <h2 className="mb-2 text-14 font-semibold text-hueso">Tu mano</h2>
-      <div className="flex items-end gap-1 overflow-x-auto pb-2">
+    <section className="game-hand escoba-hand shrink-0">
+      <h2 className="escoba-hand__title text-14 font-semibold text-hueso">Tu mano</h2>
+      {/* Forzamos una nueva capa cuando cambia el contenido de la mano. Esto
+          evita que WebKit conserve el búfer del drop-shadow de una carta que
+          ya se ha jugado al retirar su nodo SVG. */}
+      <div
+        key={hand.join('|')}
+        className="escoba-hand-cards flex items-end gap-1 overflow-x-auto px-4 pb-2"
+      >
         {hand.map((cardId) => (
-          <button key={cardId} type="button" disabled={!enabled} onClick={() => onSelect(cardId)}>
+          <button
+            key={cardId}
+            type="button"
+            disabled={!enabled}
+            aria-pressed={selected === cardId}
+            onClick={() => onSelect(cardId)}
+            className={`escoba-hand-card ${selected === cardId ? 'escoba-hand-card--selected' : ''}`}
+          >
             <PlayingCard cardId={cardId} size="md" selected={selected === cardId} />
           </button>
         ))}

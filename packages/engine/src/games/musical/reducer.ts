@@ -286,6 +286,9 @@ function nextClip(state: MusicalState, playerId: PlayerId): MusicalActionResult 
   if (state.config.audioMode !== 'online' && state.clipStartedAt === null) {
     return err('INVALID_ACTION');
   }
+  if (state.config.mode === 'velocidad' && state.buzzedPlayerId !== null) {
+    return err('INVALID_ACTION');
+  }
 
   const next = bump(state);
   next.clipStartedAt = null;

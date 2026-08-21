@@ -6,6 +6,8 @@ import { z } from 'zod';
 
 /** Una sala sin jugadores conectados ni mutaciones durante media hora se considera abandonada. */
 export const DEFAULT_ROOM_INACTIVITY_MINUTES = 30;
+/** Si no llega presencia de la pestaña durante este tiempo, se considera desconectada. */
+export const DEFAULT_ROOM_PRESENCE_TIMEOUT_SECONDS = 90;
 
 const ConfigSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es obligatoria'),
@@ -17,6 +19,11 @@ const ConfigSchema = z.object({
     .int()
     .positive()
     .default(DEFAULT_ROOM_INACTIVITY_MINUTES),
+  ROOM_PRESENCE_TIMEOUT_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_ROOM_PRESENCE_TIMEOUT_SECONDS),
 });
 
 export type ServerConfig = z.infer<typeof ConfigSchema>;

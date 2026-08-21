@@ -36,7 +36,12 @@ interface Guess {
   year: string;
 }
 
+type GuessField = 'artist' | 'title';
+
+type SelectedSuggestions = Record<GuessField, string | null>;
+
 const EMPTY_GUESS: Guess = { artist: '', title: '', year: '' };
+const EMPTY_SELECTED_SUGGESTIONS: SelectedSuggestions = { artist: null, title: null };
 
 function soloClipLabel(seconds: number): string {
   return seconds >= 30 ? 'la preview completa (30 s)' : `${seconds} segundos`;
@@ -66,6 +71,9 @@ export function SoloMusicalGame() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [clipIndex, setClipIndex] = useState(0);
   const [guess, setGuess] = useState<Guess>(EMPTY_GUESS);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<SelectedSuggestions>(
+    EMPTY_SELECTED_SUGGESTIONS,
+  );
   const [attempts, setAttempts] = useState(0);
   const [score, setScore] = useState(0);
   const [roundPoints, setRoundPoints] = useState(0);
@@ -82,6 +90,12 @@ export function SoloMusicalGame() {
   const isSpeedMode = listenMode === 'velocidad';
   const requiresArtist = answerMode !== 'title';
   const requiresYear = answerMode === 'artist_title_year';
+  const hasSelectedArtist =
+    !requiresArtist ||
+    (Boolean(guess.artist.trim()) && selectedSuggestions.artist === guess.artist);
+  const hasSelectedTitle =
+    Boolean(guess.title.trim()) && selectedSuggestions.title === guess.title;
+  const hasSelectedAnswer = hasSelectedArtist && hasSelectedTitle;
 
   function triggerFeedback(kind: MusicalFeedbackKind) {
     setFeedback(kind);
@@ -107,6 +121,7 @@ export function SoloMusicalGame() {
       setCurrentIndex(0);
       setClipIndex(0);
       setGuess(EMPTY_GUESS);
+      setSelectedSuggestions(EMPTY_SELECTED_SUGGESTIONS);
       setAttempts(0);
       setScore(0);
       setRoundPoints(0);
@@ -164,6 +179,7 @@ export function SoloMusicalGame() {
     setMessage(null);
     setFeedback(null);
     setGuess(EMPTY_GUESS);
+    setSelectedSuggestions(EMPTY_SELECTED_SUGGESTIONS);
   }
 
   function submitGuess() {
@@ -173,6 +189,14 @@ export function SoloMusicalGame() {
     if (!title || (requiresArtist && !artist)) {
       setMessage(
         requiresArtist ? 'Completa artista y canción.' : 'Escribe el título de la canción.',
+      );
+      return;
+    }
+    if (!hasSelectedAnswer) {
+      setMessage(
+        requiresArtist
+          ? 'Selecciona un artista y una canción de las sugerencias.'
+          : 'Selecciona una canción de las sugerencias.',
       );
       return;
     }
@@ -220,11 +244,21 @@ export function SoloMusicalGame() {
     setCurrentIndex((current) => current + 1);
     setClipIndex(0);
     setGuess(EMPTY_GUESS);
+    setSelectedSuggestions(EMPTY_SELECTED_SUGGESTIONS);
     setAttempts(0);
     setRoundPoints(0);
     setMessage(null);
     setFeedback(null);
     setPhase('playing');
+  }
+
+  function updateGuessField(field: GuessField, value: string) {
+    setGuess((current) => ({ ...current, [field]: value }));
+    setSelectedSuggestions((current) => ({ ...current, [field]: null }));
+  }
+
+  function updateSelectedSuggestion(field: GuessField, suggestion: string | null) {
+    setSelectedSuggestions((current) => ({ ...current, [field]: suggestion }));
   }
 
   if (phase === 'setup') {
@@ -451,8 +485,8 @@ export function SoloMusicalGame() {
             <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
             <p className="mt-1 text-14 text-humo">
               {requiresArtist
-                ? 'Escribe artista y canción; puedes elegir una sugerencia.'
-                : 'Escribe el título; puedes elegir una sugerencia.'}
+                ? 'Selecciona una opción de artista y otra de canción de la lista.'
+                : 'Selecciona una opción de canción de la lista.'}
             </p>
             {!isSpeedMode && nextClipSeconds !== null ? (
               <p className="mt-2 text-13 text-oro">
@@ -465,7 +499,8 @@ export function SoloMusicalGame() {
               field="artist"
               label="Artista"
               value={guess.artist}
-              onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
+              onChange={(artist) => updateGuessField('artist', artist)}
+              onSelectionChange={(suggestion) => updateSelectedSuggestion('artist', suggestion)}
               placeholder="Por ejemplo, A…"
             />
           ) : null}
@@ -473,7 +508,8 @@ export function SoloMusicalGame() {
             field="title"
             label="Canción"
             value={guess.title}
-            onChange={(title) => setGuess((current) => ({ ...current, title }))}
+            onChange={(title) => updateGuessField('title', title)}
+            onSelectionChange={(suggestion) => updateSelectedSuggestion('title', suggestion)}
             placeholder="Nombre de la canción"
           />
           {requiresYear ? (
@@ -495,7 +531,7 @@ export function SoloMusicalGame() {
           ) : null}
           <Button
             type="submit"
-            disabled={!guess.title.trim() || (requiresArtist && !guess.artist.trim())}
+            disabled={!hasSelectedAnswer}
           >
             Corregir
           </Button>

@@ -17,6 +17,10 @@ export interface TableHeaderProps {
   timerUrgent?: boolean;
   /** Fracción de tiempo que queda, entre 0 y 1, para la barra visual. */
   timerProgress?: number | null;
+  /** Mensaje puntual de estado, por ejemplo "Te has pasado". */
+  statusLabel?: string | null;
+  /** Tono visual del mensaje puntual. */
+  statusTone?: 'calm' | 'critical';
 }
 
 export function TableHeader({
@@ -25,6 +29,8 @@ export function TableHeader({
   timerLabel,
   timerUrgent = false,
   timerProgress = null,
+  statusLabel = null,
+  statusTone = 'calm',
 }: TableHeaderProps) {
   const timerTone = timerUrgent
     ? 'critical'
@@ -39,6 +45,16 @@ export function TableHeader({
           {left}
         </span>
         <div className="flex min-w-0 items-center justify-end gap-3">
+          {statusLabel ? (
+            <span
+              aria-live="polite"
+              className={`truncate font-mono text-12 uppercase leading-none tracking-wider ${
+                statusTone === 'critical' ? 'text-brasa' : 'text-oro'
+              }`}
+            >
+              {statusLabel}
+            </span>
+          ) : null}
           {timerLabel ? (
             <div
               className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 ${

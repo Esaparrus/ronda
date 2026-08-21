@@ -139,7 +139,11 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
           availableActions.push('musicSubmitGuess');
         }
       }
-      if (player.seat === 0 && state.clipStartedAt !== null) {
+      if (
+        player.seat === 0 &&
+        state.clipStartedAt !== null &&
+        !(state.config.mode === 'velocidad' && state.buzzedPlayerId !== null)
+      ) {
         availableActions.push('musicNextClip');
       }
     }

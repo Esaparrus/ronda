@@ -127,6 +127,30 @@ describe('integración socket', () => {
     c2.close();
   }, 15000);
 
+  it('al cambiar de sala con la misma pestaña libera la sala anterior', async () => {
+    const c1 = client();
+    await connect(c1);
+
+    const first = (await emitAndListen(c1, 'room:create', {
+      gameId: 'chinchon',
+      config: { gameId: 'chinchon' },
+      nick: 'Ana',
+    })).ack as { value: { roomCode: string } };
+    const firstCode = first.value.roomCode;
+
+    const second = (await emitAndListen(c1, 'room:create', {
+      gameId: 'chinchon',
+      config: { gameId: 'chinchon' },
+      nick: 'Ana',
+    })).ack as { value: { roomCode: string } };
+
+    expect(second.value.roomCode).not.toBe(firstCode);
+    expect(mgr.getRoomByCode(firstCode)).toBeUndefined();
+    expect(mgr.getRoomByCode(second.value.roomCode)?.players.size).toBe(1);
+
+    c1.close();
+  }, 15000);
+
   it('una pantalla con screen:attach recibe kind table (nunca player)', async () => {
     const c1 = client();
     const screen = client();

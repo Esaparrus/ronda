@@ -98,6 +98,8 @@ export interface RoomHooks {
   onToast?: (room: Room, level: 'info' | 'warn', text: string) => void;
   /** La sala se ha cerrado. */
   onClosed?: (room: Room, reason: 'host_left' | 'empty' | 'expired') => void;
+  /** La presencia de uno o varios jugadores ha caducado o se ha recuperado. */
+  onPresence?: (room: Room) => void;
   /** Snapshot de persistencia (P7). */
   onPersist?: (room: Room) => void;
   /** Estadísticas de la sala actualizadas (una partida acaba de terminar). */

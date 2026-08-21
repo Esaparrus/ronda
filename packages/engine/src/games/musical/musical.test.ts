@@ -185,6 +185,17 @@ describe('Musical', () => {
     expect(correct.roundResult?.winnerId).toBe('p1');
   });
 
+  it('en velocidad bloquea revelar mientras alguien está respondiendo', () => {
+    const selected = selectAndStart(createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'velocidad' }));
+    const buzzed = apply(selected, 'p2', { type: 'musicBuzz' });
+
+    const reveal = applyAction(buzzed, 'p1', { type: 'musicNextClip' }, 0);
+    expect(reveal.ok).toBe(false);
+    if (reveal.ok) return;
+    expect(reveal.code).toBe('INVALID_ACTION');
+    expect(getPlayerView(buzzed, 'p1').me.availableActions).not.toContain('musicNextClip');
+  });
+
   it('permite configurar solo el titulo como respuesta', () => {
     const selected = selectAndStart(
       createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'simultaneo', answerMode: 'title' }),

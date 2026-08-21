@@ -31,7 +31,12 @@ interface GuessForm {
   year: string;
 }
 
+type GuessField = 'artist' | 'title';
+
+type SelectedSuggestions = Record<GuessField, string | null>;
+
 const EMPTY_GUESS: GuessForm = { artist: '', title: '', year: '' };
+const EMPTY_SELECTED_SUGGESTIONS: SelectedSuggestions = { artist: null, title: null };
 
 function resetAudioElement(audio: HTMLAudioElement) {
   audio.pause();
@@ -54,6 +59,9 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [guess, setGuess] = useState<GuessForm>(EMPTY_GUESS);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<SelectedSuggestions>(
+    EMPTY_SELECTED_SUGGESTIONS,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [startingClip, setStartingClip] = useState(false);
@@ -80,6 +88,16 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
   const isSpeedMode = view.config.mode === 'velocidad';
   const requiresArtist = view.config.answerMode !== 'title';
   const requiresYear = view.config.answerMode === 'artist_title_year';
+  const sharedSpeedClaimed = !isOnlineMode && isSpeedMode && view.buzzedPlayerId !== null;
+  const buzzedPlayerNick = view.players.find(
+    (player) => player.playerId === view.buzzedPlayerId,
+  )?.nick;
+  const hasSelectedArtist =
+    !requiresArtist ||
+    (Boolean(guess.artist.trim()) && selectedSuggestions.artist === guess.artist);
+  const hasSelectedTitle =
+    Boolean(guess.title.trim()) && selectedSuggestions.title === guess.title;
+  const hasSelectedAnswer = hasSelectedArtist && hasSelectedTitle;
   const filters: MusicFilters = {
     genre: view.config.genre,
     popularity: view.config.popularity,
@@ -164,6 +182,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
 
   useEffect(() => {
     setGuess(EMPTY_GUESS);
+    setSelectedSuggestions(EMPTY_SELECTED_SUGGESTIONS);
     setMessage(null);
     setFeedback(null);
     setClipReady(false);
@@ -290,6 +309,14 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
       );
       return;
     }
+    if (!hasSelectedAnswer) {
+      setMessage(
+        requiresArtist
+          ? 'Selecciona un artista y una canción de las sugerencias.'
+          : 'Selecciona una canción de las sugerencias.',
+      );
+      return;
+    }
     const year = guess.year.trim() ? Number(guess.year) : null;
     if (requiresYear && year === null) {
       setMessage('Escribe también el año.');
@@ -309,7 +336,18 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     });
   }
 
+  function updateGuessField(field: GuessField, value: string) {
+    setGuess((current) => ({ ...current, [field]: value }));
+    setSelectedSuggestions((current) => ({ ...current, [field]: null }));
+  }
+
+  function updateSelectedSuggestion(field: GuessField, suggestion: string | null) {
+    setSelectedSuggestions((current) => ({ ...current, [field]: suggestion }));
+  }
+
   function buzz() {
+    if (pendingAction) return;
+    if (!isOnlineMode) stopPreview();
     setMessage(null);
     prepareMusicalFeedbackAudio();
     void useRondaStore.getState().sendAction({ type: 'musicBuzz' });
@@ -450,7 +488,14 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
           />
           {view.phase === 'playing' ? (
             <div className="flex gap-2">
-              {isOnlineMode ? (
+              {sharedSpeedClaimed ? (
+                <p className="flex flex-1 items-center justify-center rounded-2xl border border-oro/40 bg-oro/10 px-4 py-3 text-center text-13 text-oro">
+                  Audio detenido ·{' '}
+                  {view.buzzedPlayerId === view.me.playerId
+                    ? 'tu turno para responder'
+                    : `${buzzedPlayerNick ?? 'Otro jugador'} está respondiendo`}
+                </p>
+              ) : isOnlineMode ? (
                 view.me.onlineClipStartedAt === null ? (
                   <Button
                     onClick={startClipForPlayer}
@@ -495,7 +540,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                   El anfitrión controla la música. Cuando pulse play, se activará vuestro pulsador.
                 </p>
               )}
-              {isHost ? (
+              {isHost && !sharedSpeedClaimed ? (
                 <Button
                   variant="ghost"
                   onClick={nextClip}
@@ -647,10 +692,10 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
                 <p className="mt-1 text-14 text-humo">
                   {isOnlineMode
-                    ? 'Has parado tu audio. Escribe y corrige tu respuesta.'
+                    ? 'Has parado tu audio. Elige las sugerencias y corrige tu respuesta.'
                     : isSpeedMode
-                    ? 'Ya tienes el pulsador. Escribe y corrige tu respuesta.'
-                    : 'Escribe y elige una sugerencia; el primer acierto gana.'}
+                    ? 'Ya tienes el pulsador. Elige las sugerencias y corrige tu respuesta.'
+                    : 'Elige una sugerencia para cada nombre; el primer acierto gana.'}
                 </p>
               </div>
               {requiresArtist ? (
@@ -658,7 +703,10 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                   field="artist"
                   label="Artista"
                   value={guess.artist}
-                  onChange={(artist) => setGuess((current) => ({ ...current, artist }))}
+                  onChange={(artist) => updateGuessField('artist', artist)}
+                  onSelectionChange={(suggestion) =>
+                    updateSelectedSuggestion('artist', suggestion)
+                  }
                   placeholder="Por ejemplo, A…"
                 />
               ) : null}
@@ -666,7 +714,8 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 field="title"
                 label="Canción"
                 value={guess.title}
-                onChange={(title) => setGuess((current) => ({ ...current, title }))}
+                onChange={(title) => updateGuessField('title', title)}
+                onSelectionChange={(suggestion) => updateSelectedSuggestion('title', suggestion)}
                 placeholder="Nombre de la canción"
               />
               {requiresYear ? (
@@ -688,7 +737,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
               ) : null}
               <Button
                 type="submit"
-                disabled={!guess.title.trim() || (requiresArtist && !guess.artist.trim())}
+                disabled={!hasSelectedAnswer}
                 loading={pendingAction}
               >
                 Corregir

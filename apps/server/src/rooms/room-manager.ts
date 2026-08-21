@@ -52,6 +52,8 @@ export interface JoinResult {
 export interface RoomManagerOptions {
   /** Tiempo sin mutaciones válidas ni jugadores conectados antes de cerrar una sala. */
   inactivityTimeoutMs?: number;
+  /** Tiempo sin heartbeat de una pestaña antes de marcarla desconectada. */
+  presenceTimeoutMs?: number;
 }
 
 /**
@@ -100,10 +102,12 @@ export class RoomManager {
   /** Plazo de estimaciones de Escala, creado cuando la guía confirma la pista. */
   private scaleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private inactivityTimeoutMs: number | undefined;
+  private presenceTimeoutMs: number | undefined;
 
   constructor(hooksFactory: () => RoomHooks = () => ({}), options: RoomManagerOptions = {}) {
     this.hooksFactory = hooksFactory;
     this.inactivityTimeoutMs = options.inactivityTimeoutMs;
+    this.presenceTimeoutMs = options.presenceTimeoutMs;
   }
 
   /** Inyecta el servidor io (para que hooks difundan toasts/closed). P8. */
@@ -965,6 +969,29 @@ export class RoomManager {
 
   // --- presence ------------------------------------------------------------
 
+  /** Registra un heartbeat de una pestaña que sigue mostrando la sala. */
+  touchPresence(input: {
+    roomCode: string;
+    playerId: PlayerId;
+    socketId: string;
+    now: number;
+  }): { accepted: boolean; changed: boolean } {
+    const room = this.rooms.get(input.roomCode);
+    const player = room?.players.get(input.playerId);
+    if (!room || !player || player.isBot) return { accepted: false, changed: false };
+    // Si otro móvil ha retomado el mismo token, la pestaña antigua no puede
+    // volver a marcar al jugador como conectado desde su heartbeat atrasado.
+    if (player.socketId !== null && player.socketId !== input.socketId) {
+      return { accepted: false, changed: false };
+    }
+    const changed = !player.connected || player.socketId !== input.socketId;
+    player.connected = true;
+    player.socketId = input.socketId;
+    player.lastSeenAt = input.now;
+    player.disconnectedAt = null;
+    return { accepted: true, changed };
+  }
+
   /** Marca un jugador como conectado/desconectado y enlaza su socketId. */
   setConnected(input: {
     roomCode: string;
@@ -1384,6 +1411,18 @@ export class RoomManager {
     for (const room of this.rooms.values()) {
       if (room.status === 'closed') continue;
       const humanPlayers = [...room.players.values()].filter((player) => !player.isBot);
+      let presenceChanged = false;
+      if (this.presenceTimeoutMs !== undefined) {
+        for (const player of humanPlayers) {
+          if (player.connected && now - player.lastSeenAt >= this.presenceTimeoutMs) {
+            player.connected = false;
+            player.socketId = null;
+            player.disconnectedAt = now;
+            presenceChanged = true;
+          }
+        }
+      }
+      if (presenceChanged) room.hooks.onPresence?.(room);
       const anyConnected = humanPlayers.some((player) => player.connected);
       // El plazo de abandono empieza cuando se desconecta el último móvil,
       // no en la última jugada. Si una sala llevaba una hora abierta y el

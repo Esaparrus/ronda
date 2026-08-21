@@ -19,7 +19,12 @@ import {
   type Err,
   type GameConfig,
 } from '@ronda/protocol';
-import { broadcastRoom, broadcastReaction, broadcastToast } from './broadcast.ts';
+import {
+  broadcastConnection,
+  broadcastRoom,
+  broadcastReaction,
+  broadcastToast,
+} from './broadcast.ts';
 import { scheduleBotTurn } from '../rooms/bot-driver.ts';
 import type { IncidentInput } from '../db/incidents-repo.ts';
 
@@ -225,7 +230,16 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     // mantiene su vista sincronizada sin obligarles a recargar.
     if (r.ok) rebroadcast(deps, st.roomCode);
     ack(r);
-    deps.states.delete(sid);
+    if (r.ok) {
+      const state = deps.states.get(sid);
+      if (state) {
+        state.roomCode = null;
+        state.playerId = null;
+        state.isScreen = false;
+      } else {
+        deps.states.set(sid, newSocketState());
+      }
+    }
   });
 
   // --- room:close (anfitrión, en cualquier estado) ---
@@ -453,6 +467,22 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
   socket.on('ping', (payload, ack) => {
     const respond: Respond = (e) => ack(e);
     if (!guard(deps, sid, 'ping', payload, respond)) return;
+    const state = deps.states.get(sid);
+    if (state?.roomCode && state.playerId) {
+      const presence = deps.mgr.touchPresence({
+        roomCode: state.roomCode,
+        playerId: state.playerId,
+        socketId: sid,
+        now: deps.now(),
+      });
+      if (presence.changed) {
+        const room = deps.mgr.getRoomByCode(state.roomCode);
+        if (room) {
+          broadcastConnection(deps.io, room);
+          broadcastRoom(deps.io, room);
+        }
+      }
+    }
     ack({ ok: true, value: { serverTime: deps.now() } });
   });
 }
@@ -467,11 +497,14 @@ function bindAndBroadcast(
   playerId: string,
 ): void {
   try {
-    const st = deps.states.get(sid);
-    if (st) {
-      st.roomCode = roomCode;
-      st.playerId = playerId;
+    const st = deps.states.get(sid) ?? newSocketState();
+    deps.states.set(sid, st);
+    if (st.roomCode && (st.roomCode !== roomCode || st.playerId !== playerId)) {
+      releaseSocketBinding(deps, sid);
     }
+    st.roomCode = roomCode;
+    st.playerId = playerId;
+    st.isScreen = false;
     deps.mgr.setConnected({
       roomCode,
       playerId,
@@ -482,6 +515,31 @@ function bindAndBroadcast(
     rebroadcast(deps, roomCode);
   } catch {
     // La difusión nunca debe romper el flujo del handler.
+  }
+}
+
+/** Libera la sesión anterior cuando una pestaña cambia de sala. */
+function releaseSocketBinding(deps: HandlerDeps, sid: string): void {
+  const state = deps.states.get(sid);
+  if (!state?.roomCode) return;
+
+  const previousRoomCode = state.roomCode;
+  const previousPlayerId = state.playerId;
+  const wasScreen = state.isScreen;
+  state.roomCode = null;
+  state.playerId = null;
+  state.isScreen = false;
+
+  if (previousPlayerId) {
+    const result = deps.mgr.leave({
+      roomCode: previousRoomCode,
+      playerId: previousPlayerId,
+      now: deps.now(),
+    });
+    if (result.ok) rebroadcast(deps, previousRoomCode);
+  } else if (wasScreen) {
+    deps.mgr.detachScreen(sid);
+    rebroadcast(deps, previousRoomCode);
   }
 }
 

@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useRondaStore } from '@/lib/store';
+import { emitWithAck, getSocket } from '@/lib/socket';
 import { useSingleTabGuard } from '@/lib/useSingleTabGuard';
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
@@ -43,6 +44,8 @@ export interface SalaClientProps {
   code: string;
 }
 
+const PRESENCE_HEARTBEAT_MS = 20_000;
+
 export function SalaClient({ code }: SalaClientProps) {
   const router = useRouter();
   const view = useRondaStore((s) => s.view);
@@ -59,6 +62,7 @@ export function SalaClient({ code }: SalaClientProps) {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leavingRoom, setLeavingRoom] = useState(false);
   const [briefingAccepted, setBriefingAccepted] = useState(false);
+  const [sevenHalfBustRevealRound, setSevenHalfBustRevealRound] = useState<number | null>(null);
 
   // Pestaña duplicada: se vigila siempre que sepamos en qué sala estamos,
   // incluso mientras se está resumiendo -- no hace falta esperar a `view`.
@@ -84,10 +88,48 @@ export function SalaClient({ code }: SalaClientProps) {
       });
   }, [code]);
 
+  // La conexión Socket.IO puede sobrevivir a una navegación dentro de la
+  // aplicación. Este heartbeat representa que la pestaña sigue mostrando la
+  // sala; si la ruta se abandona, el efecto se desmonta y el servidor termina
+  // marcando al jugador como desconectado aunque el transporte siga abierto.
+  useEffect(() => {
+    if (roomCode !== code || connection !== 'online') return;
+    const socket = getSocket();
+    const beat = () => {
+      if (socket.connected) void emitWithAck(socket, 'ping', {});
+    };
+
+    beat();
+    const handle = window.setInterval(beat, PRESENCE_HEARTBEAT_MS);
+    return () => window.clearInterval(handle);
+  }, [code, connection, roomCode]);
+
   const shouldShowBriefing =
     !briefingAccepted && (view?.status === 'lobby' || view?.status === 'playing');
-  const isPlaying = view?.status === 'playing' && !shouldShowBriefing;
-  const usesIntegratedGameHeader = isPlaying && view.gameId === 'laronda';
+  const sevenHalfBustRevealCandidate =
+    view?.kind === 'player' &&
+    view.gameId === 'sieteymedia' &&
+    (view.status === 'roundEnd' || view.status === 'gameEnd') &&
+    view.bustPlayerIds.length > 0
+      ? view.round
+      : null;
+
+  useEffect(() => {
+    if (sevenHalfBustRevealCandidate === null) {
+      setSevenHalfBustRevealRound(null);
+      return;
+    }
+
+    setSevenHalfBustRevealRound(sevenHalfBustRevealCandidate);
+    const timeout = window.setTimeout(() => setSevenHalfBustRevealRound(null), 2_200);
+    return () => window.clearTimeout(timeout);
+  }, [sevenHalfBustRevealCandidate]);
+
+  const showSevenHalfBustReveal =
+    sevenHalfBustRevealRound !== null && sevenHalfBustRevealRound === sevenHalfBustRevealCandidate;
+  const isPlaying =
+    (view?.status === 'playing' || showSevenHalfBustReveal) && !shouldShowBriefing;
+  const usesIntegratedGameHeader = isPlaying && view?.gameId === 'laronda';
 
   // Una partida es una superficie de juego, no una página desplazable. Se
   // bloquea el scroll de la raíz solo mientras se juega; lobby, fin de ronda
@@ -229,15 +271,24 @@ export function SalaClient({ code }: SalaClientProps) {
           </button>
         </div>
       ) : null}
-      {!shouldShowBriefing && isHost && view.status === 'lobby' ? (
-        <div className="flex shrink-0 justify-end px-4 py-2">
+      {!shouldShowBriefing && view.status === 'lobby' ? (
+        <div className="flex shrink-0 items-center justify-between px-4 py-2">
           <button
             type="button"
-            onClick={() => setConfirmClose(true)}
+            onClick={() => setConfirmLeave(true)}
             className="shrink-0 text-12 text-humo underline"
           >
-            Cerrar sala
+            Salir de la sala
           </button>
+          {isHost ? (
+            <button
+              type="button"
+              onClick={() => setConfirmClose(true)}
+              className="shrink-0 text-12 text-humo underline"
+            >
+              Cerrar sala
+            </button>
+          ) : null}
         </div>
       ) : null}
       {shouldShowBriefing ? (
@@ -256,13 +307,13 @@ export function SalaClient({ code }: SalaClientProps) {
         <MusGameScreen view={view} />
       ) : null}
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'laronda' ? (
-        <RondaGameScreen view={view} />
+        <RondaGameScreen view={view} onRequestLeave={() => setConfirmLeave(true)} />
       ) : null}
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'musical' ? (
         <MusicalGameScreen view={view} />
       ) : null}
       {!shouldShowBriefing &&
-      view.status === 'playing' &&
+      (view.status === 'playing' || showSevenHalfBustReveal) &&
       (view.gameId === 'brisca' ||
         view.gameId === 'escoba' ||
         view.gameId === 'sieteymedia' ||
@@ -290,7 +341,7 @@ export function SalaClient({ code }: SalaClientProps) {
       {view.status === 'roundEnd' && view.gameId === 'laronda' ? (
         <RondaRoundEndScreen view={view} />
       ) : null}
-      {view.status === 'roundEnd' && view.gameId === 'sieteymedia' ? (
+      {view.status === 'roundEnd' && view.gameId === 'sieteymedia' && !showSevenHalfBustReveal ? (
         <ClassicRoundEndScreen view={view} />
       ) : null}
       {/* Mus tiene su propio fin de partida: GameEndScreen ordena por `score`
@@ -300,7 +351,10 @@ export function SalaClient({ code }: SalaClientProps) {
       {view.status === 'gameEnd' && view.gameId === 'laronda' ? (
         <RondaGameEndScreen view={view} />
       ) : null}
-      {view.status === 'gameEnd' && view.gameId !== 'mus' && view.gameId !== 'laronda' ? (
+      {view.status === 'gameEnd' &&
+      view.gameId !== 'mus' &&
+      view.gameId !== 'laronda' &&
+      !showSevenHalfBustReveal ? (
         <GameEndScreen view={view} />
       ) : null}
       <TurnAnnouncement
@@ -340,7 +394,7 @@ export function SalaClient({ code }: SalaClientProps) {
           <div>
             <p className="text-20 font-semibold text-hueso">¿Salir al menú inicial?</p>
             <p className="mt-2 text-14 text-humo">
-              Abandonarás esta partida y no podrás volver a entrar con esta sesión.
+              Abandonarás esta sala y no podrás retomarla con esta sesión.
             </p>
           </div>
           <div className="flex gap-2">

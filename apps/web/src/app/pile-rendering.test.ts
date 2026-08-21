@@ -28,12 +28,10 @@ describe('Pile con layout de descarte', () => {
 
     expect(markup).not.toContain('data-pile-card="oros-1"');
     expect(markup).toContain('data-pile-card="copas-2"');
-    expect(markup).toContain('data-discard-peek="copas-2"');
     expect(markup).toContain('data-pile-card="espadas-3"');
-    expect(markup).toContain('data-discard-peek="espadas-3"');
     expect(markup).toContain('data-pile-card="bastos-4"');
     expect(markup).toContain('data-pile-position="top"');
-    expect(markup).not.toContain('data-discard-peek="bastos-4"');
+    expect(markup).not.toContain('data-discard-peek');
   });
 
   it('conserva la postura exacta de las cartas que quedan al robar la superior', () => {

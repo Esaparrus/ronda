@@ -8,6 +8,8 @@ export interface MusicAutocompleteInputProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** Devuelve la sugerencia elegida o null si el usuario vuelve a editar el campo. */
+  onSelectionChange?: (suggestion: string | null) => void;
   placeholder?: string;
 }
 
@@ -16,6 +18,7 @@ export function MusicAutocompleteInput({
   label,
   value,
   onChange,
+  onSelectionChange,
   placeholder,
 }: MusicAutocompleteInputProps) {
   const generatedId = useId().replace(/:/g, '');
@@ -62,6 +65,7 @@ export function MusicAutocompleteInput({
 
   function selectSuggestion(suggestion: string) {
     onChange(suggestion);
+    onSelectionChange?.(suggestion);
     setSuggestions([]);
     setActiveIndex(-1);
     setIsOpen(false);
@@ -100,6 +104,7 @@ export function MusicAutocompleteInput({
         id={inputId}
         value={value}
         onChange={(event) => {
+          onSelectionChange?.(null);
           onChange(event.target.value);
           setIsOpen(true);
         }}

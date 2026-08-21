@@ -9,7 +9,12 @@ import { createLogger } from './logger.ts';
 import { loadConfig, type ServerConfig } from './config.ts';
 import { RoomManager } from './rooms/room-manager.ts';
 import { Persistence } from './rooms/persistence.ts';
-import { broadcastClosed, broadcastRoom, broadcastToast } from './socket/broadcast.ts';
+import {
+  broadcastClosed,
+  broadcastConnection,
+  broadcastRoom,
+  broadcastToast,
+} from './socket/broadcast.ts';
 import { track } from './db/playtest-repo.ts';
 import { saveRoomStats } from './db/stats-repo.ts';
 import { scheduleBotTurn, type BotDriverDeps } from './rooms/bot-driver.ts';
@@ -74,6 +79,10 @@ export async function startServer(opts: {
         broadcastClosed(io, room, reason);
         void persistence.onClose(room);
       },
+      onPresence: (room) => {
+        broadcastConnection(io, room);
+        broadcastRoom(io, room);
+      },
       onPersist: (room) => {
         void persistence.flushNow(room);
       },
@@ -112,6 +121,7 @@ export async function startServer(opts: {
     }),
     {
       inactivityTimeoutMs: config.ROOM_INACTIVITY_MINUTES * 60_000,
+      presenceTimeoutMs: config.ROOM_PRESENCE_TIMEOUT_SECONDS * 1000,
     },
   );
 

@@ -790,6 +790,32 @@ describe('sweep', () => {
     expect(m.getRoomByCode(c.value.roomCode)).toBeUndefined();
   });
 
+  it('marca una pestaña silenciosa como desconectada aunque el socket siga abierto', () => {
+    const m = new RoomManager(undefined, {
+      inactivityTimeoutMs: 15 * 60_000,
+      presenceTimeoutMs: 90_000,
+    });
+    const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
+    if (!c.ok) throw new Error();
+
+    const live = room(m, c.value.roomCode).players.get(c.value.playerId);
+    expect(live?.connected).toBe(true);
+    expect(m.sweep(NOW + 90_000 - 1)).toBe(0);
+    expect(m.sweep(NOW + 90_000)).toBe(0);
+    expect(live?.connected).toBe(false);
+    expect(live?.disconnectedAt).toBe(NOW + 90_000);
+
+    const resumed = m.touchPresence({
+      roomCode: c.value.roomCode,
+      playerId: c.value.playerId,
+      socketId: 'socket-1',
+      now: NOW + 91_000,
+    });
+    expect(resumed).toEqual({ accepted: true, changed: true });
+    expect(live?.connected).toBe(true);
+    expect(live?.lastSeenAt).toBe(NOW + 91_000);
+  });
+
   it('da el margen completo desde que se bloquea el último móvil en una sala antigua', () => {
     const m = new RoomManager(undefined, { inactivityTimeoutMs: 15 * 60_000 });
     const c = m.createRoom({ gameId: 'chinchon', config: DEFAULT_CONFIG, nick: 'A1', now: NOW });
