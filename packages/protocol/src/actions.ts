@@ -111,6 +111,12 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('submitScale'), value: z.number().int().min(0).max(100) }),
   /** Acción interna del reloj del servidor; antes del plazo la rechaza el motor. */
   z.object({ type: z.literal('finishScale') }),
+  z.object({
+    type: z.literal('submitMatiz'),
+    hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  }),
+  /** El anfitrión puede revelar aunque todavía falte alguna respuesta. */
+  z.object({ type: z.literal('finishMatiz') }),
   // --- Musical -------------------------------------------------------------
   // La URL de preview es pública para que cada móvil pueda reproducir el
   // fragmento, pero el servidor nunca envía la respuesta fuera de la

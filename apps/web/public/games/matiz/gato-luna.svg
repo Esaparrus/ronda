@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 620" role="img" aria-labelledby="title desc">
+  <title id="title">La gata de la luna</title>
+  <desc id="desc">Ilustración de una gata nocturna con el jersey sin colorear</desc>
+  <defs>
+    <linearGradient id="night" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#25245a"/><stop offset="1" stop-color="#6552a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="620" rx="48" fill="url(#night)"/>
+  <circle cx="112" cy="113" r="48" fill="#fff1bb"/>
+  <circle cx="131" cy="96" r="48" fill="#302b67"/>
+  <g fill="#fff5c9" opacity=".85"><circle cx="661" cy="90" r="5"/><circle cx="714" cy="176" r="7"/><circle cx="606" cy="196" r="4"/><circle cx="180" cy="206" r="6"/><circle cx="550" cy="70" r="4"/></g>
+  <path d="M0 544c122-74 231-26 327-29 145-5 251-79 473 13v92H0Z" fill="#3d397c"/>
+  <path d="M255 506c18-104 85-153 145-153 79 0 140 61 148 153l-33 82H287Z" fill="#d6a27f" stroke="#242139" stroke-width="10"/>
+  <path d="M258 420c-61-39-89-111-63-176l83 45c30-19 70-29 111-29 45 0 89 12 122 34l78-50c22 67-8 136-70 178-49 34-189 36-261-2Z" fill="#c68f72" stroke="#242139" stroke-width="10"/>
+  <path d="m222 248 2-121 96 75" fill="#c68f72" stroke="#242139" stroke-width="10" stroke-linejoin="round"/>
+  <path d="m578 247-1-119-95 76" fill="#c68f72" stroke="#242139" stroke-width="10" stroke-linejoin="round"/>
+  <path d="m254 174 4 56 43-38" fill="#f0b6aa"/>
+  <path d="m545 174-4 56-42-38" fill="#f0b6aa"/>
+  <path d="M281 337c28-37 71-56 119-56 51 0 99 20 127 58" fill="none" stroke="#242139" stroke-width="10"/>
+  <ellipse cx="335" cy="335" rx="13" ry="16" fill="#242139"/>
+  <ellipse cx="466" cy="335" rx="13" ry="16" fill="#242139"/>
+  <path d="m388 359 13 11 13-11" fill="none" stroke="#242139" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M349 389c34 18 69 18 103 0" fill="none" stroke="#242139" stroke-width="8" stroke-linecap="round"/>
+  <path d="M287 452c23-29 59-43 113-43 55 0 91 15 116 44v123H287Z" fill="#d8d5cd" stroke="#242139" stroke-width="10" stroke-dasharray="12 10"/>
+  <path d="M323 456c18-15 42-23 77-23 36 0 62 8 81 24" fill="none" stroke="#ebe7df" stroke-width="12" opacity=".8"/>
+  <path d="M341 420c14 15 32 24 59 24 26 0 46-9 60-24l10 33c-21 18-45 27-70 27-27 0-50-9-70-27Z" fill="#de6b4e" stroke="#242139" stroke-width="9"/>
+  <path d="M343 577 329 608h65l-1-39Z" fill="#d6a27f" stroke="#242139" stroke-width="10"/>
+  <path d="M482 570v38h66l-17-34Z" fill="#d6a27f" stroke="#242139" stroke-width="10"/>
+</svg>

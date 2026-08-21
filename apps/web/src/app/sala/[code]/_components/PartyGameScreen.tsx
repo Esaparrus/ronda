@@ -10,6 +10,7 @@ import type {
   PartyPlayerView,
   PlayerId,
 } from '@ronda/protocol';
+import { MatizPlayerRound } from '@/components/matiz/MatizGame';
 import { useRondaStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
 import { NumberCard } from '@/components/cards/NumberCard';
@@ -27,6 +28,7 @@ export function PartyGameScreen({ view }: PartyGameScreenProps) {
   if (view.gameId === 'orden') return <OrdenGame view={view} />;
   if (view.gameId === 'colores') return <ColoresGame view={view} />;
   if (view.gameId === 'mayoria') return <MayoriaGame view={view} />;
+  if (view.gameId === 'matiz') return <MatizPlayerRound view={view} />;
   return <EscalaGame view={view} />;
 }
 

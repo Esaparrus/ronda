@@ -389,6 +389,33 @@ export const GAME_GUIDES = {
     keyRule:
       'La respuesta permanece oculta hasta acertar o llegar al último fragmento; el servidor decide quién llegó primero.',
   },
+  matiz: {
+    title: 'Matiz',
+    kind: 'Percepción de color',
+    mark: '◉',
+    objective: 'Recrea el color que falta en una ilustración y acércate todo lo posible al original.',
+    steps: [
+      {
+        title: 'Mira el dibujo',
+        body: 'Una zona aparece sin su color. Fíjate en otras partes de la ilustración para intuir el tono correcto.',
+      },
+      {
+        title: 'Mezcla tu color',
+        body: 'Ajusta tono, intensidad y luz. También puedes abrir el selector nativo del móvil o del ordenador.',
+      },
+      {
+        title: 'Bloquea la respuesta',
+        body: 'Cuando aceptas, tu color queda guardado. La imagen y el reto son iguales para toda la sala.',
+      },
+      {
+        title: 'Comparad el resultado',
+        body: 'Al revelar aparecen el color original, las respuestas y los puntos de cada persona.',
+      },
+    ],
+    victory:
+      'Cada ronda da hasta 100 puntos. Tras completar las rondas configuradas, gana quien tenga la puntuación acumulada más alta.',
+    keyRule: 'Una vez aceptado el color no se puede cambiar: piensa y confirma solo cuando estés conforme.',
+  },
   laronda: {
     title: 'La Ronda',
     kind: 'Cartas y pique',

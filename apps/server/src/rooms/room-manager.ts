@@ -567,6 +567,7 @@ export class RoomManager {
           state.gameId === 'colores' ||
           state.gameId === 'mayoria' ||
           state.gameId === 'escala' ||
+          state.gameId === 'matiz' ||
           state.gameId === 'musical')
       ) {
         // Los modos sociales esperan a todos los jugadores activos para
@@ -776,7 +777,10 @@ export class RoomManager {
 
     const partyNextRound =
       input.action.type === 'nextRound' &&
-      (room.gameId === 'orden' || room.gameId === 'colores' || room.gameId === 'mayoria');
+      (room.gameId === 'orden' ||
+        room.gameId === 'colores' ||
+        room.gameId === 'mayoria' ||
+        room.gameId === 'matiz');
     if (
       (input.action.type === 'setOrderCards' ||
         input.action.type === 'endOrder' ||

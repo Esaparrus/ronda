@@ -146,7 +146,8 @@ export function MesaClient({ code }: MesaClientProps) {
       (tableView.gameId === 'orden' ||
         tableView.gameId === 'colores' ||
         tableView.gameId === 'mayoria' ||
-        tableView.gameId === 'escala') ? (
+        tableView.gameId === 'escala' ||
+        tableView.gameId === 'matiz') ? (
         <PartyMesaGameBoard view={tableView} />
       ) : null}
       {tableView.status === 'roundEnd' && tableView.gameId === 'mus' ? (

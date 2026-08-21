@@ -16,6 +16,7 @@ import {
   DEFAULT_MUS_CONFIG,
   DEFAULT_LA_RONDA_CONFIG,
   DEFAULT_MUSICAL_CONFIG,
+  DEFAULT_MATIZ_CONFIG,
   DEFAULT_ORDEN_CONFIG,
   DEFAULT_POCHA_CONFIG,
   DEFAULT_SIETE_Y_MEDIA_CONFIG,
@@ -473,7 +474,13 @@ function PochaVariants({ config, setConfig }: PochaVariantsProps) {
 }
 
 function isPartyGame(gameId: GameId): gameId is PartyConfig['gameId'] {
-  return gameId === 'orden' || gameId === 'colores' || gameId === 'mayoria' || gameId === 'escala';
+  return (
+    gameId === 'orden' ||
+    gameId === 'colores' ||
+    gameId === 'mayoria' ||
+    gameId === 'escala' ||
+    gameId === 'matiz'
+  );
 }
 
 function isClassicGame(gameId: GameId): gameId is ClassicConfig['gameId'] {
@@ -498,6 +505,7 @@ function partyDefaults(gameId: GameId): PartyConfig {
   if (gameId === 'colores') return DEFAULT_COLORES_CONFIG;
   if (gameId === 'mayoria') return DEFAULT_MAYORIA_CONFIG;
   if (gameId === 'escala') return DEFAULT_ESCALA_CONFIG;
+  if (gameId === 'matiz') return DEFAULT_MATIZ_CONFIG;
   return DEFAULT_ORDEN_CONFIG;
 }
 
@@ -515,6 +523,7 @@ function gameTitle(gameId: GameId): string {
   if (gameId === 'mus') return 'Mus';
   if (gameId === 'pocha') return 'Pocha';
   if (gameId === 'musical') return 'Musical';
+  if (gameId === 'matiz') return 'Matiz';
   return 'Chinchón';
 }
 
@@ -657,6 +666,8 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
                 ? 'Baraja numérica 1–100'
                 : config.gameId === 'escala'
                   ? 'Pistas con polémica'
+                  : config.gameId === 'matiz'
+                    ? 'Dibujos y precisión'
                   : 'Juego para hablar en la mesa'}
             </p>
             <p className="mt-1 text-14 text-humo">
@@ -793,11 +804,19 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
               helperText={
                 config.gameId === 'colores'
                   ? 'Límite de seguridad si nadie alcanza antes los puntos para ganar.'
+                  : config.gameId === 'matiz'
+                    ? 'Cuántos dibujos vais a intentar colorear.'
                   : 'Número máximo de preguntas de la partida.'
               }
               value={config.rounds}
               onChange={(value) => setField('rounds', value)}
-              options={(config.gameId === 'colores' ? [10, 15, 20] : [5, 7, 10, 12]).map(
+              options={(
+                config.gameId === 'colores'
+                  ? [10, 15, 20]
+                  : config.gameId === 'matiz'
+                    ? [3, 5, 7, 10]
+                    : [5, 7, 10, 12]
+              ).map(
                 (value) => ({
                   value,
                   label: String(value),
@@ -806,24 +825,30 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
               valueSuffix="rondas"
             />
           )}
-          <QuantityStepper
-            legend={config.gameId === 'mayoria' ? 'Vacas para ganar' : 'Puntos para ganar'}
-            helperText={
-              config.gameId === 'mayoria'
-                ? 'La primera persona que llegue a este marcador sin la vaca rosa gana.'
-                : 'La primera persona que llegue a este marcador gana.'
-            }
-            value={config.pointsToWin}
-            onChange={(value) => setField('pointsToWin', value)}
-            options={(config.gameId === 'mayoria'
-              ? [5, 8, 10, 15, 20, 25, 30, 40]
-              : [5, 10, 15, 20, 25, 30, 40]
-            ).map((value) => ({
-              value,
-              label: String(value),
-            }))}
-            valueSuffix={config.gameId === 'mayoria' ? 'vacas' : 'puntos'}
-          />
+          {config.gameId !== 'matiz' ? (
+            <QuantityStepper
+              legend={config.gameId === 'mayoria' ? 'Vacas para ganar' : 'Puntos para ganar'}
+              helperText={
+                config.gameId === 'mayoria'
+                  ? 'La primera persona que llegue a este marcador sin la vaca rosa gana.'
+                  : 'La primera persona que llegue a este marcador gana.'
+              }
+              value={config.pointsToWin}
+              onChange={(value) => setField('pointsToWin', value)}
+              options={(config.gameId === 'mayoria'
+                ? [5, 8, 10, 15, 20, 25, 30, 40]
+                : [5, 10, 15, 20, 25, 30, 40]
+              ).map((value) => ({
+                value,
+                label: String(value),
+              }))}
+              valueSuffix={config.gameId === 'mayoria' ? 'vacas' : 'puntos'}
+            />
+          ) : (
+            <p className="rounded-xl border border-oro/30 bg-oro/10 px-4 py-3 text-14 leading-relaxed text-humo">
+              Cada dibujo da hasta 100 puntos. Gana quien tenga más puntos al terminar las rondas.
+            </p>
+          )}
         </>
       )}
     </section>

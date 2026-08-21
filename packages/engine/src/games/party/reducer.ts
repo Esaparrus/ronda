@@ -13,6 +13,7 @@ import {
   type PartyGameId,
   type PlayerId,
   type Result,
+  matizChallengeById,
   err,
   ok,
 } from '@ronda/protocol';
@@ -23,9 +24,11 @@ import {
   activePlayers,
   findPlayer,
   partyConfigForGame,
+  challengeIdsFor,
   questionIdsFor,
   type ColorsRoundState,
   type MajorityRoundState,
+  type MatizRoundState,
   type PartyPlayer,
   type PartyState,
   type ScaleRoundState,
@@ -88,6 +91,14 @@ function cloneState(state: PartyState): PartyState {
           guesses: { ...state.scale.guesses },
           scoreDeltas: state.scale.scoreDeltas ? { ...state.scale.scoreDeltas } : null,
           groupScores: { ...state.scale.groupScores },
+        }
+      : null,
+    matiz: state.matiz
+      ? {
+          ...state.matiz,
+          challengeOrder: [...state.matiz.challengeOrder],
+          submissions: { ...state.matiz.submissions },
+          scoreDeltas: state.matiz.scoreDeltas ? { ...state.matiz.scoreDeltas } : null,
         }
       : null,
     rematchVotes: [...state.rematchVotes],
@@ -202,6 +213,7 @@ export function createPartyState(
     colors: null,
     majority: null,
     scale: null,
+    matiz: null,
     pinkCowPlayerId: null,
     winnerId: null,
     rematchVotes: [],
@@ -223,6 +235,18 @@ export function createPartyState(
       played: [],
       failure: null,
       numberDeck: dealt.numberDeck,
+    };
+    return state;
+  }
+
+  if (gameId === 'matiz') {
+    const challengeOrder = shuffled(state, challengeIdsFor(gameId));
+    state.matiz = {
+      challengeOrder,
+      challengeIndex: 0,
+      challengeId: challengeOrder[0] ?? '',
+      submissions: {},
+      scoreDeltas: null,
     };
     return state;
   }
@@ -306,6 +330,10 @@ export function applyAction(
       return applySubmitScale(state, playerId, action.value, now);
     case 'finishScale':
       return applyFinishScale(state, now);
+    case 'submitMatiz':
+      return applySubmitMatiz(state, playerId, action.hex);
+    case 'finishMatiz':
+      return applyFinishMatiz(state, playerId);
     case 'nextRound':
       return applyNextRound(state, playerId);
     default:
@@ -505,6 +533,115 @@ function isExactColorAnswer(
     answer.length === correctColors.length &&
     correctColors.every((color) => answer.includes(color))
   );
+}
+
+function canonicalMatizHex(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : null;
+}
+
+interface MatizRgb {
+  r: number;
+  g: number;
+  b: number;
+}
+
+function matizRgb(hex: string): MatizRgb {
+  return {
+    r: Number.parseInt(hex.slice(1, 3), 16),
+    g: Number.parseInt(hex.slice(3, 5), 16),
+    b: Number.parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function matizPivot(value: number): number {
+  const normalized = value / 255;
+  return normalized <= 0.04045
+    ? normalized / 12.92
+    : Math.pow((normalized + 0.055) / 1.055, 2.4);
+}
+
+/** Distancia CIE76 aproximada: suficiente para puntuar colores planos. */
+function matizLab(hex: string): [number, number, number] {
+  const rgb = matizRgb(hex);
+  const r = matizPivot(rgb.r);
+  const g = matizPivot(rgb.g);
+  const b = matizPivot(rgb.b);
+  const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+  const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+  const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+  const f = (value: number) =>
+    value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116;
+  const fx = f(x);
+  const fy = f(y);
+  const fz = f(z);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+function matizScore(answer: string | undefined, target: string): number {
+  if (!answer) return 0;
+  const [l1, a1, b1] = matizLab(answer);
+  const [l2, a2, b2] = matizLab(target);
+  const distance = Math.sqrt((l1 - l2) ** 2 + (a1 - a2) ** 2 + (b1 - b2) ** 2);
+  return Math.max(0, Math.min(100, Math.round(100 - distance / 1.76)));
+}
+
+function applySubmitMatiz(
+  state: PartyState,
+  playerId: PlayerId,
+  hex: string,
+): PartyActionResult {
+  if (state.gameId !== 'matiz' || !state.matiz) return err('INVALID_ACTION');
+  const playerResult = requireInputPlayer(state, playerId);
+  if (!playerResult.ok) return playerResult;
+  const normalized = canonicalMatizHex(hex);
+  if (!normalized || state.matiz.submissions[playerId] !== undefined) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  const round = next.matiz;
+  if (!round) return err('INVALID_ACTION');
+  round.submissions[playerId] = normalized;
+  const events: GameEvent[] = [{ t: 'partyAnswerSubmitted', playerId, gameId: 'matiz' }];
+
+  if (allSubmitted(next, round.submissions)) revealMatizRound(next, events);
+  return ok({ state: next, events });
+}
+
+function applyFinishMatiz(state: PartyState, playerId: PlayerId): PartyActionResult {
+  if (state.gameId !== 'matiz' || !state.matiz) return err('INVALID_ACTION');
+  if (state.status !== 'playing' || state.phase !== 'input') return err('INVALID_ACTION');
+  const player = findPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (player.seat !== 0 || Object.keys(state.matiz.submissions).length === 0) {
+    return err(player.seat !== 0 ? 'NOT_HOST' : 'INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  const events: GameEvent[] = [];
+  revealMatizRound(next, events);
+  return ok({ state: next, events });
+}
+
+function revealMatizRound(state: PartyState, events: GameEvent[]): void {
+  if (!state.matiz) return;
+  const target = matizChallengeById(state.matiz.challengeId).targetHex;
+  const scoreDeltas = Object.fromEntries(
+    activePlayers(state).map((player) => [player.playerId, 0]),
+  ) as Record<PlayerId, number>;
+
+  for (const player of activePlayers(state)) {
+    const points = matizScore(state.matiz.submissions[player.playerId], target);
+    player.score += points;
+    scoreDeltas[player.playerId] = points;
+  }
+
+  state.matiz.scoreDeltas = scoreDeltas;
+  state.phase = 'reveal';
+  events.push({ t: 'partyRevealed', gameId: 'matiz', round: state.round });
+  finishScoredRound(state, events);
 }
 
 function applySubmitMajority(
@@ -776,6 +913,14 @@ function finishScaleSet(state: PartyState, events: GameEvent[]): void {
 }
 
 function finishScoredRound(state: PartyState, events: GameEvent[]): void {
+  if (state.config.gameId === 'matiz') {
+    if (state.round < state.config.rounds) return;
+    state.status = 'gameEnd';
+    state.winnerId = decideWinner(state);
+    if (state.winnerId) events.push({ t: 'gameOver', winnerId: state.winnerId });
+    return;
+  }
+
   const target = state.config.gameId === 'orden' ? 0 : state.config.pointsToWin;
   if (state.config.gameId === 'mayoria') {
     const eligible = activePlayers(state).filter(
@@ -820,6 +965,7 @@ function applyNextRound(state: PartyState, playerId: PlayerId): PartyActionResul
     if (player.seat !== 0) return err('NOT_HOST');
     if (!state.majority || state.majority.groups === null) return err('INVALID_ACTION');
   }
+  if (state.gameId === 'matiz' && player.seat !== 0) return err('NOT_HOST');
 
   const next = bump(state);
   next.phase = 'input';
@@ -862,6 +1008,11 @@ function applyNextRound(state: PartyState, playerId: PlayerId): PartyActionResul
     if (!current) return err('INVALID_ACTION');
     const questionIndex = current.questionIndex + 1;
     next.majority = nextMajorityRound(current, questionIndex);
+  } else if (next.gameId === 'matiz') {
+    const current = next.matiz;
+    if (!current) return err('INVALID_ACTION');
+    const challengeIndex = current.challengeIndex + 1;
+    next.matiz = nextMatizRound(current, challengeIndex);
   } else {
     const current = next.scale;
     if (!current) return err('INVALID_ACTION');
@@ -906,6 +1057,16 @@ function nextMajorityRound(current: MajorityRoundState, questionIndex: number): 
     submissions: {},
     majorityAnswers: null,
     groups: null,
+    scoreDeltas: null,
+  };
+}
+
+function nextMatizRound(current: MatizRoundState, challengeIndex: number): MatizRoundState {
+  return {
+    challengeOrder: [...current.challengeOrder],
+    challengeIndex,
+    challengeId: nextQuestionId(current.challengeOrder, challengeIndex),
+    submissions: {},
     scoreDeltas: null,
   };
 }

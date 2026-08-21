@@ -14,6 +14,9 @@ import {
   type MayoriaCommonView,
   type MayoriaPlayerView,
   type MayoriaTableView,
+  type MatizCommonView,
+  type MatizPlayerView,
+  type MatizTableView,
   type MajorityGroup,
   type OrdenCommonView,
   type OrdenPlayerView,
@@ -25,6 +28,7 @@ import {
   type PlayerId,
   type PublicPlayer,
 } from '@ronda/protocol';
+import { matizChallengeById } from '@ronda/protocol';
 import { colorQuestionById, majorityQuestionById, scaleQuestionById } from './content.ts';
 import type { PartyState } from './state.ts';
 
@@ -172,6 +176,31 @@ function buildEscalaCommon(state: PartyState): EscalaCommonView {
   };
 }
 
+function buildMatizCommon(state: PartyState): MatizCommonView {
+  const config = state.config;
+  if (config.gameId !== 'matiz' || !state.matiz) throw new Error('Estado inválido de Matiz');
+  const challenge = matizChallengeById(state.matiz.challengeId);
+  const revealed = state.phase === 'reveal';
+  return {
+    ...commonFields(state),
+    gameId: 'matiz',
+    config,
+    phase: state.phase,
+    turnPlayerId: null,
+    party: {
+      gameId: 'matiz',
+      phase: state.phase,
+      challengeId: challenge.id,
+      title: challenge.title,
+      subtitle: challenge.subtitle,
+      submittedPlayerIds: Object.keys(state.matiz.submissions),
+      targetHex: revealed ? challenge.targetHex : null,
+      answers: revealed ? { ...state.matiz.submissions } : null,
+      scoreDeltas: revealed && state.matiz.scoreDeltas ? { ...state.matiz.scoreDeltas } : null,
+    },
+  };
+}
+
 function buildScaleGroups(state: PartyState): EscalaGroupPublic[] | null {
   if (state.config.gameId !== 'escala' || state.config.groupMode === 'individual' || !state.scale) {
     return null;
@@ -235,10 +264,29 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
       state.scale.clueText === null
     ) {
       availableActions.push('submitScaleClue');
+    } else if (
+      state.gameId === 'matiz' &&
+      state.matiz &&
+      state.matiz.submissions[playerId] === undefined
+    ) {
+      availableActions.push('submitMatiz');
     }
   }
+  if (
+    state.status === 'playing' &&
+    state.phase === 'input' &&
+    state.gameId === 'matiz' &&
+    player.seat === 0 &&
+    state.matiz &&
+    Object.keys(state.matiz.submissions).length > 0
+  ) {
+    availableActions.push('finishMatiz');
+  }
   if (state.status === 'playing' && state.phase === 'reveal' && state.gameId !== 'orden') {
-    if (state.gameId !== 'mayoria' || state.majority?.groups !== null) {
+    if (
+      (state.gameId !== 'mayoria' || state.majority?.groups !== null) &&
+      (state.gameId !== 'matiz' || player.seat === 0)
+    ) {
       availableActions.push('nextRound');
     }
   }
@@ -259,7 +307,9 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
         ? state.majority?.submissions[playerId] !== undefined
         : state.gameId === 'escala'
           ? state.scale?.guesses[playerId] !== undefined
-          : false;
+          : state.gameId === 'matiz'
+            ? state.matiz?.submissions[playerId] !== undefined
+            : false;
 
   return {
     playerId,
@@ -303,6 +353,11 @@ export function getPlayerView(state: PartyState, playerId: PlayerId): PartyPlaye
     const view: MayoriaPlayerView = { kind: 'player', ...common, me };
     return view;
   }
+  if (state.gameId === 'matiz') {
+    const common = buildMatizCommon(state);
+    const view: MatizPlayerView = { kind: 'player', ...common, me };
+    return view;
+  }
   const common = buildEscalaCommon(state);
   const view: EscalaPlayerView = { kind: 'player', ...common, me };
   return view;
@@ -319,6 +374,10 @@ export function getTableView(state: PartyState): PartyTableView {
   }
   if (state.gameId === 'mayoria') {
     const view: MayoriaTableView = { kind: 'table', ...buildMayoriaCommon(state) };
+    return view;
+  }
+  if (state.gameId === 'matiz') {
+    const view: MatizTableView = { kind: 'table', ...buildMatizCommon(state) };
     return view;
   }
   const view: EscalaTableView = { kind: 'table', ...buildEscalaCommon(state) };

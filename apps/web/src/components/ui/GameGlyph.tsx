@@ -105,6 +105,14 @@ function GlyphPaths({ game }: { game: GameId }) {
           <ellipse cx="16" cy="15" rx="3" ry="2.5" />
         </>
       );
+    case 'matiz':
+      return (
+        <>
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 3.5v17M3.5 12h17" />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+        </>
+      );
   }
 }
 

@@ -65,7 +65,12 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   z.object({
     t: z.literal('partyAnswerSubmitted'),
     playerId: z.string(),
-    gameId: z.union([z.literal('colores'), z.literal('mayoria'), z.literal('escala')]),
+    gameId: z.union([
+      z.literal('colores'),
+      z.literal('mayoria'),
+      z.literal('escala'),
+      z.literal('matiz'),
+    ]),
   }),
   z.object({
     t: z.literal('partyRevealed'),
@@ -74,6 +79,7 @@ export const GameEventSchema = z.discriminatedUnion('t', [
       z.literal('colores'),
       z.literal('mayoria'),
       z.literal('escala'),
+      z.literal('matiz'),
     ]),
     round: z.number().int(),
   }),

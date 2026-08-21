@@ -11,6 +11,7 @@ import type {
   RoomCode,
   MajorityGroup,
 } from '@ronda/protocol';
+import { MATIZ_CHALLENGES } from '@ronda/protocol';
 import { COLOR_QUESTIONS, MAJORITY_QUESTIONS, SCALE_QUESTIONS } from './content.ts';
 
 export type PartyStatus = 'playing' | 'gameEnd';
@@ -99,6 +100,14 @@ export interface ScaleRoundState {
   winnerGroupIndex: number | null;
 }
 
+export interface MatizRoundState {
+  challengeOrder: string[];
+  challengeIndex: number;
+  challengeId: string;
+  submissions: Record<PlayerId, string>;
+  scoreDeltas: Record<PlayerId, number> | null;
+}
+
 export interface PartyState {
   version: number;
   status: PartyStatus;
@@ -117,6 +126,7 @@ export interface PartyState {
   colors: ColorsRoundState | null;
   majority: MajorityRoundState | null;
   scale: ScaleRoundState | null;
+  matiz: MatizRoundState | null;
   /** Jugador que conserva la vaca rosa en Mayoría, si la hay. */
   pinkCowPlayerId: PlayerId | null;
   winnerId: PlayerId | null;
@@ -140,7 +150,7 @@ export function partyConfigForGame(config: GameConfig, gameId: PartyGameId): Par
 }
 
 export function questionIdsFor(
-  gameId: Exclude<PartyGameId, 'orden'>,
+  gameId: Exclude<PartyGameId, 'orden' | 'matiz'>,
   colorTopic: ColorTopic = 'todo',
 ): string[] {
   if (gameId === 'colores') {
@@ -150,4 +160,8 @@ export function questionIdsFor(
   }
   if (gameId === 'mayoria') return MAJORITY_QUESTIONS.map((question) => question.id);
   return SCALE_QUESTIONS.map((question) => question.id);
+}
+
+export function challengeIdsFor(gameId: PartyGameId): string[] {
+  return gameId === 'matiz' ? MATIZ_CHALLENGES.map((challenge) => challenge.id) : [];
 }

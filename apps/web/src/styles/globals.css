@@ -13,6 +13,25 @@
  */
 @import 'tailwindcss';
 
+.matiz-slider::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  appearance: none;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #16181d;
+  box-shadow: 0 2px 8px rgb(22 24 29 / 28%);
+}
+
+.matiz-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #16181d;
+  box-shadow: 0 2px 8px rgb(22 24 29 / 28%);
+}
+
 /* Girthquake es una tipografía comercial. Si está instalada localmente, el
  * aviso de turno la usa sin redistribuirla; el display de Ronda evita texto
  * invisible mientras el proyecto no incluya el archivo con su licencia. */
@@ -664,6 +683,12 @@ summary {
 .game-glyph-tile[data-game='escala'] {
   background: linear-gradient(145deg, #64d2ff, #168dc7);
   box-shadow: 0 8px 18px rgb(90 200 250 / 0.2);
+}
+
+.game-glyph-tile[data-game='matiz'] {
+  background: linear-gradient(135deg, #fff0b4, #d7f3df 52%, #dce7ff);
+  box-shadow: 0 8px 18px rgb(76 93 168 / 0.18);
+  color: #4c5da8;
 }
 
 .game-glyph-tile[data-game='musical'] {

@@ -1,0 +1,463 @@
+'use client';
+
+import Image from 'next/image';
+import { useEffect, useMemo, useState } from 'react';
+import type { MatizPlayerView } from '@ronda/protocol';
+import { MATIZ_CHALLENGES } from '@ronda/protocol';
+import { useRondaStore } from '@/lib/store';
+import { COLOR_TOKENS, MATIZ_COLOR_TOKENS, MATIZ_HUE_GRADIENT } from '@/lib/tokens';
+import { Button } from '@/components/ui/Button';
+import { PlayerStrip } from '@/app/sala/[code]/_components/PlayerStrip';
+import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
+
+const ARTWORK = {
+  'popeye-camiseta': {
+    image: '/games/matiz/popeye-1929.jpg',
+    shape: 'popeye',
+    imageClass: 'object-contain p-3',
+  },
+  'felix-silueta': {
+    image: '/games/matiz/felix-1930.svg',
+    shape: 'felix',
+    imageClass: 'object-contain p-4',
+  },
+  'krazy-ladrillo': {
+    image: '/games/matiz/krazy-kat-1918.jpg',
+    shape: 'krazy',
+    imageClass: 'object-contain p-2',
+  },
+  'little-nemo-carrete': {
+    image: '/games/matiz/little-nemo-1911.jpg',
+    shape: 'nemo',
+    imageClass: 'object-contain p-3',
+  },
+  'sol-de-verano': {
+    image: '/games/matiz/sol-de-verano.svg',
+    shape: 'visor',
+    imageClass: 'object-cover',
+  },
+  'gato-luna': {
+    image: '/games/matiz/gato-luna.svg',
+    shape: 'jersey',
+    imageClass: 'object-cover',
+  },
+  'monstruo-fruta': {
+    image: '/games/matiz/monstruo-fruta.svg',
+    shape: 'belly',
+    imageClass: 'object-cover',
+  },
+} as const;
+
+type MatizChallengeId = keyof typeof ARTWORK;
+
+export interface MatizArtworkProps {
+  challengeId: string;
+  color: string;
+  targetHex?: string | null;
+  className?: string;
+}
+
+export function MatizArtwork({ challengeId, color, targetHex = null, className = '' }: MatizArtworkProps) {
+  const art = ARTWORK[challengeId as MatizChallengeId] ?? ARTWORK['sol-de-verano'];
+  const fill = targetHex ?? color;
+
+  return (
+    <div
+      className={`relative aspect-[800/620] w-full overflow-hidden rounded-[30px] border border-linea bg-mesa shadow-[0_16px_36px_rgba(34,37,48,0.12)] ${className}`}
+    >
+      <Image
+        src={art.image}
+        alt="Ilustración del reto de Matiz"
+        fill
+        priority
+        sizes="(max-width: 768px) 94vw, 620px"
+        className={art.imageClass ?? 'object-cover'}
+      />
+      <svg
+        viewBox="0 0 800 620"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        {art.shape === 'visor' ? (
+          <>
+            <rect x="286" y="198" width="204" height="128" rx="38" fill={fill} />
+            <rect x="280" y="190" width="215" height="149" rx="48" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
+          </>
+        ) : null}
+        {art.shape === 'jersey' ? (
+          <>
+            <path d="M300 460c22-20 54-30 99-30 47 0 80 10 103 31v106H300Z" fill={fill} />
+            <path d="M287 452c23-29 59-43 113-43 55 0 91 15 116 44v123H287Z" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
+          </>
+        ) : null}
+        {art.shape === 'belly' ? (
+          <>
+            <ellipse cx="399" cy="441" rx="115" ry="101" fill={fill} />
+            <ellipse cx="399" cy="441" rx="126" ry="112" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
+          </>
+        ) : null}
+        {art.shape === 'popeye' ? (
+          <>
+            <path d="M278 218c43-27 170-28 244 2l-12 87c-62 23-153 22-222-4Z" fill={fill} />
+            <path d="M270 211c56-35 185-34 262 4l-13 104c-74 28-174 26-252-5Z" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
+          </>
+        ) : null}
+        {art.shape === 'felix' ? (
+          <>
+            <path d="M246 270c53-41 240-45 313 2l-4 127c-91 42-214 38-302-5Z" fill={fill} />
+            <path d="M232 263c61-52 254-53 340 2l-4 148c-104 48-244 44-350-7Z" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
+          </>
+        ) : null}
+        {art.shape === 'krazy' ? (
+          <>
+            <rect x="322" y="351" width="105" height="67" rx="8" fill={fill} />
+            <rect x="313" y="342" width="123" height="85" rx="12" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
+            <path d="M202 523h56v34h-56z" fill={matizClueColor(challengeId)} stroke={COLOR_TOKENS.hueso} strokeWidth="6" />
+          </>
+        ) : null}
+        {art.shape === 'nemo' ? (
+          <>
+            <rect x="250" y="192" width="123" height="70" rx="10" fill={fill} />
+            <rect x="241" y="183" width="141" height="88" rx="16" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
+          </>
+        ) : null}
+      </svg>
+    </div>
+  );
+}
+
+interface MatizPickerProps {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}
+
+export function MatizPicker({ value, onChange, disabled = false }: MatizPickerProps) {
+  const hsl = useMemo(() => hexToHsl(value), [value]);
+
+  function update(next: Partial<HslColor>) {
+    onChange(hslToHex({ ...hsl, ...next }));
+  }
+
+  return (
+    <section className="surface-panel flex w-full flex-col gap-4 p-4">
+      <div className="flex items-center gap-3">
+        <label
+          htmlFor="matiz-native-color"
+          className="size-14 shrink-0 cursor-pointer rounded-2xl border-2 border-white shadow-[0_4px_14px_rgba(0,0,0,.16)]"
+          style={{ backgroundColor: value }}
+          title="Abrir selector de color"
+        />
+        <input
+          id="matiz-native-color"
+          type="color"
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value.toLowerCase())}
+          className="sr-only"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-12 font-semibold uppercase tracking-[0.12em] text-humo">Tu mezcla</p>
+          <p className="mt-1 font-mono text-20 font-semibold uppercase text-hueso">{value}</p>
+        </div>
+        <span className="rounded-full bg-tinta px-3 py-1 font-mono text-12 text-humo">
+          HSL {Math.round(hsl.h)}° · {Math.round(hsl.s)}% · {Math.round(hsl.l)}%
+        </span>
+      </div>
+
+      <SliderRow
+        label="Tono"
+        value={hsl.h}
+        min={0}
+        max={360}
+        disabled={disabled}
+        background={MATIZ_HUE_GRADIENT}
+        onChange={(next) => update({ h: next })}
+        suffix="°"
+      />
+      <SliderRow
+        label="Intensidad"
+        value={hsl.s}
+        min={0}
+        max={100}
+        disabled={disabled}
+        background={`linear-gradient(90deg,hsl(${hsl.h} 0% 55%),hsl(${hsl.h} 100% 50%))`}
+        onChange={(next) => update({ s: next })}
+        suffix="%"
+      />
+      <SliderRow
+        label="Luz"
+        value={hsl.l}
+        min={0}
+        max={100}
+        disabled={disabled}
+        background={`linear-gradient(90deg,${COLOR_TOKENS.hueso},hsl(${hsl.h} ${hsl.s}% 50%),${COLOR_TOKENS.mesa})`}
+        onChange={(next) => update({ l: next })}
+        suffix="%"
+      />
+    </section>
+  );
+}
+
+function SliderRow({
+  label,
+  value,
+  min,
+  max,
+  disabled,
+  background,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  disabled: boolean;
+  background: string;
+  suffix: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="grid grid-cols-[74px_1fr_46px] items-center gap-3 text-13 text-humo">
+      <span className="font-semibold text-hueso">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="matiz-slider h-3 w-full cursor-pointer appearance-none rounded-full"
+        style={{ background }}
+        aria-label={label}
+      />
+      <span className="text-right font-mono text-12">{Math.round(value)}{suffix}</span>
+    </label>
+  );
+}
+
+export function MatizPlayerRound({ view }: { view: MatizPlayerView }) {
+  const pendingAction = useRondaStore((state) => state.pendingAction);
+  const [color, setColor] = useState<string>(MATIZ_COLOR_TOKENS.neutral);
+  const { party, me } = view;
+  const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
+  const submitted = me.submitted;
+
+  useEffect(() => {
+    setColor(MATIZ_COLOR_TOKENS.neutral);
+  }, [party.challengeId]);
+
+  function submit() {
+    void useRondaStore.getState().sendAction({ type: 'submitMatiz', hex: color });
+  }
+
+  return (
+    <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
+      <TableHeader left={`Matiz · ronda ${view.round}/${view.config.rounds}`} turnNick={null} />
+      <PlayerStrip
+        players={view.players}
+        turnPlayerId={null}
+        myPlayerId={me.playerId}
+        renderInfo={(player) => `${player.score} puntos`}
+      />
+      <main className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto px-4 py-5">
+        <section className="flex w-full max-w-xl flex-col gap-1 text-center">
+          <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">{party.title}</span>
+          <h1 className="text-20 font-semibold text-hueso">{party.subtitle}</h1>
+          <p className="text-13 text-humo">Ajusta el tono, la intensidad y la luz. Después, bloquea tu color.</p>
+        </section>
+        <MatizArtwork challengeId={party.challengeId} color={color} targetHex={party.targetHex} className="max-w-xl" />
+        {party.phase === 'input' ? <MatizPicker value={color} onChange={setColor} disabled={submitted || pendingAction} /> : null}
+        {party.phase === 'input' && !submitted ? (
+          <Button onClick={submit} loading={pendingAction} className="w-full max-w-xl">
+            Aceptar este color
+          </Button>
+        ) : party.phase === 'input' ? (
+          <p className="rounded-2xl bg-oro/10 px-4 py-3 text-center text-15 font-semibold text-oro">
+            Color bloqueado · {party.submittedPlayerIds.length}/{view.players.length} han respondido
+          </p>
+        ) : (
+          <MatizReveal view={view} />
+        )}
+        {party.phase === 'input' && isHost && party.submittedPlayerIds.length > 0 ? (
+          <Button
+            variant="ghost"
+            onClick={() => void useRondaStore.getState().sendAction({ type: 'finishMatiz' })}
+            loading={pendingAction}
+            className="w-full max-w-xl"
+          >
+            Revelar ya
+          </Button>
+        ) : null}
+        {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
+          <Button
+            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            loading={pendingAction}
+            className="w-full max-w-xl"
+          >
+            Siguiente ronda
+          </Button>
+        ) : null}
+        {party.phase === 'reveal' && view.status === 'playing' && !isHost ? (
+          <p className="text-center text-14 text-humo">Esperando al anfitrión.</p>
+        ) : null}
+      </main>
+    </div>
+  );
+}
+
+function MatizReveal({ view }: { view: MatizPlayerView }) {
+  const { party } = view;
+  return (
+    <section className="surface-panel flex w-full max-w-xl flex-col gap-4 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-12 font-semibold uppercase tracking-[0.14em] text-humo">Color original</p>
+          <p className="mt-1 font-mono text-20 font-semibold text-hueso">{party.targetHex}</p>
+        </div>
+        <span className="size-12 rounded-2xl border-2 border-white shadow" style={{ backgroundColor: party.targetHex ?? COLOR_TOKENS.mesa }} />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {view.players.map((player) => {
+          const answer = party.answers?.[player.playerId];
+          const points = party.scoreDeltas?.[player.playerId] ?? 0;
+          return (
+            <div key={player.playerId} className="flex items-center gap-3 rounded-2xl border border-linea bg-tinta/50 px-3 py-2">
+              <span className="size-9 shrink-0 rounded-xl border border-white shadow" style={{ backgroundColor: answer ?? MATIZ_COLOR_TOKENS.placeholder }} />
+              <span className="min-w-0 flex-1 truncate text-14 font-semibold text-hueso">{player.nick}</span>
+              <span className="font-mono text-16 font-semibold text-oro">+{points}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+export function MatizSoloGame() {
+  const [roundIndex, setRoundIndex] = useState(0);
+  const [color, setColor] = useState<string>(MATIZ_COLOR_TOKENS.neutral);
+  const [revealed, setRevealed] = useState(false);
+  const [score, setScore] = useState(0);
+  const [scores, setScores] = useState<number[]>([]);
+  const challenge = MATIZ_CHALLENGES[roundIndex % MATIZ_CHALLENGES.length] ?? MATIZ_CHALLENGES[0];
+  const finished = roundIndex >= 5;
+
+  function confirm() {
+    const points = scoreMatizColor(color, challenge.targetHex);
+    setScore((current) => current + points);
+    setScores((current) => [...current, points]);
+    setRevealed(true);
+  }
+
+  function next() {
+    setRoundIndex((current) => current + 1);
+    setColor(MATIZ_COLOR_TOKENS.neutral);
+    setRevealed(false);
+  }
+
+  function restart() {
+    setRoundIndex(0);
+    setColor(MATIZ_COLOR_TOKENS.neutral);
+    setRevealed(false);
+    setScore(0);
+    setScores([]);
+  }
+
+  if (finished) {
+    return (
+      <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-5 text-center">
+        <span className="text-56">🎨</span>
+        <span className="eyebrow">Partida individual terminada</span>
+        <h1 className="font-display text-40 leading-display text-hueso">{score}/500 puntos</h1>
+        <p className="text-16 leading-relaxed text-humo">Tu media ha sido {Math.round(score / 5)} por reto.</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {scores.map((points, index) => <span key={index} className="rounded-full bg-oro/10 px-3 py-1 font-mono text-13 text-oro">R{index + 1} · {points}</span>)}
+        </div>
+        <Button onClick={restart}>Jugar otra vez</Button>
+      </main>
+    );
+  }
+
+  return (
+    <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-5">
+      <header className="flex items-center justify-between gap-3">
+        <div>
+          <span className="eyebrow">Partida individual</span>
+          <h1 className="mt-1 font-display text-32 leading-display text-hueso">Matiz</h1>
+        </div>
+        <span className="rounded-full bg-mesa px-3 py-2 font-mono text-13 text-humo shadow-sm">{roundIndex + 1}/5 · {score} pts</span>
+      </header>
+      <section className="surface-panel flex flex-col gap-1 p-4 text-center">
+        <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">{challenge.title}</span>
+        <p className="text-15 text-hueso">{challenge.subtitle}</p>
+      </section>
+      <MatizArtwork challengeId={challenge.id} color={color} targetHex={revealed ? challenge.targetHex : null} />
+      {!revealed ? <MatizPicker value={color} onChange={setColor} /> : null}
+      {!revealed ? (
+        <Button onClick={confirm} className="w-full">Aceptar color</Button>
+      ) : (
+        <section className="surface-panel flex flex-col gap-4 p-4 text-center">
+          <p className="text-14 text-humo">El original era <span className="font-mono font-semibold text-hueso">{challenge.targetHex}</span></p>
+          <p className="font-display text-40 text-oro">+{scores[scores.length - 1] ?? 0} puntos</p>
+          <Button onClick={next}>Siguiente dibujo</Button>
+        </section>
+      )}
+    </main>
+  );
+}
+
+interface HslColor { h: number; s: number; l: number }
+
+function hexToHsl(hex: string): HslColor {
+  const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
+  const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
+  const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: lightness * 100 };
+  const delta = max - min;
+  const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+  let hue = 0;
+  if (max === r) hue = ((g - b) / delta + (g < b ? 6 : 0)) / 6;
+  else if (max === g) hue = ((b - r) / delta + 2) / 6;
+  else hue = ((r - g) / delta + 4) / 6;
+  return { h: hue * 360, s: saturation * 100, l: lightness * 100 };
+}
+
+function hslToHex({ h, s, l }: HslColor): string {
+  const saturation = s / 100;
+  const lightness = l / 100;
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = lightness - chroma / 2;
+  const [r, g, b] = h < 60 ? [chroma, x, 0] : h < 120 ? [x, chroma, 0] : h < 180 ? [0, chroma, x] : h < 240 ? [0, x, chroma] : h < 300 ? [x, 0, chroma] : [chroma, 0, x];
+  return `#${[r, g, b].map((channel) => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('')}`;
+}
+
+export function scoreMatizColor(answer: string, target: string): number {
+  const a = hexToLab(answer);
+  const b = hexToLab(target);
+  const distance = Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
+  return Math.max(0, Math.min(100, Math.round(100 - distance / 1.76)));
+}
+
+function matizClueColor(challengeId: string): string {
+  return MATIZ_CHALLENGES.find((challenge) => challenge.id === challengeId)?.targetHex ?? COLOR_TOKENS.mesa;
+}
+
+function hexToLab(hex: string): [number, number, number] {
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(1 + offset, 3 + offset), 16) / 255).map((value) => value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4));
+  const [r = 0, g = 0, b = 0] = channels;
+  const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+  const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+  const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+  const pivot = (value: number) => value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116;
+  const fx = pivot(x);
+  const fy = pivot(y);
+  const fz = pivot(z);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}

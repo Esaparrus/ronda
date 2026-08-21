@@ -180,6 +180,7 @@ export function decidePartyAction(view: PartyPlayerView): GameAction | null {
     }
     return { type: 'submitMajority', answer: majorityAnswer(view) };
   }
+  if (view.gameId === 'matiz') return { type: 'submitMatiz', hex: '#808080' };
   if (view.party.cluePlayerId === view.me.playerId) {
     return view.me.availableActions.includes('submitScaleClue')
       ? { type: 'submitScaleClue', clue: 'Una situación que divide a la mesa' }

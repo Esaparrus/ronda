@@ -27,6 +27,7 @@ import type {
   EscalaConfig,
   LaRondaConfig,
   MayoriaConfig,
+  MatizConfig,
   MusConfig,
   MusicalConfig,
   OrdenConfig,
@@ -374,7 +375,7 @@ export interface MusHandResult {
 
 // --- Modos sociales ---------------------------------------------------------
 
-export type PartyGameId = 'orden' | 'colores' | 'mayoria' | 'escala';
+export type PartyGameId = 'orden' | 'colores' | 'mayoria' | 'escala' | 'matiz';
 export type PartyPhase = 'input' | 'reveal';
 export type PartyAvailableAction =
   | 'playNumber'
@@ -383,6 +384,8 @@ export type PartyAvailableAction =
   | 'resolveMajority'
   | 'submitScaleClue'
   | 'submitScale'
+  | 'submitMatiz'
+  | 'finishMatiz'
   | 'setOrderCards'
   | 'endOrder'
   | 'nextRound';
@@ -469,7 +472,20 @@ export interface EscalaGroupPublic {
   playerIds: PlayerId[];
 }
 
-export type PartyPublic = OrdenPublic | ColoresPublic | MayoriaPublic | EscalaPublic;
+export interface MatizPublic {
+  gameId: 'matiz';
+  phase: PartyPhase;
+  challengeId: string;
+  title: string;
+  subtitle: string;
+  submittedPlayerIds: PlayerId[];
+  /** Color objetivo y respuestas; solo aparecen durante la revelación. */
+  targetHex: string | null;
+  answers: Record<PlayerId, string> | null;
+  scoreDeltas: Record<PlayerId, number> | null;
+}
+
+export type PartyPublic = OrdenPublic | ColoresPublic | MayoriaPublic | EscalaPublic | MatizPublic;
 
 export interface PartyPlayerViewMe {
   playerId: PlayerId;
@@ -510,8 +526,18 @@ export interface EscalaCommonView extends PartyCommonViewBase {
   party: EscalaPublic;
 }
 
+export interface MatizCommonView extends PartyCommonViewBase {
+  gameId: 'matiz';
+  config: MatizConfig;
+  party: MatizPublic;
+}
+
 export type PartyCommonView =
-  OrdenCommonView | ColoresCommonView | MayoriaCommonView | EscalaCommonView;
+  | OrdenCommonView
+  | ColoresCommonView
+  | MayoriaCommonView
+  | EscalaCommonView
+  | MatizCommonView;
 
 export interface OrdenPlayerView extends OrdenCommonView {
   kind: 'player';
@@ -533,8 +559,17 @@ export interface EscalaPlayerView extends EscalaCommonView {
   me: PartyPlayerViewMe;
 }
 
+export interface MatizPlayerView extends MatizCommonView {
+  kind: 'player';
+  me: PartyPlayerViewMe;
+}
+
 export type PartyPlayerView =
-  OrdenPlayerView | ColoresPlayerView | MayoriaPlayerView | EscalaPlayerView;
+  | OrdenPlayerView
+  | ColoresPlayerView
+  | MayoriaPlayerView
+  | EscalaPlayerView
+  | MatizPlayerView;
 
 export interface OrdenTableView extends OrdenCommonView {
   kind: 'table';
@@ -552,7 +587,16 @@ export interface EscalaTableView extends EscalaCommonView {
   kind: 'table';
 }
 
-export type PartyTableView = OrdenTableView | ColoresTableView | MayoriaTableView | EscalaTableView;
+export interface MatizTableView extends MatizCommonView {
+  kind: 'table';
+}
+
+export type PartyTableView =
+  | OrdenTableView
+  | ColoresTableView
+  | MayoriaTableView
+  | EscalaTableView
+  | MatizTableView;
 
 // --- Musical ---------------------------------------------------------------
 

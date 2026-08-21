@@ -273,7 +273,31 @@ export const EscalaConfigSchema = CommonGameConfigSchema.extend({
 
 export type EscalaConfig = z.infer<typeof EscalaConfigSchema>;
 
-export type PartyConfig = OrdenConfig | ColoresConfig | MayoriaConfig | EscalaConfig;
+const MATIZ_MAX_PLAYERS = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+const MATIZ_ROUNDS = z.union([
+  z.literal(3),
+  z.literal(5),
+  z.literal(7),
+  z.literal(10),
+]);
+
+/** Reto visual de coincidencia de color, simultáneo y sin turnos. */
+export const MatizConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('matiz' satisfies GameId).default('matiz'),
+  maxPlayers: MATIZ_MAX_PLAYERS.default(7),
+  rounds: MATIZ_ROUNDS.default(5),
+});
+
+export type MatizConfig = z.infer<typeof MatizConfigSchema>;
+
+export type PartyConfig = OrdenConfig | ColoresConfig | MayoriaConfig | EscalaConfig | MatizConfig;
 
 // --- La Ronda --------------------------------------------------------------
 
@@ -407,6 +431,7 @@ export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ColoresConfigSchema,
   MayoriaConfigSchema,
   EscalaConfigSchema,
+  MatizConfigSchema,
   LaRondaConfigSchema,
   MusicalConfigSchema,
 ]);
@@ -437,5 +462,6 @@ export const DEFAULT_ORDEN_CONFIG: OrdenConfig = OrdenConfigSchema.parse({});
 export const DEFAULT_COLORES_CONFIG: ColoresConfig = ColoresConfigSchema.parse({});
 export const DEFAULT_MAYORIA_CONFIG: MayoriaConfig = MayoriaConfigSchema.parse({});
 export const DEFAULT_ESCALA_CONFIG: EscalaConfig = EscalaConfigSchema.parse({});
+export const DEFAULT_MATIZ_CONFIG: MatizConfig = MatizConfigSchema.parse({});
 export const DEFAULT_LA_RONDA_CONFIG: LaRondaConfig = LaRondaConfigSchema.parse({});
 export const DEFAULT_MUSICAL_CONFIG: MusicalConfig = MusicalConfigSchema.parse({});

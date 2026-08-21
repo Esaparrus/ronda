@@ -1,9 +1,11 @@
 // Pantalla central de los modos sociales. Solo recibe datos ya públicos: no
 // pinta manos numéricas ni objetivos de Escala mientras siguen ocultos.
 import type { PartyTableView, PlayerId } from '@ronda/protocol';
+import { MatizArtwork } from '@/components/matiz/MatizGame';
 import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
 import { ColorCountdownHeader } from '@/app/sala/[code]/_components/ColorCountdownHeader';
 import { NumberTableGrid } from '@/components/cards/NumberTableGrid';
+import { MATIZ_COLOR_TOKENS } from '@/lib/tokens';
 
 export interface PartyMesaGameBoardProps {
   view: PartyTableView;
@@ -13,7 +15,48 @@ export function PartyMesaGameBoard({ view }: PartyMesaGameBoardProps) {
   if (view.gameId === 'orden') return <OrdenMesaBoard view={view} />;
   if (view.gameId === 'colores') return <ColoresMesaBoard view={view} />;
   if (view.gameId === 'mayoria') return <MayoriaMesaBoard view={view} />;
+  if (view.gameId === 'matiz') return <MatizMesaBoard view={view} />;
   return <EscalaMesaBoard view={view} />;
+}
+
+function MatizMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'matiz' }> }) {
+  const party = view.party;
+  return (
+    <main className="flex min-h-dvh flex-1 flex-col">
+      <TableHeader left={`Matiz · ronda ${view.round}/${view.config.rounds}`} turnNick={null} />
+      <div className="flex flex-1 flex-col items-center gap-6 overflow-y-auto px-10 py-8 text-center">
+        <div>
+          <p className="text-20 font-semibold uppercase tracking-[0.14em] text-oro">{party.title}</p>
+          <h1 className="mt-2 text-[clamp(1.5rem,3vw,2.4rem)] font-semibold text-hueso">{party.subtitle}</h1>
+        </div>
+        <MatizArtwork
+          challengeId={party.challengeId}
+          color={MATIZ_COLOR_TOKENS.neutral}
+          targetHex={party.targetHex}
+          className="w-full max-w-2xl"
+        />
+        {party.phase === 'input' ? (
+          <p className="text-20 text-humo">
+            {party.submittedPlayerIds.length}/{view.players.length} colores bloqueados
+          </p>
+        ) : (
+          <section className="grid w-full max-w-3xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {view.players.map((player) => {
+              const answer = party.answers?.[player.playerId];
+              const points = party.scoreDeltas?.[player.playerId] ?? 0;
+              return (
+                <div key={player.playerId} className="flex items-center gap-3 rounded-2xl border border-linea bg-mesa px-4 py-3 text-left">
+                  <span className="size-11 shrink-0 rounded-xl border-2 border-white shadow" style={{ backgroundColor: answer ?? MATIZ_COLOR_TOKENS.placeholder }} />
+                  <span className="min-w-0 flex-1 truncate text-18 font-semibold text-hueso">{player.nick}</span>
+                  <span className="font-mono text-20 font-semibold text-oro">+{points}</span>
+                </div>
+              );
+            })}
+          </section>
+        )}
+      </div>
+    </main>
+  );
 }
 
 function OrdenMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'orden' }> }) {

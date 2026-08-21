@@ -290,6 +290,26 @@ function buildPartyLobbyCommon(room: Room): PartyCommonView {
       },
     };
   }
+  if (room.gameId === 'matiz') {
+    const config = room.config as Extract<PartyCommonView, { gameId: 'matiz' }>['config'];
+    return {
+      ...base,
+      gameId: 'matiz',
+      config,
+      turnPlayerId: null,
+      party: {
+        gameId: 'matiz',
+        phase: 'input',
+        challengeId: '',
+        title: 'El reto aparecerá al empezar.',
+        subtitle: 'Elegid un color y confirmadlo.',
+        submittedPlayerIds: [],
+        targetHex: null,
+        answers: null,
+        scoreDeltas: null,
+      },
+    };
+  }
   const config = room.config as Extract<PartyCommonView, { gameId: 'escala' }>['config'];
   const firstPlayerId = room.playersBySeat()[0]?.playerId ?? '';
   return {
@@ -388,7 +408,8 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
     room.gameId === 'orden' ||
     room.gameId === 'colores' ||
     room.gameId === 'mayoria' ||
-    room.gameId === 'escala'
+    room.gameId === 'escala' ||
+    room.gameId === 'matiz'
   ) {
     const view: PartyPlayerView = {
       kind: 'player',
@@ -481,7 +502,8 @@ function lobbyTableView(room: Room): TableView {
     room.gameId === 'orden' ||
     room.gameId === 'colores' ||
     room.gameId === 'mayoria' ||
-    room.gameId === 'escala'
+    room.gameId === 'escala' ||
+    room.gameId === 'matiz'
   ) {
     const view: PartyTableView = { kind: 'table', ...buildPartyLobbyCommon(room) };
     return view;

@@ -99,19 +99,25 @@ function nextBotTurn(room: Room): BotTurn | null {
     state.gameId === 'orden' ||
     state.gameId === 'colores' ||
     state.gameId === 'mayoria' ||
-    state.gameId === 'escala'
+    state.gameId === 'escala' ||
+    state.gameId === 'matiz'
   ) {
     if (room.status !== 'playing' || state.status !== 'playing') return null;
     const bots = room.playersBySeat().filter((player) => player.isBot);
     const module = GAMES[room.gameId];
     if (!module) return null;
     if (state.phase === 'reveal') {
-      if (state.gameId !== 'mayoria' || state.majority?.groups !== null) return null;
       const host = bots.find((bot) => bot.seat === 0);
       if (!host) return null;
       const view = module.getPlayerView(state, host.playerId);
       if (view.kind !== 'player') return null;
       const partyView = view as PartyPlayerView;
+      if (state.gameId === 'matiz') {
+        return partyView.me.availableActions.includes('nextRound')
+          ? { playerId: host.playerId, kind: 'nextRound' }
+          : null;
+      }
+      if (state.gameId !== 'mayoria' || state.majority?.groups !== null) return null;
       return partyView.me.availableActions.includes('resolveMajority')
         ? { playerId: host.playerId, kind: 'action' }
         : null;
@@ -127,7 +133,8 @@ function nextBotTurn(room: Room): BotTurn | null {
             action === 'submitColors' ||
             action === 'submitMajority' ||
             action === 'submitScaleClue' ||
-            action === 'submitScale',
+            action === 'submitScale' ||
+            action === 'submitMatiz',
         )
       ) {
         return { playerId: bot.playerId, kind: 'action' };
@@ -260,7 +267,8 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
         view.gameId === 'orden' ||
         view.gameId === 'colores' ||
         view.gameId === 'mayoria' ||
-        view.gameId === 'escala'
+        view.gameId === 'escala' ||
+        view.gameId === 'matiz'
       ) {
         const action = decidePartyAction(view as PartyPlayerView);
         if (!action) return;

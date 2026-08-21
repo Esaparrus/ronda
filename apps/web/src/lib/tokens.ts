@@ -26,6 +26,15 @@ export const COLOR_TOKENS = {
 
 export type ColorToken = keyof typeof COLOR_TOKENS;
 
+/** Valores que necesitan un literal porque Matiz pinta muestras dinámicas. */
+export const MATIZ_COLOR_TOKENS = {
+  neutral: '#8D929E',
+  placeholder: '#D8D5CD',
+} as const;
+
+export const MATIZ_HUE_GRADIENT =
+  'linear-gradient(90deg,#EF4444 0%,#F59E0B 17%,#EAB308 33%,#22C55E 50%,#06B6D4 67%,#3B82F6 83%,#EF4444 100%)';
+
 /** Paleta propia de la cara/dorso de la carta (RondaCard). Ver globals.css. */
 export const CARD_COLOR_TOKENS = {
   ink: '#1B1D2A',

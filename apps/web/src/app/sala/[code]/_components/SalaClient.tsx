@@ -326,7 +326,8 @@ export function SalaClient({ code }: SalaClientProps) {
       (view.gameId === 'orden' ||
         view.gameId === 'colores' ||
         view.gameId === 'mayoria' ||
-        view.gameId === 'escala') ? (
+        view.gameId === 'escala' ||
+        view.gameId === 'matiz') ? (
         <PartyGameScreen view={view} />
       ) : null}
       {view.status === 'roundEnd' && view.gameId === 'chinchon' ? (
