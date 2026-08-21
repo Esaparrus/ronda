@@ -67,7 +67,7 @@ export function Sheet({ open, onClose, children, className = '', ariaLabel }: Sh
         type="button"
         aria-label="Cerrar"
         onClick={onClose}
-        className="absolute inset-0 bg-tinta/70"
+        className="absolute inset-0 bg-carbon/35 backdrop-blur-sm"
       />
       <div
         role="dialog"
@@ -77,7 +77,7 @@ export function Sheet({ open, onClose, children, className = '', ariaLabel }: Sh
           transform: `translateY(${dragOffset}px)`,
           transition: dragOffset === 0 ? 'transform 200ms ease-out' : 'none',
         }}
-        className={`relative z-10 rounded-t-[28px] border-t border-oro/40 bg-mesa px-5 pb-[max(28px,env(safe-area-inset-bottom))] pt-2 shadow-2xl ${className}`}
+        className={`liquid-glass liquid-glass--strong relative z-10 rounded-t-[32px] px-5 pb-[max(28px,env(safe-area-inset-bottom))] pt-2 ${className}`}
       >
         <div
           onPointerDown={handlePointerDown}
@@ -87,7 +87,7 @@ export function Sheet({ open, onClose, children, className = '', ariaLabel }: Sh
           className="mx-auto mb-3 flex h-10 w-20 touch-none items-center justify-center"
           aria-hidden="true"
         >
-          <span className="h-1.5 w-11 rounded-full bg-linea" />
+          <span className="h-1.5 w-11 rounded-full bg-humo/30" />
         </div>
         {children}
       </div>

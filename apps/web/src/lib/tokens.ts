@@ -11,17 +11,17 @@
 // Debe reflejar EXACTAMENTE los valores de globals.css. Si cambian ahí,
 // cambian aquí.
 export const COLOR_TOKENS = {
-  tinta: '#241509',
-  veta: '#2A180C',
-  mesa: '#3B2417',
-  linea: '#5A4530',
-  hueso: '#EFE3C8',
-  humo: '#B8A688',
-  brasa: '#8C2F22',
-  oro: '#C9982E',
-  teja: '#A33B2A',
-  azul: '#5B6B7A',
-  verde: '#3F6B4F',
+  tinta: '#F2F4F8',
+  veta: '#E8EDF5',
+  mesa: '#FFFFFF',
+  linea: '#D7DCE5',
+  hueso: '#16181D',
+  humo: '#697386',
+  brasa: '#FF3B30',
+  oro: '#007AFF',
+  teja: '#FF6B61',
+  azul: '#5AC8FA',
+  verde: '#34C759',
 } as const;
 
 export type ColorToken = keyof typeof COLOR_TOKENS;

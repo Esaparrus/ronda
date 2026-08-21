@@ -46,6 +46,8 @@ import { QuantityStepper } from '@/components/ui/QuantityStepper';
 import { MusicYearRangeControl } from '@/components/ui/MusicYearRangeControl';
 import { MusicRegionSelector } from '@/components/ui/MusicRegionSelector';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
+import { GameGlyph } from '@/components/ui/GameGlyph';
+import { Icon } from '@/components/ui/Icon';
 import { CreateRoomLoading } from './CreateRoomLoading';
 
 export interface CrearFormProps {
@@ -116,20 +118,28 @@ export function CrearForm({ gameId }: CrearFormProps) {
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-5">
       <BackToGames />
-      <header className="flex flex-col gap-2">
-        <span className="eyebrow">Nueva mesa</span>
-        <h1 className="font-display text-40 leading-display text-hueso">
-          {isPartyGame(gameId) ? `Crear partida de ${gameTitle(gameId)}` : title}
-        </h1>
-        <p className="text-14 text-humo">
-          Elige los ajustes una vez. Al crearla verás directamente el código para invitar.
-        </p>
+      <header className="flex items-center gap-4">
+        <span className="game-glyph-tile size-16 shrink-0 rounded-[21px]" data-game={gameId}>
+          <GameGlyph game={gameId} size={29} />
+        </span>
+        <span className="flex min-w-0 flex-col gap-1.5">
+          <span className="eyebrow">Nueva mesa</span>
+          <h1 className="font-display text-32 leading-display text-hueso">
+            {isPartyGame(gameId) ? `Partida de ${gameTitle(gameId)}` : title}
+          </h1>
+          <span className="text-13 leading-relaxed text-humo">
+            Ajusta la partida y comparte el código.
+          </span>
+        </span>
       </header>
 
       <form className="flex flex-col gap-7" onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="nick" className="text-16 font-semibold text-hueso">
-            Tu apodo
+        <div className="surface-panel flex flex-col gap-2 p-4">
+          <label htmlFor="nick" className="flex items-center gap-2 text-16 font-semibold text-hueso">
+            <span className="icon-disc size-8">
+              <Icon name="person" size={15} />
+            </span>
+            <span>Tu apodo</span>
           </label>
           <input
             id="nick"
@@ -172,7 +182,9 @@ export function CrearForm({ gameId }: CrearFormProps) {
         {lastError ? <p className="text-14 text-brasa">{lastError}</p> : null}
 
         <Button type="submit" loading={submitting}>
-          Crear partida
+          <span className="inline-flex items-center justify-center gap-2">
+            <Icon name="plus" size={18} /> Crear partida
+          </span>
         </Button>
         {nickErrorMessage ? (
           <p id="nick-error" role="alert" className="-mt-4 text-center text-14 text-brasa">

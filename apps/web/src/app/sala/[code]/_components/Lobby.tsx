@@ -9,6 +9,8 @@ import { RoomCode } from '@/components/ui/RoomCode';
 import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
+import { GameGlyph } from '@/components/ui/GameGlyph';
+import { Icon } from '@/components/ui/Icon';
 
 export interface LobbyProps {
   view: PlayerView;
@@ -86,25 +88,32 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col gap-7 px-5">
       <header className="flex flex-col items-center gap-3 text-center">
+        <span
+          className="game-glyph-tile size-14 rounded-[18px]"
+          data-game={view.gameId}
+        >
+          <GameGlyph game={view.gameId} size={26} />
+        </span>
         <span className="eyebrow">Sala creada</span>
-        <h1 className="font-display text-28 leading-display text-hueso">Invita al resto</h1>
-        <p className="max-w-xs text-14 text-humo">
+        <h1 className="font-display text-[30px] leading-display text-hueso">Invita al resto</h1>
+        <p className="max-w-xs text-14 leading-relaxed text-humo">
           Pueden escanear el QR o escribir estas cuatro letras.
         </p>
         <RoomCode code={view.roomCode} />
         <button
           type="button"
           onClick={onReviewRules}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-verde/70 bg-verde/15 px-4 text-13 font-semibold text-crema transition-[border-color,background-color,transform] hover:border-oro/60 hover:bg-verde/25 active:translate-y-0.5"
+          className="glass-button min-h-11 px-4 text-13 font-semibold text-oro"
         >
-          <span className="text-oro" aria-hidden="true">
-            ✓
-          </span>
+          <Icon name="book" size={16} />
           Explicación vista · Repasar reglas
         </button>
       </header>
 
-      <section className="flex flex-col items-center gap-3" aria-label="Invitación a la sala">
+      <section
+        className="surface-panel flex flex-col items-center gap-3 p-4"
+        aria-label="Invitación a la sala"
+      >
         {qrDataUrl ? (
           // Es una data URL generada en el cliente; next/image no puede optimizarla.
           <img
@@ -112,16 +121,24 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
             alt={`Código QR para unirse a la sala ${view.roomCode}`}
             width={184}
             height={184}
-            className="rounded-xl border border-linea bg-white p-1"
+            className="rounded-[20px] border border-linea/70 bg-white p-2 shadow-sm"
           />
         ) : null}
         <Button variant="ghost" onClick={handleCopyLink}>
-          {copied ? 'Enlace copiado' : 'Copiar enlace para entrar'}
+          <span className="inline-flex items-center gap-2">
+            <Icon name={copied ? 'check' : 'share'} size={17} />
+            {copied ? 'Enlace copiado' : 'Copiar enlace para entrar'}
+          </span>
         </Button>
       </section>
 
       <section className="flex flex-col gap-3" aria-live="polite">
-        <h2 className="text-20 font-semibold text-hueso">Ya están dentro</h2>
+        <h2 className="flex items-center gap-2 text-20 font-semibold text-hueso">
+          <span className="icon-disc size-9">
+            <Icon name="users" size={17} />
+          </span>
+          Ya están dentro
+        </h2>
         <ul className="flex flex-col gap-2">
           {view.players.map((player) => (
             <li
@@ -160,7 +177,9 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
       {isHost ? (
         <div className="mt-auto flex flex-col gap-2">
           <Button onClick={handleStart} disabled={!canStart} loading={starting}>
-            Empezar partida
+            <span className="inline-flex items-center gap-2">
+              <Icon name="play" size={18} /> Empezar partida
+            </span>
           </Button>
           {!canStart ? (
             <p className="text-center text-12 text-humo">

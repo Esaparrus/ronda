@@ -3,11 +3,14 @@
 // apodo, sin token: una pantalla no es un jugador.
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { ROOM_CODE_LENGTH } from '@ronda/protocol';
 import { Button } from '@/components/ui/Button';
 import { RoomCodeInput } from '@/components/ui/RoomCodeInput';
+import { Icon } from '@/components/ui/Icon';
+import { RondaMark } from '@/components/ui/RondaMark';
 
 export default function MesaPage() {
   const router = useRouter();
@@ -25,17 +28,26 @@ export default function MesaPage() {
 
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-7 px-5 text-center">
-      <div className="hero-mark" aria-hidden="true">M</div>
+      <Link href="/" className="glass-button absolute left-5 top-[max(20px,env(safe-area-inset-top))] px-3.5 text-14 font-semibold">
+        <Icon name="arrow-left" size={17} /> Inicio
+      </Link>
+      <RondaMark compact />
       <header className="flex flex-col gap-2">
         <span className="eyebrow">Modo tablero</span>
-        <h1 className="font-display text-40 leading-display text-crema">Pantalla central</h1>
-        <p className="text-16 text-humo">Convierte una tablet o tele en la mesa compartida.</p>
+        <h1 className="font-display text-40 leading-display text-hueso">Pantalla central</h1>
+        <p className="text-16 leading-relaxed text-humo">
+          Convierte una tablet o tele en la mesa compartida.
+        </p>
       </header>
       <form className="surface-panel flex w-full flex-col items-center gap-4 p-5" onSubmit={handleSubmit}>
         <p className="text-14 text-humo">Escribe el código de la sala</p>
         <RoomCodeInput value={code} onChange={setCode} />
         {error ? <p className="text-14 text-brasa">{error}</p> : null}
-        <Button type="submit" className="w-full">Mostrar sala</Button>
+        <Button type="submit" className="w-full">
+          <span className="inline-flex items-center justify-center gap-2">
+            <Icon name="screen" size={18} /> Mostrar sala
+          </span>
+        </Button>
       </form>
     </main>
   );

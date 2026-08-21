@@ -11,7 +11,7 @@ export interface PochaCenterTableProps {
 
 export function PochaCenterTable({ trumpCardId, currentTrick, players }: PochaCenterTableProps) {
   return (
-    <div className="h-full w-full rounded-[20%] border border-linea bg-mesa/80 p-2">
+    <div className="mesa-table-content h-full w-full rounded-[20%] p-2">
       <TableTrick
         trumpCardId={trumpCardId}
         currentTrick={currentTrick}

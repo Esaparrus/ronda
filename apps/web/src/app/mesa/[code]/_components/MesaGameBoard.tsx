@@ -17,9 +17,9 @@ export function MesaGameBoard({ view }: MesaGameBoardProps) {
 
   return (
     <main className="flex min-h-dvh flex-1 items-center justify-center p-6">
-      <div className="relative aspect-square w-[min(90vw,80vh)]">
+      <div className="mesa-arena relative aspect-square w-[min(90vw,80vh)]">
         <SeatRing players={view.players} turnPlayerId={view.turnPlayerId} />
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="mesa-center absolute inset-0 flex items-center justify-center">
           <CenterTable
             deckCount={view.deckCount}
             discardCards={visibleDiscardCards}

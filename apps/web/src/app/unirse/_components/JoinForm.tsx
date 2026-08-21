@@ -13,6 +13,7 @@ import { RoomCode } from '@/components/ui/RoomCode';
 import { RoomCodeInput } from '@/components/ui/RoomCodeInput';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
+import { Icon } from '@/components/ui/Icon';
 
 export interface JoinFormProps {
   /** Si llega (enlace/QR, /unirse/[code]), el código va bloqueado. */
@@ -61,7 +62,12 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
   return (
     <form className="surface-panel flex flex-col gap-6 p-5" onSubmit={handleSubmit}>
       <div className="flex flex-col gap-2">
-        <span className="text-16 font-semibold text-hueso">Código de la sala</span>
+        <span className="flex items-center gap-2 text-16 font-semibold text-hueso">
+          <span className="icon-disc size-8">
+            <Icon name="cards" size={15} />
+          </span>
+          Código de la sala
+        </span>
         {lockedCode ? (
           <RoomCode code={lockedCode} />
         ) : (
@@ -73,8 +79,11 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="nick" className="text-16 font-semibold text-hueso">
-          Tu apodo
+        <label htmlFor="nick" className="flex items-center gap-2 text-16 font-semibold text-hueso">
+          <span className="icon-disc size-8">
+            <Icon name="person" size={15} />
+          </span>
+          <span>Tu apodo</span>
         </label>
         <input
           id="nick"

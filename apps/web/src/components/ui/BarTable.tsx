@@ -1,6 +1,6 @@
-// La mesa (P32, contrato §8.6). Es un mueble, no un rectángulo de color:
-// tablero de madera con veta, cuatro tachuelas de latón y un tapete verde
-// hundido con su filete rojo y un palo marcado en cada esquina.
+// Mesa compartida de juego: marco grafito, tapete esmeralda y marcas de la
+// baraja. Conserva el gesto reconocible de una mesa de cartas sin trasladar
+// la antigua estética de madera al resto de la aplicación.
 //
 // Cuadrada y no ovalada a propósito: la mesa ovalada es de casino, y la de
 // bar de barrio es cuadrada, de cuatro patas y con el tablero un poco
@@ -67,7 +67,7 @@ function SuitMark({ suit }: { suit: 'oros' | 'copas' | 'espadas' | 'bastos' }) {
 export function BarTable({ children, className = '' }: BarTableProps) {
   return (
     <div
-      className={`bar-table relative aspect-[340/262] w-full max-w-[340px] rounded-[10px] ${className}`}
+      className={`bar-table relative aspect-[340/262] w-full max-w-[340px] rounded-[28px] ${className}`}
     >
       {STUD_CORNERS.map((pos, i) => (
         <span
@@ -78,12 +78,12 @@ export function BarTable({ children, className = '' }: BarTableProps) {
         />
       ))}
 
-      <div className="bar-felt absolute inset-[13px] flex items-center justify-center gap-4 rounded-[26px]">
+      <div className="bar-felt absolute inset-[13px] flex items-center justify-center gap-4 rounded-[22px]">
         {/* Filete rojo interior: un marco, no un borde del tapete — por eso
          * es un elemento aparte y no un `border` más en .bar-felt. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-[11px] rounded-[17px] border-2"
+          className="pointer-events-none absolute inset-[11px] rounded-[14px] border"
           style={{ borderColor: 'var(--table-edge)' }}
         />
         <span className="absolute left-[17px] top-[15px]">

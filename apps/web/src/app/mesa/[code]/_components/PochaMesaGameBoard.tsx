@@ -14,7 +14,7 @@ export interface PochaMesaGameBoardProps {
 export function PochaMesaGameBoard({ view }: PochaMesaGameBoardProps) {
   return (
     <main className="flex min-h-dvh flex-1 items-center justify-center p-6">
-      <div className="relative aspect-square w-[min(90vw,80vh)]">
+      <div className="mesa-arena relative aspect-square w-[min(90vw,80vh)]">
         <SeatRing
           players={view.players}
           turnPlayerId={view.turnPlayerId}

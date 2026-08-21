@@ -1,4 +1,5 @@
 import type { GameGuide as GameGuideCopy } from '@/lib/game-guides';
+import { Icon } from './Icon';
 
 export interface GameGuideProps {
   guide: GameGuideCopy;
@@ -22,33 +23,24 @@ export function GameGuide({
             <span className="eyebrow">En menos de un minuto</span>
             <h2
               id="game-guide-title"
-              className="mt-2 font-display text-28 leading-display text-crema"
+              className="mt-2 font-display text-28 leading-display text-hueso"
             >
               {heading}
             </h2>
           </div>
-          <span className="rounded-full border border-oro/40 bg-oro/10 px-3 py-1 font-mono text-12 text-oro">
+          <span className="meta-chip text-oro">
             {guide.steps.length} pasos
           </span>
         </div>
       ) : null}
 
       <div className="surface-panel relative overflow-hidden p-5">
-        <div
-          className="absolute -right-5 -top-6 font-display text-64 text-oro/10"
-          aria-hidden="true"
-        >
-          ◎
-        </div>
         <div className="relative flex gap-4">
-          <span
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-oro/50 bg-tinta/45 text-20 text-oro"
-            aria-hidden="true"
-          >
-            ◎
+          <span className="icon-disc h-11 w-11 shrink-0">
+            <Icon name="target" size={21} />
           </span>
           <div>
-            <p className="font-mono text-12 uppercase tracking-wider text-oro">El objetivo</p>
+            <p className="text-11 font-bold uppercase tracking-wider text-oro">El objetivo</p>
             <p className="mt-1 text-16 leading-relaxed text-hueso">{guide.objective}</p>
           </div>
         </div>
@@ -57,11 +49,11 @@ export function GameGuide({
       <ol className="flex flex-col gap-3">
         {guide.steps.map((step, index) => (
           <li key={step.title} className="interactive-surface relative flex gap-4 px-4 py-4">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-oro/55 bg-oro/10 font-display text-20 text-oro shadow-inner">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-madera-clara text-15 font-bold text-oro">
               {index + 1}
             </span>
             <div className="min-w-0 pt-0.5">
-              <h3 className="text-16 font-semibold text-crema">{step.title}</h3>
+              <h3 className="text-16 font-semibold text-hueso">{step.title}</h3>
               <p className="mt-1 text-14 leading-relaxed text-humo">{step.body}</p>
             </div>
           </li>
@@ -69,12 +61,16 @@ export function GameGuide({
       </ol>
 
       <div className="grid gap-3 min-[420px]:grid-cols-2">
-        <div className="rounded-[20px] border border-verde/70 bg-verde/15 p-4">
-          <p className="font-mono text-12 uppercase tracking-wider text-crema">✓ Cómo se gana</p>
+        <div className="rounded-[20px] border border-verde/20 bg-verde/10 p-4">
+          <p className="flex items-center gap-2 text-11 font-bold uppercase tracking-wider text-hueso">
+            <Icon name="trophy" size={16} className="text-verde" /> Cómo se gana
+          </p>
           <p className="mt-2 text-14 leading-relaxed text-hueso">{guide.victory}</p>
         </div>
-        <div className="rounded-[20px] border border-oro/45 bg-oro/10 p-4">
-          <p className="font-mono text-12 uppercase tracking-wider text-oro">! Regla clave</p>
+        <div className="rounded-[20px] border border-oro/15 bg-oro/8 p-4">
+          <p className="flex items-center gap-2 text-11 font-bold uppercase tracking-wider text-oro">
+            <Icon name="lightbulb" size={16} /> Regla clave
+          </p>
           <p className="mt-2 text-14 leading-relaxed text-hueso">{guide.keyRule}</p>
         </div>
       </div>

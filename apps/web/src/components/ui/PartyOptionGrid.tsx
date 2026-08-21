@@ -32,8 +32,8 @@ export function PartyOptionGrid<T extends string | number | boolean>({
               onClick={() => onChange(option.value)}
               className={`min-h-14 rounded-xl border px-2 text-16 font-semibold transition-colors ${
                 selected
-                  ? 'border-brasa bg-brasa text-hueso'
-                  : 'border-linea bg-transparent text-hueso active:bg-mesa'
+                  ? 'border-oro bg-oro text-white shadow-[0_7px_16px_rgb(0_122_255_/_0.2)]'
+                  : 'border-linea/70 bg-mesa/65 text-hueso active:bg-madera-clara'
               }`}
             >
               {option.label}

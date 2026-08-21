@@ -574,7 +574,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 onClick={resolveClipForPlayer}
                 disabled={pendingAction}
                 aria-label="Resolver y responder"
-                className="grid min-h-40 w-40 place-items-center rounded-full border-4 border-oro bg-brasa px-5 text-center text-20 font-bold uppercase tracking-wide text-crema shadow-[0_7px_0_rgba(92,34,28,0.9)] transition-transform active:translate-y-1 active:shadow-[0_3px_0_rgba(92,34,28,0.9)] disabled:cursor-wait disabled:opacity-60"
+                className="primary-action grid min-h-40 w-40 place-items-center rounded-full border-4 border-white/35 px-5 text-center text-20 font-bold uppercase tracking-wide text-white shadow-xl transition-transform active:translate-y-1 active:shadow-lg disabled:cursor-wait disabled:opacity-60"
               >
                 {pendingAction ? '…' : 'Resolver'}
               </button>
@@ -615,7 +615,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
                 onClick={buzz}
                 disabled={pendingAction}
                 aria-label="Pulsar para responder"
-                className="grid min-h-40 w-40 place-items-center rounded-full border-4 border-oro bg-brasa px-5 text-center text-20 font-bold uppercase tracking-wide text-crema shadow-[0_7px_0_rgba(92,34,28,0.9)] transition-transform active:translate-y-1 active:shadow-[0_3px_0_rgba(92,34,28,0.9)] disabled:cursor-wait disabled:opacity-60"
+                className="primary-action grid min-h-40 w-40 place-items-center rounded-full border-4 border-white/35 px-5 text-center text-20 font-bold uppercase tracking-wide text-white shadow-xl transition-transform active:translate-y-1 active:shadow-lg disabled:cursor-wait disabled:opacity-60"
               >
                 {pendingAction ? '…' : '¡La sé!'}
               </button>

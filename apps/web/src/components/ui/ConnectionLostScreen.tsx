@@ -9,10 +9,12 @@
 
 import Link from 'next/link';
 import { Button } from './Button';
+import { RondaMark } from './RondaMark';
 
 export function ConnectionLostScreen() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
+    <main className="app-page flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
+      <RondaMark compact />
       <h1 className="font-display text-28 leading-display text-hueso">
         Sin conexión con el servidor
       </h1>

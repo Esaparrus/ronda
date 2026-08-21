@@ -1,12 +1,14 @@
 import Link from 'next/link';
+import { Icon } from './Icon';
 
 export function BackToGames() {
   return (
     <Link
       href="/juegos"
-      className="inline-flex min-h-12 w-fit items-center rounded-xl border border-linea bg-tinta/25 px-4 text-14 font-semibold text-humo transition-[border-color,color,background-color] hover:border-oro/60 hover:bg-mesa hover:text-hueso"
+      className="glass-button w-fit px-3.5 text-14 font-semibold"
     >
-      ← Volver al menú
+      <Icon name="arrow-left" size={17} />
+      Juegos
     </Link>
   );
 }

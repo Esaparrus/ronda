@@ -17,7 +17,7 @@ export function RoomCode({ code, className = '' }: RoomCodeProps) {
         <div
           key={i}
           aria-hidden="true"
-          className="flex h-14 w-12 items-center justify-center rounded-xl border border-oro/45 bg-tinta/45 font-mono text-28 font-medium text-crema shadow-inner"
+          className="flex h-14 w-12 items-center justify-center rounded-2xl border border-oro/15 bg-oro/8 font-mono text-28 font-semibold text-hueso shadow-sm"
         >
           {char}
         </div>

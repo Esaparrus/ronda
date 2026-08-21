@@ -38,7 +38,7 @@ export function QuantityStepper<T extends number>({
     <fieldset className="flex flex-col gap-2.5">
       <legend className="text-16 font-semibold text-hueso">{legend}</legend>
       <p className="text-12 text-humo">{helperText}</p>
-      <div className="grid grid-cols-[64px_1fr_64px] items-stretch overflow-hidden rounded-2xl border border-linea bg-tinta/45 p-1.5 shadow-inner">
+      <div className="grid grid-cols-[64px_1fr_64px] items-stretch overflow-hidden rounded-2xl border border-white/80 bg-veta/80 p-1 shadow-inner">
         <button
           type="button"
           disabled={disabled || !canDecrease}
@@ -47,12 +47,12 @@ export function QuantityStepper<T extends number>({
             if (previous) onChange(previous.value);
           }}
           aria-label={`Bajar ${legend.toLocaleLowerCase('es')}`}
-          className="grid min-h-14 place-items-center rounded-xl border border-transparent bg-mesa/70 font-mono text-28 leading-none text-hueso transition-[transform,opacity,background-color] active:scale-95 enabled:hover:bg-madera-clara disabled:opacity-25"
+          className="grid min-h-14 place-items-center rounded-[14px] border border-white/80 bg-mesa font-mono text-28 leading-none text-oro shadow-sm transition-[transform,opacity,background-color] active:scale-95 enabled:hover:bg-madera-clara disabled:opacity-25"
         >
           <span aria-hidden="true">−</span>
         </button>
         <div className="flex min-w-0 flex-col items-center justify-center px-2 text-center" aria-live="polite">
-          <span className="font-display text-28 leading-none text-crema">
+          <span className="font-display text-28 leading-none text-hueso">
             {selected?.label ?? value}
           </span>
           {valueSuffix ? (
@@ -67,7 +67,7 @@ export function QuantityStepper<T extends number>({
             if (next) onChange(next.value);
           }}
           aria-label={`Subir ${legend.toLocaleLowerCase('es')}`}
-          className="grid min-h-14 place-items-center rounded-xl border border-transparent bg-mesa/70 font-mono text-28 leading-none text-hueso transition-[transform,opacity,background-color] active:scale-95 enabled:hover:bg-madera-clara disabled:opacity-25"
+          className="grid min-h-14 place-items-center rounded-[14px] border border-white/80 bg-mesa font-mono text-28 leading-none text-oro shadow-sm transition-[transform,opacity,background-color] active:scale-95 enabled:hover:bg-madera-clara disabled:opacity-25"
         >
           <span aria-hidden="true">+</span>
         </button>

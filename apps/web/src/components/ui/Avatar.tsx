@@ -29,7 +29,7 @@ export function Avatar({ name, colorIndex, size = 40, className = '' }: AvatarPr
     <div
       role="img"
       aria-label={name}
-      className={`flex shrink-0 items-center justify-center rounded-full font-display font-bold text-hueso ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full border-2 border-white/80 font-display font-bold text-white shadow-sm ${className}`}
       style={{
         width: size,
         height: size,

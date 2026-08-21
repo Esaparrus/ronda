@@ -35,11 +35,11 @@ const RADIUS = 'clamp(150px, 34vmin, 280px)';
 const THREAD_RADIUS = 'clamp(170px, 38vmin, 310px)';
 
 function seatTransform(angleDeg: number, radius: string): string {
-  return `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${radius}) rotate(${-angleDeg}deg)`;
+  return `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(calc(0px - ${radius})) rotate(${-angleDeg}deg)`;
 }
 
 function threadTransform(angleDeg: number, radius: string): string {
-  return `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${radius})`;
+  return `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(calc(0px - ${radius}))`;
 }
 
 export function SeatRing({ players, turnPlayerId, renderBadge, showScore = true }: SeatRingProps) {
@@ -76,7 +76,7 @@ export function SeatRing({ players, turnPlayerId, renderBadge, showScore = true 
         return (
           <div
             key={p.playerId}
-            className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1"
+            className="mesa-seat absolute left-1/2 top-1/2 flex flex-col items-center gap-1"
             style={{ transform: seatTransform(angle, RADIUS) }}
           >
             <Avatar
@@ -86,8 +86,10 @@ export function SeatRing({ players, turnPlayerId, renderBadge, showScore = true 
               className={p.connected ? '' : 'opacity-40'}
             />
             <span className="text-[clamp(1rem,1.8vw,1.5rem)] text-hueso">{p.nick}</span>
-            <div className="scale-[0.55]">
-              <Pile cards={handBacks} faceDown size="sm" />
+            <div className="flex h-10 w-14 items-center justify-center">
+              <div className="scale-[0.55]">
+                <Pile cards={handBacks} faceDown size="sm" />
+              </div>
             </div>
             {showScore ? (
               <span className="font-mono text-[clamp(1.25rem,2.2vw,2rem)] text-hueso">
@@ -102,7 +104,7 @@ export function SeatRing({ players, turnPlayerId, renderBadge, showScore = true 
       {turnIndex >= 0 ? (
         <div
           aria-hidden="true"
-          className="absolute left-1/2 top-1/2 h-1 w-14 rounded-full bg-brasa"
+          className="absolute left-1/2 top-1/2 h-1 w-14 rounded-full bg-oro shadow-[0_0_18px_rgba(0,122,255,0.48)]"
           style={{
             transform: threadTransform(rotation, THREAD_RADIUS),
             transition: 'transform 250ms ease-out',

@@ -32,8 +32,8 @@ export function PochaBidPicker({ open, roundSize, onConfirm }: PochaBidPickerPro
               onClick={() => setSelected(n)}
               className={`flex h-12 w-12 items-center justify-center rounded-full border font-mono text-16 ${
                 n === selected
-                  ? 'border-brasa bg-brasa text-hueso'
-                  : 'border-linea text-hueso'
+                  ? 'border-oro bg-oro text-white shadow-md'
+                  : 'border-linea bg-mesa/70 text-hueso'
               }`}
             >
               {n}

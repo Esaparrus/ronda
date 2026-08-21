@@ -1,7 +1,7 @@
 // Portada. Contrato P13 / §7: "Crear partida · Unirse · «Volver a la
 // partida X» si hay token guardado". "Crear partida" pasa primero por el
-// catálogo (/juegos): hoy solo hay Chinchón, pero esa ficha es la pantalla
-// del contrato pensada para elegir juego, así que la portada no se la salta.
+// catálogo (/juegos), para que la portada siga siendo una entrada tranquila
+// aunque el catálogo ya reúna muchos juegos.
 //
 // Contrato P17 ("volver a abrir la app horas después... con la opción de
 // descartarla"): cada tarjeta de partida guardada lleva un botón
@@ -11,6 +11,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
+import { RondaMark } from '@/components/ui/RondaMark';
 import { clearToken, listSavedRooms } from '@/lib/token';
 
 export default function Page() {
@@ -28,30 +30,53 @@ export default function Page() {
   }
 
   return (
-    <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-8 px-5 text-center">
-      <header className="flex flex-col items-center gap-4">
-        <div className="hero-mark" aria-hidden="true">R</div>
-        <div className="flex flex-col gap-2">
-          <span className="eyebrow">La baraja de siempre, en cada móvil</span>
-          <h1 className="font-display text-40 leading-display text-crema">Ronda</h1>
-          <p className="mx-auto max-w-xs text-16 text-humo">
-            Montad la mesa en segundos y jugad mirándoos a la cara.
+    <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-7 px-5 text-center">
+      <header className="flex flex-col items-center gap-5">
+        <RondaMark />
+        <div className="flex flex-col gap-2.5">
+          <span className="eyebrow">Juega · comparte · disfruta</span>
+          <h1 className="font-display text-[52px] leading-none text-hueso">Ronda</h1>
+          <p className="mx-auto max-w-sm text-[17px] leading-relaxed text-humo">
+            La mesa de siempre, ahora en cada móvil. Sin cuentas, sin anuncios y sin distraeros de
+            la partida.
           </p>
         </div>
       </header>
 
-      <div className="surface-panel flex w-full flex-col gap-3 p-3">
+      <div className="surface-panel flex w-full flex-col gap-2 p-2">
         <Link
           href="/juegos"
-          className="flex min-h-14 items-center justify-center rounded-2xl border border-brasa bg-brasa px-6 text-16 font-semibold text-crema shadow-lg transition-[transform,filter] hover:brightness-110 active:translate-y-0.5"
+          className="primary-action group flex min-h-[72px] items-center gap-3 rounded-[20px] px-4 text-left transition-[transform,filter]"
         >
-          Crear partida
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/15">
+            <Icon name="plus" size={22} />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-[17px] font-semibold">Crear partida</span>
+            <span className="text-13 text-white/75">Elige un juego y monta la sala</span>
+          </span>
+          <Icon
+            name="arrow-right"
+            size={20}
+            className="transition-transform group-hover:translate-x-0.5"
+          />
         </Link>
         <Link
           href="/unirse"
-          className="flex min-h-14 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-6 text-16 font-semibold text-hueso transition-[transform,border-color,background-color] hover:border-oro/60 hover:bg-mesa active:translate-y-0.5"
+          className="group flex min-h-[66px] items-center gap-3 rounded-[18px] px-4 text-left text-hueso transition-[background-color,transform] hover:bg-madera-clara active:scale-[0.99]"
         >
-          Unirse a una partida
+          <span className="icon-disc size-11 shrink-0">
+            <Icon name="users" size={21} />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-[16px] font-semibold">Unirse a una partida</span>
+            <span className="text-13 text-humo">Entra con el código de la sala</span>
+          </span>
+          <Icon
+            name="arrow-right"
+            size={20}
+            className="text-humo transition-transform group-hover:translate-x-0.5"
+          />
         </Link>
       </div>
 
@@ -59,29 +84,43 @@ export default function Page() {
         <div className="flex w-full flex-col gap-3">
           <span className="eyebrow text-left">Partidas guardadas</span>
           {savedRooms.map((code) => (
-            <div key={code} className="interactive-surface flex items-center gap-2 p-2">
+            <div key={code} className="interactive-surface flex items-center gap-2 p-2.5">
               <Link
                 href={`/sala/${code}`}
-                className="flex min-h-14 flex-1 items-center justify-start rounded-xl px-4 text-left text-16 font-semibold text-hueso"
+                className="flex min-h-14 flex-1 items-center gap-3 rounded-2xl px-2 text-left text-16 font-semibold text-hueso"
               >
-                Volver a la partida {code}
+                <span className="icon-disc size-10 shrink-0">
+                  <Icon name="play" size={18} />
+                </span>
+                <span>
+                  <span className="block text-12 font-medium text-humo">Continuar partida</span>
+                  <span className="font-mono tracking-wider">{code}</span>
+                </span>
               </Link>
               <button
                 type="button"
                 onClick={() => handleDiscard(code)}
                 aria-label={`Descartar la partida ${code}`}
-                className="flex min-h-12 items-center justify-center rounded-xl border border-linea px-3 text-12 text-humo hover:border-brasa hover:text-hueso"
+                className="grid size-11 shrink-0 place-items-center rounded-full text-humo transition-colors hover:bg-brasa/10 hover:text-brasa"
               >
-                Descartar
+                <Icon name="trash" size={18} />
               </button>
             </div>
           ))}
         </div>
       ) : null}
 
-      <p className="font-mono text-12 uppercase tracking-wider text-humo">
-        7 juegos · sin descargar · pensado para móvil
-      </p>
+      <div className="flex flex-wrap items-center justify-center gap-2" aria-label="Características">
+        <span className="meta-chip">
+          <Icon name="cards" size={14} /> 14 juegos
+        </span>
+        <span className="meta-chip">
+          <Icon name="person" size={14} /> Sin registro
+        </span>
+        <span className="meta-chip">
+          <Icon name="sparkles" size={14} /> Pensado para móvil
+        </span>
+      </div>
     </main>
   );
 }

@@ -4,10 +4,12 @@
 // pestaña». La sesión sigue viva en la otra pestaña, pero se permite volver
 // al inicio para que esta pantalla nunca sea un callejón sin salida.
 import Link from 'next/link';
+import { RondaMark } from './RondaMark';
 
 export function InactiveTabScreen() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+    <main className="app-page flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+      <RondaMark compact />
       <p className="text-16 text-hueso">Estás jugando en otra pestaña.</p>
       <p className="text-14 text-humo">
         Cierra esta pestaña o vuelve a la otra para seguir jugando.

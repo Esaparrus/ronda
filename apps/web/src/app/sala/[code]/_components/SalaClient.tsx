@@ -19,6 +19,8 @@ import { Sheet } from '@/components/ui/Sheet';
 import { ConnectionLostScreen } from '@/components/ui/ConnectionLostScreen';
 import { InactiveTabScreen } from '@/components/ui/InactiveTabScreen';
 import { GameBriefing } from '@/components/ui/GameBriefing';
+import { Icon } from '@/components/ui/Icon';
+import { RondaMark } from '@/components/ui/RondaMark';
 import { Lobby } from './Lobby';
 import { GameScreen } from './GameScreen';
 import { RoundEndScreen } from './RoundEndScreen';
@@ -117,13 +119,14 @@ export function SalaClient({ code }: SalaClientProps) {
 
   if (kickedOut) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+      <main className="app-page flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <RondaMark compact />
         <p className="text-16 text-hueso">El anfitrión te ha sacado de la sala.</p>
         <Link
           href="/"
-          className="flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
+          className="primary-action flex min-h-14 items-center justify-center gap-2 rounded-[18px] px-6 text-16 font-semibold text-white"
         >
-          Volver a la portada
+          <Icon name="arrow-left" size={18} /> Volver al inicio
         </Link>
       </main>
     );
@@ -131,7 +134,8 @@ export function SalaClient({ code }: SalaClientProps) {
 
   if (closedReason) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+      <main className="app-page flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <RondaMark compact />
         <p className="text-16 text-hueso">La sala {code} ya no está disponible.</p>
         <p className="text-14 text-humo">
           {closedReason === 'expired'
@@ -140,9 +144,9 @@ export function SalaClient({ code }: SalaClientProps) {
         </p>
         <Link
           href="/juegos"
-          className="flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
+          className="primary-action flex min-h-14 items-center justify-center gap-2 rounded-[18px] px-6 text-16 font-semibold text-white"
         >
-          Crear una partida nueva
+          <Icon name="plus" size={18} /> Crear una partida nueva
         </Link>
         <Link href="/" className="text-14 text-humo underline">
           Volver al inicio
@@ -154,16 +158,18 @@ export function SalaClient({ code }: SalaClientProps) {
   if (!view || roomCode !== code) {
     if (resuming || !resumeAttempted) {
       return (
-        <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <main className="app-page flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+          <RondaMark compact />
           <p className="text-16 text-humo">Entrando en la sala…</p>
         </main>
       );
     }
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+      <main className="app-page flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <RondaMark compact />
         <p className="text-16 text-hueso">No se pudo entrar en la sala {code}.</p>
         {lastError ? <p className="text-14 text-brasa">{lastError}</p> : null}
-        <Link href={`/unirse/${code}`} className="text-14 text-brasa underline">
+        <Link href={`/unirse/${code}`} className="text-14 font-semibold text-oro underline">
           Unirse con un apodo
         </Link>
         <Link href="/" className="text-14 text-humo underline">
@@ -211,26 +217,13 @@ export function SalaClient({ code }: SalaClientProps) {
     >
       <Banner status={connection} className="shrink-0" />
       {isPlaying && !usesIntegratedGameHeader ? (
-        <div className="flex shrink-0 justify-end border-b border-linea bg-tinta/70 px-3 py-1.5">
+        <div className="liquid-glass liquid-glass--strong flex shrink-0 justify-end border-x-0 border-t-0 px-3 py-1.5">
           <button
             type="button"
             onClick={() => setConfirmLeave(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-linea bg-mesa/80 px-3 text-13 font-semibold text-humo transition-[border-color,background-color,color,transform] hover:border-oro/60 hover:bg-madera-clara hover:text-hueso active:translate-y-0.5"
+            className="glass-button !min-h-10 px-3 text-13 font-semibold text-humo"
           >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
-            >
-              <path d="M10 17l-5-5 5-5" />
-              <path d="M5 12h10" />
-              <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
-            </svg>
+            <Icon name="arrow-left" size={16} />
             Salir
           </button>
         </div>

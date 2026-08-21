@@ -36,11 +36,11 @@ export function MusicRegionSelector({ value, onChange }: MusicRegionSelectorProp
               }
               className={`min-h-11 rounded-xl border px-3 text-left text-13 font-semibold transition-colors ${
                 isSelected
-                  ? 'border-oro/70 bg-madera-clara text-crema'
-                  : 'border-linea bg-tinta/35 text-humo hover:bg-mesa hover:text-hueso'
+                  ? 'border-oro bg-oro text-white shadow-sm'
+                  : 'border-linea/70 bg-mesa/65 text-humo hover:bg-madera-clara hover:text-hueso'
               }`}
             >
-              <span aria-hidden="true" className="mr-1.5 text-oro">
+              <span aria-hidden="true" className={isSelected ? 'mr-1.5 text-white' : 'mr-1.5 text-oro'}>
                 {isSelected ? '✓' : '○'}
               </span>
               {option.label}

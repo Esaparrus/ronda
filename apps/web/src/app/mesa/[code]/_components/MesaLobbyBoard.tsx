@@ -9,6 +9,7 @@ import type { TableView } from '@ronda/protocol';
 import { RoomCode } from '@/components/ui/RoomCode';
 import { Avatar } from '@/components/ui/Avatar';
 import { Pill } from '@/components/ui/Pill';
+import { GameGlyph } from '@/components/ui/GameGlyph';
 
 export interface MesaLobbyBoardProps {
   view: TableView;
@@ -36,6 +37,12 @@ export function MesaLobbyBoard({ view }: MesaLobbyBoardProps) {
   return (
     <main className="app-page flex min-h-dvh flex-1 flex-col items-center justify-center gap-10 px-10 py-8">
       <div className="surface-panel flex flex-col items-center gap-6 px-12 py-8">
+        <span
+          className="game-glyph-tile size-20 rounded-[26px]"
+          data-game={view.gameId}
+        >
+          <GameGlyph game={view.gameId} size={38} />
+        </span>
         <span className="eyebrow">Mesa abierta</span>
         <p className="text-[clamp(1.25rem,2.2vw,1.75rem)] text-humo">Uniros desde el móvil</p>
         <RoomCode code={view.roomCode} className="scale-[1.8]" />
@@ -45,14 +52,14 @@ export function MesaLobbyBoard({ view }: MesaLobbyBoardProps) {
             alt={`Código QR para unirse a la sala ${view.roomCode}`}
             width={220}
             height={220}
-            className="mt-8 rounded-lg border border-linea"
+            className="mt-8 rounded-[24px] border border-linea/70 bg-white p-2 shadow-lg"
           />
         ) : null}
       </div>
 
       <ul className="flex flex-wrap items-center justify-center gap-6">
         {view.players.map((p) => (
-          <li key={p.playerId} className="flex flex-col items-center gap-2">
+          <li key={p.playerId} className="surface-panel flex min-w-40 flex-col items-center gap-2 p-4">
             <Avatar
               name={p.nick}
               colorIndex={p.colorIndex}

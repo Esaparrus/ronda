@@ -1,17 +1,15 @@
 /*
- * Tokens de diseño de Ronda. Contrato §8 completo. FUENTE ÚNICA de color y
- * tipografía: ningún fichero de src/app o src/components escribe un literal
- * #rrggbb (lo prohíbe una regla de ESLint) — todo pasa por los tokens de aquí,
- * mapeados a utilidades de Tailwind con @theme (bg-mesa, text-hueso,
- * border-linea, text-brasa...).
+ * Sistema visual de Ronda.
  *
- * Concepto (§8, reescrito en P32): un bar de barrio español. Madera oscura con
- * veta, latón gastado, hule y tapete verde de mesa camilla, y los tantos
- * contados con garbanzos. La regla que había aquí antes —«nada de verde tapete
- * ni dorado de casino»— la revoca P32 por decisión de Unai: lo que se
- * descartaba era el CASINO, y una mesa de bar con su tapete no lo es. Lo que
- * sigue prohibido es el brillo de casino: nada de neón, nada de dorado
- * metálico, nada de fieltro saturado.
+ * La interfaz se apoya en tres niveles, como una aplicación de iOS:
+ * 1. un lienzo claro y silencioso para el contenido;
+ * 2. superficies opacas para fichas, formularios y lectura;
+ * 3. Liquid Glass solo en navegación, acciones flotantes y barras.
+ *
+ * Los nombres históricos de algunos tokens se conservan para no romper las
+ * utilidades existentes, pero su significado visual ya no es “bar de madera”.
+ * El único espacio deliberadamente oscuro es la mesa de juego, ahora resuelta
+ * en verde esmeralda y grafito.
  */
 @import 'tailwindcss';
 
@@ -25,25 +23,27 @@
 }
 
 @theme {
-  /* --- Colores (contrato §8.1, paleta de bar reescrita en P32) ----------- */
-  --color-tinta: #241509; /* fondo general: madera oscura */
-  --color-veta: #2a180c; /* segunda banda de la veta de la madera */
-  --color-mesa: #3b2417; /* superficies, tarjetas de interfaz */
-  --color-linea: #5a4530; /* bordes */
-  --color-hueso: #efe3c8; /* texto principal y cara de las cartas */
-  --color-humo: #b8a688; /* texto secundario */
-  --color-brasa: #8c2f22; /* acción principal */
-  --color-oro: #c9982e; /* latón: acento, bordes vivos, foco */
-  --color-teja: #a33b2a; /* asiento 1 */
-  --color-verde: #3f6b4f; /* asiento 2 (verde botella) */
-  --color-azul: #5b6b7a; /* asiento 4 (gris pizarra) */
-  --color-violeta: #7a5a8c; /* asiento 5 (Pocha, hasta 6 jugadores) */
-  --color-rosa: #9c4f5e; /* asiento 6 (Pocha, hasta 6 jugadores) */
-  --color-gris: #707070; /* asiento 7 (modos sociales) */
-  --color-cobre: #b56a42; /* asiento 8 (La Ronda) */
-  --color-crema: #fff7e6; /* brillo cálido para estados y texto destacado */
-  --color-madera-clara: #55331f; /* superficie elevada sobre --color-mesa */
-  --color-alerta: #d78335; /* aviso de temporizador antes del estado crítico */
+  /* --- Colores de interfaz ---------------------------------------------- */
+  --color-tinta: #f2f4f8; /* fondo agrupado, equivalente al lienzo del sistema */
+  --color-veta: #e8edf5; /* segunda profundidad del lienzo */
+  --color-mesa: #ffffff; /* superficie de contenido */
+  --color-linea: #d7dce5; /* separadores y contornos tranquilos */
+  --color-hueso: #16181d; /* texto principal */
+  --color-humo: #697386; /* texto secundario */
+  --color-brasa: #ff3b30; /* peligro, error y desconexión */
+  --color-oro: #007aff; /* acento interactivo de Ronda */
+  --color-acento: #007aff;
+  --color-carbon: #16181d;
+  --color-teja: #ff6b61; /* asiento 1 */
+  --color-verde: #34c759; /* asiento 2 y estado correcto */
+  --color-azul: #5ac8fa; /* asiento 4 */
+  --color-violeta: #af52de; /* asiento 5 */
+  --color-rosa: #ff2d55; /* asiento 6 */
+  --color-gris: #8e8e93; /* asiento 7 */
+  --color-cobre: #ff9f0a; /* asiento 8 */
+  --color-crema: #16181d; /* alias histórico para texto destacado */
+  --color-madera-clara: #eef4ff; /* selección y superficie elevada */
+  --color-alerta: #ff9f0a; /* aviso de temporizador */
 
   /* Fichas del juego Colores. No reutilizan los tonos apagados de los
    * asientos: azul y gris deben distinguirse de un vistazo. El nombre y un
@@ -60,20 +60,15 @@
   --color-ficha-marron: #784a2b;
   --color-ficha-gris: #747b84;
 
-  /* --- Mesa de bar (P32) -------------------------------------------------
-   * La mesa es un mueble, no un rectángulo de color: tablero de madera con
-   * veta, cuatro tachuelas de latón en las esquinas y un tapete verde
-   * hundido con su filete rojo. Los tonos van aquí y no en el componente
-   * porque la regla de ESLint prohíbe literales de color fuera de este
-   * fichero. */
-  --table-wood-a: #6b4726; /* canto iluminado del tablero */
-  --table-wood-b: #4a2f18;
-  --table-wood-c: #3b2417; /* canto en sombra */
-  --table-felt-a: #335640; /* tapete, centro */
-  --table-felt-b: #213a2c; /* tapete, borde */
-  --table-edge: #7a2a20; /* filete rojo del tapete y marcas de palo */
-  --table-stud-a: #e0b85a; /* tachuela de latón, brillo */
-  --table-stud-b: #8a6a2a; /* tachuela de latón, sombra */
+  /* --- Mesa de juego: grafito + tapete esmeralda ------------------------ */
+  --table-wood-a: #39413f;
+  --table-wood-b: #252c2a;
+  --table-wood-c: #151a19;
+  --table-felt-a: #147a55;
+  --table-felt-b: #0c5038;
+  --table-edge: #8ee3c2;
+  --table-stud-a: #f5f7f8;
+  --table-stud-b: #899390;
 
   /* Garbanzo: los tantos se cuentan con legumbre, como en la mesa de al
    * lado. Tres paradas porque una legumbre tiene brillo, cuerpo y sombra;
@@ -98,20 +93,31 @@
   --card-back-a: #2b2140; /* trama diagonal del dorso, tono 1 */
   --card-back-b: #372a52; /* trama diagonal del dorso, tono 2 */
 
-  /* --- Tipografías (contrato §8.2, display reescrito en P32) -------------
-   * Domine en vez de Familjen Grotesk: una serif de peso alto lee como el
-   * rótulo pintado de un bar, y la grotesca leía como una app. El cuerpo y
-   * los datos no cambian. */
-  --font-display: var(--font-domine), ui-serif, Georgia, serif;
-  --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, monospace;
+  /* Las pilas del sistema hacen que Ronda se sienta nativa en Apple sin
+   * descargar una imitación de SF Pro. */
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: 'SFMono-Regular', ui-monospace, Menlo, Monaco, Consolas, monospace;
 
-  /* --- Escala tipográfica (contrato §8.2): 12/14/16/20/28/40/64 ---------- */
+  /* Escala completa. Los tamaños pequeños sostienen datos densos de mesa;
+   * los títulos siguen la jerarquía compacta de iOS. */
+  --text-9: 9px;
+  --text-10: 10px;
+  --text-11: 11px;
   --text-12: 12px;
+  --text-13: 13px;
   --text-14: 14px;
+  --text-15: 15px;
   --text-16: 16px;
+  --text-18: 18px;
   --text-20: 20px;
+  --text-22: 22px;
+  --text-24: 24px;
   --text-28: 28px;
+  --text-32: 32px;
+  --text-36: 36px;
   --text-40: 40px;
   --text-64: 64px;
 
@@ -134,7 +140,12 @@
   --seat-6: var(--color-gris);
   --seat-7: var(--color-cobre);
 
-  color-scheme: dark;
+  color-scheme: light;
+  --glass-fill: rgb(255 255 255 / 0.7);
+  --glass-fill-strong: rgb(255 255 255 / 0.84);
+  --glass-stroke: rgb(255 255 255 / 0.82);
+  --glass-shadow: 0 18px 46px rgb(47 61 89 / 0.14);
+  --surface-shadow: 0 10px 30px rgb(47 61 89 / 0.08);
 }
 
 html,
@@ -153,18 +164,16 @@ body.game-active {
   overscroll-behavior: none;
 }
 
-/* El fondo es la propia madera de la mesa: una veta de 6px (P32). El
- * `background-attachment: fixed` evita que la veta se mueva al hacer scroll,
- * que es lo que la delataría como rayas en vez de como madera. */
 body {
   background-color: var(--color-tinta);
   background-image:
     radial-gradient(
-      ellipse at 50% 0%,
-      color-mix(in srgb, var(--color-oro) 8%, transparent),
-      transparent 60%
+      circle at 18% -6%,
+      color-mix(in srgb, var(--color-oro) 15%, transparent),
+      transparent 30rem
     ),
-    repeating-linear-gradient(180deg, var(--color-tinta) 0 3px, var(--color-veta) 3px 6px);
+    radial-gradient(circle at 92% 30%, rgb(175 82 222 / 0.09), transparent 28rem),
+    linear-gradient(180deg, #f8faff 0%, var(--color-tinta) 42%, #eef1f6 100%);
   background-attachment: fixed;
   color: var(--color-hueso);
   font-family: var(--font-sans);
@@ -173,6 +182,11 @@ body {
   text-rendering: optimizeLegibility;
   min-width: 320px;
   overscroll-behavior-y: none;
+}
+
+.font-display {
+  font-weight: 750;
+  letter-spacing: -0.035em;
 }
 
 button,
@@ -189,21 +203,18 @@ summary {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-oro) 35%, transparent);
-  color: var(--color-crema);
+  background: color-mix(in srgb, var(--color-oro) 24%, transparent);
+  color: var(--color-hueso);
 }
 
-/* Foco de teclado siempre visible (contrato §8.5.6). Va en latón y no en
- * brasa desde P32: sobre madera oscura el rojo apagado no se despega y el
- * latón sí. */
 :focus-visible {
-  outline: 2px solid var(--color-oro);
-  outline-offset: 2px;
+  outline: 3px solid color-mix(in srgb, var(--color-oro) 72%, white);
+  outline-offset: 3px;
 }
 
 /* --- Mueble de la mesa (P32) ---------------------------------------------
- * Tres capas apiladas, como el mueble de verdad: tablero de madera, filete
- * rojo y tapete hundido. Están aquí y no en el componente porque son
+ * Tres capas apiladas: marco grafito, filete y tapete hundido. Están aquí
+ * y no en el componente porque son
  * degradados con literales de color, que solo pueden vivir en este fichero.
  */
 .bar-table {
@@ -214,23 +225,77 @@ summary {
     var(--table-wood-c)
   );
   box-shadow:
-    inset 0 2px 4px rgb(255 255 255 / 0.08),
-    inset 0 -6px 10px rgb(0 0 0 / 0.5),
-    0 10px 26px rgb(0 0 0 / 0.45);
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -5px 12px rgb(0 0 0 / 0.34),
+    0 18px 42px rgb(20 36 31 / 0.24);
 }
 
 .bar-felt {
   background: radial-gradient(ellipse at 50% 35%, var(--table-felt-a), var(--table-felt-b) 75%);
-  border: 2px dashed color-mix(in srgb, var(--table-edge) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--table-edge) 46%, transparent);
   box-shadow:
-    inset 0 3px 10px rgb(0 0 0 / 0.35),
-    0 4px 10px rgb(0 0 0 / 0.35);
+    inset 0 2px 12px rgb(0 0 0 / 0.26),
+    0 2px 8px rgb(0 0 0 / 0.24);
 }
 
 /* Tachuela de latón de una esquina del tablero. */
 .bar-stud {
   background: radial-gradient(circle at 35% 30%, var(--table-stud-a), var(--table-stud-b));
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.42);
+}
+
+/* Pantalla compartida /mesa. El tapete ocupa la capa de contenido; los
+ * asientos flotan encima como controles de una app, sin perder la lectura
+ * de mesa física a distancia. */
+.mesa-arena::before {
+  position: absolute;
+  inset: 14% 7%;
+  content: '';
+  border: 12px solid var(--table-wood-b);
+  border-radius: 22%;
+  background:
+    radial-gradient(circle at 50% 28%, rgb(255 255 255 / 0.1), transparent 34%),
+    radial-gradient(ellipse at 50% 40%, var(--table-felt-a), var(--table-felt-b) 78%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.2),
+    inset 0 2px 20px rgb(0 0 0 / 0.25),
+    0 24px 54px rgb(24 42 52 / 0.22);
+}
+
+.mesa-arena::after {
+  position: absolute;
+  inset: calc(14% + 22px) calc(7% + 22px);
+  pointer-events: none;
+  content: '';
+  border: 1px solid color-mix(in srgb, var(--table-edge) 66%, white);
+  border-radius: 19%;
+  opacity: 0.78;
+}
+
+.mesa-seat {
+  z-index: 2;
+  min-width: 110px;
+  padding: 8px 10px;
+  border: 1px solid rgb(255 255 255 / 0.78);
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.72);
+  box-shadow:
+    inset 0 1px 0 white,
+    0 12px 30px rgb(42 55 80 / 0.14);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  backdrop-filter: blur(22px) saturate(1.3);
+}
+
+.mesa-table-content {
+  border: 1px solid rgb(255 255 255 / 0.22);
+  background: rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+@media (max-width: 600px) {
+  .mesa-center {
+    transform: scale(0.62);
+  }
 }
 
 /* Escoba puede acumular bastantes cartas cuando varias jugadas no recogen.
@@ -308,12 +373,12 @@ summary {
   background:
     radial-gradient(
       circle at 15% 12%,
-      color-mix(in srgb, var(--color-oro) 10%, transparent),
+      color-mix(in srgb, var(--color-oro) 9%, transparent),
       transparent 26rem
     ),
     radial-gradient(
       circle at 90% 82%,
-      color-mix(in srgb, var(--color-brasa) 10%, transparent),
+      rgb(175 82 222 / 0.07),
       transparent 28rem
     );
   content: '';
@@ -326,29 +391,21 @@ summary {
 }
 
 .surface-panel {
-  border: 1px solid color-mix(in srgb, var(--color-linea) 82%, var(--color-oro));
-  border-radius: 20px;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--color-madera-clara) 86%, transparent),
-    var(--color-mesa)
-  );
+  border: 1px solid rgb(255 255 255 / 0.9);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--color-mesa) 94%, transparent);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.05),
-    0 12px 30px rgb(0 0 0 / 0.2);
+    inset 0 0 0 1px rgb(31 48 76 / 0.04),
+    var(--surface-shadow);
 }
 
 .interactive-surface {
-  border: 1px solid color-mix(in srgb, var(--color-linea) 82%, var(--color-oro));
-  border-radius: 18px;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--color-madera-clara) 78%, transparent),
-    var(--color-mesa)
-  );
+  border: 1px solid rgb(31 48 76 / 0.08);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-mesa) 96%, transparent);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.04),
-    0 8px 22px rgb(0 0 0 / 0.16);
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 8px 24px rgb(47 61 89 / 0.07);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -357,19 +414,25 @@ summary {
 }
 
 .interactive-surface:hover {
-  border-color: color-mix(in srgb, var(--color-oro) 62%, var(--color-linea));
+  border-color: color-mix(in srgb, var(--color-oro) 38%, var(--color-linea));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    0 14px 34px rgb(47 61 89 / 0.11);
+  transform: translateY(-1px);
 }
 
 .interactive-surface:active {
-  transform: translateY(2px) scale(0.995);
+  transform: translateY(1px) scale(0.99);
 }
 
 .form-control {
   min-height: 56px;
-  border: 1px solid var(--color-linea);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--color-mesa) 90%, var(--color-tinta));
-  box-shadow: inset 0 2px 5px rgb(0 0 0 / 0.16);
+  border: 1px solid color-mix(in srgb, var(--color-linea) 88%, white);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.88);
+  box-shadow:
+    inset 0 1px 2px rgb(31 48 76 / 0.05),
+    0 1px 0 rgb(255 255 255 / 0.72);
   color: var(--color-hueso);
   transition:
     border-color 160ms ease,
@@ -379,19 +442,282 @@ summary {
 .form-control:focus {
   border-color: var(--color-oro);
   box-shadow:
-    inset 0 2px 5px rgb(0 0 0 / 0.12),
-    0 0 0 3px color-mix(in srgb, var(--color-oro) 18%, transparent);
+    inset 0 1px 2px rgb(31 48 76 / 0.04),
+    0 0 0 4px color-mix(in srgb, var(--color-oro) 14%, transparent);
   outline: none;
 }
 
 .eyebrow {
   color: var(--color-oro);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
   line-height: 1;
   text-transform: uppercase;
+}
+
+/* Capa funcional flotante. El relleno, el blur y el brillo interior se
+ * mantienen juntos para que el “cristal” no se convierta en transparencia
+ * gratuita sobre el contenido. */
+.liquid-glass {
+  border: 1px solid var(--glass-stroke);
+  background: var(--glass-fill);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    inset 0 -1px 0 rgb(83 100 127 / 0.06),
+    var(--glass-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.45);
+  backdrop-filter: blur(24px) saturate(1.45);
+}
+
+.liquid-glass--strong {
+  background: var(--glass-fill-strong);
+}
+
+.glass-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgb(255 255 255 / 0.82);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.68);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    0 7px 22px rgb(47 61 89 / 0.1);
+  color: var(--color-hueso);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.glass-button:hover {
+  background: rgb(255 255 255 / 0.88);
+  box-shadow:
+    inset 0 1px 0 white,
+    0 10px 26px rgb(47 61 89 / 0.13);
+}
+
+.glass-button:active {
+  transform: scale(0.96);
+}
+
+.primary-action {
+  border: 1px solid color-mix(in srgb, var(--color-oro) 78%, white);
+  background: linear-gradient(180deg, #1788ff, var(--color-oro));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    0 10px 24px rgb(0 122 255 / 0.24);
+  color: white;
+}
+
+.primary-action:hover {
+  filter: brightness(1.04);
+}
+
+.primary-action:active {
+  filter: brightness(0.96);
+  transform: scale(0.985);
+}
+
+.secondary-action {
+  border: 1px solid color-mix(in srgb, var(--color-oro) 15%, var(--color-linea));
+  background: color-mix(in srgb, var(--color-oro) 8%, white);
+  color: var(--color-oro);
+}
+
+.icon-disc {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-oro) 11%, white);
+  color: var(--color-oro);
+}
+
+.ronda-app-icon {
+  position: relative;
+  display: grid;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.64);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 24% 10%, rgb(255 255 255 / 0.42), transparent 30%),
+    linear-gradient(145deg, #42a5ff 0%, #087dff 42%, #6558e8 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.62),
+    inset 0 -1px 0 rgb(41 35 152 / 0.24),
+    0 20px 44px rgb(0 105 235 / 0.24);
+  color: white;
+  transform: translateZ(0);
+}
+
+.ronda-app-icon::after {
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.22), transparent 42%);
+  content: '';
+  pointer-events: none;
+}
+
+.ronda-app-icon svg {
+  position: relative;
+  z-index: 1;
+  width: 76%;
+  height: 76%;
+  stroke: currentColor;
+  stroke-width: 3;
+}
+
+.ronda-app-icon svg path:last-child {
+  fill: currentColor;
+  stroke: none;
+}
+
+.ronda-app-icon--compact {
+  width: 58px;
+  height: 58px;
+  border-radius: 17px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.58),
+    0 10px 24px rgb(0 105 235 / 0.2);
+}
+
+.game-glyph-tile {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.78);
+  background: linear-gradient(145deg, #2997ff, #007aff);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.42),
+    0 8px 18px rgb(0 122 255 / 0.2);
+  color: white;
+}
+
+.game-glyph-tile[data-game='laronda'] {
+  background: linear-gradient(145deg, #ffb340, #ff8a00);
+  box-shadow: 0 8px 18px rgb(255 149 0 / 0.2);
+}
+
+.game-glyph-tile[data-game='chinchon'],
+.game-glyph-tile[data-game='cinquillo'] {
+  background: linear-gradient(145deg, #34c759, #159843);
+  box-shadow: 0 8px 18px rgb(31 174 82 / 0.2);
+}
+
+.game-glyph-tile[data-game='pocha'],
+.game-glyph-tile[data-game='brisca'],
+.game-glyph-tile[data-game='tute'] {
+  background: linear-gradient(145deg, #ff5d55, #e8322a);
+  box-shadow: 0 8px 18px rgb(255 59 48 / 0.2);
+}
+
+.game-glyph-tile[data-game='mus'] {
+  background: linear-gradient(145deg, #af52de, #7d39b5);
+  box-shadow: 0 8px 18px rgb(175 82 222 / 0.2);
+}
+
+.game-glyph-tile[data-game='escoba'],
+.game-glyph-tile[data-game='sieteymedia'] {
+  background: linear-gradient(145deg, #ffd24c, #ff9f0a);
+  box-shadow: 0 8px 18px rgb(255 159 10 / 0.2);
+}
+
+.game-glyph-tile[data-game='orden'],
+.game-glyph-tile[data-game='mayoria'] {
+  background: linear-gradient(145deg, #5e6ce8, #5856d6);
+  box-shadow: 0 8px 18px rgb(88 86 214 / 0.2);
+}
+
+.game-glyph-tile[data-game='colores'] {
+  background: linear-gradient(145deg, #ff5e8a, #af52de 54%, #007aff);
+  box-shadow: 0 8px 18px rgb(175 82 222 / 0.2);
+}
+
+.game-glyph-tile[data-game='escala'] {
+  background: linear-gradient(145deg, #64d2ff, #168dc7);
+  box-shadow: 0 8px 18px rgb(90 200 250 / 0.2);
+}
+
+.game-glyph-tile[data-game='musical'] {
+  background: linear-gradient(145deg, #ff375f, #bf5af2);
+  box-shadow: 0 8px 18px rgb(255 55 95 / 0.2);
+}
+
+.game-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.game-card::after {
+  position: absolute;
+  right: -28px;
+  bottom: -44px;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-oro) 5%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.meta-chip {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgb(31 48 76 / 0.07);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.62);
+  padding: 4px 10px;
+  color: var(--color-humo);
+  font-size: 12px;
+  font-weight: 600;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.rules-page {
+  position: relative;
+  isolation: isolate;
+  padding-top: max(28px, env(safe-area-inset-top));
+  padding-bottom: max(36px, env(safe-area-inset-bottom));
+}
+
+.rules-section {
+  border: 1px solid rgb(31 48 76 / 0.07);
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.88);
+  box-shadow: var(--surface-shadow);
+  padding: 18px;
+}
+
+.rules-example {
+  border: 0;
+  border-left: 3px solid var(--color-oro);
+  border-radius: 0 14px 14px 0;
+  background: color-mix(in srgb, var(--color-oro) 7%, white);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass,
+  .liquid-glass--strong,
+  .glass-button,
+  .game-hand,
+  .action-dock {
+    background: var(--color-mesa);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 /* Espera de arranque: una baraja pequeña y una frase breve mantienen el tono
@@ -409,10 +735,10 @@ summary {
   background:
     radial-gradient(
       circle at 50% 43%,
-      color-mix(in srgb, var(--color-mesa) 78%, transparent),
+      color-mix(in srgb, var(--color-oro) 12%, transparent),
       transparent 17rem
     ),
-    repeating-linear-gradient(180deg, var(--color-tinta) 0 3px, var(--color-veta) 3px 6px);
+    linear-gradient(180deg, #f8faff, var(--color-tinta));
   isolation: isolate;
   overscroll-behavior: none;
 }
@@ -440,8 +766,8 @@ summary {
   width: 70px;
   height: 96px;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--color-oro) 76%, var(--color-linea));
-  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 0.52);
+  border-radius: 16px;
   background:
     linear-gradient(
       135deg,
@@ -455,13 +781,13 @@ summary {
       color-mix(in srgb, var(--color-oro) 14%, transparent) 46% 54%,
       transparent 55%
     ),
-    var(--color-brasa);
+    var(--color-oro);
   background-size: 18px 18px;
   box-shadow:
-    inset 0 0 0 4px var(--color-madera-clara),
-    inset 0 0 0 5px color-mix(in srgb, var(--color-oro) 58%, transparent),
-    0 12px 24px rgb(0 0 0 / 0.3);
-  color: var(--color-crema);
+    inset 0 0 0 4px rgb(255 255 255 / 0.15),
+    inset 0 1px 0 rgb(255 255 255 / 0.42),
+    0 18px 34px rgb(0 122 255 / 0.22);
+  color: white;
   transform-origin: 50% 92%;
 }
 
@@ -470,9 +796,9 @@ summary {
   width: 30px;
   height: 38px;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--color-crema) 68%, transparent);
+  border: 1px solid rgb(255 255 255 / 0.72);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-brasa) 82%, var(--color-tinta));
+  background: rgb(255 255 255 / 0.14);
   font-family: var(--font-display);
   font-size: 20px;
   font-weight: 700;
@@ -492,7 +818,7 @@ summary {
 
 .create-loading-message {
   min-height: 1.75rem;
-  color: var(--color-crema);
+  color: var(--color-hueso);
   font-family: var(--font-display);
   font-size: 20px;
   text-align: center;
@@ -590,16 +916,16 @@ summary {
   width: 82px;
   height: 82px;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--color-oro) 70%, var(--color-linea));
-  border-radius: 28px;
-  background: linear-gradient(145deg, var(--color-madera-clara), var(--color-mesa));
+  border: 1px solid rgb(255 255 255 / 0.76);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(231 241 255 / 0.9));
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 14px 34px rgb(0 0 0 / 0.28);
+    inset 0 1px 0 white,
+    0 16px 38px rgb(47 61 89 / 0.14);
   color: var(--color-oro);
   font-family: var(--font-display);
   font-size: 38px;
-  transform: rotate(-3deg);
+  transform: rotate(-2deg);
 }
 
 .hero-mark::after {
@@ -609,15 +935,15 @@ summary {
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  background: var(--color-brasa);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brasa) 20%, transparent);
+  background: var(--color-oro);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-oro) 13%, transparent);
   content: '';
 }
 
 .game-shell {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--color-tinta) 52%, transparent),
+    color-mix(in srgb, white 44%, transparent),
     transparent 18rem
   );
 }
@@ -637,8 +963,8 @@ summary {
 
 .turn-announcement__word {
   margin: 0;
-  color: var(--color-crema);
-  filter: drop-shadow(0 2px 0 var(--color-brasa)) drop-shadow(0 4px 4px rgb(0 0 0 / 0.42));
+  color: white;
+  filter: drop-shadow(0 2px 0 var(--color-oro)) drop-shadow(0 7px 16px rgb(0 0 0 / 0.32));
   font-family: 'Girthquake', 'Arial Rounded MT Bold', 'Arial Black', var(--font-sans);
   font-size: clamp(2.7rem, 13vw, 6rem);
   font-weight: 900;
@@ -647,7 +973,7 @@ summary {
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
-  -webkit-text-stroke: clamp(1px, 0.2vw, 2px) var(--color-oro);
+  -webkit-text-stroke: clamp(1px, 0.2vw, 2px) color-mix(in srgb, var(--color-oro) 78%, white);
   transform-origin: center;
   animation: turn-announcement-write 1s cubic-bezier(0.22, 0.75, 0.25, 1) both;
 }
@@ -692,13 +1018,13 @@ summary {
 }
 
 .game-hand {
-  border-top: 1px solid color-mix(in srgb, var(--color-oro) 24%, var(--color-linea));
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-mesa) 68%, transparent),
-    var(--color-tinta)
-  );
-  box-shadow: 0 -10px 24px rgb(0 0 0 / 0.18);
+  border-top: 1px solid rgb(255 255 255 / 0.76);
+  background: var(--glass-fill-strong);
+  box-shadow:
+    inset 0 1px 0 white,
+    0 -12px 34px rgb(47 61 89 / 0.1);
+  -webkit-backdrop-filter: blur(26px) saturate(1.45);
+  backdrop-filter: blur(26px) saturate(1.45);
 }
 
 /* `overflow-x: auto` también crea un recorte vertical por especificación.
@@ -973,7 +1299,7 @@ summary {
   overflow: hidden;
   border: 1px solid var(--color-linea);
   border-radius: 9px;
-  background: color-mix(in srgb, var(--color-tinta) 45%, transparent);
+  background: rgb(255 255 255 / 0.16);
   padding: 3px 5px;
 }
 
@@ -1014,9 +1340,13 @@ summary {
 }
 
 .action-dock {
-  border-top: 1px solid color-mix(in srgb, var(--color-linea) 78%, var(--color-oro));
-  background: color-mix(in srgb, var(--color-tinta) 88%, transparent);
-  box-shadow: 0 -8px 22px rgb(0 0 0 / 0.14);
+  border-top: 1px solid rgb(255 255 255 / 0.76);
+  background: var(--glass-fill-strong);
+  box-shadow:
+    inset 0 1px 0 white,
+    0 -10px 30px rgb(47 61 89 / 0.1);
+  -webkit-backdrop-filter: blur(26px) saturate(1.45);
+  backdrop-filter: blur(26px) saturate(1.45);
   padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
@@ -1042,7 +1372,7 @@ summary {
   gap: 6px;
   border: 1px solid color-mix(in srgb, var(--color-oro) 38%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-tinta) 70%, transparent);
+  background: rgb(255 255 255 / 0.72);
   color: var(--color-humo);
   font-size: 12px;
   padding: 4px 10px;
@@ -1056,12 +1386,12 @@ summary {
 }
 
 .timer-track {
-  background: color-mix(in srgb, var(--color-tinta) 65%, transparent);
-  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.4);
+  background: color-mix(in srgb, var(--color-linea) 72%, white);
+  box-shadow: inset 0 1px 2px rgb(31 48 76 / 0.14);
 }
 
 .timer-fill {
-  background: linear-gradient(90deg, var(--color-verde), var(--color-oro));
+  background: linear-gradient(90deg, #30d158, var(--color-oro));
   box-shadow: 0 0 10px color-mix(in srgb, var(--color-oro) 30%, transparent);
 }
 
@@ -1088,26 +1418,26 @@ summary {
     var(--color-oro) 0 var(--range-value),
     color-mix(in srgb, var(--color-linea) 68%, var(--color-tinta)) var(--range-value) 100%
   );
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.34);
+  box-shadow: inset 0 1px 2px rgb(31 48 76 / 0.16);
 }
 
 .ronda-range::-webkit-slider-thumb {
   width: 34px;
   height: 34px;
   appearance: none;
-  border: 3px solid var(--color-crema);
+  border: 3px solid white;
   border-radius: 50%;
-  background: var(--color-brasa);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+  background: var(--color-oro);
+  box-shadow: 0 5px 14px rgb(0 122 255 / 0.28);
 }
 
 .ronda-range::-moz-range-thumb {
   width: 28px;
   height: 28px;
-  border: 3px solid var(--color-crema);
+  border: 3px solid white;
   border-radius: 50%;
-  background: var(--color-brasa);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+  background: var(--color-oro);
+  box-shadow: 0 5px 14px rgb(0 122 255 / 0.28);
 }
 
 @keyframes timer-urgent {
@@ -1344,8 +1674,8 @@ summary {
 /* Hueco de garbanzo aún sin ganar: la sombra del que falta. */
 .garbanzo-vacio {
   border-radius: 60% 60% 55% 55%;
-  background: color-mix(in srgb, var(--color-tinta) 70%, transparent);
-  box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.5);
+  background: rgb(22 24 29 / 0.15);
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.25);
 }
 
 /* Entrada de una carta al descarte. La postura final vive en el envoltorio
@@ -1401,7 +1731,9 @@ summary {
   align-items: center;
   gap: 0.875rem;
   border: 1px solid var(--color-linea);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
+  background: rgb(255 255 255 / 0.82);
+  box-shadow: var(--surface-shadow);
   padding: 0.875rem 1rem;
   animation: musical-feedback-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }

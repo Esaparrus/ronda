@@ -29,7 +29,7 @@ export function SegmentedControl<T extends string | number | boolean>({
     <fieldset className="flex flex-col gap-2.5">
       <legend className="text-16 font-semibold text-hueso">{legend}</legend>
       <p className="text-12 text-humo">{helperText}</p>
-      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-linea bg-tinta/45 p-1.5 shadow-inner">
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-white/80 bg-veta/80 p-1 shadow-inner">
         {options.map((opt) => {
           const selected = opt.value === value;
           return (
@@ -40,8 +40,8 @@ export function SegmentedControl<T extends string | number | boolean>({
               onClick={() => onChange(opt.value)}
               className={`min-h-12 flex-1 rounded-xl border px-3 text-14 font-semibold transition-[transform,background-color,border-color,color] active:scale-[0.98] ${
                 selected
-                  ? 'border-oro/70 bg-madera-clara text-crema shadow-sm'
-                  : 'border-transparent bg-transparent text-humo hover:bg-mesa hover:text-hueso'
+                  ? 'border-white/90 bg-mesa text-hueso shadow-sm'
+                  : 'border-transparent bg-transparent text-humo hover:bg-mesa/55 hover:text-hueso'
               }`}
             >
               {opt.label}

@@ -270,7 +270,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
                   onClick={() => toggleColor(color.name)}
                   className={`min-h-20 rounded-2xl border-2 px-2 text-14 font-semibold shadow-md transition-[transform,filter,border-color] active:scale-95 ${
                     color.className
-                  } ${color.darkText ? 'text-tinta' : 'text-hueso'} ${
+                  } ${color.darkText ? 'text-carbon' : 'text-white'} ${
                     checked
                       ? 'border-oro ring-2 ring-oro ring-offset-2 ring-offset-tinta'
                       : 'border-linea'
@@ -387,7 +387,7 @@ function ColorChip({ color }: { color: string }) {
     <span
       className={`inline-flex items-center gap-1 rounded-full border border-hueso/30 px-2 py-1 text-12 font-semibold ${
         option.className
-      } ${option.darkText ? 'text-tinta' : 'text-hueso'}`}
+      } ${option.darkText ? 'text-carbon' : 'text-white'}`}
     >
       <span aria-hidden="true">{option.symbol}</span>
       {option.name}

@@ -20,9 +20,9 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'border border-brasa bg-brasa text-crema shadow-lg hover:brightness-110',
-  ghost: 'border border-linea bg-mesa/65 text-hueso hover:border-oro/60 hover:bg-madera-clara',
-  danger: 'border border-brasa/80 bg-brasa/10 text-hueso hover:bg-brasa/20',
+  primary: 'primary-action',
+  ghost: 'secondary-action hover:bg-madera-clara',
+  danger: 'border border-brasa/20 bg-brasa/10 text-brasa hover:bg-brasa/15',
 };
 
 export function Button({
@@ -40,7 +40,7 @@ export function Button({
       type="button"
       aria-busy={loading || undefined}
       disabled={isDisabled}
-      className={`min-h-14 rounded-2xl px-6 text-16 font-semibold transition-[transform,filter,opacity,border-color,background-color] duration-150 active:translate-y-0.5 active:scale-[0.99] ${VARIANT_CLASSES[variant]} ${
+      className={`min-h-14 rounded-[18px] px-6 text-16 font-semibold transition-[transform,filter,opacity,border-color,background-color,box-shadow] duration-150 active:scale-[0.985] ${VARIANT_CLASSES[variant]} ${
         isDisabled ? 'cursor-not-allowed opacity-45' : ''
       } ${className}`}
       {...rest}

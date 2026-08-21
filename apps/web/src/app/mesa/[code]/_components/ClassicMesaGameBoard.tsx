@@ -23,7 +23,7 @@ export function ClassicMesaGameBoard({ view }: { view: ClassicTableView }) {
 
   return (
     <main className="flex min-h-dvh flex-1 items-center justify-center p-6">
-      <div className="relative aspect-square w-[min(92vw,84vh)]">
+      <div className="mesa-arena relative aspect-square w-[min(92vw,84vh)]">
         <SeatRing
           players={view.players}
           turnPlayerId={view.turnPlayerId}
@@ -44,7 +44,7 @@ export function ClassicMesaGameBoard({ view }: { view: ClassicTableView }) {
           }
         />
 
-        <section className="absolute inset-[15%] flex flex-col items-center justify-center gap-2 rounded-[18%] border border-linea bg-mesa/80 p-[clamp(0.6rem,1.5vw,1rem)]">
+        <section className="mesa-table-content absolute inset-[15%] flex flex-col items-center justify-center gap-2 rounded-[18%] p-[clamp(0.6rem,1.5vw,1rem)]">
           <div className="absolute left-1/2 top-2 z-20 -translate-x-1/2">
             <Pill className="whitespace-nowrap text-[clamp(0.7rem,1vw,0.9rem)]">
               {TITLE[view.gameId]} · {publicCardCount} en mesa

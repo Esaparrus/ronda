@@ -111,7 +111,7 @@ export function TableSeat({
         </div>
         {info && !stats ? <span className="font-mono text-12 text-humo">{info}</span> : null}
         {isYou ? (
-          <span className="inline-flex shrink-0 items-center rounded-full bg-oro px-2 py-[3px] font-mono text-12 font-semibold leading-none tracking-wider text-tinta">
+          <span className="inline-flex shrink-0 items-center rounded-full bg-oro px-2 py-[3px] font-mono text-12 font-semibold leading-none tracking-wider text-white">
             TÚ
           </span>
         ) : null}

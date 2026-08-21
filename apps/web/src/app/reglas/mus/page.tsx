@@ -4,6 +4,7 @@
 // sí es variante -- ocho reyes, juegos de la vaca, cuánto vale el punto -- se
 // nombra como tal al final.
 import Link from 'next/link';
+import { Icon } from '@/components/ui/Icon';
 
 interface Section {
   title: string;
@@ -56,19 +57,26 @@ const SECTIONS: Section[] = [
 
 export default function ReglasMusPage() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-8 px-6 py-10">
+    <main className="app-page rules-page mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-5">
       <header className="flex flex-col gap-2">
+        <Link href="/juegos/mus" className="glass-button mb-3 w-fit px-3.5 text-14 font-semibold">
+          <Icon name="arrow-left" size={17} /> Mus
+        </Link>
+        <span className="eyebrow">Guía completa</span>
         <h1 className="font-display text-40 leading-display text-hueso">Reglas del Mus</h1>
         <p className="text-16 text-humo">4 jugadores, por parejas · 30–60 min</p>
       </header>
 
-      <div className="flex flex-col gap-6">
-        {SECTIONS.map((section) => (
-          <section key={section.title} className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
+        {SECTIONS.map((section, index) => (
+          <section key={section.title} className="rules-section flex flex-col gap-2">
+            <span className="text-11 font-bold uppercase tracking-wider text-oro">
+              {String(index + 1).padStart(2, '0')}
+            </span>
             <h2 className="text-20 font-semibold text-hueso">{section.title}</h2>
-            <p className="text-16 text-hueso">{section.body}</p>
+            <p className="text-15 leading-relaxed text-hueso">{section.body}</p>
             {section.example ? (
-              <p className="rounded-md border border-linea bg-mesa p-3 text-14 text-humo">
+              <p className="rules-example p-3 text-14 leading-relaxed text-humo">
                 Ejemplo: {section.example}
               </p>
             ) : null}
@@ -86,9 +94,9 @@ export default function ReglasMusPage() {
 
       <Link
         href="/crear/mus"
-        className="mt-auto flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
+        className="primary-action mt-auto flex min-h-14 items-center justify-center gap-2 rounded-[18px] px-6 text-16 font-semibold text-white"
       >
-        Crear partida
+        <Icon name="plus" size={18} /> Crear partida
       </Link>
     </main>
   );

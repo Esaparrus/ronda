@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { isInstalledApp } from '@/lib/app-platform';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -48,19 +49,20 @@ export function InstallAppPrompt(): React.ReactNode {
 
   return (
     <aside
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-center gap-3 rounded-lg border border-linea bg-mesa p-3 shadow-lg"
+      className="liquid-glass liquid-glass--strong fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-center gap-3 rounded-[24px] p-3"
       aria-label="Instalar Ronda"
     >
-      <p className="flex-1 text-14 text-hueso">Instala Ronda para abrirla como una aplicación.</p>
-      <Button onClick={() => void handleInstall()} className="shrink-0 px-4">
+      <p className="min-w-0 flex-1 text-14 font-medium text-hueso">Instala Ronda como app.</p>
+      <Button onClick={() => void handleInstall()} className="!min-h-11 shrink-0 !rounded-[15px] px-4">
         Instalar
       </Button>
       <button
         type="button"
         onClick={() => setInstallEvent(null)}
-        className="min-h-14 shrink-0 px-2 text-14 text-humo underline"
+        aria-label="Ahora no"
+        className="grid size-11 shrink-0 place-items-center rounded-full text-humo transition-colors hover:bg-tinta hover:text-hueso"
       >
-        Ahora no
+        <Icon name="xmark" size={18} />
       </button>
     </aside>
   );

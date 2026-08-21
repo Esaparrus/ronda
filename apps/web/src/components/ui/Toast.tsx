@@ -22,7 +22,7 @@ export function Toast({ message, onDismiss, durationMs = DEFAULT_DURATION_MS }: 
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-x-0 bottom-6 z-50 mx-auto w-fit max-w-[90vw] rounded-lg border border-linea bg-mesa px-4 py-3 text-14 text-hueso shadow-lg"
+      className="liquid-glass liquid-glass--strong fixed inset-x-0 bottom-6 z-50 mx-auto w-fit max-w-[90vw] rounded-2xl px-4 py-3 text-14 font-medium text-hueso"
     >
       {message}
     </div>

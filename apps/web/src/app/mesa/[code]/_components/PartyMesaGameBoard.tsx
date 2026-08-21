@@ -87,7 +87,7 @@ function ColoresMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'c
                   key={color}
                   className={`rounded-2xl border-2 border-hueso/40 px-5 py-3 text-20 font-semibold ${
                     MESA_COLOR_CLASSES[color] ?? 'bg-mesa'
-                  } ${LIGHT_COLOR_NAMES.has(color) ? 'text-tinta' : 'text-hueso'}`}
+                  } ${LIGHT_COLOR_NAMES.has(color) ? 'text-carbon' : 'text-white'}`}
                 >
                   {color}
                 </span>

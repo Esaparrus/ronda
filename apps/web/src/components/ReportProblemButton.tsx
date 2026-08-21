@@ -47,7 +47,7 @@ export function ReportProblemButton() {
         aria-label="Enviar alerta de bloqueo al equipo de desarrollo"
         aria-busy={reporting}
         title="¿Algo se ha quedado bloqueado? Enviar alerta"
-        className="fixed right-3 top-16 z-40 grid h-11 w-11 place-items-center rounded-full border border-linea bg-tinta/85 text-humo shadow-lg backdrop-blur-sm transition-[border-color,color,opacity,transform] hover:border-oro/60 hover:text-hueso active:scale-95 disabled:cursor-wait disabled:opacity-70"
+        className="liquid-glass fixed right-3 top-16 z-40 grid h-11 w-11 place-items-center rounded-full text-humo transition-[border-color,color,opacity,transform] hover:text-oro active:scale-95 disabled:cursor-wait disabled:opacity-70"
       >
         {reporting ? (
           <span

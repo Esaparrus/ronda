@@ -2,7 +2,9 @@ import Link from 'next/link';
 import type { GameId } from '@ronda/protocol';
 import { GAME_GUIDES } from '@/lib/game-guides';
 import { BackToGames } from './BackToGames';
+import { GameGlyph } from './GameGlyph';
 import { GameGuide } from './GameGuide';
+import { Icon } from './Icon';
 
 export interface GameIntroAction {
   href: string;
@@ -34,7 +36,6 @@ export function GameIntro({
   summary,
   note,
   rulesHref,
-  mark = title.slice(0, 1),
   primaryAction,
   secondaryAction,
 }: GameIntroProps) {
@@ -45,63 +46,82 @@ export function GameIntro({
     <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col gap-7 px-5">
       <BackToGames />
       <header className="flex items-center gap-4">
-        <span className="hero-mark h-[74px] w-[74px] shrink-0 text-32" aria-hidden="true">
-          {mark}
+        <span
+          className="game-glyph-tile size-[74px] shrink-0 rounded-[23px]"
+          data-game={slug}
+        >
+          <GameGlyph game={slug} size={34} />
         </span>
         <span className="flex min-w-0 flex-col gap-1">
           <span className="eyebrow">{kind}</span>
-          <h1 className="font-display text-40 leading-display text-crema">{title}</h1>
-          <span className="flex flex-wrap gap-2 pt-1 text-12 text-humo">
-            <span className="rounded-full border border-linea bg-tinta/30 px-2.5 py-1">
+          <h1 className="font-display text-40 leading-display text-hueso">{title}</h1>
+          <span className="flex flex-wrap gap-1.5 pt-1 text-12 text-humo">
+            <span className="meta-chip !min-h-7 !px-2.5">
+              <Icon name="users" size={13} />
               {players}
             </span>
-            <span className="rounded-full border border-linea bg-tinta/30 px-2.5 py-1">
+            <span className="meta-chip !min-h-7 !px-2.5">
+              <Icon name="clock" size={13} />
               {duration}
             </span>
           </span>
         </span>
       </header>
 
-      <section className="surface-panel p-5">
-        <p className="text-16 leading-relaxed text-hueso">{summary}</p>
+      <section className="surface-panel flex gap-3 p-5">
+        <span className="icon-disc size-10 shrink-0">
+          <Icon name="info" size={18} />
+        </span>
+        <p className="pt-0.5 text-16 leading-relaxed text-hueso">{summary}</p>
       </section>
 
       <GameGuide guide={guide} />
 
       {note ? (
-        <p className="rounded-2xl border border-linea bg-tinta/35 p-4 text-14 text-humo">{note}</p>
+        <p className="rounded-[20px] border border-linea/70 bg-mesa/70 p-4 text-14 leading-relaxed text-humo">
+          {note}
+        </p>
       ) : null}
 
       <div className="mt-auto flex flex-col gap-3 pt-2">
         <Link
           href={mainAction.href}
-          className={
-            primaryAction
-              ? 'interactive-surface flex min-h-20 flex-col justify-center gap-1 border-brasa bg-brasa/20 px-5'
-              : 'flex min-h-14 items-center justify-center rounded-2xl border border-brasa bg-brasa px-6 text-16 font-semibold text-crema shadow-lg transition-[transform,filter] hover:brightness-110 active:translate-y-0.5'
-          }
+          className="primary-action group flex min-h-[68px] items-center gap-3 rounded-[20px] px-5 transition-[transform,filter]"
         >
-          <span className="text-16 font-semibold text-crema">{mainAction.label}</span>
-          {mainAction.description ? (
-            <span className="text-13 text-humo">{mainAction.description}</span>
-          ) : null}
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/15">
+            <Icon name={primaryAction ? 'play' : 'plus'} size={18} />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-16 font-semibold text-white">{mainAction.label}</span>
+            {mainAction.description ? (
+              <span className="text-13 text-white/75">{mainAction.description}</span>
+            ) : null}
+          </span>
+          <Icon name="arrow-right" size={18} className="transition-transform group-hover:translate-x-0.5" />
         </Link>
         {secondaryAction ? (
           <Link
             href={secondaryAction.href}
-            className="interactive-surface flex min-h-20 flex-col justify-center gap-1 px-5"
+            className="interactive-surface group flex min-h-20 items-center gap-3 px-5"
           >
-            <span className="text-16 font-semibold text-hueso">{secondaryAction.label}</span>
-            {secondaryAction.description ? (
-              <span className="text-13 text-humo">{secondaryAction.description}</span>
-            ) : null}
+            <span className="icon-disc size-9 shrink-0">
+              <Icon name="users" size={18} />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-16 font-semibold text-hueso">{secondaryAction.label}</span>
+              {secondaryAction.description ? (
+                <span className="text-13 text-humo">{secondaryAction.description}</span>
+              ) : null}
+            </span>
+            <Icon name="arrow-right" size={18} className="text-humo transition-transform group-hover:translate-x-0.5" />
           </Link>
         ) : null}
         {rulesHref ? (
           <Link
             href={rulesHref}
-            className="min-h-12 py-3 text-center text-14 text-oro underline decoration-oro/50 underline-offset-4"
+            className="glass-button min-h-12 px-4 text-14 font-semibold text-oro"
           >
+            <Icon name="book" size={17} />
             Ver las reglas completas
           </Link>
         ) : null}

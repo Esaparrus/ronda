@@ -140,7 +140,7 @@ export function MusicYearRangeControl({ yearFrom, yearTo, onChange }: MusicYearR
           onPointerUp={handlePointerEnd}
           onPointerCancel={handlePointerEnd}
           onKeyDown={(event) => handleKeyDown('from', event)}
-          className="absolute top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-crema bg-oro shadow-[0_2px_8px_rgba(0,0,0,0.35)] outline-none ring-oro/50 focus-visible:ring-4"
+          className="absolute top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-oro shadow-lg outline-none ring-oro/50 focus-visible:ring-4"
           style={{ left: `${fromPercent}%`, zIndex: safeFrom === safeTo ? 2 : 3 }}
         />
         <button
@@ -156,7 +156,7 @@ export function MusicYearRangeControl({ yearFrom, yearTo, onChange }: MusicYearR
           onPointerUp={handlePointerEnd}
           onPointerCancel={handlePointerEnd}
           onKeyDown={(event) => handleKeyDown('to', event)}
-          className="absolute top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-crema bg-brasa shadow-[0_2px_8px_rgba(0,0,0,0.35)] outline-none ring-brasa/50 focus-visible:ring-4"
+          className="absolute top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-violeta shadow-lg outline-none ring-violeta/50 focus-visible:ring-4"
           style={{ left: `${toPercent}%`, zIndex: 2 }}
         />
       </div>
@@ -171,8 +171,8 @@ export function MusicYearRangeControl({ yearFrom, yearTo, onChange }: MusicYearR
               onClick={() => onChange(preset.from, preset.to)}
               className={`min-h-10 rounded-full border px-3 text-12 font-semibold transition-colors ${
                 selected
-                  ? 'border-oro/70 bg-madera-clara text-crema'
-                  : 'border-linea bg-tinta/45 text-humo hover:bg-mesa hover:text-hueso'
+                  ? 'border-oro bg-oro text-white shadow-sm'
+                  : 'border-linea/70 bg-mesa/65 text-humo hover:bg-madera-clara hover:text-hueso'
               }`}
             >
               {preset.label}

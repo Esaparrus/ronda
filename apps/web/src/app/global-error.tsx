@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { logClientError } from '@/lib/logger';
 import { useIncidentReport } from '@/lib/useIncidentReport';
 import { emptyDiagnosticContext } from '@/lib/diagnostics';
+import { RondaMark } from '@/components/ui/RondaMark';
 
 export default function GlobalError({
   error,
@@ -22,7 +23,8 @@ export default function GlobalError({
   return (
     <html lang="es">
       <body className="bg-tinta font-sans text-hueso">
-        <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
+        <main className="app-page flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
+          <RondaMark compact />
           <h1 className="font-display text-28 leading-display text-hueso">Algo ha fallado</h1>
           <p className="text-16 text-humo">La incidencia se ha guardado. Prueba a continuar.</p>
           {incidentId ? <p className="font-mono text-14 text-oro">Código {incidentId}</p> : null}
