@@ -17,14 +17,14 @@ export default function MatizPage() {
       secondaryAction={{
         href: '/juegos/matiz/solo',
         label: 'Jugar individual',
-        description: 'Cinco dibujos para mejorar tu ojo.',
+        description: 'Diez dibujos para mejorar tu ojo.',
       }}
       toolAction={{
         href: '/juegos/matiz/preparar',
         label: 'Preparar tus imágenes',
         description: 'Sube una imagen y genera su máscara automáticamente.',
       }}
-      note="Incluye cuatro clásicos —Popeye, Félix, Krazy Kat y Little Nemo— además de tres dibujos originales. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima."
+      note="Diez retos con escenas de animación y dibujos originales. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima, y la consigna solo indica la zona que debes igualar."
     />
   );
 }

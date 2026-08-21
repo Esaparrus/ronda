@@ -15,29 +15,41 @@ const ARTWORK = {
     image: '/games/matiz/popeye-camiseta-base.png',
     mask: '/games/matiz/popeye-camiseta-mask.png',
   },
-  'felix-silueta': {
-    image: '/games/matiz/felix-1930.svg',
-    mask: '/games/matiz/felix-1930.svg',
+  'humpty-pantalon': {
+    image: '/games/matiz/humpty-pantalon-base.png',
+    mask: '/games/matiz/humpty-pantalon-mask.png',
   },
-  'krazy-ladrillo': {
-    image: '/games/matiz/krazy-ladrillo-base.png',
-    mask: '/games/matiz/krazy-ladrillo-mask.png',
+  'zhenya-vestido': {
+    image: '/games/matiz/zhenya-vestido-base.png',
+    mask: '/games/matiz/zhenya-vestido-mask.png',
   },
-  'little-nemo-carrete': {
-    image: '/games/matiz/little-nemo-carrete-base.png',
-    mask: '/games/matiz/little-nemo-carrete-mask.png',
+  'porky-tambor': {
+    image: '/games/matiz/porky-tambor-base.png',
+    mask: '/games/matiz/porky-tambor-mask.png',
   },
-  'sol-de-verano': {
-    image: '/games/matiz/sol-de-verano.svg',
-    mask: '/games/matiz/sol-de-verano-mask.svg',
+  'hunky-hocico': {
+    image: '/games/matiz/hunky-hocico-base.png',
+    mask: '/games/matiz/hunky-hocico-mask.png',
   },
-  'gato-luna': {
-    image: '/games/matiz/gato-luna.svg',
-    mask: '/games/matiz/gato-luna-mask.svg',
+  'robot-retro': {
+    image: '/games/matiz/robot-retro-base.svg',
+    mask: '/games/matiz/robot-retro-mask.svg',
   },
-  'monstruo-fruta': {
-    image: '/games/matiz/monstruo-fruta.svg',
-    mask: '/games/matiz/monstruo-fruta-mask.svg',
+  'gato-astral': {
+    image: '/games/matiz/gato-astral-base.svg',
+    mask: '/games/matiz/gato-astral-mask.svg',
+  },
+  'monstruo-pizza': {
+    image: '/games/matiz/monstruo-pizza-base.svg',
+    mask: '/games/matiz/monstruo-pizza-mask.svg',
+  },
+  'cohete-color': {
+    image: '/games/matiz/cohete-color-base.svg',
+    mask: '/games/matiz/cohete-color-mask.svg',
+  },
+  'logo-rayo': {
+    image: '/games/matiz/logo-rayo-base.svg',
+    mask: '/games/matiz/logo-rayo-mask.svg',
   },
 } as const;
 
@@ -51,7 +63,7 @@ export interface MatizArtworkProps {
 }
 
 export function MatizArtwork({ challengeId, color, targetHex = null, className = '' }: MatizArtworkProps) {
-  const art = ARTWORK[challengeId as MatizChallengeId] ?? ARTWORK['sol-de-verano'];
+  const art = ARTWORK[challengeId as MatizChallengeId] ?? ARTWORK['popeye-camiseta'];
   const fill = targetHex ?? color;
 
   return (
@@ -286,7 +298,7 @@ export function MatizSoloGame() {
   const [score, setScore] = useState(0);
   const [scores, setScores] = useState<number[]>([]);
   const challenge = MATIZ_CHALLENGES[roundIndex % MATIZ_CHALLENGES.length] ?? MATIZ_CHALLENGES[0];
-  const finished = roundIndex >= 5;
+  const finished = roundIndex >= MATIZ_CHALLENGES.length;
 
   function confirm() {
     const points = scoreMatizColor(color, challenge.targetHex);
@@ -314,8 +326,8 @@ export function MatizSoloGame() {
       <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-5 text-center">
         <span className="text-56">🎨</span>
         <span className="eyebrow">Partida individual terminada</span>
-        <h1 className="font-display text-40 leading-display text-hueso">{score}/500 puntos</h1>
-        <p className="text-16 leading-relaxed text-humo">Tu media ha sido {Math.round(score / 5)} por reto.</p>
+        <h1 className="font-display text-40 leading-display text-hueso">{score}/1000 puntos</h1>
+        <p className="text-16 leading-relaxed text-humo">Tu media ha sido {Math.round(score / MATIZ_CHALLENGES.length)} por reto.</p>
         <div className="flex flex-wrap justify-center gap-2">
           {scores.map((points, index) => <span key={index} className="rounded-full bg-oro/10 px-3 py-1 font-mono text-13 text-oro">R{index + 1} · {points}</span>)}
         </div>
@@ -331,7 +343,7 @@ export function MatizSoloGame() {
           <span className="eyebrow">Partida individual</span>
           <h1 className="mt-1 font-display text-32 leading-display text-hueso">Matiz</h1>
         </div>
-        <span className="rounded-full bg-mesa px-3 py-2 font-mono text-13 text-humo shadow-sm">{roundIndex + 1}/5 · {score} pts</span>
+        <span className="rounded-full bg-mesa px-3 py-2 font-mono text-13 text-humo shadow-sm">{roundIndex + 1}/{MATIZ_CHALLENGES.length} · {score} pts</span>
       </header>
       <section className="surface-panel flex flex-col gap-1 p-4 text-center">
         <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">{challenge.title}</span>

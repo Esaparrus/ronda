@@ -1,4 +1,4 @@
-/** Retos incluidos en el MVP de Matiz.
+/** Retos incluidos en el catálogo de Matiz.
  *
  * El color correcto vive en el contrato compartido para que el motor pueda
  * puntuar de forma determinista. La interfaz no lo muestra hasta revelar la
@@ -8,44 +8,62 @@ export const MATIZ_CHALLENGES = [
   {
     id: 'popeye-camiseta',
     title: 'Popeye',
-    subtitle: 'Devuelve el rojo de su camiseta',
+    subtitle: 'Pon el color del cuello de Popeye',
     targetHex: '#ed4754',
   },
   {
-    id: 'felix-silueta',
-    title: 'Félix el Gato',
-    subtitle: 'Completa el negro de su silueta',
-    targetHex: '#111111',
+    id: 'humpty-pantalon',
+    title: 'Humpty Dumpty',
+    subtitle: 'Pon el color de su pantalón',
+    targetHex: '#c94b12',
   },
   {
-    id: 'krazy-ladrillo',
-    title: 'Krazy Kat',
-    subtitle: 'Completa el negro de sus ladrillos',
-    targetHex: '#0a0a0a',
+    id: 'zhenya-vestido',
+    title: 'Zhenya',
+    subtitle: 'Pon el color de su vestido',
+    targetHex: '#c02f25',
   },
   {
-    id: 'little-nemo-carrete',
-    title: 'Little Nemo',
-    subtitle: 'Devuelve el amarillo del carrete',
-    targetHex: '#fdf570',
+    id: 'porky-tambor',
+    title: 'Porky',
+    subtitle: 'Pon el color del tambor',
+    targetHex: '#a0a59a',
   },
   {
-    id: 'sol-de-verano',
-    title: 'El cartero solar',
-    subtitle: 'Devuelve el color de su visera',
-    targetHex: '#f4c542',
+    id: 'hunky-hocico',
+    title: 'Hunky & Spunky',
+    subtitle: 'Pon el color del hocico',
+    targetHex: '#c47e68',
   },
   {
-    id: 'gato-luna',
-    title: 'La gata de la luna',
-    subtitle: 'Completa el color de su jersey',
-    targetHex: '#de6b4e',
+    id: 'robot-retro',
+    title: 'Robot retro',
+    subtitle: 'Pon el color de la visera',
+    targetHex: '#5ad5e6',
   },
   {
-    id: 'monstruo-fruta',
-    title: 'El monstruo de fruta',
-    subtitle: 'Acierta con el color de su barriga',
-    targetHex: '#62b866',
+    id: 'gato-astral',
+    title: 'Gato astral',
+    subtitle: 'Pon el color del collar',
+    targetHex: '#f2c94c',
+  },
+  {
+    id: 'monstruo-pizza',
+    title: 'Monstruo pizza',
+    subtitle: 'Pon el color de la barriga',
+    targetHex: '#ff6d6d',
+  },
+  {
+    id: 'cohete-color',
+    title: 'Cohete color',
+    subtitle: 'Pon el color de la ventanilla',
+    targetHex: '#67d8e4',
+  },
+  {
+    id: 'logo-rayo',
+    title: 'Logo Rayo',
+    subtitle: 'Pon el color de la franja',
+    targetHex: '#fff0b2',
   },
 ] as const;
 

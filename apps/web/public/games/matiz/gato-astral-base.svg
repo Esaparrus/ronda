@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="620" viewBox="0 0 800 620">
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111b3e"/>
+      <stop offset="1" stop-color="#273a75"/>
+    </linearGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c56ee7"/>
+      <stop offset="1" stop-color="#7951c8"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="620" rx="48" fill="url(#night)"/>
+  <circle cx="124" cy="126" r="46" fill="#f7df92" opacity=".92"/>
+  <circle cx="108" cy="111" r="46" fill="#111b3e"/>
+  <path d="M630 106l8 20 22 2-17 14 5 22-18-11-19 11 6-22-17-14 22-2zM678 436l6 16 17 1-13 11 4 17-14-9-15 9 5-17-13-11 17-1z" fill="#f7df92"/>
+  <circle cx="168" cy="460" r="7" fill="#75e4d6"/>
+  <circle cx="644" cy="282" r="8" fill="#ff8cb2"/>
+  <ellipse cx="401" cy="522" rx="192" ry="33" fill="#080d25" opacity=".48"/>
+  <path d="M250 258L212 118l111 94Q400 177 477 212l111-94-39 143q19 65-24 130-49 75-124 75t-124-75q-43-65-27-133Z" fill="url(#fur)" stroke="#12152d" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M288 286q44-48 91 0M421 286q47-48 91 0" fill="none" stroke="#12152d" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="326" cy="292" r="15" fill="#f7df92" stroke="#12152d" stroke-width="9"/>
+  <circle cx="474" cy="292" r="15" fill="#f7df92" stroke="#12152d" stroke-width="9"/>
+  <path d="M382 330q18 16 36 0" fill="none" stroke="#12152d" stroke-width="11" stroke-linecap="round"/>
+  <path d="M328 355Q400 394 472 355L455 421Q400 454 345 421Z" fill="none" stroke="#12152d" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M277 350l-112-25M277 377l-122 9M523 350l112-25M523 377l122 9" stroke="#f7df92" stroke-width="8" stroke-linecap="round"/>
+</svg>

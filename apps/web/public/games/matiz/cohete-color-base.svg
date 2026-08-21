@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="620" viewBox="0 0 800 620">
+  <defs>
+    <linearGradient id="space" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c2355"/>
+      <stop offset="1" stop-color="#723c72"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe46d"/>
+      <stop offset="1" stop-color="#f15c68"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="620" rx="48" fill="url(#space)"/>
+  <circle cx="125" cy="150" r="7" fill="#fff1a7"/>
+  <circle cx="680" cy="125" r="9" fill="#fff1a7"/>
+  <circle cx="650" cy="480" r="6" fill="#66e2d1"/>
+  <path d="M155 386l-42 26M645 286l47-25M170 250l30-24" stroke="#66e2d1" stroke-width="8" stroke-linecap="round"/>
+  <path d="M400 124Q515 210 500 408H300Q285 210 400 124Z" fill="#f5f0db" stroke="#151a38" stroke-width="14"/>
+  <path d="M300 349l-100 94q-14 14 7 18h101M500 349l100 94q14 14-7 18H492" fill="#f15c68" stroke="#151a38" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M348 405q52 46 104 0l42 91q-94 72-188 0Z" fill="url(#flame)" stroke="#151a38" stroke-width="14" stroke-linejoin="round"/>
+  <circle cx="400" cy="278" r="67" fill="none" stroke="#151a38" stroke-width="14"/>
+  <path d="M356 202q44-54 88 0" fill="none" stroke="#f15c68" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="368" cy="273" r="12" fill="#151a38"/>
+  <circle cx="432" cy="273" r="12" fill="#151a38"/>
+  <path d="M375 310q25 20 50 0" fill="none" stroke="#151a38" stroke-width="9" stroke-linecap="round"/>
+</svg>
