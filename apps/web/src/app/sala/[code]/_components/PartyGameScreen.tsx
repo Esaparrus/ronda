@@ -680,6 +680,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
         players={view.players}
         turnPlayerId={party.cluePlayerId}
         myPlayerId={me.playerId}
+        groups={party.groups ?? undefined}
         renderInfo={(player) => {
           const group = party.groups?.find((candidate) => candidate.index === player.groupIndex);
           return group

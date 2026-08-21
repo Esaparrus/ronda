@@ -23,6 +23,14 @@
 }
 
 @theme {
+  /* Equipos de Escala: colores propios, fuera de la paleta de acciones/asientos. */
+  --color-equipo-turquesa: #00a896;
+  --color-equipo-turquesa-oscuro: #00796f;
+  --color-equipo-fucsia: #d13f8a;
+  --color-equipo-fucsia-oscuro: #a52a6b;
+  --color-equipo-lima: #94a51f;
+  --color-equipo-lima-oscuro: #687500;
+
   /* --- Colores de interfaz ---------------------------------------------- */
   --color-tinta: #f2f4f8; /* fondo agrupado, equivalente al lienzo del sistema */
   --color-veta: #e8edf5; /* segunda profundidad del lienzo */
