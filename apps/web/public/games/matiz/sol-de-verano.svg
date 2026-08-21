@@ -21,8 +21,8 @@
   <path d="M272 492 199 527l-11-21c-9-18 2-39 20-46l65-26Z" fill="#f6c9a3" stroke="#2b2a3b" stroke-width="10"/>
   <circle cx="387" cy="267" r="129" fill="#f6c9a3" stroke="#2b2a3b" stroke-width="10"/>
   <path d="M273 244c2-89 64-140 130-140 75 0 120 53 113 143-39-42-95-61-161-49-30 6-57 22-82 46Z" fill="#343052" stroke="#2b2a3b" stroke-width="10"/>
-  <path d="M280 190h215c27 0 49 22 49 49v50H231v-50c0-27 22-49 49-49Z" fill="#d8d5cd" stroke="#2b2a3b" stroke-width="10" stroke-dasharray="12 10"/>
-  <path d="M301 221h173c13 0 24 11 24 24v18H277v-18c0-13 11-24 24-24Z" fill="#e9e6de" opacity=".9"/>
+  <path d="M280 190h215c27 0 49 22 49 49v50H231v-50c0-27 22-49 49-49Z" fill="none" stroke="none"/>
+  <path d="M301 221h173c13 0 24 11 24 24v18H277v-18c0-13 11-24 24-24Z" fill="none"/>
   <circle cx="338" cy="350" r="13" fill="#2b2a3b"/>
   <circle cx="439" cy="350" r="13" fill="#2b2a3b"/>
   <path d="M357 391c22 17 49 17 70 0" fill="none" stroke="#2b2a3b" stroke-width="9" stroke-linecap="round"/>

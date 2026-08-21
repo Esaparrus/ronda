@@ -9,7 +9,7 @@ export const MATIZ_CHALLENGES = [
     id: 'popeye-camiseta',
     title: 'Popeye',
     subtitle: 'Devuelve el rojo de su camiseta',
-    targetHex: '#ef4b52',
+    targetHex: '#ed4754',
   },
   {
     id: 'felix-silueta',
@@ -20,14 +20,14 @@ export const MATIZ_CHALLENGES = [
   {
     id: 'krazy-ladrillo',
     title: 'Krazy Kat',
-    subtitle: 'Acierta con el color del ladrillo',
-    targetHex: '#d9653f',
+    subtitle: 'Completa el negro de sus ladrillos',
+    targetHex: '#0a0a0a',
   },
   {
     id: 'little-nemo-carrete',
     title: 'Little Nemo',
     subtitle: 'Devuelve el amarillo del carrete',
-    targetHex: '#edc64a',
+    targetHex: '#fdf570',
   },
   {
     id: 'sol-de-verano',

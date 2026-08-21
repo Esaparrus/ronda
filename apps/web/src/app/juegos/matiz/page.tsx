@@ -19,7 +19,12 @@ export default function MatizPage() {
         label: 'Jugar individual',
         description: 'Cinco dibujos para mejorar tu ojo.',
       }}
-      note="Incluye cuatro clásicos —Popeye, Félix, Krazy Kat y Little Nemo— además de tres dibujos originales. Cada reto marca una zona concreta: camiseta, silueta, ladrillo o carrete."
+      toolAction={{
+        href: '/juegos/matiz/preparar',
+        label: 'Preparar tus imágenes',
+        description: 'Sube una imagen y genera su máscara automáticamente.',
+      }}
+      note="Incluye cuatro clásicos —Popeye, Félix, Krazy Kat y Little Nemo— además de tres dibujos originales. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima."
     />
   );
 }

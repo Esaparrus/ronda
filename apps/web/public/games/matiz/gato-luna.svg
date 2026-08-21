@@ -22,8 +22,8 @@
   <ellipse cx="466" cy="335" rx="13" ry="16" fill="#242139"/>
   <path d="m388 359 13 11 13-11" fill="none" stroke="#242139" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M349 389c34 18 69 18 103 0" fill="none" stroke="#242139" stroke-width="8" stroke-linecap="round"/>
-  <path d="M287 452c23-29 59-43 113-43 55 0 91 15 116 44v123H287Z" fill="#d8d5cd" stroke="#242139" stroke-width="10" stroke-dasharray="12 10"/>
-  <path d="M323 456c18-15 42-23 77-23 36 0 62 8 81 24" fill="none" stroke="#ebe7df" stroke-width="12" opacity=".8"/>
+  <path d="M287 452c23-29 59-43 113-43 55 0 91 15 116 44v123H287Z" fill="none" stroke="none"/>
+  <path d="M323 456c18-15 42-23 77-23 36 0 62 8 81 24" fill="none" stroke="none"/>
   <path d="M341 420c14 15 32 24 59 24 26 0 46-9 60-24l10 33c-21 18-45 27-70 27-27 0-50-9-70-27Z" fill="#de6b4e" stroke="#242139" stroke-width="9"/>
   <path d="M343 577 329 608h65l-1-39Z" fill="#d6a27f" stroke="#242139" stroke-width="10"/>
   <path d="M482 570v38h66l-17-34Z" fill="#d6a27f" stroke="#242139" stroke-width="10"/>

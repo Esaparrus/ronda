@@ -32,6 +32,12 @@ export const MATIZ_COLOR_TOKENS = {
   placeholder: '#D8D5CD',
 } as const;
 
+/** Colores técnicos usados por el preparador y las máscaras de Matiz. */
+export const MATIZ_TOOL_TOKENS = {
+  maskWhite: '#FFFFFF',
+  chromaKey: '#00FF00',
+} as const;
+
 export const MATIZ_HUE_GRADIENT =
   'linear-gradient(90deg,#EF4444 0%,#F59E0B 17%,#EAB308 33%,#22C55E 50%,#06B6D4 67%,#3B82F6 83%,#EF4444 100%)';
 

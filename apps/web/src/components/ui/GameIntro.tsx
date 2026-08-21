@@ -25,6 +25,7 @@ export interface GameIntroProps {
   mark?: string;
   primaryAction?: GameIntroAction;
   secondaryAction?: GameIntroAction;
+  toolAction?: GameIntroAction;
 }
 
 export function GameIntro({
@@ -38,6 +39,7 @@ export function GameIntro({
   rulesHref,
   primaryAction,
   secondaryAction,
+  toolAction,
 }: GameIntroProps) {
   const guide = GAME_GUIDES[slug];
   const mainAction = primaryAction ?? { href: `/crear/${slug}`, label: 'Crear partida' };
@@ -114,6 +116,18 @@ export function GameIntro({
               ) : null}
             </span>
             <Icon name="arrow-right" size={18} className="text-humo transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        ) : null}
+        {toolAction ? (
+          <Link
+            href={toolAction.href}
+            className="glass-button min-h-12 justify-start px-4 text-14 font-semibold text-oro"
+          >
+            <Icon name="target" size={17} />
+            <span className="flex min-w-0 flex-col text-left">
+              <span>{toolAction.label}</span>
+              {toolAction.description ? <span className="text-12 font-normal text-humo">{toolAction.description}</span> : null}
+            </span>
           </Link>
         ) : null}
         {rulesHref ? (

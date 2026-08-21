@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import type { MatizPlayerView } from '@ronda/protocol';
 import { MATIZ_CHALLENGES } from '@ronda/protocol';
@@ -9,42 +8,36 @@ import { COLOR_TOKENS, MATIZ_COLOR_TOKENS, MATIZ_HUE_GRADIENT } from '@/lib/toke
 import { Button } from '@/components/ui/Button';
 import { PlayerStrip } from '@/app/sala/[code]/_components/PlayerStrip';
 import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
+import { MatizMaskedImage } from './MatizMaskedImage';
 
 const ARTWORK = {
   'popeye-camiseta': {
-    image: '/games/matiz/popeye-1929.jpg',
-    shape: 'popeye',
-    imageClass: 'object-contain p-3',
+    image: '/games/matiz/popeye-camiseta-base.png',
+    mask: '/games/matiz/popeye-camiseta-mask.png',
   },
   'felix-silueta': {
     image: '/games/matiz/felix-1930.svg',
-    shape: 'felix',
-    imageClass: 'object-contain p-4',
+    mask: '/games/matiz/felix-1930.svg',
   },
   'krazy-ladrillo': {
-    image: '/games/matiz/krazy-kat-1918.jpg',
-    shape: 'krazy',
-    imageClass: 'object-contain p-2',
+    image: '/games/matiz/krazy-ladrillo-base.png',
+    mask: '/games/matiz/krazy-ladrillo-mask.png',
   },
   'little-nemo-carrete': {
-    image: '/games/matiz/little-nemo-1911.jpg',
-    shape: 'nemo',
-    imageClass: 'object-contain p-3',
+    image: '/games/matiz/little-nemo-carrete-base.png',
+    mask: '/games/matiz/little-nemo-carrete-mask.png',
   },
   'sol-de-verano': {
     image: '/games/matiz/sol-de-verano.svg',
-    shape: 'visor',
-    imageClass: 'object-cover',
+    mask: '/games/matiz/sol-de-verano-mask.svg',
   },
   'gato-luna': {
     image: '/games/matiz/gato-luna.svg',
-    shape: 'jersey',
-    imageClass: 'object-cover',
+    mask: '/games/matiz/gato-luna-mask.svg',
   },
   'monstruo-fruta': {
     image: '/games/matiz/monstruo-fruta.svg',
-    shape: 'belly',
-    imageClass: 'object-cover',
+    mask: '/games/matiz/monstruo-fruta-mask.svg',
   },
 } as const;
 
@@ -65,63 +58,13 @@ export function MatizArtwork({ challengeId, color, targetHex = null, className =
     <div
       className={`relative aspect-[800/620] w-full overflow-hidden rounded-[30px] border border-linea bg-mesa shadow-[0_16px_36px_rgba(34,37,48,0.12)] ${className}`}
     >
-      <Image
-        src={art.image}
+      <MatizMaskedImage
+        imageSrc={art.image}
+        maskSrc={art.mask}
+        color={fill}
         alt="Ilustración del reto de Matiz"
-        fill
-        priority
-        sizes="(max-width: 768px) 94vw, 620px"
-        className={art.imageClass ?? 'object-cover'}
+        className="absolute inset-0 h-full w-full object-contain p-3"
       />
-      <svg
-        viewBox="0 0 800 620"
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        aria-hidden="true"
-      >
-        {art.shape === 'visor' ? (
-          <>
-            <rect x="286" y="198" width="204" height="128" rx="38" fill={fill} />
-            <rect x="280" y="190" width="215" height="149" rx="48" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
-          </>
-        ) : null}
-        {art.shape === 'jersey' ? (
-          <>
-            <path d="M300 460c22-20 54-30 99-30 47 0 80 10 103 31v106H300Z" fill={fill} />
-            <path d="M287 452c23-29 59-43 113-43 55 0 91 15 116 44v123H287Z" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
-          </>
-        ) : null}
-        {art.shape === 'belly' ? (
-          <>
-            <ellipse cx="399" cy="441" rx="115" ry="101" fill={fill} />
-            <ellipse cx="399" cy="441" rx="126" ry="112" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
-          </>
-        ) : null}
-        {art.shape === 'popeye' ? (
-          <>
-            <path d="M278 218c43-27 170-28 244 2l-12 87c-62 23-153 22-222-4Z" fill={fill} />
-            <path d="M270 211c56-35 185-34 262 4l-13 104c-74 28-174 26-252-5Z" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
-          </>
-        ) : null}
-        {art.shape === 'felix' ? (
-          <>
-            <path d="M246 270c53-41 240-45 313 2l-4 127c-91 42-214 38-302-5Z" fill={fill} />
-            <path d="M232 263c61-52 254-53 340 2l-4 148c-104 48-244 44-350-7Z" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
-          </>
-        ) : null}
-        {art.shape === 'krazy' ? (
-          <>
-            <rect x="322" y="351" width="105" height="67" rx="8" fill={fill} />
-            <rect x="313" y="342" width="123" height="85" rx="12" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
-            <path d="M202 523h56v34h-56z" fill={matizClueColor(challengeId)} stroke={COLOR_TOKENS.hueso} strokeWidth="6" />
-          </>
-        ) : null}
-        {art.shape === 'nemo' ? (
-          <>
-            <rect x="250" y="192" width="123" height="70" rx="10" fill={fill} />
-            <rect x="241" y="183" width="141" height="88" rx="16" fill="none" stroke={COLOR_TOKENS.hueso} strokeWidth="10" strokeDasharray="12 10" />
-          </>
-        ) : null}
-      </svg>
     </div>
   );
 }
@@ -443,10 +386,6 @@ export function scoreMatizColor(answer: string, target: string): number {
   const b = hexToLab(target);
   const distance = Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
   return Math.max(0, Math.min(100, Math.round(100 - distance / 1.76)));
-}
-
-function matizClueColor(challengeId: string): string {
-  return MATIZ_CHALLENGES.find((challenge) => challenge.id === challengeId)?.targetHex ?? COLOR_TOKENS.mesa;
 }
 
 function hexToLab(hex: string): [number, number, number] {
