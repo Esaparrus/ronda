@@ -9,6 +9,8 @@ import {
   DEFAULT_COLORES_CONFIG,
   DEFAULT_LA_RONDA_CONFIG,
   ColoresConfigSchema,
+  DEFAULT_ESCALA_CONFIG,
+  EscalaConfigSchema,
 } from './config.ts';
 
 describe('GameConfigSchema', () => {
@@ -104,5 +106,25 @@ describe('GameConfigSchema', () => {
     expect(DEFAULT_COLORES_CONFIG.pointsToWin).toBe(10);
     expect(ColoresConfigSchema.parse({ topic: 'banderas' }).topic).toBe('banderas');
     expect(() => ColoresConfigSchema.parse({ topic: 'faciles' })).toThrow();
+  });
+
+  it('configura los modos, el tiempo y los equipos de Escala', () => {
+    expect(DEFAULT_ESCALA_CONFIG.modo).toBe('presencial');
+    expect(DEFAULT_ESCALA_CONFIG.answerTimeSeconds).toBe(30);
+    expect(DEFAULT_ESCALA_CONFIG.groupMode).toBe('individual');
+    expect(DEFAULT_ESCALA_CONFIG.groupCount).toBe(2);
+    expect(
+      EscalaConfigSchema.parse({
+        modo: 'online',
+        answerTimeSeconds: 60,
+        groupMode: 'groups',
+        groupCount: 3,
+      }),
+    ).toMatchObject({
+      modo: 'online',
+      answerTimeSeconds: 60,
+      groupMode: 'groups',
+      groupCount: 3,
+    });
   });
 });

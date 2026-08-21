@@ -57,6 +57,7 @@ function buildLobbyPlayers(room: Room): PublicPlayer[] {
     isHost: p.isHost,
     isBot: p.isBot,
     eliminated: false,
+    groupIndex: room.gameId === 'escala' ? (p.groupIndex ?? null) : null,
     // Parejas: solo Mus las tiene (§12.12). El motor las deriva de
     // `seat % 2` al empezar (§12.2), así que el lobby puede adelantarlas con
     // la misma fórmula -- y tiene que hacerlo, porque el anfitrión asigna
@@ -299,12 +300,32 @@ function buildPartyLobbyCommon(room: Room): PartyCommonView {
     party: {
       gameId: 'escala',
       phase: 'input',
+      modo: config.modo,
       questionId: '',
       leftLabel: 'extremo A',
       rightLabel: 'extremo B',
       cluePlayerId: firstPlayerId,
+      clueGroupIndex:
+        room.playersBySeat().find((player) => player.playerId === firstPlayerId)?.groupIndex ??
+        null,
+      clue: null,
       target: null,
+      deadlineAt: null,
+      submittedPlayerIds: [],
       guesses: null,
+      scoreDeltas: null,
+      groups:
+        config.groupMode === 'groups'
+          ? Array.from({ length: config.groupCount }, (_, index) => ({
+              index,
+              score: 0,
+              playerIds: room
+                .playersBySeat()
+                .filter((player) => player.groupIndex === index)
+                .map((player) => player.playerId),
+            }))
+          : null,
+      winnerGroupIndex: null,
     },
   };
 }

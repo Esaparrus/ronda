@@ -126,6 +126,7 @@ function nextBotTurn(room: Room): BotTurn | null {
             action === 'playNumber' ||
             action === 'submitColors' ||
             action === 'submitMajority' ||
+            action === 'submitScaleClue' ||
             action === 'submitScale',
         )
       ) {

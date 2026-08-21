@@ -7,10 +7,15 @@ import { TableHeader } from './TableHeader';
 export interface ColorCountdownHeaderProps {
   left: string;
   deadlineAt: number | null;
+  durationSeconds?: number;
 }
 
 /** Mantiene el repintado del reloj aislado del selector y del marcador. */
-export function ColorCountdownHeader({ left, deadlineAt }: ColorCountdownHeaderProps) {
+export function ColorCountdownHeader({
+  left,
+  deadlineAt,
+  durationSeconds = COLOR_ANSWER_SECONDS,
+}: ColorCountdownHeaderProps) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -22,15 +27,12 @@ export function ColorCountdownHeader({ left, deadlineAt }: ColorCountdownHeaderP
   const secondsLeft =
     deadlineAt === null
       ? null
-      : Math.min(
-          COLOR_ANSWER_SECONDS,
-          Math.max(0, Math.ceil((deadlineAt - now) / 1000)),
-        );
+      : Math.min(durationSeconds, Math.max(0, Math.ceil((deadlineAt - now) / 1000)));
   const timerLabel = secondsLeft === null ? null : `00:${String(secondsLeft).padStart(2, '0')}`;
   const timerProgress =
     deadlineAt === null
       ? null
-      : Math.max(0, Math.min(1, (deadlineAt - now) / (COLOR_ANSWER_SECONDS * 1000)));
+      : Math.max(0, Math.min(1, (deadlineAt - now) / (durationSeconds * 1000)));
 
   return (
     <TableHeader

@@ -2,8 +2,8 @@
 'use client';
 
 import QRCode from 'qrcode';
-import { useEffect, useState } from 'react';
-import type { PlayerView } from '@ronda/protocol';
+import { useEffect, useState, type DragEvent } from 'react';
+import type { PlayerId, PlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { RoomCode } from '@/components/ui/RoomCode';
 import { Avatar } from '@/components/ui/Avatar';
@@ -23,6 +23,8 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const [addingBot, setAddingBot] = useState(false);
+  const [draggingPlayerId, setDraggingPlayerId] = useState<PlayerId | null>(null);
+  const [dragOverGroupIndex, setDragOverGroupIndex] = useState<number | null>(null);
 
   const me = view.players.find((player) => player.playerId === view.me.playerId);
   const isHost = me?.isHost ?? false;
@@ -81,17 +83,38 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
   }
 
   const minimumPlayers = view.gameId === 'mus' ? 4 : view.gameId === 'laronda' ? 3 : 2;
-  const canStart = view.players.length >= minimumPlayers;
+  const scaleGroups =
+    view.gameId === 'escala' && view.config.groupMode === 'groups' ? view.config.groupCount : null;
+  const groupSizes = scaleGroups
+    ? Array.from(
+        { length: scaleGroups },
+        (_, groupIndex) => view.players.filter((player) => player.groupIndex === groupIndex).length,
+      )
+    : [];
+  const scaleGroupPlayers = scaleGroups
+    ? Array.from({ length: scaleGroups }, (_, groupIndex) =>
+        view.players.filter((player) => player.groupIndex === groupIndex),
+      )
+    : [];
+  const groupsReady = scaleGroups === null || groupSizes.every((size) => size >= 2);
+  const canStart = view.players.length >= minimumPlayers && groupsReady;
   const minimumLabel = minimumPlayers === 4 ? 'cuatro' : minimumPlayers === 3 ? 'tres' : 'dos';
   const hasFreeSeat = view.players.length < view.config.maxPlayers;
+
+  function handleDrop(groupIndex: number, event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (!isHost || !draggingPlayerId) return;
+
+    const targetPlayerId = draggingPlayerId;
+    setDraggingPlayerId(null);
+    setDragOverGroupIndex(null);
+    void useRondaStore.getState().setPlayerGroup(targetPlayerId, groupIndex);
+  }
 
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh w-full max-w-md flex-col gap-7 px-5">
       <header className="flex flex-col items-center gap-3 text-center">
-        <span
-          className="game-glyph-tile size-14 rounded-[18px]"
-          data-game={view.gameId}
-        >
+        <span className="game-glyph-tile size-14 rounded-[18px]" data-game={view.gameId}>
           <GameGlyph game={view.gameId} size={26} />
         </span>
         <span className="eyebrow">Sala creada</span>
@@ -153,6 +176,124 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
             </li>
           ))}
         </ul>
+        {scaleGroups !== null ? (
+          <section className="surface-panel flex flex-col gap-4 p-4">
+            <div>
+              <h3 className="text-16 font-semibold text-hueso">Grupos de competición</h3>
+              <p className="mt-1 text-12 leading-relaxed text-humo">
+                Se han repartido al azar para empezar. Cada grupo necesita al menos dos jugadores y
+                la misma escala pasará por todos los grupos.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {scaleGroupPlayers.map((players, groupIndex) => (
+                <div
+                  key={groupIndex}
+                  onDragOver={(event) => {
+                    if (!isHost) return;
+                    event.preventDefault();
+                    setDragOverGroupIndex(groupIndex);
+                  }}
+                  onDragLeave={() => setDragOverGroupIndex(null)}
+                  onDrop={(event) => handleDrop(groupIndex, event)}
+                  className={`rounded-2xl border p-3 transition-colors ${
+                    dragOverGroupIndex === groupIndex
+                      ? 'border-oro bg-oro/10'
+                      : 'border-linea bg-tinta/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-14 font-semibold text-hueso">
+                      Grupo {groupLetter(groupIndex)}
+                    </span>
+                    <Pill>{players.length}</Pill>
+                  </div>
+                  <div
+                    className="mt-3 flex min-h-14 flex-wrap content-start gap-2"
+                    aria-label={`Jugadores del grupo ${groupLetter(groupIndex)}`}
+                  >
+                    {players.map((player) => (
+                      <div
+                        key={player.playerId}
+                        draggable={isHost}
+                        onDragStart={(event) => {
+                          if (!isHost) return;
+                          setDraggingPlayerId(player.playerId);
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('text/plain', player.playerId);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingPlayerId(null);
+                          setDragOverGroupIndex(null);
+                        }}
+                        className={`rounded-xl border border-linea bg-mesa px-3 py-2 text-13 text-hueso ${
+                          isHost ? 'cursor-grab active:cursor-grabbing' : ''
+                        }`}
+                        aria-label={isHost ? `Arrastra a ${player.nick} a otro grupo` : player.nick}
+                      >
+                        {player.nick}
+                      </div>
+                    ))}
+                    {players.length === 0 ? (
+                      <span className="self-center text-12 text-humo">Arrastra aquí</span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-12 leading-relaxed text-humo">
+              {isHost
+                ? 'Arrastra los nombres entre grupos o usa los botones para recolocarlos.'
+                : 'El anfitrión puede arrastrar los nombres entre grupos antes de empezar.'}
+            </p>
+            <div className="flex flex-col gap-3">
+              {view.players.map((player) => (
+                <div key={player.playerId} className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1 truncate text-14 text-hueso">{player.nick}</span>
+                  <div className="flex gap-1" role="group" aria-label={`Mover a ${player.nick}`}>
+                    {Array.from({ length: scaleGroups }, (_, groupIndex) => {
+                      const selected = player.groupIndex === groupIndex;
+                      return (
+                        <button
+                          key={groupIndex}
+                          type="button"
+                          disabled={!isHost}
+                          aria-label={`Mover a ${player.nick} al grupo ${groupLetter(groupIndex)}`}
+                          aria-pressed={selected}
+                          onClick={() =>
+                            void useRondaStore
+                              .getState()
+                              .setPlayerGroup(player.playerId, groupIndex)
+                          }
+                          className={`grid size-10 place-items-center rounded-xl border text-14 font-semibold transition-colors disabled:cursor-default ${
+                            selected
+                              ? 'border-oro bg-oro/15 text-oro'
+                              : 'border-linea bg-tinta/20 text-humo enabled:hover:bg-mesa'
+                          }`}
+                        >
+                          {groupLetter(groupIndex)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {!groupsReady ? (
+              <p className="text-12 text-brasa">
+                Falta completar{' '}
+                {groupSizes.filter((size) => size < 2).length === 1 ? 'un grupo' : 'algunos grupos'}
+                .
+              </p>
+            ) : (
+              <p className="text-12 text-verde">
+                {groupSizes
+                  .map((size, index) => `Grupo ${groupLetter(index)}: ${size}`)
+                  .join(' · ')}
+              </p>
+            )}
+          </section>
+        ) : null}
         {isHost && hasFreeSeat ? (
           <div className="surface-panel flex flex-col gap-3 p-4">
             <div>
@@ -183,7 +324,9 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
           </Button>
           {!canStart ? (
             <p className="text-center text-12 text-humo">
-              Esperando: hacen falta {minimumLabel} jugadores.
+              {scaleGroups !== null && !groupsReady
+                ? 'Completa los grupos para empezar.'
+                : `Esperando: hacen falta ${minimumLabel} jugadores.`}
             </p>
           ) : null}
         </div>
@@ -194,4 +337,8 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
       )}
     </main>
   );
+}
+
+function groupLetter(index: number): string {
+  return String.fromCharCode('A'.charCodeAt(0) + index);
 }

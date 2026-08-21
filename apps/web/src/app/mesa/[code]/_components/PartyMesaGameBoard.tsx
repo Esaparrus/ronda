@@ -218,9 +218,10 @@ function EscalaMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'es
   const party = view.party;
   return (
     <main className="flex min-h-dvh flex-1 flex-col">
-      <TableHeader
+      <ColorCountdownHeader
         left={`Escala · ronda ${view.round}`}
-        turnNick={playerNick(view, party.cluePlayerId)}
+        deadlineAt={party.phase === 'input' ? party.deadlineAt : null}
+        durationSeconds={view.config.answerTimeSeconds}
       />
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-10 py-10 text-center">
         <div className="flex w-full max-w-5xl items-center justify-between gap-6 text-[clamp(1.5rem,4vw,3rem)] font-semibold text-hueso">
@@ -228,21 +229,72 @@ function EscalaMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'es
           <span className="text-humo">↔</span>
           <span>{party.rightLabel}</span>
         </div>
-        {party.phase === 'reveal' ? (
-          <div className="flex flex-col gap-3">
-            <p className="text-40 font-mono text-oro">Objetivo: {party.target}</p>
-            <p className="text-20 text-humo">
-              {Object.keys(party.guesses ?? {}).length} estimaciones reveladas
-            </p>
+        {party.clue ? (
+          <div className="flex max-w-4xl flex-col gap-3">
+            <p className="text-20 uppercase tracking-wider text-humo">Pista</p>
+            <p className="text-[clamp(2rem,5vw,4rem)] font-semibold text-hueso">«{party.clue}»</p>
           </div>
         ) : (
           <p className="text-20 text-humo">
-            {playerNick(view, party.cluePlayerId)} está dando una pista
+            {playerNick(view, party.cluePlayerId)} está preparando la pista
           </p>
+        )}
+        {party.phase === 'input' ? (
+          <p className="text-20 text-humo">
+            {party.submittedPlayerIds.length} estimaciones confirmadas
+          </p>
+        ) : (
+          <div className="flex w-full max-w-5xl flex-col gap-5">
+            <p className="text-40 font-mono text-oro">Punto secreto: {party.target}</p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {view.players
+                .filter(
+                  (player) =>
+                    player.playerId !== party.cluePlayerId &&
+                    (view.config.groupMode !== 'groups' ||
+                      player.groupIndex !== party.clueGroupIndex),
+                )
+                .map((player) => {
+                  const value = party.guesses?.[player.playerId];
+                  return (
+                    <div
+                      key={player.playerId}
+                      className="rounded-2xl border border-linea bg-mesa/70 px-4 py-3"
+                    >
+                      <p className="text-18 font-semibold text-hueso">{player.nick}</p>
+                      <p className="mt-1 font-mono text-20 text-oro">
+                        {value === undefined ? 'Sin respuesta' : value} · +
+                        {party.scoreDeltas?.[player.playerId] ?? 0}
+                      </p>
+                    </div>
+                  );
+                })}
+            </div>
+            {party.groups ? (
+              <div className="flex flex-wrap justify-center gap-3">
+                {party.groups.map((group) => (
+                  <div
+                    key={group.index}
+                    className={`rounded-full border px-5 py-2 text-18 ${
+                      group.index === party.winnerGroupIndex
+                        ? 'border-oro bg-oro/10 text-oro'
+                        : 'border-linea bg-mesa/70 text-humo'
+                    }`}
+                  >
+                    Grupo {groupLetter(group.index)} · {group.score}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </main>
   );
+}
+
+function groupLetter(index: number): string {
+  return String.fromCharCode('A'.charCodeAt(0) + index);
 }
 
 function playerNick(

@@ -84,7 +84,10 @@ function cloneState(state: PartyState): PartyState {
       ? {
           ...state.scale,
           questionOrder: [...state.scale.questionOrder],
+          clueSequence: [...state.scale.clueSequence],
           guesses: { ...state.scale.guesses },
+          scoreDeltas: state.scale.scoreDeltas ? { ...state.scale.scoreDeltas } : null,
+          groupScores: { ...state.scale.groupScores },
         }
       : null,
     rematchVotes: [...state.rematchVotes],
@@ -136,8 +139,46 @@ function initialPlayers(input: CreateInitialStateInput): PartyPlayer[] {
       seat: player.seat,
       score: 0,
       left: false,
+      groupIndex: player.groupIndex ?? null,
       hand: [],
     }));
+}
+
+function scaleClueSequence(state: PartyState): PlayerId[] {
+  const players = activePlayers(state).sort((a, b) => a.seat - b.seat);
+  if (state.config.gameId !== 'escala' || state.config.groupMode === 'individual') {
+    return players.map((player) => player.playerId);
+  }
+
+  const groups = new Map<number, PartyPlayer[]>();
+  for (const player of players) {
+    if (player.groupIndex === null) continue;
+    const group = groups.get(player.groupIndex) ?? [];
+    group.push(player);
+    groups.set(player.groupIndex, group);
+  }
+
+  const sequence: PlayerId[] = [];
+  const maxGroupSize = Math.max(...[...groups.values()].map((group) => group.length), 0);
+  for (let memberIndex = 0; memberIndex < maxGroupSize; memberIndex += 1) {
+    for (let groupIndex = 0; groupIndex < state.config.groupCount; groupIndex += 1) {
+      const group = groups.get(groupIndex);
+      if (!group || group.length === 0) continue;
+      // Si los grupos no tienen el mismo tamaño, el grupo pequeño repite su
+      // rotación cuando el grande aún tiene personas pendientes. Así la misma
+      // escala pasa por todos los grupos el mismo número de veces.
+      const player = group[memberIndex % group.length];
+      if (player) sequence.push(player.playerId);
+    }
+  }
+  return sequence.length > 0 ? sequence : players.map((player) => player.playerId);
+}
+
+function initialScaleGroupScores(state: PartyState): Record<string, number> {
+  if (state.config.gameId !== 'escala' || state.config.groupMode === 'individual') return {};
+  return Object.fromEntries(
+    Array.from({ length: state.config.groupCount }, (_, index) => [String(index), 0]),
+  );
 }
 
 /** Crea el estado inicial de uno de los cuatro modos sociales. */
@@ -213,13 +254,25 @@ export function createPartyState(
   } else {
     const firstPlayer = activePlayers(state)[0];
     if (!firstPlayer) throw new Error('Escala necesita al menos un jugador');
+    const clueSequence = scaleClueSequence(state);
+    const cluePlayerId = clueSequence[0] ?? firstPlayer.playerId;
+    const cluePlayer = findPlayer(state, cluePlayerId) ?? firstPlayer;
     state.scale = {
       questionOrder,
       questionIndex: 0,
       questionId,
-      cluePlayerId: firstPlayer.playerId,
+      cluePlayerId,
+      clueGroupIndex: cluePlayer.groupIndex,
+      clueSequence,
+      clueSequenceIndex: 0,
+      scaleSet: 1,
       target: randomTarget(state),
+      clueText: null,
+      deadlineAt: null,
       guesses: {},
+      scoreDeltas: null,
+      groupScores: initialScaleGroupScores(state),
+      winnerGroupIndex: null,
     };
   }
 
@@ -247,8 +300,12 @@ export function applyAction(
       return applySubmitMajority(state, playerId, action.answer);
     case 'resolveMajority':
       return applyResolveMajority(state, playerId, action.groups);
+    case 'submitScaleClue':
+      return applySubmitScaleClue(state, playerId, action.clue, now);
     case 'submitScale':
-      return applySubmitScale(state, playerId, action.value);
+      return applySubmitScale(state, playerId, action.value, now);
+    case 'finishScale':
+      return applyFinishScale(state, now);
     case 'nextRound':
       return applyNextRound(state, playerId);
     default:
@@ -558,11 +615,62 @@ function scoreMajority(state: PartyState): void {
   state.majority.scoreDeltas = scoreDeltas;
 }
 
-function applySubmitScale(state: PartyState, playerId: PlayerId, value: number): PartyActionResult {
+function applySubmitScaleClue(
+  state: PartyState,
+  playerId: PlayerId,
+  clue: string,
+  now: number,
+): PartyActionResult {
+  if (state.gameId !== 'escala' || !state.scale || !clue.trim()) return err('INVALID_ACTION');
+  const playerResult = requireInputPlayer(state, playerId);
+  if (!playerResult.ok) return playerResult;
+  if (playerId !== state.scale.cluePlayerId || state.scale.clueText !== null) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  const round = next.scale;
+  if (!round || next.config.gameId !== 'escala') return err('INVALID_ACTION');
+  round.clueText = clue.trim();
+  round.deadlineAt = now + next.config.answerTimeSeconds * 1000;
+  const events: GameEvent[] = [{ t: 'partyAnswerSubmitted', playerId, gameId: 'escala' }];
+
+  if (scaleGuessers(next).length === 0) {
+    resolveScaleRound(next, events);
+  }
+  return ok({ state: next, events });
+}
+
+function isScaleGuesser(state: PartyState, playerId: PlayerId): boolean {
+  if (state.gameId !== 'escala' || !state.scale || playerId === state.scale.cluePlayerId) {
+    return false;
+  }
+  const player = findPlayer(state, playerId);
+  if (!player || player.left) return false;
+  if (state.config.gameId !== 'escala' || state.config.groupMode === 'individual') return true;
+  return player.groupIndex !== state.scale.clueGroupIndex;
+}
+
+function scaleGuessers(state: PartyState): PartyPlayer[] {
+  return activePlayers(state).filter((player) => isScaleGuesser(state, player.playerId));
+}
+
+function applySubmitScale(
+  state: PartyState,
+  playerId: PlayerId,
+  value: number,
+  now: number,
+): PartyActionResult {
   if (state.gameId !== 'escala' || !state.scale) return err('INVALID_ACTION');
   const playerResult = requireInputPlayer(state, playerId);
   if (!playerResult.ok) return playerResult;
-  if (playerId === state.scale.cluePlayerId || value < 0 || value > 100) {
+  if (
+    state.scale.clueText === null ||
+    !isScaleGuesser(state, playerId) ||
+    (state.scale.deadlineAt !== null && now >= state.scale.deadlineAt) ||
+    value < 0 ||
+    value > 100
+  ) {
     return err('INVALID_ACTION');
   }
   if (state.scale.guesses[playerId] !== undefined) return err('INVALID_ACTION');
@@ -573,30 +681,98 @@ function applySubmitScale(state: PartyState, playerId: PlayerId, value: number):
   round.guesses[playerId] = value;
   const events: GameEvent[] = [{ t: 'partyAnswerSubmitted', playerId, gameId: 'escala' }];
 
-  const estimators = activePlayers(next).filter((player) => player.playerId !== round.cluePlayerId);
   if (
-    estimators.length > 0 &&
-    estimators.every((player) => round.guesses[player.playerId] !== undefined)
+    scaleGuessers(next).length > 0 &&
+    scaleGuessers(next).every((player) => round.guesses[player.playerId] !== undefined)
   ) {
-    scoreScale(next);
-    next.phase = 'reveal';
-    events.push({ t: 'partyRevealed', gameId: 'escala', round: next.round });
-    finishScoredRound(next, events);
+    resolveScaleRound(next, events);
   }
 
   return ok({ state: next, events });
 }
 
+function applyFinishScale(state: PartyState, now: number): PartyActionResult {
+  if (
+    state.gameId !== 'escala' ||
+    state.status !== 'playing' ||
+    state.phase !== 'input' ||
+    !state.scale ||
+    state.scale.clueText === null ||
+    state.scale.deadlineAt === null ||
+    now < state.scale.deadlineAt
+  ) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  const events: GameEvent[] = [];
+  resolveScaleRound(next, events);
+  return ok({ state: next, events });
+}
+
+function scalePoints(distance: number): number {
+  return distance <= 10 ? 4 : distance <= 20 ? 3 : distance <= 30 ? 2 : distance <= 40 ? 1 : 0;
+}
+
+function resolveScaleRound(state: PartyState, events: GameEvent[]): void {
+  if (!state.scale || state.phase !== 'input') return;
+  scoreScale(state);
+  state.scale.deadlineAt = null;
+  state.phase = 'reveal';
+  events.push({ t: 'partyRevealed', gameId: 'escala', round: state.round });
+  if (scaleSetComplete(state)) finishScaleSet(state, events);
+}
+
 function scoreScale(state: PartyState): void {
   if (!state.scale) return;
+  const scoreDeltas: Record<PlayerId, number> = {};
   for (const player of activePlayers(state)) {
-    if (player.playerId === state.scale.cluePlayerId) continue;
+    if (!isScaleGuesser(state, player.playerId)) continue;
     const guess = state.scale.guesses[player.playerId];
-    if (guess === undefined) continue;
-    const distance = Math.abs(guess - state.scale.target);
-    player.score +=
-      distance <= 10 ? 4 : distance <= 20 ? 3 : distance <= 30 ? 2 : distance <= 40 ? 1 : 0;
+    const points = guess === undefined ? 0 : scalePoints(Math.abs(guess - state.scale.target));
+    player.score += points;
+    scoreDeltas[player.playerId] = points;
+    if (player.groupIndex !== null) {
+      const key = String(player.groupIndex);
+      state.scale.groupScores[key] = (state.scale.groupScores[key] ?? 0) + points;
+    }
   }
+  state.scale.scoreDeltas = scoreDeltas;
+}
+
+function scaleSetComplete(state: PartyState): boolean {
+  if (!state.scale || state.config.gameId !== 'escala') return true;
+  return (
+    state.config.groupMode === 'individual' ||
+    state.scale.clueSequenceIndex >= state.scale.clueSequence.length - 1
+  );
+}
+
+function finishScaleSet(state: PartyState, events: GameEvent[]): void {
+  if (!state.scale || state.config.gameId !== 'escala') return;
+  const target = state.config.pointsToWin;
+
+  if (state.config.groupMode === 'groups') {
+    const scores = Array.from({ length: state.config.groupCount }, (_, index) => ({
+      index,
+      score: state.scale?.groupScores[String(index)] ?? 0,
+    }));
+    const highestScore = Math.max(...scores.map((group) => group.score), 0);
+    const winner = scores.find((group) => group.score === highestScore);
+    if (highestScore < target && state.scale.scaleSet < state.config.rounds) return;
+    state.status = 'gameEnd';
+    state.winnerId =
+      activePlayers(state).find((player) => player.groupIndex === winner?.index)?.playerId ?? null;
+    state.scale.winnerGroupIndex = winner?.index ?? null;
+    if (state.winnerId) events.push({ t: 'gameOver', winnerId: state.winnerId });
+    return;
+  }
+
+  const highestScore = Math.max(...activePlayers(state).map((player) => player.score), 0);
+  if (highestScore < target && state.scale.scaleSet < state.config.rounds) return;
+  state.status = 'gameEnd';
+  state.winnerId = decideWinner(state);
+  if (state.winnerId) events.push({ t: 'gameOver', winnerId: state.winnerId });
 }
 
 function finishScoredRound(state: PartyState, events: GameEvent[]): void {
@@ -689,10 +865,18 @@ function applyNextRound(state: PartyState, playerId: PlayerId): PartyActionResul
   } else {
     const current = next.scale;
     if (!current) return err('INVALID_ACTION');
-    const questionIndex = current.questionIndex + 1;
-    const guide = nextGuide(next, current.cluePlayerId);
-    if (!guide) return err('INVALID_ACTION');
-    next.scale = nextScaleRound(next, current, questionIndex, guide.playerId);
+    if (
+      next.config.gameId === 'escala' &&
+      next.config.groupMode === 'groups' &&
+      current.clueSequenceIndex < current.clueSequence.length - 1
+    ) {
+      next.scale = nextScaleTurn(next, current, current.clueSequenceIndex + 1);
+    } else {
+      const questionIndex = current.questionIndex + 1;
+      const guide = nextGuide(next, current.cluePlayerId);
+      if (!guide) return err('INVALID_ACTION');
+      next.scale = nextScaleRound(next, current, questionIndex, guide.playerId);
+    }
   }
 
   return ok({ state: next, events: [{ t: 'dealt', round: next.round }] });
@@ -732,13 +916,47 @@ function nextScaleRound(
   questionIndex: number,
   cluePlayerId: PlayerId,
 ): ScaleRoundState {
+  const clueSequence = scaleClueSequence(state);
+  const actualCluePlayerId =
+    state.config.gameId === 'escala' && state.config.groupMode === 'groups'
+      ? (clueSequence[0] ?? cluePlayerId)
+      : cluePlayerId;
+  const clue = state.players.find((player) => player.playerId === actualCluePlayerId);
   return {
     questionOrder: [...current.questionOrder],
     questionIndex,
     questionId: nextQuestionId(current.questionOrder, questionIndex),
-    cluePlayerId,
+    cluePlayerId: actualCluePlayerId,
+    clueGroupIndex: clue?.groupIndex ?? null,
+    clueSequence,
+    clueSequenceIndex: 0,
+    scaleSet: current.scaleSet + 1,
     target: randomTarget(state),
+    clueText: null,
+    deadlineAt: null,
     guesses: {},
+    scoreDeltas: null,
+    groupScores: { ...current.groupScores },
+    winnerGroupIndex: null,
+  };
+}
+
+function nextScaleTurn(
+  state: PartyState,
+  current: ScaleRoundState,
+  clueSequenceIndex: number,
+): ScaleRoundState {
+  const cluePlayerId = current.clueSequence[clueSequenceIndex];
+  const clue = state.players.find((player) => player.playerId === cluePlayerId);
+  return {
+    ...current,
+    cluePlayerId: cluePlayerId ?? current.cluePlayerId,
+    clueGroupIndex: clue?.groupIndex ?? null,
+    clueSequenceIndex,
+    clueText: null,
+    deadlineAt: null,
+    guesses: {},
+    scoreDeltas: null,
   };
 }
 

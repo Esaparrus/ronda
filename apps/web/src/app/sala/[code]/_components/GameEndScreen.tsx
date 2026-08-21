@@ -30,6 +30,10 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
     .filter((p) => p.playerId !== view.winnerId)
     .sort((a, b) => (view.gameId === 'chinchon' ? a.score - b.score : b.score - a.score));
   const standings = winner ? [winner, ...rest] : rest;
+  const winningGroupIndex =
+    view.gameId === 'escala' && view.config.groupMode === 'groups'
+      ? view.party.winnerGroupIndex
+      : null;
 
   const iVoted = view.rematchVotes.includes(view.me.playerId);
   const waitingFor = pendingConfirmations(view.players, view.rematchVotes);
@@ -51,6 +55,8 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
         <h1 className="font-display text-28 leading-display text-hueso">Partida terminada</h1>
         {view.gameId === 'orden' ? (
           <p className="text-20 text-hueso">La cuadrilla ha completado {view.round} rondas</p>
+        ) : view.gameId === 'escala' && winningGroupIndex !== null ? (
+          <p className="text-20 text-hueso">Gana el Grupo {groupLetter(winningGroupIndex)}</p>
         ) : winner ? (
           <p className="text-20 text-hueso">Gana {winner.nick}</p>
         ) : null}
@@ -61,19 +67,39 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
 
       <ol className="flex flex-col gap-2">
         {standings.map((p, i) => (
-          <li
-            key={p.playerId}
-            className="interactive-surface flex items-center gap-3 px-3 py-2"
-          >
+          <li key={p.playerId} className="interactive-surface flex items-center gap-3 px-3 py-2">
             <span className="w-5 text-center font-mono text-14 text-humo">{i + 1}</span>
             <Avatar name={p.nick} colorIndex={p.colorIndex} size={32} />
             <span className="flex-1 text-16 text-hueso">{p.nick}</span>
-            {p.playerId === view.winnerId ? <Pill>Ganador</Pill> : null}
+            {p.playerId === view.winnerId ? (
+              <Pill>{winningGroupIndex === null ? 'Ganador' : 'Grupo ganador'}</Pill>
+            ) : null}
             {p.eliminated ? <Pill>Eliminado</Pill> : null}
             <span className="font-mono text-16 text-hueso">{p.score}</span>
           </li>
         ))}
       </ol>
+
+      {view.gameId === 'escala' && view.party.groups ? (
+        <section className="surface-panel flex flex-col gap-3 p-4">
+          <h2 className="text-20 font-semibold text-hueso">Marcador final por grupos</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {view.party.groups.map((group) => (
+              <div
+                key={group.index}
+                className={`rounded-xl border px-3 py-2 ${
+                  group.index === winningGroupIndex
+                    ? 'border-oro bg-oro/10'
+                    : 'border-linea bg-mesa/70'
+                }`}
+              >
+                <span className="text-14 text-humo">Grupo {groupLetter(group.index)}</span>
+                <span className="ml-2 font-mono text-18 text-oro">{group.score}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {view.gameId === 'sieteymedia' ? <SevenHalfFinalHands view={view} /> : null}
 
@@ -116,6 +142,10 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
   );
 }
 
+function groupLetter(index: number): string {
+  return String.fromCharCode('A'.charCodeAt(0) + index);
+}
+
 function SevenHalfFinalHands({ view }: { view: ClassicPlayerView }) {
   return (
     <section className="flex flex-col gap-2">
@@ -123,7 +153,8 @@ function SevenHalfFinalHands({ view }: { view: ClassicPlayerView }) {
       <ul className="seven-half-round-end__list">
         {view.players.map((player, index) => {
           const total = view.totals[index] ?? null;
-          const cards = view.revealedHands.find((hand) => hand.playerId === player.playerId)?.cards ?? [];
+          const cards =
+            view.revealedHands.find((hand) => hand.playerId === player.playerId)?.cards ?? [];
           const result = view.bustPlayerIds.includes(player.playerId)
             ? 'Se pasó'
             : total === 7.5
@@ -132,7 +163,9 @@ function SevenHalfFinalHands({ view }: { view: ClassicPlayerView }) {
           return (
             <li key={player.playerId} className="seven-half-round-end__player">
               <div className="flex min-w-0 items-center justify-between gap-2">
-                <span className="min-w-0 truncate text-15 font-semibold text-hueso">{player.nick}</span>
+                <span className="min-w-0 truncate text-15 font-semibold text-hueso">
+                  {player.nick}
+                </span>
                 <span className="font-mono text-12 text-oro">{result}</span>
               </div>
               <div className="seven-half-round-end__cards">

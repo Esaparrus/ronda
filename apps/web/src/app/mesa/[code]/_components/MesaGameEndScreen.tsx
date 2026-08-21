@@ -21,6 +21,10 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
     .filter((p) => p.playerId !== view.winnerId)
     .sort((a, b) => (view.gameId === 'chinchon' ? a.score - b.score : b.score - a.score));
   const standings = winner ? [winner, ...rest] : rest;
+  const winningGroupIndex =
+    view.gameId === 'escala' && view.config.groupMode === 'groups'
+      ? view.party.winnerGroupIndex
+      : null;
   const waitingFor = pendingConfirmations(view.players, view.rematchVotes);
   const votedNicks = view.players
     .filter((p) => view.rematchVotes.includes(p.playerId))
@@ -35,6 +39,10 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
         {view.gameId === 'orden' ? (
           <p className="text-[clamp(1.5rem,3vw,2.25rem)] text-hueso">
             La cuadrilla ha completado {view.round} rondas
+          </p>
+        ) : view.gameId === 'escala' && winningGroupIndex !== null ? (
+          <p className="text-[clamp(1.5rem,3vw,2.25rem)] text-hueso">
+            Gana el Grupo {groupLetter(winningGroupIndex)}
           </p>
         ) : winner ? (
           <p className="text-[clamp(1.5rem,3vw,2.25rem)] text-hueso">Gana {winner.nick}</p>
@@ -62,7 +70,9 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
               {p.nick}
             </span>
             {p.playerId === view.winnerId ? (
-              <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">Ganador</Pill>
+              <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">
+                {winningGroupIndex === null ? 'Ganador' : 'Grupo ganador'}
+              </Pill>
             ) : null}
             {p.eliminated ? (
               <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">Eliminado</Pill>
@@ -71,6 +81,31 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
           </li>
         ))}
       </ol>
+
+      {view.gameId === 'escala' && view.party.groups ? (
+        <section className="flex w-full max-w-2xl flex-col gap-3">
+          <h2 className="text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">Marcador final por grupos</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {view.party.groups.map((group) => (
+              <div
+                key={group.index}
+                className={`rounded-lg border px-4 py-3 ${
+                  group.index === winningGroupIndex
+                    ? 'border-oro bg-oro/10'
+                    : 'border-linea bg-mesa'
+                }`}
+              >
+                <span className="text-[clamp(0.9rem,1.5vw,1.15rem)] text-humo">
+                  Grupo {groupLetter(group.index)}
+                </span>
+                <span className="ml-3 font-mono text-[clamp(1.1rem,2vw,1.5rem)] text-oro">
+                  {group.score}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Estadísticas del grupo (roadmap "Después del MVP" §3): la pantalla
           central las pide igual que un jugador -- `room:stats` solo devuelve
@@ -89,4 +124,8 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
       </p>
     </main>
   );
+}
+
+function groupLetter(index: number): string {
+  return String.fromCharCode('A'.charCodeAt(0) + index);
 }

@@ -162,6 +162,23 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     ack(r);
   });
 
+  // --- room:setGroup ---
+  socket.on('room:setGroup', (payload, ack) => {
+    const respond: Respond = (e) => ack(e);
+    if (!guard(deps, sid, 'room:setGroup', payload, respond)) return;
+    const st = requirePlayer(deps, sid, respond);
+    if (!st) return;
+    const r = deps.mgr.setPlayerGroup({
+      roomCode: st.roomCode,
+      playerId: st.playerId,
+      targetPlayerId: payload.targetPlayerId,
+      groupIndex: payload.groupIndex,
+      now: deps.now(),
+    });
+    if (r.ok) rebroadcast(deps, st.roomCode);
+    ack(r);
+  });
+
   // --- room:kick ---
   socket.on('room:kick', (payload, ack) => {
     const respond: Respond = (e) => ack(e);

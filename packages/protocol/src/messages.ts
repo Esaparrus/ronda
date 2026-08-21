@@ -12,6 +12,7 @@ const MESSAGES: Readonly<Record<ErrorCode, string>> = {
   NICK_INVALID: 'Escribe un nombre válido (2 a 12 caracteres).',
   NOT_HOST: 'Solo el anfitrión puede hacer eso.',
   NOT_ENOUGH_PLAYERS: 'Hacen falta al menos dos jugadores.',
+  INVALID_GROUPS: 'Cada grupo necesita al menos dos personas.',
   INVALID_TOKEN: 'Tu sesión no es válida. Vuelve a entrar.',
   PLAYER_NOT_IN_ROOM: 'No estás en esa sala.',
   PLAYER_ELIMINATED: 'Has quedado eliminado.',

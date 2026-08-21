@@ -108,6 +108,8 @@ export interface RondaState {
    * asigna el anfitrión moviendo gente de sitio.
    */
   swapSeats: (aPlayerId: PlayerId, bPlayerId: PlayerId) => Promise<boolean>;
+  /** Solo anfitrión, solo en el lobby de Escala por grupos. */
+  setPlayerGroup: (targetPlayerId: PlayerId, groupIndex: number) => Promise<boolean>;
 
   /**
    * Voto de revancha en fin de partida (contrato P16 / §2.3). Evento propio
@@ -482,6 +484,17 @@ export const useRondaStore = create<RondaState>((set, get) => {
     async swapSeats(aPlayerId, bPlayerId) {
       if (get().connection !== 'online') return false;
       const res = await emitWithAck(socket, 'room:swapSeats', { aPlayerId, bPlayerId });
+      if (!res.ok) {
+        set({ lastError: messageFor(res.code) });
+        return false;
+      }
+      set({ lastError: null });
+      return true;
+    },
+
+    async setPlayerGroup(targetPlayerId, groupIndex) {
+      if (get().connection !== 'online') return false;
+      const res = await emitWithAck(socket, 'room:setGroup', { targetPlayerId, groupIndex });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
         return false;

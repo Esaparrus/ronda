@@ -24,6 +24,7 @@ import {
   type ChinchonConfig,
   type ClassicConfig,
   type ColorTopic,
+  type EscalaConfig,
   type GameId,
   type MusConfig,
   type MusicalConfig,
@@ -608,11 +609,31 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
     key: 'maxPlayers' | 'rounds' | 'cardsPerPlayer' | 'pointsToWin',
     value: number,
   ) {
-    setConfig((previous) => ({ ...previous, [key]: value }) as PartyConfig);
+    setConfig((previous) => {
+      const nextValue =
+        key === 'maxPlayers' && previous.gameId === 'escala' && previous.groupMode === 'groups'
+          ? Math.max(value, previous.groupCount * 2)
+          : value;
+      return { ...previous, [key]: nextValue } as PartyConfig;
+    });
   }
 
   function setColorTopic(topic: ColorTopic) {
     setConfig((previous) => (previous.gameId === 'colores' ? { ...previous, topic } : previous));
+  }
+
+  function setScaleConfig(patch: Partial<EscalaConfig>) {
+    setConfig((previous) => {
+      if (previous.gameId !== 'escala') return previous;
+      const next = { ...previous, ...patch };
+      if (next.groupMode === 'groups') {
+        next.maxPlayers = Math.max(
+          next.maxPlayers,
+          next.groupCount * 2,
+        ) as EscalaConfig['maxPlayers'];
+      }
+      return next;
+    });
   }
 
   const playerOptions = [2, 3, 4, 5, 6, 7].map((value) => ({
@@ -632,7 +653,11 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
           </div>
           <div>
             <p className="text-16 font-semibold text-hueso">
-              {config.gameId === 'orden' ? 'Baraja numérica 1–100' : 'Juego para hablar en la mesa'}
+              {config.gameId === 'orden'
+                ? 'Baraja numérica 1–100'
+                : config.gameId === 'escala'
+                  ? 'Pistas con polémica'
+                  : 'Juego para hablar en la mesa'}
             </p>
             <p className="mt-1 text-14 text-humo">
               Cada móvil guarda su información privada. No necesitas cartas físicas.
@@ -664,6 +689,76 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
         />
       ) : (
         <>
+          {config.gameId === 'escala' ? (
+            <>
+              <SegmentedControl
+                legend="Cómo se da la pista"
+                helperText="Elige si la frase se dice o se escribe."
+                value={config.modo}
+                onChange={(value) => setScaleConfig({ modo: value as EscalaConfig['modo'] })}
+                options={[
+                  { value: 'presencial', label: 'En persona' },
+                  { value: 'online', label: 'Online' },
+                ]}
+              />
+              <QuantityStepper
+                legend="Tiempo para responder"
+                helperText="Empieza al aceptar la frase o pista."
+                value={config.answerTimeSeconds}
+                onChange={(value) =>
+                  setScaleConfig({
+                    answerTimeSeconds: value as EscalaConfig['answerTimeSeconds'],
+                  })
+                }
+                options={[10, 15, 20, 30, 45, 60].map((value) => ({
+                  value,
+                  label: String(value),
+                }))}
+                valueSuffix="segundos"
+              />
+              <SegmentedControl
+                legend="Formato de juego"
+                helperText="Todos contra todos o por equipos."
+                value={config.groupMode}
+                onChange={(value) =>
+                  setScaleConfig({ groupMode: value as EscalaConfig['groupMode'] })
+                }
+                options={[
+                  { value: 'individual', label: 'Todos contra todos' },
+                  { value: 'groups', label: 'Equipos' },
+                ]}
+              />
+              {config.groupMode === 'groups' ? (
+                <QuantityStepper
+                  legend="Número de equipos"
+                  helperText="Cada equipo necesita al menos dos personas."
+                  value={config.groupCount}
+                  onChange={(value) =>
+                    setScaleConfig({ groupCount: value as EscalaConfig['groupCount'] })
+                  }
+                  options={[2, 3].map((value) => ({
+                    value,
+                    label: String(value),
+                  }))}
+                  valueSuffix="equipos"
+                />
+              ) : null}
+              <div className="rounded-xl border border-oro/30 bg-oro/10 px-4 py-3 text-14 leading-relaxed text-humo">
+                {config.modo === 'online'
+                  ? 'La persona que tiene la pista escribe su frase y la acepta. Solo entonces aparece para el resto, que coloca su puntuación antes de que termine la cuenta atrás.'
+                  : 'La persona que tiene la pista ve el objetivo secreto, dice su frase en voz alta y la confirma en su móvil. Después el resto coloca su puntuación.'}
+              </div>
+              <div className="rounded-xl border border-linea bg-mesa/70 px-4 py-3 text-14 leading-relaxed text-humo">
+                <p className="font-semibold text-hueso">Cómo se puntúa</p>
+                <p className="mt-1">
+                  Distancia 0–10: 4 puntos · 11–20: 3 · 21–30: 2 · 31–40: 1 · más de 40: 0.
+                </p>
+                <p className="mt-1">
+                  La guía no estima; en equipos se acumula el marcador del grupo.
+                </p>
+              </div>
+            </>
+          ) : null}
           {config.gameId === 'colores' ? (
             <div className="flex flex-col gap-2.5">
               <label htmlFor="color-topic" className="text-16 font-semibold text-hueso">

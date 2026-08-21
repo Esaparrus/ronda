@@ -62,6 +62,7 @@ export function startPeriodicTasks(mgr: RoomManager, now: () => number): () => v
   const turnHandle = setInterval(() => {
     mgr.expireOverdueTurns(now());
     mgr.expireOverdueColorAnswers(now());
+    mgr.expireOverdueScaleAnswers(now());
   }, TURN_WATCHDOG_INTERVAL_MS);
 
   return () => {

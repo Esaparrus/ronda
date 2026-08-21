@@ -79,6 +79,8 @@ export interface PublicPlayer {
    * no tiene parejas" — y obliga a quien lo lea a distinguir el caso.
    */
   teamIndex: 0 | 1 | null;
+  /** Grupo de Escala cuando la sala compite por equipos. */
+  groupIndex?: number | null;
 }
 
 /** Campos comunes a cualquier vista, de cualquier juego. */
@@ -379,6 +381,7 @@ export type PartyAvailableAction =
   | 'submitColors'
   | 'submitMajority'
   | 'resolveMajority'
+  | 'submitScaleClue'
   | 'submitScale'
   | 'setOrderCards'
   | 'endOrder'
@@ -443,12 +446,27 @@ export interface MajorityGroup {
 export interface EscalaPublic {
   gameId: 'escala';
   phase: PartyPhase;
+  modo: 'presencial' | 'online';
   questionId: string;
   leftLabel: string;
   rightLabel: string;
   cluePlayerId: PlayerId;
+  clueGroupIndex: number | null;
+  /** La pista aparece solo después de que la guía la confirma. */
+  clue: string | null;
   target: number | null;
+  deadlineAt: number | null;
+  submittedPlayerIds: PlayerId[];
   guesses: Record<PlayerId, number> | null;
+  scoreDeltas: Record<PlayerId, number> | null;
+  groups: EscalaGroupPublic[] | null;
+  winnerGroupIndex: number | null;
+}
+
+export interface EscalaGroupPublic {
+  index: number;
+  score: number;
+  playerIds: PlayerId[];
 }
 
 export type PartyPublic = OrdenPublic | ColoresPublic | MayoriaPublic | EscalaPublic;
@@ -772,6 +790,7 @@ export const PublicPlayerSchema = z.object({
   isHost: z.boolean(),
   eliminated: z.boolean(),
   teamIndex: z.union([z.literal(0), z.literal(1)]).nullable(),
+  groupIndex: z.number().int().min(0).nullable().optional(),
 });
 
 const cardIdList = z.array(z.string());

@@ -1,14 +1,14 @@
 // Vistas censuradas de los modos sociales.
 //
-// La mano numérica y el objetivo de Escala son secretos. Las respuestas se
-// mantienen ocultas hasta que todos han contestado; después se publican a la
-// vez en la vista común y en la pantalla central.
+// La mano numérica y el objetivo de Escala son secretos. La pista aparece al
+// confirmarla; objetivo, estimaciones y puntos se publican juntos al revelar.
 
 import {
   type ColoresCommonView,
   type ColoresPlayerView,
   type ColoresTableView,
   type EscalaCommonView,
+  type EscalaGroupPublic,
   type EscalaPlayerView,
   type EscalaTableView,
   type MayoriaCommonView,
@@ -44,6 +44,7 @@ function buildPublicPlayers(state: PartyState): PublicPlayer[] {
     isHost: player.seat === 0,
     eliminated: false,
     teamIndex: null,
+    groupIndex: player.groupIndex,
   }));
 }
 
@@ -153,14 +154,36 @@ function buildEscalaCommon(state: PartyState): EscalaCommonView {
     party: {
       gameId: 'escala',
       phase: state.phase,
+      modo: config.modo,
       questionId: question.id,
       leftLabel: question.leftLabel,
       rightLabel: question.rightLabel,
       cluePlayerId: state.scale.cluePlayerId,
+      clueGroupIndex: state.scale.clueGroupIndex,
+      clue: state.scale.clueText,
       target: revealed ? state.scale.target : null,
+      deadlineAt: state.scale.deadlineAt,
+      submittedPlayerIds: Object.keys(state.scale.guesses),
       guesses: revealed ? { ...state.scale.guesses } : null,
+      scoreDeltas: revealed && state.scale.scoreDeltas ? { ...state.scale.scoreDeltas } : null,
+      groups: buildScaleGroups(state),
+      winnerGroupIndex: state.scale.winnerGroupIndex ?? null,
     },
   };
+}
+
+function buildScaleGroups(state: PartyState): EscalaGroupPublic[] | null {
+  if (state.config.gameId !== 'escala' || state.config.groupMode === 'individual' || !state.scale) {
+    return null;
+  }
+  return Array.from({ length: state.config.groupCount }, (_, index) => ({
+    index,
+    score: state.scale?.groupScores[String(index)] ?? 0,
+    playerIds: state.players
+      .filter((player) => !player.left && player.groupIndex === index)
+      .sort((a, b) => a.seat - b.seat)
+      .map((player) => player.playerId),
+  }));
 }
 
 function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
@@ -200,10 +223,18 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
     } else if (
       state.gameId === 'escala' &&
       state.scale &&
-      playerId !== state.scale.cluePlayerId &&
+      state.scale.clueText !== null &&
+      isScaleGuesser(state, playerId) &&
       state.scale.guesses[playerId] === undefined
     ) {
       availableActions.push('submitScale');
+    } else if (
+      state.gameId === 'escala' &&
+      state.scale &&
+      playerId === state.scale.cluePlayerId &&
+      state.scale.clueText === null
+    ) {
+      availableActions.push('submitScaleClue');
     }
   }
   if (state.status === 'playing' && state.phase === 'reveal' && state.gameId !== 'orden') {
@@ -240,6 +271,19 @@ function buildMe(state: PartyState, playerId: PlayerId): PartyPlayerViewMe {
         : null,
     availableActions,
   };
+}
+
+function isScaleGuesser(state: PartyState, playerId: PlayerId): boolean {
+  if (state.gameId !== 'escala' || !state.scale || playerId === state.scale.cluePlayerId) {
+    return false;
+  }
+  const player = state.players.find((candidate) => candidate.playerId === playerId);
+  if (!player || player.left) return false;
+  return (
+    state.config.gameId !== 'escala' ||
+    state.config.groupMode === 'individual' ||
+    player.groupIndex !== state.scale.clueGroupIndex
+  );
 }
 
 export function getPlayerView(state: PartyState, playerId: PlayerId): PartyPlayerView {

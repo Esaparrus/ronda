@@ -180,10 +180,14 @@ export function decidePartyAction(view: PartyPlayerView): GameAction | null {
     }
     return { type: 'submitMajority', answer: majorityAnswer(view) };
   }
-  if (view.party.cluePlayerId === view.me.playerId) return null;
+  if (view.party.cluePlayerId === view.me.playerId) {
+    return view.me.availableActions.includes('submitScaleClue')
+      ? { type: 'submitScaleClue', clue: 'Una situación que divide a la mesa' }
+      : null;
+  }
 
-  // La pista de Escala se comunica de viva voz y no llega al servidor. Sin
-  // inventarse acceso a ese dato, la mejor estimación honesta es el centro,
+  // La pista ya está en la vista pública tras confirmarse. Sin intentar
+  // interpretar lenguaje, la mejor estimación honesta del robot es el centro,
   // con una pequeña dispersión para que varios robots no respondan en bloque.
   const offset = (stableHash(`${view.roomCode}:${view.round}:${view.me.playerId}`) % 17) - 8;
   return { type: 'submitScale', value: 50 + offset };

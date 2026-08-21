@@ -17,6 +17,21 @@ const PLAYERS = [
   { playerId: 'p3' as PlayerId, nick: 'Carla', seat: 2 },
 ];
 
+const GROUP_PLAYERS = [
+  { playerId: 'p1' as PlayerId, nick: 'Ana', seat: 0, groupIndex: 0 },
+  { playerId: 'p2' as PlayerId, nick: 'Beto', seat: 1, groupIndex: 1 },
+  { playerId: 'p3' as PlayerId, nick: 'Carla', seat: 2, groupIndex: 0 },
+  { playerId: 'p4' as PlayerId, nick: 'Dani', seat: 3, groupIndex: 1 },
+];
+
+const UNEVEN_GROUP_PLAYERS = [
+  { playerId: 'p1' as PlayerId, nick: 'Ana', seat: 0, groupIndex: 0 },
+  { playerId: 'p2' as PlayerId, nick: 'Beto', seat: 1, groupIndex: 1 },
+  { playerId: 'p3' as PlayerId, nick: 'Carla', seat: 2, groupIndex: 0 },
+  { playerId: 'p4' as PlayerId, nick: 'Dani', seat: 3, groupIndex: 1 },
+  { playerId: 'p5' as PlayerId, nick: 'Eva', seat: 4, groupIndex: 0 },
+];
+
 function createOrder(): PartyState {
   return createPartyState(
     {
@@ -326,7 +341,7 @@ describe('modos sociales', () => {
     expect(state.pinkCowPlayerId).toBeNull();
   });
 
-  it('oculta el objetivo de Escala hasta que todos estiman', () => {
+  it('oculta el objetivo y la frase de Escala hasta que la guía acepta', () => {
     let state = createScale();
     const guide = state.scale?.cluePlayerId;
     if (!guide) throw new Error('sin guía');
@@ -334,6 +349,22 @@ describe('modos sociales', () => {
     const before = getTableView(state);
     if (before.party.gameId !== 'escala') throw new Error('vista incorrecta');
     expect(before.party.target).toBeNull();
+    expect(before.party.clue).toBeNull();
+    const guideView = getPlayerView(state, guide);
+    expect(guideView.me.scaleTarget).toBe(state.scale?.target);
+
+    state = applyAt(
+      state,
+      guide,
+      { type: 'submitScaleClue', clue: 'Una cita que sale regular' },
+      1_000,
+    );
+    const afterClue = getTableView(state);
+    if (afterClue.party.gameId !== 'escala') throw new Error('vista incorrecta');
+    expect(afterClue.party.clue).toBe('Una cita que sale regular');
+    expect(afterClue.party.target).toBeNull();
+    expect(afterClue.party.deadlineAt).toBe(31_000);
+
     state = apply(state, others[0]?.playerId ?? 'p2', { type: 'submitScale', value: 20 });
     expect(state.phase).toBe('input');
     state = apply(state, others[1]?.playerId ?? 'p3', { type: 'submitScale', value: 80 });
@@ -341,5 +372,87 @@ describe('modos sociales', () => {
     const after = getTableView(state);
     if (after.party.gameId !== 'escala') throw new Error('vista incorrecta');
     expect(after.party.target).not.toBeNull();
+  });
+
+  it('cierra Escala al terminar la cuenta atrás y da cero a quien no respondió', () => {
+    let state = createScale();
+    const guide = state.scale?.cluePlayerId;
+    if (!guide) throw new Error('sin guía');
+    const guesser = PLAYERS.find((player) => player.playerId !== guide)?.playerId ?? 'p2';
+    state = applyAt(state, guide, { type: 'submitScaleClue', clue: 'Demasiado tarde' }, 5_000);
+
+    const tooSoon = applyAction(state, guide, { type: 'finishScale' }, 34_999);
+    expect(tooSoon).toMatchObject({ ok: false, code: 'INVALID_ACTION' });
+
+    state = applyAt(state, guesser, { type: 'submitScale', value: 50 }, 10_000);
+    state = applyAt(state, guide, { type: 'finishScale' }, 35_000);
+    expect(state.phase).toBe('reveal');
+    expect(state.scale?.scoreDeltas).toHaveProperty(guesser);
+    const missing = PLAYERS.find(
+      (player) => player.playerId !== guide && player.playerId !== guesser,
+    )?.playerId;
+    if (!missing) throw new Error('falta jugador');
+    expect(state.scale?.scoreDeltas?.[missing]).toBe(0);
+  });
+
+  it('en equipos reutiliza la misma escala y rota por todos los grupos', () => {
+    const config = {
+      ...DEFAULT_ESCALA_CONFIG,
+      groupMode: 'groups' as const,
+      groupCount: 2 as const,
+    };
+    let state = createPartyState(
+      {
+        config,
+        seed: 'scale-groups-test',
+        players: GROUP_PLAYERS,
+        roomCode: 'TEST',
+      },
+      'escala',
+    );
+    const firstQuestionId = state.scale?.questionId;
+    const firstTarget = state.scale?.target;
+    expect(state.scale?.cluePlayerId).toBe('p1');
+    expect(state.scale?.clueGroupIndex).toBe(0);
+
+    state = apply(state, 'p1', { type: 'submitScaleClue', clue: 'Plan polémico' });
+    expect(getPlayerView(state, 'p3').me.availableActions).not.toContain('submitScale');
+    expect(getPlayerView(state, 'p2').me.availableActions).toContain('submitScale');
+    state = apply(state, 'p2', { type: 'submitScale', value: 30 });
+    state = apply(state, 'p4', { type: 'submitScale', value: 70 });
+    expect(state.phase).toBe('reveal');
+
+    state = apply(state, 'p3', { type: 'nextRound' });
+    expect(state.scale?.questionId).toBe(firstQuestionId);
+    expect(state.scale?.target).toBe(firstTarget);
+    expect(state.scale?.cluePlayerId).toBe('p2');
+    expect(state.scale?.clueGroupIndex).toBe(1);
+
+    state = apply(state, 'p2', { type: 'submitScaleClue', clue: 'Otra forma de verlo' });
+    expect(getPlayerView(state, 'p1').me.availableActions).toContain('submitScale');
+    expect(getPlayerView(state, 'p4').me.availableActions).not.toContain('submitScale');
+    state = apply(state, 'p1', { type: 'submitScale', value: 40 });
+    state = apply(state, 'p3', { type: 'submitScale', value: 60 });
+    expect(state.phase).toBe('reveal');
+    expect(state.scale?.groupScores).not.toEqual({ '0': 0, '1': 0 });
+  });
+
+  it('repite la rotación del grupo pequeño hasta igualar al más grande', () => {
+    const config = {
+      ...DEFAULT_ESCALA_CONFIG,
+      groupMode: 'groups' as const,
+      groupCount: 2 as const,
+    };
+    const state = createPartyState(
+      {
+        config,
+        seed: 'scale-uneven-groups-test',
+        players: UNEVEN_GROUP_PLAYERS,
+        roomCode: 'TEST',
+      },
+      'escala',
+    );
+
+    expect(state.scale?.clueSequence).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p2']);
   });
 });

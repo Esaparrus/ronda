@@ -156,10 +156,7 @@ export interface ClientToServerEvents {
    * MVP original pero pedido explícitamente para poder probar sin una
    * segunda persona). Solo el anfitrión, solo en lobby, solo con hueco.
    */
-  'room:addBot': (
-    payload: { delayMs?: number },
-    ack: (res: Result<JoinAck>) => void,
-  ) => void;
+  'room:addBot': (payload: { delayMs?: number }, ack: (res: Result<JoinAck>) => void) => void;
   /**
    * Intercambia el asiento de dos jugadores. Solo el anfitrión y solo en
    * lobby. Existe por Mus: es un juego POR PAREJAS y la decisión 1 de P28
@@ -172,6 +169,11 @@ export interface ClientToServerEvents {
    */
   'room:swapSeats': (
     payload: { aPlayerId: PlayerId; bPlayerId: PlayerId },
+    ack: (res: Result<null>) => void,
+  ) => void;
+  /** Solo anfitrión y solo en el lobby de Escala por grupos. */
+  'room:setGroup': (
+    payload: { targetPlayerId: PlayerId; groupIndex: number },
     ack: (res: Result<null>) => void,
   ) => void;
   'room:kick': (payload: { playerId: PlayerId }, ack: (res: Result<null>) => void) => void;
@@ -336,6 +338,11 @@ const roomSwapSeatsSchema = z.object({
   bPlayerId: z.string(),
 });
 
+const roomSetGroupSchema = z.object({
+  targetPlayerId: z.string(),
+  groupIndex: z.number().int().min(0).max(3),
+});
+
 const screenAttachSchema = z.object({
   roomCode: z.string(),
 });
@@ -364,6 +371,7 @@ export const clientPayloadSchemas = {
   'room:start': emptySchema,
   'room:addBot': addBotSchema,
   'room:swapSeats': roomSwapSeatsSchema,
+  'room:setGroup': roomSetGroupSchema,
   'room:kick': roomKickSchema,
   'room:leave': emptySchema,
   'room:close': emptySchema,

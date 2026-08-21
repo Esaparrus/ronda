@@ -155,7 +155,10 @@ export const MAJORITY_QUESTIONS: readonly MajorityQuestion[] = [
   { id: 'frase-amigos', prompt: 'Nombra una frase que se diga entre amigos.' },
   { id: 'secreto-amigos', prompt: 'Nombra algo que los amigos suelen saber de ti.' },
   { id: 'foto-amigos', prompt: 'Nombra una foto típica de un grupo de amigos.' },
-  { id: 'discusion-amigos', prompt: 'Nombra un tema absurdo por el que se puede discutir con amigos.' },
+  {
+    id: 'discusion-amigos',
+    prompt: 'Nombra un tema absurdo por el que se puede discutir con amigos.',
+  },
   { id: 'juego-cuadrilla', prompt: 'Nombra un juego que funcione bien con una cuadrilla.' },
 ];
 
@@ -219,7 +222,11 @@ export const SCALE_QUESTIONS: readonly ScaleQuestion[] = [
   { id: 'hotel-camping', leftLabel: 'hotel', rightLabel: 'camping' },
   { id: 'tren-coche', leftLabel: 'tren', rightLabel: 'coche' },
   { id: 'viaje-planificado-improvisado', leftLabel: 'planificado', rightLabel: 'improvisado' },
-  { id: 'maleta-vacia-llena', leftLabel: 'maleta minimalista', rightLabel: 'maleta imposible de cerrar' },
+  {
+    id: 'maleta-vacia-llena',
+    leftLabel: 'maleta minimalista',
+    rightLabel: 'maleta imposible de cerrar',
+  },
   { id: 'paseo-aventura', leftLabel: 'paseo tranquilo', rightLabel: 'aventura' },
   { id: 'domingo-lunes', leftLabel: 'domingo', rightLabel: 'lunes' },
   { id: 'madrugar-trasnochar', leftLabel: 'madrugar', rightLabel: 'trasnochar' },
@@ -246,29 +253,97 @@ export const SCALE_QUESTIONS: readonly ScaleQuestion[] = [
   { id: 'poco-ruido-mucho-ruido', leftLabel: 'silencio total', rightLabel: 'ruido total' },
   { id: 'sorpresa-obvio', leftLabel: 'sorpresa', rightLabel: 'era obvio' },
   { id: 'amistoso-hostil', leftLabel: 'amistoso', rightLabel: 'hostil' },
+  // Escalas de sobremesa: más incómodas, discutibles y con un poco de
+  // picante, sin convertir a nadie en el objeto de la broma.
+  { id: 'mensaje-ex', leftLabel: 'ni se te ocurre', rightLabel: 'a las 3 de la mañana' },
+  { id: 'ghosting', leftLabel: 'comprensible', rightLabel: 'de cobardes' },
+  { id: 'celos', leftLabel: 'un poco tiernos', rightLabel: 'control total' },
+  { id: 'red-flag', leftLabel: 'detalle sin importancia', rightLabel: 'sal corriendo' },
+  { id: 'ligar', leftLabel: 'sutil', rightLabel: 'descarado' },
+  { id: 'cita', leftLabel: 'plan inocente', rightLabel: 'acaba en casa' },
+  { id: 'crush', leftLabel: 'imposible', rightLabel: 'demasiado posible' },
+  { id: 'ex', leftLabel: 'saludo cordial', rightLabel: 'bloqueo inmediato' },
+  { id: 'amigo-ex', leftLabel: 'buena idea', rightLabel: 'traición' },
+  { id: 'perdonar', leftLabel: 'se lo ha ganado', rightLabel: 'ni de broma' },
+  { id: 'secreto', leftLabel: 'me lo guardo', rightLabel: 'esto se sabe hoy' },
+  { id: 'chisme', leftLabel: 'cotilleo inocente', rightLabel: 'dinamita social' },
+  { id: 'stalk', leftLabel: 'curiosidad normal', rightLabel: 'investigación criminal' },
+  { id: 'selfie', leftLabel: 'foto natural', rightLabel: 'thirst trap' },
+  { id: 'foto-ex', leftLabel: 'recuerdo bonito', rightLabel: 'delito emocional' },
+  { id: 'contraseña', leftLabel: 'confianza total', rightLabel: 'ni aunque me pagues' },
+  { id: 'mentira-piadosa', leftLabel: 'pegamento social', rightLabel: 'traición con sonrisa' },
+  { id: 'opinion', leftLabel: 'impopular', rightLabel: 'cancelable' },
+  { id: 'audio', leftLabel: '10 segundos', rightLabel: 'podcast completo' },
+  { id: 'responder', leftLabel: 'responde al momento', rightLabel: 'aparece mañana' },
+  { id: 'cancelar-plan', leftLabel: 'excusa válida', rightLabel: 'te has inventado una película' },
+  { id: 'puntualidad', leftLabel: 'cinco minutos tarde', rightLabel: 'llega cuando acaba' },
+  { id: 'no-pagar', leftLabel: 'despiste', rightLabel: 'jeta profesional' },
+  { id: 'cuenta', leftLabel: 'se divide al céntimo', rightLabel: 'invita quien propone' },
+  { id: 'ronda', leftLabel: 'cada uno la suya', rightLabel: 'ronda para toda la mesa' },
+  { id: 'borrachera', leftLabel: 'alegre', rightLabel: 'hay que escoltarle' },
+  { id: 'after', leftLabel: 'planazo', rightLabel: 'error judicial' },
+  { id: 'resaca', leftLabel: 'molesta', rightLabel: 'no vuelvo a beber' },
+  { id: 'fiesta', leftLabel: 'me voy pronto', rightLabel: 'cierro el local' },
+  { id: 'cancion-fiesta', leftLabel: 'placer culpable', rightLabel: 'crimen musical' },
+  { id: 'karaoke', leftLabel: 'talento oculto', rightLabel: 'denuncia vecinal' },
+  { id: 'boda-ex', leftLabel: 'madurez', rightLabel: 'gasolina' },
+  { id: 'boda', leftLabel: 'celebración íntima', rightLabel: 'festival con barra libre' },
+  { id: 'familia-politica', leftLabel: 'gente encantadora', rightLabel: 'pesadilla de sobremesa' },
+  { id: 'suegros', leftLabel: 'visita agradable', rightLabel: 'prueba de resistencia' },
+  { id: 'vecino', leftLabel: 'un poco ruidoso', rightLabel: 'enemigo público' },
+  { id: 'grupo-whatsapp', leftLabel: 'útil', rightLabel: 'bomba de notificaciones' },
+  { id: 'plan-cuadrilla', leftLabel: 'todo decidido', rightLabel: 'nadie se pone de acuerdo' },
+  { id: 'conducir', leftLabel: 'conducción tranquila', rightLabel: 'rally ilegal' },
+  { id: 'vacaciones', leftLabel: 'descansar', rightLabel: 'volver más cansado' },
+  { id: 'maleta', leftLabel: 'llevo lo justo', rightLabel: 'por si acaso llevo la casa' },
+  { id: 'hotel', leftLabel: 'solo necesito una cama', rightLabel: 'quiero que me mimen' },
+  { id: 'restaurante', leftLabel: 'pido lo de siempre', rightLabel: 'degustación de 14 pases' },
+  { id: 'piña-pizza', leftLabel: 'delito', rightLabel: 'obra maestra' },
+  { id: 'tortilla', leftLabel: 'poco hecha', rightLabel: 'ladrillo seco' },
+  { id: 'cafe', leftLabel: 'un café', rightLabel: 'sustituye al sueño' },
+  { id: 'dietas', leftLabel: 'me cuido', rightLabel: 'hoy no cuenta' },
+  { id: 'compras', leftLabel: 'lo necesito', rightLabel: 'me lo merezco' },
+  { id: 'lujo', leftLabel: 'capricho razonable', rightLabel: 'quemar dinero' },
+  { id: 'trabajo', leftLabel: 'desconecto al salir', rightLabel: 'vivo para ello' },
+  { id: 'reunion', leftLabel: 'podía ser un mensaje', rightLabel: 'necesita una cumbre' },
+  { id: 'jefe', leftLabel: 'exigente', rightLabel: 'villano de película' },
+  { id: 'fama', leftLabel: 'me reconocen dos personas', rightLabel: 'no puedo salir a la calle' },
+  { id: 'drama', leftLabel: 'lo hablamos tranquilos', rightLabel: 'temporada final de una serie' },
+  { id: 'discusion', leftLabel: 'debate sano', rightLabel: 'no se vuelve a hablar' },
+  { id: 'razon', leftLabel: 'puedo ceder', rightLabel: 'tengo razón y lo sabes' },
+  { id: 'orgullo', leftLabel: 'dignidad', rightLabel: 'no pediré perdón jamás' },
+  { id: 'venganza', leftLabel: 'pasar página', rightLabel: 'que aprenda la lección' },
+  { id: 'sorpresa', leftLabel: 'me encanta', rightLabel: 'prefiero saberlo todo' },
+  { id: 'plan-domingo', leftLabel: 'sofá y manta', rightLabel: 'tres planes encadenados' },
 ];
 
 export function colorQuestionById(id: string): ColorQuestion {
-  return COLOR_QUESTIONS.find((q) => q.id === id) ?? {
-    id: 'color-fallback',
-    prompt: '¿De qué color es?',
-    category: 'cultura',
-    allowMultiple: false,
-    correctColors: ['rojo'],
-  };
+  return (
+    COLOR_QUESTIONS.find((q) => q.id === id) ?? {
+      id: 'color-fallback',
+      prompt: '¿De qué color es?',
+      category: 'cultura',
+      allowMultiple: false,
+      correctColors: ['rojo'],
+    }
+  );
 }
 
 export function majorityQuestionById(id: string): MajorityQuestion {
-  return MAJORITY_QUESTIONS.find((q) => q.id === id) ?? {
-    id: 'majority-fallback',
-    prompt: 'Nombra algo.',
-  };
+  return (
+    MAJORITY_QUESTIONS.find((q) => q.id === id) ?? {
+      id: 'majority-fallback',
+      prompt: 'Nombra algo.',
+    }
+  );
 }
 
 export function scaleQuestionById(id: string): ScaleQuestion {
-  return SCALE_QUESTIONS.find((q) => q.id === id) ?? {
-    id: 'scale-fallback',
-    leftLabel: 'poco',
-    rightLabel: 'mucho',
-  };
+  return (
+    SCALE_QUESTIONS.find((q) => q.id === id) ?? {
+      id: 'scale-fallback',
+      leftLabel: 'poco',
+      rightLabel: 'mucho',
+    }
+  );
 }

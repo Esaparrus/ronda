@@ -98,6 +98,11 @@ export async function startServer(opts: {
         // El cierre del plazo no pasa por un socket de jugador.
         broadcastRoom(io, room);
       },
+      onScaleTimeout: (room) => {
+        // La resolución automática de Escala también necesita llegar a todos
+        // los móviles y a la pantalla central.
+        broadcastRoom(io, room);
+      },
       onTrack: (room, kind, payload) => {
         // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
         // no puede tumbar una partida. `void` porque el llamador (room-

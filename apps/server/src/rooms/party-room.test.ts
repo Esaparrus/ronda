@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   COLOR_ANSWER_SECONDS,
   DEFAULT_COLORES_CONFIG,
+  DEFAULT_ESCALA_CONFIG,
   DEFAULT_ORDEN_CONFIG,
 } from '@ronda/protocol';
 import { colorQuestionById } from '@ronda/engine';
@@ -21,7 +22,11 @@ describe('salas de modos sociales', () => {
     if (!first.ok) throw new Error(first.code);
     const second = manager.joinRoom({ roomCode: first.value.roomCode, nick: 'Beto', now: 1 });
     if (!second.ok) throw new Error(second.code);
-    const started = manager.start({ roomCode: first.value.roomCode, playerId: first.value.playerId, now: 1 });
+    const started = manager.start({
+      roomCode: first.value.roomCode,
+      playerId: first.value.playerId,
+      now: 1,
+    });
     expect(started.ok).toBe(true);
 
     const room = manager.getRoomByCode(first.value.roomCode);
@@ -100,5 +105,96 @@ describe('salas de modos sociales', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('revela Escala después de aceptar la pista y agotar el tiempo', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+      let timeoutSnapshots = 0;
+      const manager = new RoomManager(() => ({ onScaleTimeout: () => timeoutSnapshots++ }));
+      const first = manager.createRoom({
+        gameId: 'escala',
+        config: { ...DEFAULT_ESCALA_CONFIG, answerTimeSeconds: 10 },
+        nick: 'Ana',
+        now: NOW,
+      });
+      if (!first.ok) throw new Error(first.code);
+      const second = manager.joinRoom({ roomCode: first.value.roomCode, nick: 'Beto', now: NOW });
+      if (!second.ok) throw new Error(second.code);
+      expect(
+        manager.start({ roomCode: first.value.roomCode, playerId: first.value.playerId, now: NOW })
+          .ok,
+      ).toBe(true);
+
+      const room = manager.getRoomByCode(first.value.roomCode);
+      if (!room?.state || room.state.gameId !== 'escala' || !room.state.scale) {
+        throw new Error('Escala no empezó');
+      }
+      const cluePlayerId = room.state.scale.cluePlayerId;
+      const accepted = manager.applyAction({
+        roomCode: room.code,
+        playerId: cluePlayerId,
+        clientActionId: 'scale-clue',
+        expectedVersion: room.state.version,
+        action: { type: 'submitScaleClue', clue: 'Una decisión discutible' },
+        now: NOW,
+      });
+      expect(accepted.ok).toBe(true);
+      expect(room.state.scale?.deadlineAt).toBe(NOW + 10_000);
+
+      vi.advanceTimersByTime(10_000);
+
+      expect(room.state.phase).toBe('reveal');
+      expect(room.state.scale?.guesses).toEqual({});
+      expect(timeoutSnapshots).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reparte Escala por equipos al entrar y permite recolocar jugadores en el lobby', () => {
+    const manager = new RoomManager();
+    const config = {
+      ...DEFAULT_ESCALA_CONFIG,
+      groupMode: 'groups' as const,
+      groupCount: 2 as const,
+      maxPlayers: 4 as const,
+    };
+    const first = manager.createRoom({
+      gameId: 'escala',
+      config,
+      nick: 'Ana',
+      now: NOW,
+    });
+    if (!first.ok) throw new Error(first.code);
+
+    for (const nick of ['Beto', 'Carla', 'Dani']) {
+      const joined = manager.joinRoom({ roomCode: first.value.roomCode, nick, now: NOW });
+      if (!joined.ok) throw new Error(joined.code);
+    }
+
+    const room = manager.getRoomByCode(first.value.roomCode);
+    if (!room) throw new Error('sala inexistente');
+    const initialGroups = Array.from(
+      { length: 2 },
+      (_, groupIndex) =>
+        room.playersBySeat().filter((player) => player.groupIndex === groupIndex).length,
+    );
+    expect(initialGroups).toEqual([2, 2]);
+
+    const target = room.playersBySeat()[0];
+    if (!target) throw new Error('jugador inexistente');
+    const destination = target.groupIndex === 0 ? 1 : 0;
+    expect(
+      manager.setPlayerGroup({
+        roomCode: room.code,
+        playerId: first.value.playerId,
+        targetPlayerId: target.playerId,
+        groupIndex: destination,
+        now: NOW + 1,
+      }).ok,
+    ).toBe(true);
+    expect(room.players.get(target.playerId)?.groupIndex).toBe(destination);
   });
 });

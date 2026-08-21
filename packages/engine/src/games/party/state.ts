@@ -27,6 +27,8 @@ export interface PartyPlayer {
   seat: number;
   score: number;
   left: boolean;
+  /** Grupo de Escala; null en partidas individuales y en los otros modos. */
+  groupIndex: number | null;
   /** En Orden son números serializados como CardId; en los demás modos está vacío. */
   hand: CardId[];
 }
@@ -77,9 +79,24 @@ export interface ScaleRoundState {
   questionIndex: number;
   questionId: string;
   cluePlayerId: PlayerId;
+  clueGroupIndex: number | null;
+  /** Orden de guías de un mismo eje en la variante por grupos. */
+  clueSequence: PlayerId[];
+  clueSequenceIndex: number;
+  /** Número de eje; varias personas pueden jugar el mismo eje en grupos. */
+  scaleSet: number;
   /** Objetivo secreto que solo se entrega al jugador guía. */
   target: number;
+  /** Texto que la guía confirma y que ya puede ver el resto. */
+  clueText: string | null;
+  /** Plazo común para las estimaciones, iniciado al aceptar la pista. */
+  deadlineAt: number | null;
   guesses: Record<PlayerId, number>;
+  /** Puntos obtenidos en la última resolución. */
+  scoreDeltas: Record<PlayerId, number> | null;
+  /** Marcador acumulado por grupo, indexado como texto por serialización JSON. */
+  groupScores: Record<string, number>;
+  winnerGroupIndex: number | null;
 }
 
 export interface PartyState {

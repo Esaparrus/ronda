@@ -253,6 +253,22 @@ export const EscalaConfigSchema = CommonGameConfigSchema.extend({
   maxPlayers: PARTY_MAX_PLAYERS.default(7),
   rounds: PARTY_ROUNDS.default(10),
   pointsToWin: PARTY_POINTS.default(10),
+  /** Dónde se dice la pista: hablando en la mesa o escribiéndola online. */
+  modo: z.union([z.literal('presencial'), z.literal('online')]).default('presencial'),
+  /** Tiempo que tienen los demás para colocar su estimación. */
+  answerTimeSeconds: z
+    .union([
+      z.literal(10),
+      z.literal(15),
+      z.literal(20),
+      z.literal(30),
+      z.literal(45),
+      z.literal(60),
+    ])
+    .default(30),
+  /** En grupos, el mismo eje pasa por cada grupo antes de cambiar de escala. */
+  groupMode: z.union([z.literal('individual'), z.literal('groups')]).default('individual'),
+  groupCount: z.union([z.literal(2), z.literal(3)]).default(2),
 });
 
 export type EscalaConfig = z.infer<typeof EscalaConfigSchema>;

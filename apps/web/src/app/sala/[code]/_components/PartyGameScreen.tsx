@@ -640,31 +640,52 @@ function normalizeMajorityText(value: string): string {
 function EscalaGame({ view }: { view: EscalaPlayerView }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const [guess, setGuess] = useState(50);
+  const [clue, setClue] = useState('');
   const { party, me } = view;
   const isGuide = party.cluePlayerId === me.playerId;
-  const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
+  const myPlayer = view.players.find((player) => player.playerId === me.playerId);
+  const isTeammateOfGuide =
+    view.config.groupMode === 'groups' &&
+    myPlayer?.groupIndex !== null &&
+    myPlayer?.groupIndex === party.clueGroupIndex &&
+    !isGuide;
+  const guesserCount = view.players.filter((player) => {
+    if (player.playerId === party.cluePlayerId) return false;
+    if (view.config.groupMode !== 'groups') return true;
+    return player.groupIndex !== party.clueGroupIndex;
+  }).length;
 
   useEffect(() => {
     setGuess(50);
-  }, [party.questionId]);
+    setClue('');
+  }, [party.questionId, party.cluePlayerId]);
 
-  function submit() {
+  function submitClue() {
+    if (!clue.trim()) return;
+    void useRondaStore.getState().sendAction({ type: 'submitScaleClue', clue: clue.trim() });
+  }
+
+  function submitGuess() {
     void useRondaStore.getState().sendAction({ type: 'submitScale', value: guess });
   }
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
-      <TableHeader
+      <ColorCountdownHeader
         left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
-        turnNick={
-          view.players.find((player) => player.playerId === party.cluePlayerId)?.nick ?? null
-        }
+        deadlineAt={party.phase === 'input' ? party.deadlineAt : null}
+        durationSeconds={view.config.answerTimeSeconds}
       />
       <PlayerStrip
         players={view.players}
         turnPlayerId={party.cluePlayerId}
         myPlayerId={me.playerId}
-        renderInfo={(player) => `${player.score} puntos`}
+        renderInfo={(player) => {
+          const group = party.groups?.find((candidate) => candidate.index === player.groupIndex);
+          return group
+            ? `Grupo ${groupLetter(group.index)} · ${group.score} puntos`
+            : `${player.score} puntos`;
+        }}
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-6">
         <section className="surface-panel w-full max-w-md p-5 text-center">
@@ -676,16 +697,60 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
           </div>
           <p className="mt-3 text-14 text-humo">
             {isGuide
-              ? 'Tienes el objetivo. Da una pista hablando, sin decir el número.'
-              : 'Coloca tu estimación.'}
+              ? view.config.modo === 'online'
+                ? 'Escribe una palabra o frase que apunte a tu objetivo.'
+                : 'Di una palabra o frase en voz alta y confírmala aquí.'
+              : party.clue
+                ? 'Lee la pista y coloca el punto que te parezca.'
+                : 'La guía está preparando su pista.'}
           </p>
         </section>
-        {party.phase === 'input' && isGuide ? (
-          <p className="rounded-lg border border-oro bg-mesa px-4 py-3 text-center text-16 text-oro">
-            Tu objetivo secreto está entre 0 y 100. Los demás no lo ven.
+
+        {party.clue ? (
+          <section className="surface-panel w-full max-w-md p-5 text-center">
+            <p className="text-12 uppercase tracking-wider text-humo">Pista de la ronda</p>
+            <p className="mt-2 text-24 font-semibold text-hueso">«{party.clue}»</p>
+            <p className="mt-2 text-12 text-humo">
+              {party.submittedPlayerIds.length}/{guesserCount} estimaciones confirmadas
+            </p>
+          </section>
+        ) : null}
+
+        {party.phase === 'input' && isGuide && !party.clue ? (
+          <div className="flex w-full max-w-md flex-col gap-3">
+            <p className="rounded-lg border border-oro bg-mesa px-4 py-3 text-center text-14 text-oro">
+              Objetivo secreto: <span className="font-mono text-18">{me.scaleTarget}</span>/100
+            </p>
+            <label htmlFor="scale-clue" className="text-16 font-semibold text-hueso">
+              {view.config.modo === 'online'
+                ? 'Tu palabra o frase'
+                : 'Confirma la pista que has dicho'}
+            </label>
+            <input
+              id="scale-clue"
+              value={clue}
+              maxLength={120}
+              autoComplete="off"
+              onChange={(event) => setClue(event.target.value)}
+              className="form-control px-4 text-16"
+              placeholder="Por ejemplo: una cena que empieza tranquila…"
+            />
+            <p className="text-12 text-humo">
+              Al aceptar, la pista aparece para todos y empieza la cuenta atrás.
+            </p>
+            <Button onClick={submitClue} disabled={!clue.trim()} loading={pendingAction}>
+              Aceptar pista
+            </Button>
+          </div>
+        ) : null}
+
+        {party.phase === 'input' && isTeammateOfGuide ? (
+          <p className="rounded-lg border border-linea bg-mesa px-4 py-3 text-center text-14 text-humo">
+            Tu grupo está dando la pista en esta vuelta. Espera la siguiente escala para estimar.
           </p>
         ) : null}
-        {party.phase === 'input' && !isGuide && !me.submitted ? (
+
+        {party.phase === 'input' && me.availableActions.includes('submitScale') && !me.submitted ? (
           <div className="flex w-full max-w-md flex-col gap-4">
             <label htmlFor="scale-guess" className="flex justify-between text-16 text-hueso">
               <span>Tu estimación</span>
@@ -706,24 +771,21 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
               <span>50</span>
               <span>100</span>
             </div>
-            <Button onClick={submit} loading={pendingAction}>
-              Fijar estimación
+            <Button onClick={submitGuess} loading={pendingAction}>
+              Aceptar estimación
             </Button>
           </div>
-        ) : party.phase === 'input' && !isGuide ? (
+        ) : party.phase === 'input' && me.submitted ? (
           <p className="text-16 text-oro">Estimación guardada. Espera a los demás.</p>
         ) : null}
         {party.phase === 'reveal' ? <ScaleReveal view={view} /> : null}
-        {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
+        {party.phase === 'reveal' && view.status === 'playing' ? (
           <Button
             onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
             loading={pendingAction}
           >
-            Siguiente ronda
+            Siguiente persona
           </Button>
-        ) : null}
-        {party.phase === 'reveal' && view.status === 'playing' && !isHost ? (
-          <p className="text-center text-14 text-humo">Esperando al anfitrión.</p>
         ) : null}
       </main>
     </div>
@@ -731,19 +793,62 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
 }
 
 function ScaleReveal({ view }: { view: EscalaPlayerView }) {
-  const guesses = view.party.guesses;
+  const { guesses, scoreDeltas } = view.party;
+  const guessers = view.players.filter(
+    (player) =>
+      player.playerId !== view.party.cluePlayerId &&
+      (view.config.groupMode !== 'groups' || player.groupIndex !== view.party.clueGroupIndex),
+  );
   return (
     <section className="surface-panel flex w-full max-w-md flex-col gap-3 p-4">
-      <p className="text-16 font-semibold text-oro">Objetivo: {view.party.target}</p>
+      <p className="text-16 font-semibold text-oro">Punto secreto: {view.party.target}/100</p>
+      {view.party.clue ? (
+        <p className="text-14 text-humo">
+          Pista: <span className="font-semibold text-hueso">«{view.party.clue}»</span>
+        </p>
+      ) : null}
       {guesses
-        ? Object.entries(guesses).map(([playerId, value]) => (
-            <p key={playerId} className="text-14 text-humo">
-              {playerNick(view, playerId)}: {value}
-            </p>
-          ))
+        ? guessers.map((player) => {
+            const value = guesses[player.playerId];
+            return (
+              <div
+                key={player.playerId}
+                className="flex items-center justify-between gap-3 text-14 text-humo"
+              >
+                <span>
+                  {player.nick}: {value === undefined ? 'Sin respuesta' : value}
+                </span>
+                <span className="font-mono text-oro">+{scoreDeltas?.[player.playerId] ?? 0}</span>
+              </div>
+            );
+          })
         : null}
+      {view.party.groups ? (
+        <div className="mt-2 border-t border-linea pt-3">
+          <p className="text-12 uppercase tracking-wider text-humo">Marcador de grupos</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {view.party.groups.map((group) => (
+              <div
+                key={group.index}
+                className={`rounded-lg border px-3 py-2 ${
+                  group.index === view.party.winnerGroupIndex
+                    ? 'border-oro bg-oro/10'
+                    : 'border-linea bg-tinta/20'
+                }`}
+              >
+                <span className="text-13 text-humo">Grupo {groupLetter(group.index)}</span>
+                <span className="ml-2 font-mono text-oro">{group.score}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function groupLetter(index: number): string {
+  return String.fromCharCode('A'.charCodeAt(0) + index);
 }
 
 function playerNick(

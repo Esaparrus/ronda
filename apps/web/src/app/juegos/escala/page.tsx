@@ -8,7 +8,7 @@ export default function EscalaPage() {
       kind="Pistas e intuición"
       players="2–7 jugadores"
       duration="15–25 min"
-      summary="Una persona conoce un punto secreto entre dos extremos y da una pista. El resto intenta leerle la mente."
+      summary="Una persona confirma una frase sobre un punto secreto entre dos extremos. El resto intenta leerle la mente con tiempo limitado, a solas o por equipos."
       mark="↔"
     />
   );

@@ -103,7 +103,14 @@ export const GameActionSchema = z.discriminatedUnion('type', [
       .min(1)
       .max(8),
   }),
+  z.object({
+    /** La guía confirma la palabra/frase; hasta entonces nadie ve la pista. */
+    type: z.literal('submitScaleClue'),
+    clue: z.string().trim().min(1).max(120),
+  }),
   z.object({ type: z.literal('submitScale'), value: z.number().int().min(0).max(100) }),
+  /** Acción interna del reloj del servidor; antes del plazo la rechaza el motor. */
+  z.object({ type: z.literal('finishScale') }),
   // --- Musical -------------------------------------------------------------
   // La URL de preview es pública para que cada móvil pueda reproducir el
   // fragmento, pero el servidor nunca envía la respuesta fuera de la

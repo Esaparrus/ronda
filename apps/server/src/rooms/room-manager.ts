@@ -97,6 +97,8 @@ export class RoomManager {
   private turnTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** Plazo de Colores, creado solo después de la primera respuesta. */
   private colorTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Plazo de estimaciones de Escala, creado cuando la guía confirma la pista. */
+  private scaleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private inactivityTimeoutMs: number | undefined;
 
   constructor(hooksFactory: () => RoomHooks = () => ({}), options: RoomManagerOptions = {}) {
@@ -165,6 +167,14 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: false,
+      groupIndex: initialScaleGroupIndex(
+        input.config,
+        input.gameId,
+        room.seed,
+        playerId,
+        seat,
+        room.players.values(),
+      ),
     };
     room.players.set(playerId, player);
     room.hostPlayerId = playerId;
@@ -202,6 +212,14 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: false,
+      groupIndex: initialScaleGroupIndex(
+        room.config,
+        room.gameId,
+        room.seed,
+        playerId,
+        seat,
+        room.players.values(),
+      ),
     };
     room.players.set(playerId, player);
     room.touch(input.now);
@@ -247,6 +265,14 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: true,
+      groupIndex: initialScaleGroupIndex(
+        room.config,
+        room.gameId,
+        room.seed,
+        playerId,
+        seat,
+        room.players.values(),
+      ),
       botDelayMs:
         room.gameId === 'musical' ? 5_000 : Math.min(15_000, Math.max(500, input.delayMs ?? 2_500)),
     };
@@ -287,6 +313,41 @@ export class RoomManager {
     const seat = a.seat;
     a.seat = b.seat;
     b.seat = seat;
+    room.touch(input.now);
+    room.hooks.onSnapshot?.(room);
+    return ok(null);
+  }
+
+  // --- groups --------------------------------------------------------------
+
+  /** Asigna un jugador a un grupo de Escala desde el lobby. */
+  setPlayerGroup(input: {
+    roomCode: string;
+    playerId: PlayerId; // anfitrión
+    targetPlayerId: PlayerId;
+    groupIndex: number;
+    now: number;
+  }): Result<null> {
+    const room = this.rooms.get(input.roomCode);
+    if (!room) return err('ROOM_NOT_FOUND');
+    if (room.status !== 'lobby' || room.gameId !== 'escala') return err('ROOM_ALREADY_STARTED');
+    const host = room.players.get(input.playerId);
+    if (!host) return err('PLAYER_NOT_IN_ROOM');
+    if (!host.isHost) return err('NOT_HOST');
+    const target = room.players.get(input.targetPlayerId);
+    if (!target) return err('PLAYER_NOT_IN_ROOM');
+    const config = room.config;
+    if (config.gameId !== 'escala' || config.groupMode !== 'groups') {
+      return err('INVALID_ACTION');
+    }
+    if (
+      !Number.isInteger(input.groupIndex) ||
+      input.groupIndex < 0 ||
+      input.groupIndex >= config.groupCount
+    ) {
+      return err('INVALID_ACTION');
+    }
+    target.groupIndex = input.groupIndex;
     room.touch(input.now);
     room.hooks.onSnapshot?.(room);
     return ok(null);
@@ -365,7 +426,39 @@ export class RoomManager {
     // pueda inferir a qué miembro concreto de la unión pertenece el objeto
     // resultante, aunque en runtime siga siendo exactamente la misma config
     // del mismo juego de siempre (el merge nunca cambia `gameId`).
+    const previousScaleConfig = room.config.gameId === 'escala' ? room.config : null;
     room.config = { ...room.config, ...input.patch, gameId: room.gameId } as GameConfig;
+    if (room.gameId === 'escala' && room.config.gameId === 'escala') {
+      const scaleConfig = room.config;
+      const shouldRandomizeGroups =
+        scaleConfig.groupMode === 'groups' &&
+        (previousScaleConfig?.groupMode !== 'groups' ||
+          previousScaleConfig.groupCount !== scaleConfig.groupCount);
+
+      if (shouldRandomizeGroups) {
+        randomizeScaleGroups(room);
+      } else if (scaleConfig.groupMode === 'groups') {
+        for (const runtime of room.players.values()) {
+          const groupIndex = runtime.groupIndex;
+          runtime.groupIndex =
+            typeof groupIndex === 'number' &&
+            Number.isInteger(groupIndex) &&
+            groupIndex >= 0 &&
+            groupIndex < scaleConfig.groupCount
+              ? groupIndex
+              : initialScaleGroupIndex(
+                  scaleConfig,
+                  room.gameId,
+                  room.seed,
+                  runtime.playerId,
+                  runtime.seat,
+                  room.players.values(),
+                );
+        }
+      } else {
+        for (const runtime of room.players.values()) runtime.groupIndex = null;
+      }
+    }
     room.touch(input.now);
     room.hooks.onSnapshot?.(room);
     return ok({ config: room.config });
@@ -383,6 +476,25 @@ export class RoomManager {
 
     const actives = room.playersBySeat();
     if (actives.length < minPlayersFor(room.gameId)) return err('NOT_ENOUGH_PLAYERS');
+    if (
+      room.gameId === 'escala' &&
+      room.config.gameId === 'escala' &&
+      room.config.groupMode === 'groups'
+    ) {
+      const sizes = new Map<number, number>();
+      for (const player of actives) {
+        if (player.groupIndex === null || player.groupIndex === undefined)
+          return err('INVALID_GROUPS');
+        sizes.set(player.groupIndex, (sizes.get(player.groupIndex) ?? 0) + 1);
+      }
+      if (
+        Array.from({ length: room.config.groupCount }, (_, index) => sizes.get(index) ?? 0).some(
+          (size) => size < 2,
+        )
+      ) {
+        return err('INVALID_GROUPS');
+      }
+    }
 
     const module = GAMES[room.gameId];
     if (!module) return err('GAME_NOT_FOUND');
@@ -397,6 +509,7 @@ export class RoomManager {
     room.touch(input.now);
     this.syncTurnTimer(room, null);
     this.syncColorTimer(room);
+    this.syncScaleTimer(room);
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'game_started', { players: actives.length });
     return ok(null);
@@ -579,6 +692,7 @@ export class RoomManager {
         room.status = 'gameEnd';
         this.clearTurnTimer(room.code);
         this.clearColorTimer(room.code);
+        this.clearScaleTimer(room.code);
         const state = room.state;
         if (state?.gameId === 'mus') {
           // Mus, decisión 6 de P28 (§12.11): la partida se ANULA. No hay
@@ -658,10 +772,7 @@ export class RoomManager {
 
     const partyNextRound =
       input.action.type === 'nextRound' &&
-      (room.gameId === 'orden' ||
-        room.gameId === 'colores' ||
-        room.gameId === 'mayoria' ||
-        room.gameId === 'escala');
+      (room.gameId === 'orden' || room.gameId === 'colores' || room.gameId === 'mayoria');
     if (
       (input.action.type === 'setOrderCards' ||
         input.action.type === 'endOrder' ||
@@ -691,6 +802,7 @@ export class RoomManager {
     room.touch(input.now);
     this.syncTurnTimer(room, currentState);
     this.syncColorTimer(room);
+    this.syncScaleTimer(room);
 
     // `nextRound` puede devolver el motor a playing. La sala mantiene un
     // status propio para lobby/persistencia y debe volver a sincronizarlo;
@@ -773,6 +885,7 @@ export class RoomManager {
       room.status = 'playing';
       this.syncTurnTimer(room, previousState);
       this.syncColorTimer(room);
+      this.syncScaleTimer(room);
       room.hooks.onTrack?.(room, 'rematch', {});
     }
     room.hooks.onSnapshot?.(room);
@@ -1006,6 +1119,74 @@ export class RoomManager {
     this.colorTimers.delete(roomCode);
   }
 
+  /** Programa la revelación de Escala cuando la guía ya confirmó la pista. */
+  private syncScaleTimer(room: Room): void {
+    const state = room.state;
+    if (
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'escala' ||
+      state.phase !== 'input' ||
+      !state.scale ||
+      state.scale.deadlineAt === null
+    ) {
+      this.clearScaleTimer(room.code);
+      return;
+    }
+    if (this.scaleTimers.has(room.code)) return;
+
+    const deadlineAt = state.scale.deadlineAt;
+    const delayMs = Math.max(0, deadlineAt - Date.now());
+    const timer = setTimeout(() => {
+      if (this.scaleTimers.get(room.code) !== timer) return;
+      this.handleScaleTimeout(room.code, deadlineAt, Date.now());
+      if (this.scaleTimers.get(room.code) === timer) this.scaleTimers.delete(room.code);
+    }, delayMs);
+    timer.unref?.();
+    this.scaleTimers.set(room.code, timer);
+  }
+
+  private clearScaleTimer(roomCode: string): void {
+    const timer = this.scaleTimers.get(roomCode);
+    if (timer) clearTimeout(timer);
+    this.scaleTimers.delete(roomCode);
+  }
+
+  private handleScaleTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
+    const room = this.rooms.get(roomCode);
+    const state = room?.state;
+    if (
+      !room ||
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'escala' ||
+      state.phase !== 'input' ||
+      !state.scale ||
+      state.scale.deadlineAt !== expectedDeadlineAt
+    ) {
+      return;
+    }
+    if (expectedDeadlineAt > now) {
+      this.clearScaleTimer(room.code);
+      this.syncScaleTimer(room);
+      return;
+    }
+
+    const actor = room.playersBySeat()[0];
+    if (!actor) return;
+    const result = this.applyAction({
+      roomCode,
+      playerId: actor.playerId,
+      clientActionId: `scale-timeout:${roomCode}:${state.version}:${randomUUID()}`,
+      expectedVersion: state.version,
+      action: { type: 'finishScale' },
+      now,
+    });
+    if (result.ok) room.hooks.onScaleTimeout?.(room);
+  }
+
   private handleColorTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
     const room = this.rooms.get(roomCode);
     const state = room?.state;
@@ -1170,6 +1351,33 @@ export class RoomManager {
     return revealed;
   }
 
+  /** Respaldo para procesos suspendidos o callbacks perdidos del reloj de Escala. */
+  expireOverdueScaleAnswers(now: number): number {
+    let revealed = 0;
+    for (const room of this.rooms.values()) {
+      const state = room.state;
+      if (
+        room.status !== 'playing' ||
+        !state ||
+        state.gameId !== 'escala' ||
+        state.status !== 'playing' ||
+        state.phase !== 'input' ||
+        !state.scale ||
+        state.scale.deadlineAt === null ||
+        state.scale.deadlineAt > now
+      ) {
+        continue;
+      }
+
+      const deadlineAt = state.scale.deadlineAt;
+      const versionBefore = state.version;
+      this.clearScaleTimer(room.code);
+      this.handleScaleTimeout(room.code, deadlineAt, now);
+      if (room.state?.version !== versionBefore) revealed += 1;
+    }
+    return revealed;
+  }
+
   /** Cierra cualquier sala que lleve demasiado tiempo sin mutación válida. */
   sweep(now: number): number {
     let closed = 0;
@@ -1210,6 +1418,7 @@ export class RoomManager {
   closeRoom(room: Room, reason: 'host_left' | 'empty' | 'expired'): void {
     this.clearTurnTimer(room.code);
     this.clearColorTimer(room.code);
+    this.clearScaleTimer(room.code);
     room.status = 'closed';
     room.hooks.onClosed?.(room, reason);
     this.rooms.delete(room.code);
@@ -1220,6 +1429,65 @@ export class RoomManager {
 
 function randomSeed(): string {
   return randomUUID();
+}
+
+function initialScaleGroupIndex(
+  config: GameConfig,
+  gameId: GameId,
+  seed: string,
+  playerId: PlayerId,
+  seat: number,
+  existingPlayers: Iterable<PlayerRuntime>,
+): number | null {
+  if (gameId !== 'escala' || config.gameId !== 'escala' || config.groupMode !== 'groups') {
+    return null;
+  }
+
+  const scaleConfig = config;
+  const sizes = Array.from({ length: scaleConfig.groupCount }, () => 0);
+  for (const player of existingPlayers) {
+    const groupIndex = player.groupIndex;
+    if (
+      typeof groupIndex === 'number' &&
+      Number.isInteger(groupIndex) &&
+      groupIndex >= 0 &&
+      groupIndex < scaleConfig.groupCount
+    ) {
+      sizes[groupIndex] = (sizes[groupIndex] ?? 0) + 1;
+    }
+  }
+
+  const smallestSize = Math.min(...sizes);
+  const candidates = sizes.flatMap((size, groupIndex) =>
+    size === smallestSize ? [groupIndex] : [],
+  );
+  const selected = candidates[stableScaleHash(`${seed}:${playerId}:${seat}`) % candidates.length];
+  return selected ?? 0;
+}
+
+/** Reparte de nuevo los jugadores cuando se activa o cambia el número de grupos. */
+function randomizeScaleGroups(room: Room): void {
+  if (room.gameId !== 'escala') return;
+  const scaleConfig = room.config;
+  if (scaleConfig.gameId !== 'escala') return;
+
+  const players = room.playersBySeat().sort((a, b) => {
+    const hashA = stableScaleHash(`${room.seed}:${a.playerId}:${a.seat}`);
+    const hashB = stableScaleHash(`${room.seed}:${b.playerId}:${b.seat}`);
+    return hashA - hashB || a.seat - b.seat;
+  });
+  players.forEach((player, index) => {
+    player.groupIndex = index % scaleConfig.groupCount;
+  });
+}
+
+function stableScaleHash(value: string): number {
+  let hash = 2_166_136_261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return hash >>> 0;
 }
 
 /**
@@ -1239,6 +1507,7 @@ function dealInput(room: Room) {
       nick: p.nick,
       seat: p.seat,
       isBot: p.isBot,
+      groupIndex: p.groupIndex ?? null,
     })),
     seed: room.seed,
     roomCode: room.code,

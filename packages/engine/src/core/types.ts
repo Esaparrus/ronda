@@ -15,7 +15,13 @@ import type { Result } from '@ronda/protocol';
 /** Input para crear el estado inicial de una partida. */
 export interface CreateInitialStateInput {
   config: GameConfig;
-  players: { playerId: PlayerId; nick: string; seat: number }[];
+  players: {
+    playerId: PlayerId;
+    nick: string;
+    seat: number;
+    /** Solo lo usa Escala en su variante por grupos. */
+    groupIndex?: number | null;
+  }[];
   seed: string;
 }
 

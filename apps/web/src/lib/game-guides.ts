@@ -345,21 +345,21 @@ export const GAME_GUIDES = {
       },
       {
         title: 'La persona guía da una pista',
-        body: 'Solo ella conoce el punto secreto de 0 a 100 y lo describe hablando, sin decir el número.',
+        body: 'Solo ella conoce el punto secreto de 0 a 100. Escribe y acepta una palabra o frase; en presencial puede decirla en voz alta y después confirmarla.',
       },
       {
         title: 'El resto coloca su apuesta',
-        body: 'Cada participante mueve su marcador al lugar de la escala que mejor encaja con la pista.',
+        body: 'La pista se revela al aceptarla. Cada participante coloca su marcador al lugar que mejor encaja antes de que termine el tiempo.',
       },
       {
         title: 'Revelad y medid la distancia',
-        body: 'Aparecen el objetivo y todas las apuestas. Cuanto más cerca estés, más puntos recibes.',
+        body: 'Al aceptar todos o terminar la cuenta atrás aparecen el objetivo y todas las apuestas. Cuanto más cerca estés, más puntos recibes.',
       },
     ],
     victory:
-      'La cercanía concede de 0 a 4 puntos. La guía rota cada ronda y gana quien llegue antes al objetivo de puntos.',
+      'La cercanía concede 4 puntos a 0–10 de distancia, 3 a 11–20, 2 a 21–30, 1 a 31–40 y 0 a más de 40. La guía rota y gana quien llegue antes al objetivo de puntos.',
     keyRule:
-      'La persona guía no coloca una apuesta en su propia ronda; su trabajo es dar una pista útil para todo el grupo.',
+      'La persona guía no coloca una apuesta. En equipos, todos juegan la misma escala por turnos dentro de cada grupo y se suman los puntos del equipo.',
   },
   musical: {
     title: 'Musical',
