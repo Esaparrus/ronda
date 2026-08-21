@@ -433,9 +433,27 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
         players={view.players}
         turnPlayerId={null}
         myPlayerId={me.playerId}
-        renderInfo={(player) =>
-          `${player.score} vacas${player.playerId === party.pinkCowPlayerId ? ' · 🐄' : ''}`
-        }
+        renderInfo={(player) => {
+          const hasPinkCow = player.playerId === party.pinkCowPlayerId;
+          return (
+            <span
+              role="img"
+              className="inline-flex items-center gap-1"
+              aria-label={`${player.score} vacas${hasPinkCow ? ', tiene la vaca rosa' : ''}`}
+              title={hasPinkCow ? 'Tiene la vaca rosa' : undefined}
+            >
+              <span>{player.score}</span>
+              <span aria-hidden="true" className="text-14 leading-none">
+                🐄
+              </span>
+              {hasPinkCow ? (
+                <span aria-hidden="true" className="text-[9px] text-rosa">
+                  ●
+                </span>
+              ) : null}
+            </span>
+          );
+        }}
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-6">
         <section className="surface-panel w-full max-w-md p-5 text-center">
