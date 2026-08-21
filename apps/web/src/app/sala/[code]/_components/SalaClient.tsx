@@ -33,6 +33,7 @@ import { MusGameEndScreen } from './MusGameEndScreen';
 import { PartyGameScreen } from './PartyGameScreen';
 import { MusicalGameScreen } from './MusicalGameScreen';
 import { ClassicGameScreen } from './ClassicGameScreen';
+import { ClassicRoundEndScreen } from './ClassicRoundEndScreen';
 import { RondaGameScreen } from './RondaGameScreen';
 import { RondaRoundEndScreen } from './RondaRoundEndScreen';
 import { RondaGameEndScreen } from './RondaGameEndScreen';
@@ -288,6 +289,9 @@ export function SalaClient({ code }: SalaClientProps) {
       ) : null}
       {view.status === 'roundEnd' && view.gameId === 'laronda' ? (
         <RondaRoundEndScreen view={view} />
+      ) : null}
+      {view.status === 'roundEnd' && view.gameId === 'sieteymedia' ? (
+        <ClassicRoundEndScreen view={view} />
       ) : null}
       {/* Mus tiene su propio fin de partida: GameEndScreen ordena por `score`
           y corona a `winnerId`, y en Mus los dos van a 0 y a null porque gana

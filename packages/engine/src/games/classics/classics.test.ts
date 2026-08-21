@@ -48,6 +48,13 @@ function captureFor(cardId: CardId, table: readonly CardId[]): CardId[] {
 }
 
 function nextAction(state: ClassicState): { playerId: string; action: GameAction } {
+  if (state.status === 'roundEnd') {
+    const player = state.players.find(
+      (candidate) => !candidate.left && !state.rematchVotes.includes(candidate.playerId),
+    );
+    if (!player) throw new Error('ronda sin confirmaciones pendientes');
+    return { playerId: player.playerId, action: { type: 'nextRound' } };
+  }
   const player = state.turnSeat === null ? undefined : state.players[state.turnSeat];
   if (!player) throw new Error('partida sin turno');
   if (state.gameId === 'brisca' || state.gameId === 'tute') {
@@ -158,5 +165,48 @@ describe('clásicos de baraja española', () => {
     const starter = state.players[state.turnSeat ?? -1];
     expect(starter).toBeTruthy();
     expect(starter ? legalCardsFor(state, starter) : []).toEqual(['oros-5']);
+  });
+
+  it('Siete y media conserva la carta que hace pasarse hasta confirmar la ronda', () => {
+    const state = stateFor('sieteymedia', 2);
+    state.bankerSeat = 0;
+    state.dealerSeat = 0;
+    state.turnSeat = 0;
+    const banker = state.players[0];
+    const rival = state.players[1];
+    if (!banker || !rival) throw new Error('faltan jugadores para la prueba');
+    banker.hand = ['oros-7'];
+    rival.hand = ['copas-1'];
+    state.deck = ['bastos-7'];
+
+    const busted = applyClassicAction(state, 'p0', { type: 'drawDeck' }, 0);
+    expect(busted.ok).toBe(true);
+    if (!busted.ok) return;
+    expect(busted.value.state.status).toBe('roundEnd');
+    expect(busted.value.state.turnSeat).toBeNull();
+    expect(busted.value.state.players[0]?.hand).toContain('bastos-7');
+    expect(busted.value.state.players[0]?.bust).toBe(true);
+
+    const firstConfirmation = applyClassicAction(
+      busted.value.state,
+      'p0',
+      { type: 'nextRound' },
+      0,
+    );
+    expect(firstConfirmation.ok).toBe(true);
+    if (!firstConfirmation.ok) return;
+    expect(firstConfirmation.value.state.status).toBe('roundEnd');
+
+    const nextRound = applyClassicAction(
+      firstConfirmation.value.state,
+      'p1',
+      { type: 'nextRound' },
+      0,
+    );
+    expect(nextRound.ok).toBe(true);
+    if (!nextRound.ok) return;
+    expect(nextRound.value.state.status).toBe('playing');
+    expect(nextRound.value.state.round).toBe(2);
+    expect(nextRound.value.state.bankerSeat).toBe(1);
   });
 });

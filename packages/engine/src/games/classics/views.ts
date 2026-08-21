@@ -66,6 +66,15 @@ export function getClassicPlayerView(state: ClassicState, playerId: PlayerId): C
   const player = state.players.find((candidate) => candidate.playerId === playerId);
   const isTurn = player !== undefined && state.status === 'playing' && state.turnSeat === player.seat;
   const availableActions: ClassicAvailableAction[] = [];
+  if (
+    state.gameId === 'sieteymedia' &&
+    state.status === 'roundEnd' &&
+    player !== undefined &&
+    !player.left &&
+    !state.rematchVotes.includes(playerId)
+  ) {
+    availableActions.push('nextRound');
+  }
   if (isTurn && player) {
     if (state.gameId === 'brisca' || state.gameId === 'tute' || state.gameId === 'cinquillo') {
       if (legalCardsFor(state, player).length > 0) availableActions.push('playCard');

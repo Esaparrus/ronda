@@ -1274,8 +1274,85 @@ summary {
   margin-top: 2px;
 }
 
-/* Las manos que ya son públicas en Siete y media ocupan una celda por
- * persona. Dentro, las cartas se solapan como una mano real. */
+/* Siete y media: cada bloque tiene una responsabilidad visual distinta
+ * (contexto, mesa, mano y acciones). Así el estado de la ronda no acaba
+ * mezclado con las cartas cuando el alto disponible es corto. */
+.seven-half-board {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  padding: 8px 12px;
+}
+
+.seven-half-board__meta {
+  display: grid;
+  width: min(100%, 340px);
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.seven-half-board__meta-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--color-linea);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.64);
+  padding: 5px 9px;
+}
+
+.seven-half-board__meta-item span {
+  overflow: hidden;
+  color: var(--color-humo);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.seven-half-board__meta-item strong {
+  overflow: hidden;
+  color: var(--color-hueso);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seven-half-board__rule,
+.seven-half-round-end__rule {
+  width: min(100%, 340px);
+  margin: 0;
+  color: var(--color-humo);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.seven-half-board > .bar-table {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.seven-half-table {
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.seven-half-table.seven-half-table--dense {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .seven-half-table {
   display: grid;
   width: 100%;
@@ -1295,12 +1372,51 @@ summary {
 }
 
 .seven-half-table__player {
+  display: flex;
   min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 1px;
   overflow: hidden;
   border: 1px solid var(--color-linea);
   border-radius: 9px;
   background: rgb(255 255 255 / 0.16);
-  padding: 3px 5px;
+  padding: 4px 5px;
+}
+
+.seven-half-table__player--me {
+  border-color: color-mix(in srgb, var(--color-oro) 58%, var(--color-linea));
+  background: color-mix(in srgb, var(--color-oro) 10%, transparent);
+}
+
+.seven-half-table__player-head {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  line-height: 1.15;
+}
+
+.seven-half-table__player-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-hueso);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seven-half-table__player-status {
+  flex: 0 0 auto;
+  color: var(--color-oro);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.seven-half-table__player-status--bust {
+  color: var(--color-brasa);
 }
 
 .seven-half-table--large .seven-half-table__player {
@@ -1311,6 +1427,7 @@ summary {
   display: flex;
   min-height: 30px;
   align-items: flex-start;
+  overflow: visible;
   padding-top: 2px;
 }
 
@@ -1332,6 +1449,71 @@ summary {
 
 .seven-half-table--large .mini-card-fan__card + .mini-card-fan__card {
   margin-left: clamp(-16px, -1.2vw, -10px);
+}
+
+.seven-half-round-end__list {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.seven-half-round-end__player {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--color-linea);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.72);
+  padding: 10px 12px;
+  box-shadow: var(--surface-shadow);
+}
+
+.seven-half-round-end__player--me {
+  border-color: color-mix(in srgb, var(--color-oro) 58%, var(--color-linea));
+}
+
+.seven-half-round-end__player--large {
+  gap: 10px;
+  border-radius: 20px;
+  padding: 14px 16px;
+}
+
+.seven-half-round-end__cards {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.seven-half-round-end__cards .mini-card-fan {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-height: 700px) {
+  .seven-half-board__rule {
+    display: none;
+  }
+
+  .seven-half-board {
+    gap: 6px;
+    padding-block: 4px;
+  }
+}
+
+@media (max-width: 420px) {
+  .seven-half-round-end__player {
+    padding-inline: 10px;
+  }
+
+  .seven-half-round-end__cards {
+    gap: 6px;
+  }
 }
 
 .mini-card-fan__card > svg {

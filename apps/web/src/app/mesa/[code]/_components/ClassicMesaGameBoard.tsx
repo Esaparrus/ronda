@@ -45,11 +45,13 @@ export function ClassicMesaGameBoard({ view }: { view: ClassicTableView }) {
         />
 
         <section className="mesa-table-content absolute inset-[15%] flex flex-col items-center justify-center gap-2 rounded-[18%] p-[clamp(0.6rem,1.5vw,1rem)]">
-          <div className="absolute left-1/2 top-2 z-20 -translate-x-1/2">
-            <Pill className="whitespace-nowrap text-[clamp(0.7rem,1vw,0.9rem)]">
-              {TITLE[view.gameId]} · {publicCardCount} en mesa
-            </Pill>
-          </div>
+          {view.gameId !== 'sieteymedia' ? (
+            <div className="absolute left-1/2 top-2 z-20 -translate-x-1/2">
+              <Pill className="whitespace-nowrap text-[clamp(0.7rem,1vw,0.9rem)]">
+                {TITLE[view.gameId]} · {publicCardCount} en mesa
+              </Pill>
+            </div>
+          ) : null}
           {view.gameId === 'brisca' || view.gameId === 'tute' ? (
             <TableTrick
               currentTrick={view.currentTrick}
@@ -95,12 +97,20 @@ function SevenHalfTable({ view }: { view: ClassicTableView }) {
         const total = view.totals[index];
         return (
           <section key={player.playerId} className="seven-half-table__player">
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              <span className="truncate text-14 font-semibold text-hueso">{player.nick}</span>
-              <span className="shrink-0 font-mono text-13 text-oro">
+            <div className="seven-half-table__player-head">
+              <span className="seven-half-table__player-name text-14 font-semibold">{player.nick}</span>
+              <span
+                className={`seven-half-table__player-status text-13 ${view.bustPlayerIds.includes(player.playerId) ? 'seven-half-table__player-status--bust' : ''}`}
+              >
                 {view.bustPlayerIds.includes(player.playerId)
                   ? 'Se pasó'
-                  : total ?? (player.playerId === view.bankerPlayerId ? 'Banca' : 'Oculto')}
+                  : total !== null
+                    ? String(total).replace('.', ',')
+                    : view.turnPlayerId === player.playerId
+                      ? 'En juego'
+                      : player.playerId === view.bankerPlayerId
+                        ? 'Banca'
+                        : 'Oculto'}
               </span>
             </div>
             <MiniCardFan cards={cards} />

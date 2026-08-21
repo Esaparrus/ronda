@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { parseCardId, type CardId, type ClassicPlayerView } from '@ronda/protocol';
+import { parseCardId, type CardId, type ClassicPlayerView, type PublicPlayer } from '@ronda/protocol';
 import { CinquilloTable } from '@/components/cards/CinquilloTable';
 import { MiniCardFan } from '@/components/cards/MiniCardFan';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { BarTable } from '@/components/ui/BarTable';
 import { Button } from '@/components/ui/Button';
-import { Pill } from '@/components/ui/Pill';
 import { useRondaStore } from '@/lib/store';
 import { PlayerStrip } from './PlayerStrip';
 import { PochaHand } from './PochaHand';
@@ -34,7 +33,16 @@ export function ClassicGameScreen({ view }: { view: ClassicPlayerView }) {
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TableHeader left={`${TITLES[view.gameId]} · Ronda ${view.round}`} turnNick={turn?.nick ?? null} />
-      <PlayerStrip players={view.players} turnPlayerId={view.turnPlayerId} myPlayerId={view.me.playerId} />
+      <PlayerStrip
+        players={view.players}
+        turnPlayerId={view.turnPlayerId}
+        myPlayerId={view.me.playerId}
+        renderInfo={
+          view.gameId === 'sieteymedia'
+            ? (player) => sevenHalfPlayerInfo(view, player)
+            : undefined
+        }
+      />
       {view.gameId === 'escoba' ? (
         <EscobaBoard view={view} />
       ) : view.gameId === 'sieteymedia' ? (
@@ -156,24 +164,41 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
 function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
   const canDraw = view.me.availableActions.includes('drawDeck');
   const canStand = view.me.availableActions.includes('stand');
+  const pendingAction = useRondaStore((state) => state.pendingAction);
   const banker = view.players.find((player) => player.playerId === view.bankerPlayerId);
+  const denseTable = view.players.length > 4;
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <Pill>Banca: {banker?.nick ?? '—'}</Pill>
-          <Pill>Mazo: {view.deckCount}</Pill>
+      <div className="seven-half-board">
+        <div className="seven-half-board__meta" aria-label="Estado de la ronda">
+          <div className="seven-half-board__meta-item">
+            <span>Banca</span>
+            <strong>{banker?.nick ?? '—'}</strong>
+          </div>
+          <div className="seven-half-board__meta-item">
+            <span>Cartas en el mazo</span>
+            <strong>{view.deckCount}</strong>
+          </div>
         </div>
+        <p className="seven-half-board__rule">
+          Pide carta para acercarte a 7,5. Las figuras valen 0,5; si te pasas, pierdes la ronda.
+        </p>
         <BarTable className="w-full max-w-[340px]">
-          <ul className="seven-half-table seven-half-table--compact">
+          <ul className={`seven-half-table seven-half-table--compact ${denseTable ? 'seven-half-table--dense' : ''}`}>
             {view.players.map((player, index) => (
-              <li key={player.playerId} className="seven-half-table__player">
-                <div className="flex min-w-0 items-center justify-between gap-1 text-11 text-hueso">
-                  <span className="truncate">{player.nick}{player.playerId === view.bankerPlayerId ? ' · banca' : ''}</span>
-                  <span className="shrink-0 font-mono text-oro">
-                    {view.bustPlayerIds.includes(player.playerId)
-                      ? 'se pasó'
-                      : view.totals[index] ?? 'oculto'}
+              <li
+                key={player.playerId}
+                className={`seven-half-table__player ${player.playerId === view.me.playerId ? 'seven-half-table__player--me' : ''}`}
+              >
+                <div className="seven-half-table__player-head">
+                  <span className="seven-half-table__player-name">
+                    {player.nick}
+                    {player.playerId === view.bankerPlayerId ? ' · banca' : ''}
+                  </span>
+                  <span
+                    className={`seven-half-table__player-status ${view.bustPlayerIds.includes(player.playerId) ? 'seven-half-table__player-status--bust' : ''}`}
+                  >
+                    {sevenHalfPlayerStatus(view, player.playerId, index)}
                   </span>
                 </div>
                 <MiniCardFan cards={view.revealedHands.find((hand) => hand.playerId === player.playerId)?.cards ?? []} />
@@ -182,16 +207,71 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
           </ul>
         </BarTable>
       </div>
-      <SimpleHand hand={view.me.hand} selected={null} enabled={false} onSelect={() => undefined} />
-      <div className="grid shrink-0 grid-cols-2 gap-2 px-4 pb-4">
-        <Button variant="ghost" disabled={!canStand} onClick={() => void useRondaStore.getState().sendAction({ type: 'stand' })}>
-          Plantarme · {view.me.total ?? 0}
+      <SevenHalfHand view={view} />
+      <div className="seven-half-actions action-dock grid shrink-0 grid-cols-2 gap-2 px-4 pt-3">
+        <Button
+          variant="ghost"
+          disabled={!canStand || pendingAction}
+          loading={pendingAction}
+          onClick={() => void useRondaStore.getState().sendAction({ type: 'stand' })}
+        >
+          Plantarse · {formatSevenHalfTotal(view.me.total)}
         </Button>
-        <Button disabled={!canDraw} onClick={() => void useRondaStore.getState().sendAction({ type: 'drawDeck' })}>
+        <Button
+          disabled={!canDraw || pendingAction}
+          loading={pendingAction}
+          onClick={() => void useRondaStore.getState().sendAction({ type: 'drawDeck' })}
+        >
           Pedir carta
         </Button>
       </div>
     </>
+  );
+}
+
+function formatSevenHalfTotal(total: number | null): string {
+  return total === null ? '—' : String(total).replace('.', ',');
+}
+
+function sevenHalfPlayerInfo(view: ClassicPlayerView, player: PublicPlayer): string {
+  const index = view.players.findIndex((candidate) => candidate.playerId === player.playerId);
+  const total = player.playerId === view.me.playerId ? view.me.total : (view.totals[index] ?? null);
+  if (view.bustPlayerIds.includes(player.playerId)) return 'se pasó';
+  if (total !== null) return formatSevenHalfTotal(total);
+  if (view.turnPlayerId === player.playerId) return 'en juego';
+  return `${player.handCount} carta${player.handCount === 1 ? '' : 's'}`;
+}
+
+function sevenHalfPlayerStatus(view: ClassicPlayerView, playerId: string, index: number): string {
+  const total = playerId === view.me.playerId ? view.me.total : (view.totals[index] ?? null);
+  if (view.bustPlayerIds.includes(playerId)) return 'se pasó';
+  if (total !== null) return formatSevenHalfTotal(total);
+  if (view.turnPlayerId === playerId) return 'en juego';
+  return 'oculto';
+}
+
+function SevenHalfHand({ view }: { view: ClassicPlayerView }) {
+  const bust = view.bustPlayerIds.includes(view.me.playerId);
+  const status = bust
+    ? 'Te has pasado'
+    : view.me.total === 7.5
+      ? 'Siete y media'
+      : `${formatSevenHalfTotal(view.me.total)} puntos`;
+
+  return (
+    <section className="game-hand seven-half-hand shrink-0 px-4 py-3">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
+        <span className={`font-mono text-12 ${bust ? 'text-brasa' : 'text-humo'}`}>{status}</span>
+      </div>
+      <div className="flex items-end gap-1 overflow-x-auto pb-2">
+        {view.me.hand.map((cardId) => (
+          <span key={cardId} className="shrink-0">
+            <PlayingCard cardId={cardId} size="md" />
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }
 

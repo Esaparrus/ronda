@@ -195,6 +195,12 @@ export function applyClassicAction(
   action: GameAction,
   _now: number,
 ): Result<{ state: ClassicState; events: GameEvent[] }> {
+  if (state.status === 'roundEnd') {
+    if (state.gameId !== 'sieteymedia' || action.type !== 'nextRound') {
+      return err('INVALID_ACTION');
+    }
+    return confirmSevenHalfRound(state, playerId);
+  }
   if (state.status !== 'playing') return err('INVALID_ACTION');
   const player = findPlayer(state, playerId);
   if (!player || player.left) return err('PLAYER_NOT_IN_ROOM');
@@ -474,8 +480,33 @@ function scoreSevenHalfRound(state: ClassicState): void {
     finishWithHighestScore(state);
     return;
   }
-  state.round += 1;
-  dealSieteRound(state, nextActiveSeat(state, bankerSeat) ?? bankerSeat);
+  state.status = 'roundEnd';
+  state.phase = 'banker';
+  state.turnSeat = null;
+}
+
+function confirmSevenHalfRound(
+  state: ClassicState,
+  playerId: PlayerId,
+): Result<{ state: ClassicState; events: GameEvent[] }> {
+  const player = findPlayer(state, playerId);
+  if (!player || player.left) return err('PLAYER_NOT_IN_ROOM');
+
+  const next = cloneState(state);
+  next.version += 1;
+  if (!next.rematchVotes.includes(playerId)) next.rematchVotes.push(playerId);
+
+  const activePlayers = next.players.filter((candidate) => !candidate.left);
+  if (!activePlayers.every((candidate) => next.rematchVotes.includes(candidate.playerId))) {
+    return ok({ state: next, events: [] });
+  }
+
+  const bankerSeat = next.bankerSeat ?? 0;
+  next.rematchVotes = [];
+  next.round += 1;
+  next.status = 'playing';
+  dealSieteRound(next, nextActiveSeat(next, bankerSeat) ?? bankerSeat);
+  return ok({ state: next, events: [{ t: 'dealt', round: next.round }] });
 }
 
 function playCinquillo(

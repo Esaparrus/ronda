@@ -26,7 +26,7 @@ export interface ClassicPlayer {
 
 export interface ClassicState {
   version: number;
-  status: 'playing' | 'gameEnd';
+  status: 'playing' | 'roundEnd' | 'gameEnd';
   phase: ClassicPhase;
   config: ClassicConfig;
   gameId: ClassicGameId;

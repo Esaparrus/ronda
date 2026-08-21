@@ -32,6 +32,7 @@ import { MusMesaGameEndScreen } from './MusMesaGameEndScreen';
 import { PartyMesaGameBoard } from './PartyMesaGameBoard';
 import { MusicalMesaGameBoard } from './MusicalMesaGameBoard';
 import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
+import { ClassicMesaRoundEndScreen } from './ClassicMesaRoundEndScreen';
 import { RondaMesaScreen } from './RondaMesaScreen';
 
 export interface MesaClientProps {
@@ -137,6 +138,9 @@ export function MesaClient({ code }: MesaClientProps) {
         tableView.gameId === 'tute' ||
         tableView.gameId === 'cinquillo') ? (
         <ClassicMesaGameBoard view={tableView} />
+      ) : null}
+      {tableView.status === 'roundEnd' && tableView.gameId === 'sieteymedia' ? (
+        <ClassicMesaRoundEndScreen view={tableView} />
       ) : null}
       {tableView.status === 'playing' &&
       (tableView.gameId === 'orden' ||

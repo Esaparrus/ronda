@@ -9,8 +9,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { PlayerView } from '@ronda/protocol';
+import type { ClassicPlayerView, PlayerView } from '@ronda/protocol';
 import { Avatar } from '@/components/ui/Avatar';
+import { MiniCardFan } from '@/components/cards/MiniCardFan';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { StatsPanel } from '@/components/ui/StatsPanel';
@@ -74,6 +75,8 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
         ))}
       </ol>
 
+      {view.gameId === 'sieteymedia' ? <SevenHalfFinalHands view={view} /> : null}
+
       {/* Estadísticas del grupo (roadmap "Después del MVP" §3): aquí van
           desplegadas y no tras un botón, porque este es justo el momento en
           que interesan ("van 3-1"). `refreshKey` con la ronda de esta
@@ -110,5 +113,36 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
         </Button>
       </div>
     </main>
+  );
+}
+
+function SevenHalfFinalHands({ view }: { view: ClassicPlayerView }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-20 font-semibold text-hueso">Manos finales</h2>
+      <ul className="seven-half-round-end__list">
+        {view.players.map((player, index) => {
+          const total = view.totals[index] ?? null;
+          const cards = view.revealedHands.find((hand) => hand.playerId === player.playerId)?.cards ?? [];
+          const result = view.bustPlayerIds.includes(player.playerId)
+            ? 'Se pasó'
+            : total === 7.5
+              ? 'Siete y media'
+              : `Plantado · ${total === null ? '—' : String(total).replace('.', ',')}`;
+          return (
+            <li key={player.playerId} className="seven-half-round-end__player">
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-15 font-semibold text-hueso">{player.nick}</span>
+                <span className="font-mono text-12 text-oro">{result}</span>
+              </div>
+              <div className="seven-half-round-end__cards">
+                <MiniCardFan cards={cards} />
+                <span className="shrink-0 font-mono text-11 text-humo">Puntos: {player.score}</span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

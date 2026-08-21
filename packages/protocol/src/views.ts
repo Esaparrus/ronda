@@ -45,7 +45,13 @@ export type PochaAvailableAction = 'bid' | 'playCard' | 'nextRound';
 /** Los cinco clásicos añadidos como una familia de vistas homogénea. */
 export type ClassicGameId = 'brisca' | 'escoba' | 'sieteymedia' | 'tute' | 'cinquillo';
 export type ClassicPhase = 'trick' | 'capture' | 'draw' | 'banker' | 'layout';
-export type ClassicAvailableAction = 'playCard' | 'playCapture' | 'drawDeck' | 'stand' | 'pass';
+export type ClassicAvailableAction =
+  | 'playCard'
+  | 'playCapture'
+  | 'drawDeck'
+  | 'stand'
+  | 'pass'
+  | 'nextRound';
 
 /**
  * Jugador público (sin mano). Compartido por ambos juegos: los campos son
