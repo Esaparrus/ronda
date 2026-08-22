@@ -729,7 +729,7 @@ function RoadmapVariants({
       <section className="flex flex-col gap-6">
         <RoadmapIntro
           title="Reconoced la bandera"
-          body="Todos veis la misma imagen. Elegid la respuesta sin que la rapidez dé ventaja."
+          body="Todos veis la misma imagen. Elegid la respuesta sin que la rapidez dé ventaja. El banco usa únicamente banderas difíciles y parecidas."
         />
         <RoadmapPlayers
           value={banderasConfig.maxPlayers}
@@ -751,7 +751,7 @@ function RoadmapVariants({
         />
         <SegmentedControl
           legend="Región"
-          helperText="Acota el banco de banderas."
+          helperText="Acota el banco de banderas difíciles."
           value={banderasConfig.region}
           onChange={(value) =>
             setBanderasConfig((previous) => ({
@@ -763,27 +763,18 @@ function RoadmapVariants({
             { value: 'mundo', label: 'Mundo' },
             { value: 'espana', label: 'España' },
             { value: 'europa', label: 'Europa' },
+            { value: 'africa', label: 'África' },
             { value: 'america', label: 'América' },
             { value: 'asia-oceania', label: 'Asia/Oceanía' },
             { value: 'parecidas', label: 'Parecidas' },
           ]}
         />
-        <SegmentedControl
-          legend="Dificultad"
-          helperText="Mezcla banderas fáciles y retorcidas."
-          value={banderasConfig.difficulty}
-          onChange={(value) =>
-            setBanderasConfig((previous) => ({
-              ...previous,
-              difficulty: value as BanderasConfig['difficulty'],
-            }))
-          }
-          options={[
-            { value: 'facil', label: 'Fácil' },
-            { value: 'normal', label: 'Normal' },
-            { value: 'dificil', label: 'Difícil' },
-          ]}
-        />
+        <div className="rounded-2xl border border-oro/35 bg-oro/10 px-4 py-3">
+          <p className="text-14 font-semibold text-oro">Modo difícil fijo</p>
+          <p className="mt-1 text-13 leading-relaxed text-humo">
+            Todas las rondas usan banderas parecidas o poco habituales.
+          </p>
+        </div>
         <RoadmapTimer
           value={banderasConfig.answerTimeSeconds}
           onChange={(value) =>

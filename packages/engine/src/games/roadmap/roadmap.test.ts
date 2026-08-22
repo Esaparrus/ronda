@@ -16,7 +16,13 @@ import {
   createQuienLoHariaState,
   normalizeAnswer,
 } from './reducer.ts';
-import { cifrasQuestionById, flagQuestionById, sentenceQuestionById } from './content.ts';
+import {
+  FLAG_QUESTIONS,
+  cifrasQuestionById,
+  flagQuestionById,
+  flagQuestionIdsFor,
+  sentenceQuestionById,
+} from './content.ts';
 import { getPlayerView, getTableView } from './views.ts';
 import type {
   BanderasState,
@@ -38,6 +44,25 @@ function applyRoadmap(state: RoadmapState, playerId: PlayerId, action: GameActio
 }
 
 describe('juegos independientes del roadmap', () => {
+  it('Banderas usa un banco amplio y difícil también con configuraciones antiguas', () => {
+    expect(FLAG_QUESTIONS.length).toBeGreaterThanOrEqual(60);
+    expect(new Set(FLAG_QUESTIONS.map((question) => question.id)).size).toBe(FLAG_QUESTIONS.length);
+    expect(FLAG_QUESTIONS.every((question) => question.difficulty === 'dificil')).toBe(true);
+
+    const africaIds = flagQuestionIdsFor('africa', 'normal');
+    expect(africaIds.length).toBeGreaterThanOrEqual(20);
+    expect(africaIds.every((id) => flagQuestionById(id).region === 'africa')).toBe(true);
+
+    const legacyConfigState = createBanderasState({
+      config: { ...DEFAULT_BANDERAS_CONFIG, difficulty: 'normal', rounds: 5 },
+      seed: 'flags-hard-bank',
+      players: PLAYERS,
+      roomCode: 'HARD',
+    });
+    expect(legacyConfigState.config.difficulty).toBe('dificil');
+    expect(legacyConfigState.questions.every((question) => question.difficulty === 'dificil')).toBe(true);
+  });
+
   it('Banderas mantiene la respuesta y la entidad ocultas hasta revelar', () => {
     const state = createBanderasState({
       config: { ...DEFAULT_BANDERAS_CONFIG, rounds: 5, answerTimeSeconds: 0 },

@@ -384,7 +384,7 @@ export const BanderasConfigSchema = CommonGameConfigSchema.extend({
   rounds: ROADMAP_ROUNDS.default(10),
   answerTimeSeconds: ROADMAP_ANSWER_SECONDS.default(20),
   region: FlagRegionSchema.default('mundo'),
-  difficulty: FlagDifficultySchema.default('normal'),
+  difficulty: FlagDifficultySchema.default('dificil'),
 });
 export type BanderasConfig = z.infer<typeof BanderasConfigSchema>;
 

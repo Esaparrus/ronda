@@ -39,17 +39,18 @@ function BanderasScreen({ view }: { view: BanderasPlayerView }) {
       players={view.players}
       myPlayerId={view.me.playerId}
       submittedPlayerIds={view.flags.submittedPlayerIds}
+      mainClassName="w-full gap-3 overflow-hidden px-3 py-3 sm:gap-4 sm:px-4 sm:py-4"
     >
-      <section className="flex w-full max-w-2xl flex-col gap-5">
-        <div className="overflow-hidden rounded-3xl border border-linea bg-white/95 p-5 shadow-lg">
+      <section className="flex w-full max-w-xl flex-col gap-3">
+        <div className="overflow-hidden rounded-3xl border border-linea bg-white/95 p-3 shadow-lg sm:p-4">
           <img
             src={view.flags.image}
             alt={view.flags.entityName ?? 'Bandera para identificar'}
-            className="mx-auto block aspect-[3/2] w-full max-w-xl object-contain"
+            className="mx-auto block h-[clamp(8.5rem,27vh,14rem)] w-full object-contain"
           />
         </div>
         {view.phase === 'input' ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
             {view.flags.options.map((option) => (
               <button
                 key={option.id}
@@ -62,7 +63,7 @@ function BanderasScreen({ view }: { view: BanderasPlayerView }) {
                     optionId: option.id,
                   })
                 }
-                className={`min-h-16 rounded-2xl border px-4 text-left text-16 font-semibold transition-colors disabled:opacity-55 ${
+                className={`min-h-12 rounded-2xl border px-3 py-2 text-center text-14 font-semibold leading-tight transition-colors disabled:opacity-55 sm:min-h-14 sm:px-4 sm:text-15 ${
                   view.me.selectedOptionId === option.id
                     ? 'border-oro bg-oro/15 text-oro'
                     : 'border-linea bg-mesa/80 text-hueso hover:border-oro/60'
@@ -101,17 +102,17 @@ function BanderasReveal({
 }) {
   const correct = view.flags.correctOptionId;
   return (
-    <section className="flex flex-col gap-4">
-      <div className="rounded-3xl border border-oro/60 bg-oro/10 px-5 py-5 text-center">
+    <section className="flex flex-col gap-3">
+      <div className="rounded-3xl border border-oro/60 bg-oro/10 px-4 py-3 text-center">
         <p className="eyebrow">Respuesta</p>
-        <p className="mt-1 font-display text-36 text-hueso">{view.flags.entityName ?? '—'}</p>
-        <p className="mt-1 text-14 text-humo">{view.flags.explanation ?? 'Buen ojo.'}</p>
+        <p className="mt-1 font-display text-30 text-hueso">{view.flags.entityName ?? '—'}</p>
+        <p className="mt-1 text-13 text-humo">{view.flags.explanation ?? 'Buen ojo.'}</p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2">
         {view.flags.options.map((option) => (
           <div
             key={option.id}
-            className={`rounded-2xl border px-4 py-3 text-14 ${
+            className={`rounded-2xl border px-3 py-2 text-13 ${
               option.id === correct
                 ? 'border-equipo-turquesa/70 bg-equipo-turquesa/10 text-hueso'
                 : 'border-linea bg-mesa/70 text-humo'
@@ -589,6 +590,7 @@ function GameFrame({
   players,
   myPlayerId,
   submittedPlayerIds,
+  mainClassName = 'gap-5 overflow-y-auto px-4 py-5',
   children,
 }: {
   title: string;
@@ -597,6 +599,7 @@ function GameFrame({
   players: RoadmapPlayerView['players'];
   myPlayerId: string;
   submittedPlayerIds: string[];
+  mainClassName?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -614,7 +617,7 @@ function GameFrame({
           `${player.score} puntos · ${submittedPlayerIds.includes(player.playerId) ? 'listo' : 'pensando'}`
         }
       />
-      <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-5">
+      <main className={`flex min-h-0 flex-1 flex-col items-center ${mainClassName}`}>
         {children}
       </main>
     </div>

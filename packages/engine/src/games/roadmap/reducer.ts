@@ -75,12 +75,13 @@ function roadmapBase(input: RoadmapInitialInput): Pick<RoadmapState, 'version' |
 
 export function createBanderasState(input: RoadmapInitialInput): BanderasState {
   if (input.config.gameId !== 'banderas') throw new Error('Configuración inválida para Banderas');
-  const ids = flagQuestionIdsFor(input.config.region, input.config.difficulty);
+  const config = { ...input.config, difficulty: 'dificil' as const };
+  const ids = flagQuestionIdsFor(config.region, config.difficulty);
   const order = shuffled(input.seed, 0, ids);
   return {
     ...roadmapBase(input),
     gameId: 'banderas',
-    config: input.config,
+    config,
     questions: FLAG_QUESTIONS.map((question) => ({ ...question, options: question.options.map((option) => ({ ...option })) as FlagQuestion['options'] })),
     flags: {
       questionOrder: order.items,

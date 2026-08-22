@@ -1,0 +1,5 @@
+# Material de trabajo local y capturas; no forma parte de la aplicación.
+tmp/
+.agents/
+*.pyc
+.tmp-*
