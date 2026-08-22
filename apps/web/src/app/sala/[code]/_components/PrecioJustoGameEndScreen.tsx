@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import type { PrecioJustoPlayerView } from '@ronda/protocol';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -48,9 +49,33 @@ export function PrecioJustoGameEndScreen({ view }: PrecioJustoGameEndScreenProps
       </header>
 
       {reference !== null ? (
-        <section className="surface-panel flex flex-col gap-2 p-4 text-center">
-          <p className="text-12 uppercase tracking-[0.14em] text-humo">Precio de referencia</p>
-          <p className="font-display text-36 text-oro">{formatCents(reference)}</p>
+        <section className="surface-panel flex flex-col gap-3 p-4">
+          <p className="text-center text-12 uppercase tracking-[0.14em] text-humo">
+            Último precio revelado
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-white/90">
+              <Image
+                src={view.price.product.image}
+                alt={view.price.product.title}
+                fill
+                sizes="80px"
+                className="object-contain p-2"
+                unoptimized
+              />
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-16 font-semibold leading-tight text-hueso">
+                {view.price.product.title}
+              </p>
+              <p className="mt-1 text-12 text-humo">
+                {view.price.product.brandModel ?? view.price.product.variant}
+              </p>
+              <p className="mt-1 font-display text-30 leading-none text-oro">
+                {formatCents(reference)}
+              </p>
+            </div>
+          </div>
         </section>
       ) : null}
 

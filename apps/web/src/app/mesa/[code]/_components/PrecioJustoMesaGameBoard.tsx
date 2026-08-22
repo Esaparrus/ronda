@@ -26,15 +26,19 @@ export function PrecioJustoMesaGameBoard({ view }: PrecioJustoMesaGameBoardProps
               alt={view.price.product.title}
               fill
               sizes="(max-width: 1024px) 90vw, 420px"
-              className="object-cover"
+              className="object-contain p-10"
               unoptimized
               priority
             />
           </div>
           <div className="flex flex-col gap-3">
+            <p className="text-14 font-semibold uppercase tracking-[0.16em] text-humo">Producto</p>
             <p className="text-14 font-semibold uppercase tracking-[0.16em] text-oro">
               {view.price.product.category}
             </p>
+            {view.price.product.brandModel ? (
+              <p className="text-16 text-humo">{view.price.product.brandModel}</p>
+            ) : null}
             <h1 className="text-[clamp(2rem,5vw,4.4rem)] font-semibold leading-tight text-hueso">
               {view.price.product.title}
             </h1>
@@ -61,7 +65,9 @@ export function PrecioJustoMesaGameBoard({ view }: PrecioJustoMesaGameBoardProps
         {revealed ? (
           <section className="flex w-full max-w-5xl flex-col gap-5">
             <div className="rounded-3xl border border-oro/60 bg-oro/10 px-6 py-5">
-              <p className="text-14 uppercase tracking-[0.16em] text-humo">Precio de referencia</p>
+              <p className="text-14 uppercase tracking-[0.16em] text-humo">
+                {view.status === 'gameEnd' ? 'Último precio revelado' : 'Precio de referencia'}
+              </p>
               <p className="mt-1 font-display text-[clamp(2.4rem,6vw,5rem)] text-oro">
                 {reference === null ? '—' : formatCents(reference)}
               </p>

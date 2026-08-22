@@ -810,7 +810,8 @@ export class RoomManager {
         input.action.type === 'musicSelectTrack' ||
         input.action.type === 'musicNextClip' ||
         input.action.type === 'musicNextRound' ||
-        (input.action.type === 'nextRound' && room.gameId === 'preciojusto')) &&
+        (input.action.type === 'nextRound' && room.gameId === 'preciojusto') ||
+        (input.action.type === 'showPriceResults' && room.gameId === 'preciojusto')) &&
       !player.isHost
     ) {
       return err('NOT_HOST');

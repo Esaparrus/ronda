@@ -109,7 +109,7 @@ function buildMe(state: PrecioJustoState, playerId: PlayerId): PrecioJustoPlayer
     availableActions.push('finishPrice');
   }
   if (state.status === 'playing' && state.phase === 'reveal' && !player.left && hostId === playerId) {
-    availableActions.push('nextRound');
+    availableActions.push(state.round >= state.config.rounds ? 'showPriceResults' : 'nextRound');
   }
 
   return { playerId, submitted, availableActions };

@@ -46,7 +46,7 @@ export interface BotDriverDeps {
 /** Turno pendiente de programar para un bot. */
 interface BotTurn {
   playerId: PlayerId;
-  kind: 'action' | 'nextRound' | 'rematch';
+  kind: 'action' | 'nextRound' | 'showResults' | 'rematch';
 }
 
 /** Timers de bot pendientes por sala, para no programar dos veces el mismo turno. */
@@ -161,7 +161,13 @@ function nextBotTurn(room: Room): BotTurn | null {
         if (view.kind !== 'player') return false;
         return (view as PrecioJustoPlayerView).me.availableActions.includes('nextRound');
       });
-      return host ? { playerId: host.playerId, kind: 'nextRound' } : null;
+      if (host) return { playerId: host.playerId, kind: 'nextRound' };
+      const resultsHost = bots.find((candidate) => {
+        const view = module.getPlayerView(state, candidate.playerId);
+        if (view.kind !== 'player') return false;
+        return (view as PrecioJustoPlayerView).me.availableActions.includes('showPriceResults');
+      });
+      return resultsHost ? { playerId: resultsHost.playerId, kind: 'showResults' } : null;
     }
     return bot ? { playerId: bot.playerId, kind: 'action' } : null;
   }
@@ -361,6 +367,16 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
         clientActionId: randomUUID(),
         expectedVersion: state.version,
         action: { type: 'nextRound' },
+        now: deps.now(),
+      });
+      if (r.ok) broadcastRoom(deps.io, room);
+    } else if (turn.kind === 'showResults') {
+      const r = deps.mgr.applyAction({
+        roomCode,
+        playerId: turn.playerId,
+        clientActionId: randomUUID(),
+        expectedVersion: state.version,
+        action: { type: 'showPriceResults' },
         now: deps.now(),
       });
       if (r.ok) broadcastRoom(deps.io, room);

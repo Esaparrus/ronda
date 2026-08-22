@@ -49,8 +49,12 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
     void useRondaStore.getState().sendAction({ type: 'submitPrice', priceCents: parsed });
   }
 
-  function nextRound() {
-    void useRondaStore.getState().sendAction({ type: 'nextRound' });
+  function advanceFromReveal() {
+    void useRondaStore
+      .getState()
+      .sendAction({
+        type: view.round >= view.config.rounds ? 'showPriceResults' : 'nextRound',
+      });
   }
 
   return (
@@ -71,18 +75,8 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
 
       <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-5">
         <section className="surface-panel w-full max-w-md overflow-hidden p-0">
-          <div className="relative aspect-[4/2.8] w-full bg-mesa">
-            <Image
-              src={view.price.product.image}
-              alt={view.price.product.title}
-              fill
-              sizes="(max-width: 640px) 100vw, 448px"
-              className="object-cover"
-              unoptimized
-              priority
-            />
-          </div>
-          <div className="flex flex-col gap-2 p-4">
+          <div className="flex flex-col gap-2 p-4 pb-3">
+            <p className="eyebrow">Producto</p>
             <div className="flex flex-wrap items-center gap-2">
               <Pill>{CATEGORY_LABELS[view.price.product.category] ?? view.price.product.category}</Pill>
               {view.price.product.brandModel ? (
@@ -93,6 +87,19 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
               {view.price.product.title}
             </h1>
             <p className="text-14 text-humo">{view.price.product.variant}</p>
+          </div>
+          <div className="relative aspect-[4/2.8] w-full bg-white/90">
+            <Image
+              src={view.price.product.image}
+              alt={view.price.product.title}
+              fill
+              sizes="(max-width: 640px) 100vw, 448px"
+              className="object-contain p-10"
+              unoptimized
+              priority
+            />
+          </div>
+          <div className="flex flex-col gap-2 p-4 pt-3">
             <p className="text-12 leading-relaxed text-humo">{view.price.product.conditions}</p>
             {view.price.product.detailPageUrl ? (
               <a
@@ -180,7 +187,7 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
             {lastError ? <p className="text-13 text-brasa">{lastError}</p> : null}
           </section>
         ) : (
-          <RevealPanel view={view} onNextRound={nextRound} pending={pendingAction} />
+          <RevealPanel view={view} onAdvance={advanceFromReveal} pending={pendingAction} />
         )}
       </main>
     </div>
@@ -189,22 +196,30 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
 
 function RevealPanel({
   view,
-  onNextRound,
+  onAdvance,
   pending,
 }: {
   view: PrecioJustoPlayerView;
-  onNextRound: () => void;
+  onAdvance: () => void;
   pending: boolean;
 }) {
   const reference = view.price.referencePriceCents;
-  const hostCanAdvance = view.me.availableActions.includes('nextRound');
+  const isLastRound = view.round >= view.config.rounds;
+  const hostCanAdvance = view.me.availableActions.includes(
+    isLastRound ? 'showPriceResults' : 'nextRound',
+  );
   return (
     <section className="flex w-full max-w-2xl flex-col gap-4">
       <div className="rounded-2xl border border-oro/50 bg-oro/10 px-5 py-4 text-center">
-        <p className="eyebrow">Precio de referencia</p>
+        <p className="eyebrow">{isLastRound ? 'Último precio revelado' : 'Precio de referencia'}</p>
         <p className="mt-1 font-display text-40 text-hueso">
           {reference === null ? '—' : formatCents(reference)}
         </p>
+        {isLastRound ? (
+          <p className="mt-1 text-13 text-humo">
+            Este es el precio del último producto. Después puedes ver la clasificación final.
+          </p>
+        ) : null}
       </div>
       {view.price.product.asin ? (
         <p className="text-center text-11 text-humo">
@@ -220,11 +235,15 @@ function RevealPanel({
           ))}
       </div>
       {view.status === 'playing' && hostCanAdvance ? (
-        <Button onClick={onNextRound} loading={pending}>
-          Siguiente producto
+        <Button onClick={onAdvance} loading={pending}>
+          {isLastRound ? 'Ver resultados' : 'Siguiente producto'}
         </Button>
       ) : view.status === 'playing' ? (
-        <p className="text-center text-14 text-humo">El anfitrión prepara el siguiente producto.</p>
+        <p className="text-center text-14 text-humo">
+          {isLastRound
+            ? 'El anfitrión mostrará los resultados finales.'
+            : 'El anfitrión prepara el siguiente producto.'}
+        </p>
       ) : null}
     </section>
   );

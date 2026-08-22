@@ -82,6 +82,8 @@ export function applyAction(
       return finishPrice(state, playerId, now);
     case 'nextRound':
       return nextRound(state, playerId);
+    case 'showPriceResults':
+      return showPriceResults(state, playerId);
     default:
       return err('INVALID_ACTION');
   }
@@ -149,6 +151,19 @@ function nextRound(state: PrecioJustoState, playerId: PlayerId): PrecioJustoActi
   return ok({ state: next, events: [{ t: 'dealt', round: next.round }] });
 }
 
+function showPriceResults(state: PrecioJustoState, playerId: PlayerId): PrecioJustoActionResult {
+  if (state.status !== 'playing' || state.phase !== 'reveal') return err('INVALID_ACTION');
+  if (!isHost(state, playerId)) return err('NOT_HOST');
+  if (state.round < state.config.rounds) return err('INVALID_ACTION');
+
+  const next = bump(state);
+  next.status = 'gameEnd';
+  next.winnerId = decideWinner(next);
+  const events: GameEvent[] = [];
+  if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
+  return ok({ state: next, events });
+}
+
 function reveal(state: PrecioJustoState, events: GameEvent[]): void {
   const question = priceQuestionById(state.price.questionId, state.questions);
   const results: Record<PlayerId, PrecioJustoGuessResult> = {};
@@ -196,12 +211,6 @@ function reveal(state: PrecioJustoState, events: GameEvent[]): void {
   state.price.scoreDeltas = scoreDeltas;
   state.price.results = results;
   events.push({ t: 'priceRevealed', round: state.round });
-
-  if (state.round >= state.config.rounds) {
-    state.status = 'gameEnd';
-    state.winnerId = decideWinner(state);
-    if (state.winnerId) events.push({ t: 'gameOver', winnerId: state.winnerId });
-  }
 }
 
 function allActivePlayersSubmitted(state: PrecioJustoState): boolean {

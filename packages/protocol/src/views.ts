@@ -602,7 +602,11 @@ export type PartyTableView =
 // --- Precio justo ----------------------------------------------------------
 
 export type PrecioJustoPhase = 'input' | 'reveal';
-export type PrecioJustoAvailableAction = 'submitPrice' | 'finishPrice' | 'nextRound';
+export type PrecioJustoAvailableAction =
+  | 'submitPrice'
+  | 'finishPrice'
+  | 'nextRound'
+  | 'showPriceResults';
 
 /** Ficha pública del producto; el precio de referencia no vive aquí. */
 export interface PrecioJustoProductPublic {

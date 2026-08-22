@@ -94,7 +94,7 @@ describe('Precio justo', () => {
     if (late.ok) expect(late.value.state.phase).toBe('reveal');
   });
 
-  it('avanza de ronda y termina en el número configurado', () => {
+  it('avanza de ronda y espera confirmación antes de terminar', () => {
     const config = PrecioJustoConfigSchema.parse({ rounds: 5, answerTimeSeconds: 0 });
     let state = createState(config);
     for (let round = 1; round <= 5; round += 1) {
@@ -103,6 +103,11 @@ describe('Precio justo', () => {
       state = apply(state, 'p2', { type: 'submitPrice', priceCents: target });
       if (round < 5) state = apply(state, 'p1', { type: 'nextRound' });
     }
+    expect(state.status).toBe('playing');
+    expect(state.phase).toBe('reveal');
+    expect(getPlayerView(state, 'p1').me.availableActions).toContain('showPriceResults');
+
+    state = apply(state, 'p1', { type: 'showPriceResults' });
     expect(state.status).toBe('gameEnd');
     expect(state.winnerId).toBe('p1');
     expect(state.round).toBe(5);

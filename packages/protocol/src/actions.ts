@@ -127,6 +127,8 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   }),
   /** Acción interna del reloj del servidor; antes del plazo la rechaza el motor. */
   z.object({ type: z.literal('finishPrice') }),
+  /** El anfitrión confirma que se pueden mostrar los resultados finales. */
+  z.object({ type: z.literal('showPriceResults') }),
   // --- Musical -------------------------------------------------------------
   // La URL de preview es pública para que cada móvil pueda reproducir el
   // fragmento, pero el servidor nunca envía la respuesta fuera de la
