@@ -20,6 +20,7 @@ import { saveRoomStats } from './db/stats-repo.ts';
 import { scheduleBotTurn, type BotDriverDeps } from './rooms/bot-driver.ts';
 import { saveIncident } from './db/incidents-repo.ts';
 import { runMigrations } from './db/migrate.ts';
+import { createAmazonPriceCatalog } from './integrations/amazon-creators.ts';
 import '@ronda/engine'; // registra los módulos de juego en GAMES (side effect).
 
 export type SnapshotHook = () => Promise<void>;
@@ -37,6 +38,8 @@ export async function startServer(opts: {
 }): Promise<ServerRuntime> {
   const config = opts.config ?? loadConfig();
   const logger = createLogger(config, { service: 'ronda-server' });
+  const amazonPriceCatalog = createAmazonPriceCatalog(config, logger);
+  const initialAmazonQuestions = amazonPriceCatalog ? await amazonPriceCatalog.refresh() : null;
   const snapshot = opts.snapshotOnShutdown ?? (async () => undefined);
   // Se inicializa justo después de crear Socket.IO. Los hooks de la sala se
   // ejecutan más tarde, pero mantener las dependencias en un solo objeto evita
@@ -112,6 +115,11 @@ export async function startServer(opts: {
         // los móviles y a la pantalla central.
         broadcastRoom(io, room);
       },
+      onPriceTimeout: (room) => {
+        // La revelación automática de Precio justo no pasa por un socket.
+        broadcastRoom(io, room);
+        if (botDeps) scheduleBotTurn(botDeps, room.code);
+      },
       onTrack: (room, kind, payload) => {
         // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
         // no puede tumbar una partida. `void` porque el llamador (room-
@@ -122,8 +130,17 @@ export async function startServer(opts: {
     {
       inactivityTimeoutMs: config.ROOM_INACTIVITY_MINUTES * 60_000,
       presenceTimeoutMs: config.ROOM_PRESENCE_TIMEOUT_SECONDS * 1000,
+      precioJustoQuestions: initialAmazonQuestions ?? undefined,
+      precioJustoQuestionsProvider: () => amazonPriceCatalog?.getQuestions() ?? null,
     },
   );
+
+  const amazonRefreshTimer = amazonPriceCatalog
+    ? setInterval(
+        () => void amazonPriceCatalog.refresh(),
+        config.AMAZON_PRICE_JUSTO_REFRESH_MINUTES * 60_000,
+      )
+    : undefined;
 
   const { server } = createHttpServer({ countRooms: () => manager.countRooms() });
   const { io, stopPeriodic } = createIoServer({
@@ -148,6 +165,7 @@ export async function startServer(opts: {
     closing = true;
     logger.info('apagando', { signal });
     stopPeriodic?.();
+    if (amazonRefreshTimer) clearInterval(amazonRefreshTimer);
     try {
       await snapshot();
     } catch (e) {
@@ -182,6 +200,7 @@ export async function startServer(opts: {
   return {
     close: async () => {
       stopPeriodic?.();
+      if (amazonRefreshTimer) clearInterval(amazonRefreshTimer);
       io.close();
       server.close();
     },

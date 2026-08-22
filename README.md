@@ -8,9 +8,10 @@ o tablet opcional hace de tablero público.
 
 - `00-MASTER.md` — documento maestro (visión, arquitectura, alcance). **Manda.**
 - `01-CONTRATOS.md` — contratos congelados (tipos, red, reglas, BD, diseño).
-- `02-PAQUETES.md` — paquetes de tarea P0–P20 (prompts para la IA generadora).
+- `02-PAQUETES.md` — paquetes de tarea P0–P32 y roadmap de paquetes futuros.
 - `03-CONTEXTO-PEGABLE.md` — contexto que se pega al inicio de cada sesión.
 - `05-LA-CUENTA.md` — investigación, reglas y alcance de la adaptación web de La Cuenta.
+- `06-ROADMAP-JUEGOS.md` — producto y paquetes futuros para Banderas, Cifras, Precio justo, Quién lo haría y Completa la frase.
 - `DEPLOY.md` — cómo desplegar: base de datos, servidor (Fly.io) y web (Vercel).
 - `PLAYTEST.md` — guion de las tres sesiones de playtest con grupos reales.
 

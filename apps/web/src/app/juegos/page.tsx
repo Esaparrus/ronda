@@ -20,6 +20,7 @@ const GAMES = [
   { slug: 'escala', name: 'Escala', players: '2–7 jugadores', duration: '15–25 min', kind: 'Social' },
   { slug: 'musical', name: 'Musical', players: '1–8 jugadores', duration: '10–25 min', kind: 'Música' },
   { slug: 'matiz', name: 'Matiz', players: '1–7 jugadores', duration: '5–15 min', kind: 'Color y precisión' },
+  { slug: 'preciojusto', name: 'Precio justo', players: '2–7 jugadores', duration: '10–25 min', kind: 'Estimación' },
 ] as const;
 
 export default function JuegosPage() {

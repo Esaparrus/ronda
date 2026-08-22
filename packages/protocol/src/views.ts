@@ -31,6 +31,7 @@ import type {
   MusConfig,
   MusicalConfig,
   OrdenConfig,
+  PrecioJustoConfig,
   PochaConfig,
 } from './config.ts';
 
@@ -598,6 +599,73 @@ export type PartyTableView =
   | EscalaTableView
   | MatizTableView;
 
+// --- Precio justo ----------------------------------------------------------
+
+export type PrecioJustoPhase = 'input' | 'reveal';
+export type PrecioJustoAvailableAction = 'submitPrice' | 'finishPrice' | 'nextRound';
+
+/** Ficha pública del producto; el precio de referencia no vive aquí. */
+export interface PrecioJustoProductPublic {
+  id: string;
+  title: string;
+  image: string;
+  asin: string | null;
+  detailPageUrl: string | null;
+  category: Exclude<PrecioJustoConfig['category'], 'todo'>;
+  brandModel: string | null;
+  variant: string;
+  marketplace: string;
+  currency: 'EUR';
+  seller: string;
+  conditions: string;
+  source: string;
+  capturedAt: string;
+}
+
+export interface PrecioJustoGuessReveal {
+  priceCents: number | null;
+  differenceCents: number | null;
+  relativeErrorPercent: number | null;
+  points: number;
+}
+
+export interface PrecioJustoPublic {
+  gameId: 'preciojusto';
+  phase: PrecioJustoPhase;
+  product: PrecioJustoProductPublic;
+  /** Se revela solo en fase `reveal`. */
+  referencePriceCents: number | null;
+  deadlineAt: number | null;
+  submittedPlayerIds: PlayerId[];
+  guesses: Record<PlayerId, PrecioJustoGuessReveal> | null;
+  scoreDeltas: Record<PlayerId, number> | null;
+}
+
+interface PrecioJustoCommonViewBase extends CommonViewBase {
+  phase: PrecioJustoPhase;
+  price: PrecioJustoPublic;
+}
+
+export interface PrecioJustoCommonView extends PrecioJustoCommonViewBase {
+  gameId: 'preciojusto';
+  config: PrecioJustoConfig;
+}
+
+export interface PrecioJustoPlayerViewMe {
+  playerId: PlayerId;
+  submitted: boolean;
+  availableActions: PrecioJustoAvailableAction[];
+}
+
+export interface PrecioJustoPlayerView extends PrecioJustoCommonView {
+  kind: 'player';
+  me: PrecioJustoPlayerViewMe;
+}
+
+export interface PrecioJustoTableView extends PrecioJustoCommonView {
+  kind: 'table';
+}
+
 // --- Musical ---------------------------------------------------------------
 
 export type MusicalPhase = 'setup' | 'playing' | 'reveal';
@@ -789,6 +857,7 @@ export type CommonView =
   | MusCommonView
   | ClassicCommonView
   | PartyCommonView
+  | PrecioJustoCommonView
   | RondaCommonView
   | MusicalCommonView;
 export type PlayerView =
@@ -797,6 +866,7 @@ export type PlayerView =
   | MusPlayerView
   | ClassicPlayerView
   | PartyPlayerView
+  | PrecioJustoPlayerView
   | RondaPlayerView
   | MusicalPlayerView;
 export type TableView =
@@ -805,6 +875,7 @@ export type TableView =
   | MusTableView
   | ClassicTableView
   | PartyTableView
+  | PrecioJustoTableView
   | RondaTableView
   | MusicalTableView;
 

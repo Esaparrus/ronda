@@ -17,6 +17,7 @@ import {
   ok,
 } from '@ronda/protocol';
 import { GAMES } from '@ronda/engine';
+import type { PriceQuestion } from '@ronda/engine';
 import { generateRoomCode } from './codes.ts';
 import { createToken, hashToken } from './tokens.ts';
 import { isValidNick, normalizeNick } from './nick.ts';
@@ -54,6 +55,10 @@ export interface RoomManagerOptions {
   inactivityTimeoutMs?: number;
   /** Tiempo sin heartbeat de una pestaña antes de marcarla desconectada. */
   presenceTimeoutMs?: number;
+  /** Catálogo remoto ya consultado; se congela dentro de cada partida. */
+  precioJustoQuestions?: readonly PriceQuestion[];
+  /** Proveedor para refrescar el catálogo entre partidas sin tocar el motor. */
+  precioJustoQuestionsProvider?: () => readonly PriceQuestion[] | null;
 }
 
 /**
@@ -101,13 +106,19 @@ export class RoomManager {
   private colorTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** Plazo de estimaciones de Escala, creado cuando la guía confirma la pista. */
   private scaleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Plazo de respuesta de Precio justo, creado al iniciar cada ronda. */
+  private priceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private inactivityTimeoutMs: number | undefined;
   private presenceTimeoutMs: number | undefined;
+  private precioJustoQuestions: readonly PriceQuestion[] | undefined;
+  private precioJustoQuestionsProvider: (() => readonly PriceQuestion[] | null) | undefined;
 
   constructor(hooksFactory: () => RoomHooks = () => ({}), options: RoomManagerOptions = {}) {
     this.hooksFactory = hooksFactory;
     this.inactivityTimeoutMs = options.inactivityTimeoutMs;
     this.presenceTimeoutMs = options.presenceTimeoutMs;
+    this.precioJustoQuestions = options.precioJustoQuestions;
+    this.precioJustoQuestionsProvider = options.precioJustoQuestionsProvider;
   }
 
   /** Inyecta el servidor io (para que hooks difundan toasts/closed). P8. */
@@ -505,7 +516,7 @@ export class RoomManager {
 
     const initialState = prioritizeUnseenColorQuestions(
       room,
-      module.createInitialState(dealInput(room)) as EngineState,
+      module.createInitialState(dealInput(room, this.priceQuestionsForStart())) as EngineState,
     );
     room.state = this.withTurnDeadline(null, initialState, input.now);
     rememberCurrentColorQuestion(room, room.state);
@@ -514,6 +525,7 @@ export class RoomManager {
     this.syncTurnTimer(room, null);
     this.syncColorTimer(room);
     this.syncScaleTimer(room);
+    this.syncPriceTimer(room);
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'game_started', { players: actives.length });
     return ok(null);
@@ -568,7 +580,8 @@ export class RoomManager {
           state.gameId === 'mayoria' ||
           state.gameId === 'escala' ||
           state.gameId === 'matiz' ||
-          state.gameId === 'musical')
+          state.gameId === 'musical' ||
+          state.gameId === 'preciojusto')
       ) {
         // Los modos sociales esperan a todos los jugadores activos para
         // revelar. Marcar la salida en el estado evita dejar una ronda
@@ -580,6 +593,13 @@ export class RoomManager {
               candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
             ),
             ...(state.buzzedPlayerId === player.playerId ? { buzzedPlayerId: null } : {}),
+          };
+        } else if (state.gameId === 'preciojusto') {
+          room.state = {
+            ...state,
+            players: state.players.map((candidate) =>
+              candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
+            ),
           };
         } else {
           room.state = {
@@ -698,6 +718,7 @@ export class RoomManager {
         this.clearTurnTimer(room.code);
         this.clearColorTimer(room.code);
         this.clearScaleTimer(room.code);
+        this.clearPriceTimer(room.code);
         const state = room.state;
         if (state?.gameId === 'mus') {
           // Mus, decisión 6 de P28 (§12.11): la partida se ANULA. No hay
@@ -788,7 +809,8 @@ export class RoomManager {
         partyNextRound ||
         input.action.type === 'musicSelectTrack' ||
         input.action.type === 'musicNextClip' ||
-        input.action.type === 'musicNextRound') &&
+        input.action.type === 'musicNextRound' ||
+        (input.action.type === 'nextRound' && room.gameId === 'preciojusto')) &&
       !player.isHost
     ) {
       return err('NOT_HOST');
@@ -811,6 +833,7 @@ export class RoomManager {
     this.syncTurnTimer(room, currentState);
     this.syncColorTimer(room);
     this.syncScaleTimer(room);
+    this.syncPriceTimer(room);
 
     // `nextRound` puede devolver el motor a playing. La sala mantiene un
     // status propio para lobby/persistencia y debe volver a sincronizarlo;
@@ -886,7 +909,7 @@ export class RoomManager {
       const previousState = room.state;
       const initialState = prioritizeUnseenColorQuestions(
         room,
-        module.createInitialState(dealInput(room)) as EngineState,
+        module.createInitialState(dealInput(room, this.priceQuestionsForStart())) as EngineState,
       );
       room.state = this.withTurnDeadline(previousState, initialState, input.now);
       rememberCurrentColorQuestion(room, room.state);
@@ -894,6 +917,7 @@ export class RoomManager {
       this.syncTurnTimer(room, previousState);
       this.syncColorTimer(room);
       this.syncScaleTimer(room);
+      this.syncPriceTimer(room);
       room.hooks.onTrack?.(room, 'rematch', {});
     }
     room.hooks.onSnapshot?.(room);
@@ -1048,6 +1072,11 @@ export class RoomManager {
     }
   }
 
+  private priceQuestionsForStart(): readonly PriceQuestion[] | undefined {
+    const supplied = this.precioJustoQuestionsProvider?.() ?? this.precioJustoQuestions;
+    return supplied && supplied.length > 0 ? supplied : undefined;
+  }
+
   // --- sweep (caducidades) -------------------------------------------------
 
   /** Añade el límite al estado público sin meter el reloj dentro del motor. */
@@ -1056,6 +1085,22 @@ export class RoomManager {
     state: EngineState,
     now: number,
   ): EngineState {
+    if (state.gameId === 'preciojusto') {
+      const seconds = state.config.answerTimeSeconds;
+      if (state.status !== 'playing' || state.phase !== 'input' || seconds === 0) {
+        return { ...state, price: { ...state.price, deadlineAt: null } };
+      }
+
+      const sameRound =
+        previous?.gameId === 'preciojusto' &&
+        previous.status === 'playing' &&
+        previous.phase === 'input' &&
+        previous.round === state.round;
+      const deadlineAt = sameRound
+        ? (state.price.deadlineAt ?? previous.price.deadlineAt ?? now + seconds * 1000)
+        : now + seconds * 1000;
+      return { ...state, price: { ...state.price, deadlineAt } };
+    }
     if (state.gameId !== 'chinchon') return state;
 
     const seconds = state.config.turnTimeSeconds;
@@ -1182,6 +1227,72 @@ export class RoomManager {
     const timer = this.scaleTimers.get(roomCode);
     if (timer) clearTimeout(timer);
     this.scaleTimers.delete(roomCode);
+  }
+
+  /** Programa la revelación de Precio justo al iniciar la ronda. */
+  private syncPriceTimer(room: Room): void {
+    const state = room.state;
+    if (
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'preciojusto' ||
+      state.phase !== 'input' ||
+      state.price.deadlineAt === null
+    ) {
+      this.clearPriceTimer(room.code);
+      return;
+    }
+    if (this.priceTimers.has(room.code)) return;
+
+    const deadlineAt = state.price.deadlineAt;
+    const delayMs = Math.max(0, deadlineAt - Date.now());
+    const timer = setTimeout(() => {
+      if (this.priceTimers.get(room.code) !== timer) return;
+      this.handlePriceTimeout(room.code, deadlineAt, Date.now());
+      if (this.priceTimers.get(room.code) === timer) this.priceTimers.delete(room.code);
+    }, delayMs);
+    timer.unref?.();
+    this.priceTimers.set(room.code, timer);
+  }
+
+  private clearPriceTimer(roomCode: string): void {
+    const timer = this.priceTimers.get(roomCode);
+    if (timer) clearTimeout(timer);
+    this.priceTimers.delete(roomCode);
+  }
+
+  private handlePriceTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
+    const room = this.rooms.get(roomCode);
+    const state = room?.state;
+    if (
+      !room ||
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      state.gameId !== 'preciojusto' ||
+      state.phase !== 'input' ||
+      state.price.deadlineAt !== expectedDeadlineAt
+    ) {
+      return;
+    }
+    if (expectedDeadlineAt > now) {
+      this.clearPriceTimer(room.code);
+      this.syncPriceTimer(room);
+      return;
+    }
+
+    const actor = room.playersBySeat()[0];
+    if (!actor) return;
+    const result = this.applyAction({
+      roomCode,
+      playerId: actor.playerId,
+      clientActionId: `price-timeout:${roomCode}:${state.version}:${randomUUID()}`,
+      expectedVersion: state.version,
+      action: { type: 'finishPrice' },
+      now,
+    });
+    if (result.ok) room.hooks.onPriceTimeout?.(room);
   }
 
   private handleScaleTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
@@ -1409,6 +1520,32 @@ export class RoomManager {
     return revealed;
   }
 
+  /** Respaldo para procesos suspendidos o callbacks perdidos del reloj de Precio justo. */
+  expireOverduePriceAnswers(now: number): number {
+    let revealed = 0;
+    for (const room of this.rooms.values()) {
+      const state = room.state;
+      if (
+        room.status !== 'playing' ||
+        !state ||
+        state.gameId !== 'preciojusto' ||
+        state.status !== 'playing' ||
+        state.phase !== 'input' ||
+        state.price.deadlineAt === null ||
+        state.price.deadlineAt > now
+      ) {
+        continue;
+      }
+
+      const deadlineAt = state.price.deadlineAt;
+      const versionBefore = state.version;
+      this.clearPriceTimer(room.code);
+      this.handlePriceTimeout(room.code, deadlineAt, now);
+      if (room.state?.version !== versionBefore) revealed += 1;
+    }
+    return revealed;
+  }
+
   /** Cierra cualquier sala que lleve demasiado tiempo sin mutación válida. */
   sweep(now: number): number {
     let closed = 0;
@@ -1462,6 +1599,7 @@ export class RoomManager {
     this.clearTurnTimer(room.code);
     this.clearColorTimer(room.code);
     this.clearScaleTimer(room.code);
+    this.clearPriceTimer(room.code);
     room.status = 'closed';
     room.hooks.onClosed?.(room, reason);
     this.rooms.delete(room.code);
@@ -1542,8 +1680,8 @@ function stableScaleHash(value: string): number {
  * fallaría el chequeo de propiedades excedentes de TypeScript; pasar una
  * variable no.
  */
-function dealInput(room: Room) {
-  return {
+function dealInput(room: Room, precioJustoQuestions?: readonly PriceQuestion[]) {
+  const input = {
     config: room.config,
     players: room.playersBySeat().map((p) => ({
       playerId: p.playerId,
@@ -1555,6 +1693,10 @@ function dealInput(room: Room) {
     seed: room.seed,
     roomCode: room.code,
   };
+  if (room.gameId === 'preciojusto' && precioJustoQuestions?.length) {
+    return { ...input, precioJustoQuestions };
+  }
+  return input;
 }
 
 /** Primer apodo "Robot N" libre en la sala (único, como exige isNickTaken). */

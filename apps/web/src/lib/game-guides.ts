@@ -416,6 +416,35 @@ export const GAME_GUIDES = {
       'Cada ronda da hasta 100 puntos. Tras completar las rondas configuradas, gana quien tenga la puntuación acumulada más alta.',
     keyRule: 'Una vez aceptado el color no se puede cambiar: piensa y confirma solo cuando estés conforme.',
   },
+  preciojusto: {
+    title: 'Precio justo',
+    kind: 'Estimación y precisión',
+    mark: '€',
+    objective:
+      'Adivina cuánto cuesta cada producto y acumula puntos acercándote al precio de referencia.',
+    steps: [
+      {
+        title: 'Mira la ficha',
+        body: 'Toda la mesa recibe el mismo producto, variante y condiciones de precio.',
+      },
+      {
+        title: 'Escribe tu estimación',
+        body: 'Introduce un importe en euros. Puedes usar céntimos; cuando confirmes, la respuesta queda bloqueada.',
+      },
+      {
+        title: 'Espera la revelación',
+        body: 'La ronda termina cuando responde todo el mundo o se agota el tiempo configurado.',
+      },
+      {
+        title: 'Compara el error',
+        body: 'Se muestran el precio real, la diferencia, el porcentaje de error y los puntos de cada persona.',
+      },
+    ],
+    victory:
+      'Gana quien acumule más puntos al completar las rondas. La velocidad no da puntos extra.',
+    keyRule:
+      'El porcentaje de error es relativo: equivocarse 2 € en un producto barato pesa más que equivocarse 2 € en uno caro.',
+  },
   laronda: {
     title: 'La Ronda',
     kind: 'Cartas y pique',

@@ -4,6 +4,7 @@ import {
   DEFAULT_COLORES_CONFIG,
   DEFAULT_ESCALA_CONFIG,
   DEFAULT_ORDEN_CONFIG,
+  DEFAULT_PRECIO_JUSTO_CONFIG,
 } from '@ronda/protocol';
 import { colorQuestionById } from '@ronda/engine';
 import { RoomManager } from './room-manager.ts';
@@ -147,6 +148,48 @@ describe('salas de modos sociales', () => {
 
       expect(room.state.phase).toBe('reveal');
       expect(room.state.scale?.guesses).toEqual({});
+      expect(timeoutSnapshots).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('revela Precio justo al terminar el temporizador de la ronda', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+      let timeoutSnapshots = 0;
+      const manager = new RoomManager(() => ({ onPriceTimeout: () => timeoutSnapshots++ }));
+      const first = manager.createRoom({
+        gameId: 'preciojusto',
+        config: DEFAULT_PRECIO_JUSTO_CONFIG,
+        nick: 'Ana',
+        now: NOW,
+      });
+      if (!first.ok) throw new Error(first.code);
+      const second = manager.joinRoom({ roomCode: first.value.roomCode, nick: 'Beto', now: NOW });
+      if (!second.ok) throw new Error(second.code);
+      expect(
+        manager.start({ roomCode: first.value.roomCode, playerId: first.value.playerId, now: NOW })
+          .ok,
+      ).toBe(true);
+
+      const room = manager.getRoomByCode(first.value.roomCode);
+      if (!room?.state || room.state.gameId !== 'preciojusto') throw new Error('Precio justo no empezó');
+      expect(room.state.price.deadlineAt).toBe(NOW + 20_000);
+      const submitted = manager.applyAction({
+        roomCode: room.code,
+        playerId: first.value.playerId,
+        clientActionId: 'first-price-answer',
+        expectedVersion: room.state.version,
+        action: { type: 'submitPrice', priceCents: 2500 },
+        now: NOW,
+      });
+      expect(submitted.ok).toBe(true);
+
+      vi.advanceTimersByTime(20_000);
+
+      expect(room.state.phase).toBe('reveal');
       expect(timeoutSnapshots).toBe(1);
     } finally {
       vi.useRealTimers();

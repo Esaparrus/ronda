@@ -24,6 +24,32 @@ const ConfigSchema = z.object({
     .int()
     .positive()
     .default(DEFAULT_ROOM_PRESENCE_TIMEOUT_SECONDS),
+  AMAZON_PRICE_JUSTO_ENABLED: z.preprocess(
+    (value) => {
+      if (value === undefined) return undefined;
+      if (value === true || value === 'true' || value === '1') return true;
+      if (value === false || value === 'false' || value === '0') return false;
+      return value;
+    },
+    z.boolean().default(false),
+  ),
+  AMAZON_CREATORS_API_CREDENTIAL_ID: z.string().trim().min(1).optional(),
+  AMAZON_CREATORS_API_CREDENTIAL_SECRET: z.string().trim().min(1).optional(),
+  AMAZON_CREATORS_API_VERSION: z.enum(['3.1', '3.2', '3.3']).default('3.2'),
+  AMAZON_PARTNER_TAG: z.string().trim().min(1).optional(),
+  AMAZON_MARKETPLACE: z.string().trim().min(1).default('www.amazon.es'),
+  AMAZON_PRICE_JUSTO_MAX_ITEMS_PER_CATEGORY: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .default(6),
+  AMAZON_PRICE_JUSTO_REFRESH_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(1440)
+    .default(60),
 });
 
 export type ServerConfig = z.infer<typeof ConfigSchema>;

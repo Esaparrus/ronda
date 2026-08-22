@@ -113,6 +113,14 @@ function GlyphPaths({ game }: { game: GameId }) {
           <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
         </>
       );
+    case 'preciojusto':
+      return (
+        <>
+          <path d="M4 7.5V4h10.5L21 10.5 10.5 21 4 14.5Z" />
+          <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+          <path d="M12 11.5h4M14 9.5v4" />
+        </>
+      );
   }
 }
 

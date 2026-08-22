@@ -25,7 +25,8 @@ export type GameId =
   | 'escala'
   | 'laronda'
   | 'musical'
-  | 'matiz';
+  | 'matiz'
+  | 'preciojusto';
 
 /**
  * Identificador de carta: '<suit>-<rank>' con suit ∈ {oros,copas,espadas,

@@ -19,6 +19,19 @@ describe('loadConfig', () => {
     expect(cfg.NODE_ENV).toBe('development');
     expect(cfg.ROOM_INACTIVITY_MINUTES).toBe(30);
     expect(cfg.ROOM_PRESENCE_TIMEOUT_SECONDS).toBe(90);
+    expect(cfg.AMAZON_PRICE_JUSTO_ENABLED).toBe(false);
+    expect(cfg.AMAZON_MARKETPLACE).toBe('www.amazon.es');
+  });
+
+  it('interpreta correctamente el interruptor de Amazon desde env', () => {
+    expect(
+      loadConfig({ DATABASE_URL: 'x', AMAZON_PRICE_JUSTO_ENABLED: 'false' })
+        .AMAZON_PRICE_JUSTO_ENABLED,
+    ).toBe(false);
+    expect(
+      loadConfig({ DATABASE_URL: 'x', AMAZON_PRICE_JUSTO_ENABLED: 'true' })
+        .AMAZON_PRICE_JUSTO_ENABLED,
+    ).toBe(true);
   });
 
   it('aplica PORT, CORS_ORIGIN y NODE_ENV si se pasan', () => {

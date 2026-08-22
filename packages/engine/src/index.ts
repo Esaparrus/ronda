@@ -166,3 +166,23 @@ export {
   type MusicalPhase,
   type MusicalStatus,
 } from './games/musical/index.ts';
+
+// Registro del juego Precio justo.
+import './games/preciojusto/index.ts';
+export {
+  precioJustoModule,
+  createInitialState as precioJustoCreateInitialState,
+  applyAction as precioJustoApplyAction,
+  getPlayerView as precioJustoGetPlayerView,
+  getTableView as precioJustoGetTableView,
+  PRICE_QUESTIONS,
+  priceQuestionById,
+  priceQuestionIdsFor,
+  relativeErrorPercentForPrice,
+  pricePointsForRelativeError,
+  type PrecioJustoState,
+  type PrecioJustoPlayer,
+  type PrecioJustoPhase,
+  type PrecioJustoStatus,
+  type PriceQuestion,
+} from './games/preciojusto/index.ts';

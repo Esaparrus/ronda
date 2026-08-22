@@ -33,6 +33,8 @@ import { MusRoundEndScreen } from './MusRoundEndScreen';
 import { MusGameEndScreen } from './MusGameEndScreen';
 import { PartyGameScreen } from './PartyGameScreen';
 import { MusicalGameScreen } from './MusicalGameScreen';
+import { PrecioJustoGameScreen } from './PrecioJustoGameScreen';
+import { PrecioJustoGameEndScreen } from './PrecioJustoGameEndScreen';
 import { ClassicGameScreen } from './ClassicGameScreen';
 import { ClassicRoundEndScreen } from './ClassicRoundEndScreen';
 import { RondaGameScreen } from './RondaGameScreen';
@@ -312,6 +314,9 @@ export function SalaClient({ code }: SalaClientProps) {
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'musical' ? (
         <MusicalGameScreen view={view} />
       ) : null}
+      {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'preciojusto' ? (
+        <PrecioJustoGameScreen view={view} />
+      ) : null}
       {!shouldShowBriefing &&
       (view.status === 'playing' || showSevenHalfBustReveal) &&
       (view.gameId === 'brisca' ||
@@ -352,9 +357,13 @@ export function SalaClient({ code }: SalaClientProps) {
       {view.status === 'gameEnd' && view.gameId === 'laronda' ? (
         <RondaGameEndScreen view={view} />
       ) : null}
+      {view.status === 'gameEnd' && view.gameId === 'preciojusto' ? (
+        <PrecioJustoGameEndScreen view={view} />
+      ) : null}
       {view.status === 'gameEnd' &&
       view.gameId !== 'mus' &&
       view.gameId !== 'laronda' &&
+      view.gameId !== 'preciojusto' &&
       !showSevenHalfBustReveal ? (
         <GameEndScreen view={view} />
       ) : null}

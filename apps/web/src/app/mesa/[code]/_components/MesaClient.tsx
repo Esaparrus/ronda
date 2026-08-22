@@ -31,6 +31,7 @@ import { MusMesaRoundEndScreen } from './MusMesaRoundEndScreen';
 import { MusMesaGameEndScreen } from './MusMesaGameEndScreen';
 import { PartyMesaGameBoard } from './PartyMesaGameBoard';
 import { MusicalMesaGameBoard } from './MusicalMesaGameBoard';
+import { PrecioJustoMesaGameBoard } from './PrecioJustoMesaGameBoard';
 import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
 import { ClassicMesaRoundEndScreen } from './ClassicMesaRoundEndScreen';
 import { RondaMesaScreen } from './RondaMesaScreen';
@@ -128,6 +129,10 @@ export function MesaClient({ code }: MesaClientProps) {
       {tableView.status === 'playing' && tableView.gameId === 'musical' ? (
         <MusicalMesaGameBoard view={tableView} />
       ) : null}
+      {(tableView.status === 'playing' || tableView.status === 'gameEnd') &&
+      tableView.gameId === 'preciojusto' ? (
+        <PrecioJustoMesaGameBoard view={tableView} />
+      ) : null}
       {tableView.gameId === 'laronda' && tableView.status !== 'lobby' ? (
         <RondaMesaScreen view={tableView} />
       ) : null}
@@ -160,7 +165,8 @@ export function MesaClient({ code }: MesaClientProps) {
       ) : null}
       {tableView.status === 'gameEnd' &&
       tableView.gameId !== 'mus' &&
-      tableView.gameId !== 'laronda' ? (
+      tableView.gameId !== 'laronda' &&
+      tableView.gameId !== 'preciojusto' ? (
         <MesaGameEndScreen view={tableView} />
       ) : null}
     </div>

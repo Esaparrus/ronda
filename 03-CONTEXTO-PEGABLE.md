@@ -34,6 +34,12 @@ Chat, voz, reacciones, amigos, cuentas, login, email, avatares personalizados, e
 
 Si un requisito te lleva ahí, es que lo has entendido mal. Vuelve al contrato.
 
+El roadmap posterior al MVP para juegos independientes está en
+`06-ROADMAP-JUEGOS.md`. Solo se trabaja en esos juegos cuando la sesión lo
+autorice expresamente y después de leer ese documento: Banderas, Cifras, Precio
+justo, Quién lo haría y Completa la frase no se mezclan con Chinchón ni se
+implementan como un modo improvisado.
+
 ## Diseño en una frase
 
 No es un casino: es una mesa de bar con una baraja bien impresa. Fondo tinta `#14161F`, papel hueso `#EDE6D8`, acción bermellón `#D4462F`, y los cuatro palos con su color. Cartas dibujadas en SVG por código, nunca imágenes. Una sola acción principal visible en cada momento.

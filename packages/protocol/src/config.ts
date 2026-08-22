@@ -299,6 +299,49 @@ export type MatizConfig = z.infer<typeof MatizConfigSchema>;
 
 export type PartyConfig = OrdenConfig | ColoresConfig | MayoriaConfig | EscalaConfig | MatizConfig;
 
+// --- Precio justo ----------------------------------------------------------
+
+const PRICE_MAX_PLAYERS = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+const PRICE_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(20)]);
+const PRICE_ANSWER_SECONDS = z.union([
+  z.literal(0),
+  z.literal(10),
+  z.literal(20),
+  z.literal(30),
+]);
+
+export const PRICE_CATEGORIES = [
+  'todo',
+  'hogar',
+  'tecnologia',
+  'ocio',
+  'deporte',
+  'accesorios',
+  'curiosos',
+  'baratos',
+  'precio-medio',
+] as const;
+export const PriceCategorySchema = z.enum(PRICE_CATEGORIES);
+export type PriceCategory = z.infer<typeof PriceCategorySchema>;
+
+/** Estimación de precios con catálogo y referencias congeladas por pregunta. */
+export const PrecioJustoConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('preciojusto' satisfies GameId).default('preciojusto'),
+  maxPlayers: PRICE_MAX_PLAYERS.default(6),
+  rounds: PRICE_ROUNDS.default(10),
+  answerTimeSeconds: PRICE_ANSWER_SECONDS.default(20),
+  category: PriceCategorySchema.default('todo'),
+});
+
+export type PrecioJustoConfig = z.infer<typeof PrecioJustoConfigSchema>;
+
 // --- La Ronda --------------------------------------------------------------
 
 const LA_RONDA_MAX_PLAYERS = z.union([
@@ -416,7 +459,8 @@ export type GameConfig =
   | ClassicConfig
   | PartyConfig
   | LaRondaConfig
-  | MusicalConfig;
+  | MusicalConfig
+  | PrecioJustoConfig;
 
 export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ChinchonConfigSchema,
@@ -434,6 +478,7 @@ export const GameConfigSchema = z.discriminatedUnion('gameId', [
   MatizConfigSchema,
   LaRondaConfigSchema,
   MusicalConfigSchema,
+  PrecioJustoConfigSchema,
 ]);
 
 /**
@@ -465,3 +510,4 @@ export const DEFAULT_ESCALA_CONFIG: EscalaConfig = EscalaConfigSchema.parse({});
 export const DEFAULT_MATIZ_CONFIG: MatizConfig = MatizConfigSchema.parse({});
 export const DEFAULT_LA_RONDA_CONFIG: LaRondaConfig = LaRondaConfigSchema.parse({});
 export const DEFAULT_MUSICAL_CONFIG: MusicalConfig = MusicalConfigSchema.parse({});
+export const DEFAULT_PRECIO_JUSTO_CONFIG: PrecioJustoConfig = PrecioJustoConfigSchema.parse({});

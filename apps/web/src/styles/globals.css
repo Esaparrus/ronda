@@ -696,6 +696,11 @@ summary {
   box-shadow: 0 8px 18px rgb(255 55 95 / 0.2);
 }
 
+.game-glyph-tile[data-game='preciojusto'] {
+  background: linear-gradient(145deg, #34c759, #159e8c);
+  box-shadow: 0 8px 18px rgb(21 158 140 / 0.22);
+}
+
 .game-card {
   position: relative;
   overflow: hidden;

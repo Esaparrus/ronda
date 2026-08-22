@@ -19,6 +19,7 @@ import type {
   ClassicState,
   MusState,
   MusicalState,
+  PrecioJustoState,
   PartyState,
   PochaState,
   RondaState,
@@ -28,13 +29,26 @@ import type {
  * ya era genérico de verdad; esta unión es lo único que faltaba en el lado
  * del servidor para dejar de asumir Chinchón a mano). */
 export type EngineState =
-  ChinchonState | PochaState | MusState | MusicalState | ClassicState | PartyState | RondaState;
+  | ChinchonState
+  | PochaState
+  | MusState
+  | MusicalState
+  | PrecioJustoState
+  | ClassicState
+  | PartyState
+  | RondaState;
 
 /** Estado de los juegos "un jugador, una puntuación" (§12.12): todos menos
  * Mus. Se usa donde el servidor lee `winnerId`, `round` o `player.score`,
  * que en Mus no existen porque el marcador es de la pareja. */
 export type ScoredEngineState =
-  ChinchonState | PochaState | MusicalState | ClassicState | PartyState | RondaState;
+  | ChinchonState
+  | PochaState
+  | MusicalState
+  | PrecioJustoState
+  | ClassicState
+  | PartyState
+  | RondaState;
 
 /** Estado runtime de un jugador en la sala. */
 export interface PlayerRuntime {
@@ -110,6 +124,8 @@ export interface RoomHooks {
   onColorTimeout?: (room: Room) => void;
   /** El plazo de estimaciones de Escala ha revelado y puntuado la ronda. */
   onScaleTimeout?: (room: Room) => void;
+  /** El plazo de precios ha revelado y puntuado la ronda. */
+  onPriceTimeout?: (room: Room) => void;
   /** Evento de telemetría (P18). */
   onTrack?: (room: Room, kind: string, payload?: Record<string, unknown>) => void;
 }

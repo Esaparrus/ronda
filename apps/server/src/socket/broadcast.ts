@@ -26,6 +26,9 @@ import type {
   MusicalCommonView,
   MusicalPlayerView,
   MusicalTableView,
+  PrecioJustoCommonView,
+  PrecioJustoPlayerView,
+  PrecioJustoTableView,
   PartyCommonView,
   PartyPlayerView,
   PartyTableView,
@@ -214,6 +217,46 @@ function buildMusicalLobbyCommon(room: Room): MusicalCommonView {
   };
 }
 
+function buildPrecioJustoLobbyCommon(room: Room): PrecioJustoCommonView {
+  return {
+    roomCode: room.code,
+    gameId: 'preciojusto',
+    config: room.config as PrecioJustoCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    rematchVotes: [],
+    phase: 'input',
+    price: {
+      gameId: 'preciojusto',
+      phase: 'input',
+      product: {
+        id: '',
+        title: 'El producto aparecerá al empezar.',
+        image: '',
+        asin: null,
+        detailPageUrl: null,
+        category: 'hogar',
+        brandModel: null,
+        variant: '',
+        marketplace: 'Ronda España',
+        currency: 'EUR',
+        seller: 'Referencia catalogada',
+        conditions: 'IVA incluido · sin envío ni cupones',
+        source: 'Catálogo curado de Ronda',
+        capturedAt: '2026-08-01',
+      },
+      referencePriceCents: null,
+      deadlineAt: null,
+      submittedPlayerIds: [],
+      guesses: null,
+      scoreDeltas: null,
+    },
+  };
+}
+
 /** Vista pública mínima de lobby para los cuatro modos sociales. */
 function buildPartyLobbyCommon(room: Room): PartyCommonView {
   const base = {
@@ -388,6 +431,14 @@ function buildRondaLobbyCommon(room: Room): RondaCommonView {
 
 /** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
 function lobbyPlayerView(room: Room, playerId: string): PlayerView {
+  if (room.gameId === 'preciojusto') {
+    const view: PrecioJustoPlayerView = {
+      kind: 'player',
+      ...buildPrecioJustoLobbyCommon(room),
+      me: { playerId, submitted: false, availableActions: [] },
+    };
+    return view;
+  }
   if (room.gameId === 'laronda') {
     const view: RondaPlayerView = {
       kind: 'player',
@@ -494,6 +545,10 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
 }
 
 function lobbyTableView(room: Room): TableView {
+  if (room.gameId === 'preciojusto') {
+    const view: PrecioJustoTableView = { kind: 'table', ...buildPrecioJustoLobbyCommon(room) };
+    return view;
+  }
   if (room.gameId === 'laronda') {
     const view: RondaTableView = { kind: 'table', ...buildRondaLobbyCommon(room) };
     return view;

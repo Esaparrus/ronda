@@ -19,6 +19,7 @@ import {
   DEFAULT_MATIZ_CONFIG,
   DEFAULT_ORDEN_CONFIG,
   DEFAULT_POCHA_CONFIG,
+  DEFAULT_PRECIO_JUSTO_CONFIG,
   DEFAULT_SIETE_Y_MEDIA_CONFIG,
   DEFAULT_TUTE_CONFIG,
   messageFor,
@@ -31,6 +32,8 @@ import {
   type MusicalConfig,
   type LaRondaConfig,
   type PartyConfig,
+  type PrecioJustoConfig,
+  type PriceCategory,
   type PochaConfig,
 } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
@@ -69,6 +72,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [rondaConfig, setRondaConfig] = useState<LaRondaConfig>(DEFAULT_LA_RONDA_CONFIG);
   const [classicConfig, setClassicConfig] = useState<ClassicConfig>(() => classicDefaults(gameId));
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
+  const [precioJustoConfig, setPrecioJustoConfig] =
+    useState<PrecioJustoConfig>(DEFAULT_PRECIO_JUSTO_CONFIG);
   const [submitting, setSubmitting] = useState(false);
 
   const title = `Crear partida de ${gameTitle(gameId)}`;
@@ -97,6 +102,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
             ? pochaConfig
             : gameId === 'musical'
               ? musicalConfig
+              : gameId === 'preciojusto'
+                ? precioJustoConfig
               : isClassicGame(gameId)
                 ? classicConfig
                 : isPartyGame(gameId)
@@ -164,7 +171,10 @@ export function CrearForm({ gameId }: CrearFormProps) {
           <NickLegalNote />
         </div>
 
-        {!isPartyGame(gameId) && gameId !== 'laronda' && gameId !== 'musical' ? (
+        {!isPartyGame(gameId) &&
+        gameId !== 'laronda' &&
+        gameId !== 'musical' &&
+        gameId !== 'preciojusto' ? (
           <CardStylePicker />
         ) : null}
 
@@ -176,6 +186,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
           <PochaVariants config={pochaConfig} setConfig={setPochaConfig} />
         ) : gameId === 'musical' ? (
           <MusicalVariants config={musicalConfig} setConfig={setMusicalConfig} />
+        ) : gameId === 'preciojusto' ? (
+          <PrecioJustoVariants config={precioJustoConfig} setConfig={setPrecioJustoConfig} />
         ) : isClassicGame(gameId) ? (
           <ClassicVariants config={classicConfig} setConfig={setClassicConfig} />
         ) : isPartyGame(gameId) ? (
@@ -524,7 +536,105 @@ function gameTitle(gameId: GameId): string {
   if (gameId === 'pocha') return 'Pocha';
   if (gameId === 'musical') return 'Musical';
   if (gameId === 'matiz') return 'Matiz';
+  if (gameId === 'preciojusto') return 'Precio justo';
   return 'Chinchón';
+}
+
+interface PrecioJustoVariantsProps {
+  config: PrecioJustoConfig;
+  setConfig: (fn: (prev: PrecioJustoConfig) => PrecioJustoConfig) => void;
+}
+
+function PrecioJustoVariants({ config, setConfig }: PrecioJustoVariantsProps) {
+  const set = <K extends keyof PrecioJustoConfig>(key: K, value: PrecioJustoConfig[K]) =>
+    updateConfig(setConfig, key, value);
+
+  return (
+    <section className="flex flex-col gap-6">
+      <div className="surface-panel flex flex-col gap-2 p-4">
+        <p className="text-16 font-semibold text-hueso">Una misma referencia para todos</p>
+        <p className="text-14 leading-relaxed text-humo">
+          Veréis productos con imágenes propias y precios congelados en euros. La partida mide la
+          precisión, no quién responde antes.
+        </p>
+      </div>
+
+      <QuantityStepper
+        legend="Jugadores"
+        helperText="Cuántas personas puede tener la sala."
+        value={config.maxPlayers}
+        onChange={(value) => set('maxPlayers', value as PrecioJustoConfig['maxPlayers'])}
+        options={[2, 3, 4, 5, 6, 7].map((value) => ({ value, label: String(value) }))}
+        valueSuffix="personas"
+      />
+
+      <div className="flex flex-col gap-2.5">
+        <label htmlFor="price-category" className="text-16 font-semibold text-hueso">
+          Catálogo
+        </label>
+        <p className="text-12 text-humo">Una categoría concreta o una mezcla de productos.</p>
+        <select
+          id="price-category"
+          value={config.category}
+          onChange={(event) => set('category', event.target.value as PriceCategory)}
+          className="form-control px-4 text-16"
+        >
+          <option value="todo">De todo</option>
+          <option value="hogar">Hogar y cocina</option>
+          <option value="tecnologia">Tecnología sencilla</option>
+          <option value="ocio">Ocio y juegos</option>
+          <option value="deporte">Deporte</option>
+          <option value="accesorios">Accesorios</option>
+          <option value="curiosos">Curiosos</option>
+          <option value="baratos">Productos baratos</option>
+          <option value="precio-medio">Precio medio</option>
+        </select>
+      </div>
+
+      <QuantityStepper
+        legend="Rondas"
+        helperText="Número de productos que vais a estimar."
+        value={config.rounds}
+        onChange={(value) => set('rounds', value as PrecioJustoConfig['rounds'])}
+        options={[5, 10, 20].map((value) => ({ value, label: String(value) }))}
+        valueSuffix="rondas"
+      />
+
+      <SegmentedControl
+        legend="Tiempo para estimar"
+        helperText="La ronda se revela cuando responde todo el mundo o termina el plazo."
+        value={config.answerTimeSeconds}
+        onChange={(value) =>
+          set('answerTimeSeconds', value as PrecioJustoConfig['answerTimeSeconds'])
+        }
+        options={[
+          { value: 0, label: 'Sin límite' },
+          { value: 10, label: '10 s' },
+          { value: 20, label: '20 s' },
+          { value: 30, label: '30 s' },
+        ]}
+      />
+
+      <div className="rounded-xl border border-linea bg-mesa/70 px-4 py-3 text-14 leading-relaxed text-humo">
+        <p className="font-semibold text-hueso">Cómo se puntúa</p>
+        <p className="mt-1">
+          0 % de error: 100 puntos · hasta 5 %: 90 · hasta 10 %: 80 · hasta 20 %: 60 · hasta 35
+          %: 30 · 50 % o más: 0.
+        </p>
+      </div>
+
+      <SegmentedControl
+        legend="Sonido"
+        helperText="Activa los sonidos de la partida."
+        value={config.soundEnabled}
+        onChange={(value) => set('soundEnabled', value)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+    </section>
+  );
 }
 
 interface LaRondaVariantsProps {

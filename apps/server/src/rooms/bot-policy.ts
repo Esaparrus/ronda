@@ -8,3 +8,4 @@ export { decideMusAction } from './bot-strategies/mus.ts';
 export { decideClassicAction } from './bot-strategies/classics.ts';
 export { decidePartyAction } from './bot-strategies/party.ts';
 export { decideRondaAction } from './bot-strategies/laronda.ts';
+export { decidePrecioJustoAction } from './bot-strategies/preciojusto.ts';

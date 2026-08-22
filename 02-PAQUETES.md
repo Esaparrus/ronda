@@ -477,8 +477,9 @@ En este orden, y solo cuando los 4 hitos de `00-MASTER.md` §7 estén cumplidos:
 2. ~~Reacciones rápidas (4 emojis, sin chat libre).~~ **HECHO: `P25`** (`01-CONTRATOS.md` §11.1).
 3. ~~Estadísticas del grupo, guardadas por sala.~~ **HECHO: `P26`** (`01-CONTRATOS.md` §11.2).
 4. ~~Mus (necesita parejas y una capa social muy distinta: es un proyecto en sí mismo).~~ **HECHO.** Contrato de reglas congelado: `P27` (`01-CONTRATOS.md` §12). Motor: `P28`. Servidor e interfaz: `P29`, incluido el marcador por parejas que §12.12 avisaba de que arrastraba a `/sala`, `/mesa` y a las estadísticas de §11.2.
-5. Juego original con roles secretos, que es lo que realmente diferencia la plataforma. **No hay contrato que ejecutar**: es un juego que todavía no existe, y diseñarlo es una decisión de producto de Unai, no de una sesión de implementación.
-6. App nativa con Expo, solo si el playtest demuestra que el juego offline y las notificaciones hacen falta de verdad. **Condicionado a datos de playtest reales** (`00-MASTER.md` §10), que hoy no existen.
+5. **Juegos independientes de conocimiento y previa.** El diseño de producto queda congelado en [`06-ROADMAP-JUEGOS.md`](06-ROADMAP-JUEGOS.md): Banderas, Cifras, Precio justo, Quién lo haría y Completa la frase. No son un modo mixto ni una extensión de los juegos de cartas. Paquetes previstos: `P33`–`P44`, en el orden documentado allí.
+6. Juego original con roles secretos, que es lo que realmente diferencia la plataforma. **No hay contrato que ejecutar**: es un juego que todavía no existe, y diseñarlo es una decisión de producto de Unai, no de una sesión de implementación.
+7. App nativa con Expo, solo si el playtest demuestra que el juego offline y las notificaciones hacen falta de verdad. **Condicionado a datos de playtest reales** (`00-MASTER.md` §10), que hoy no existen.
 
 ---
 

@@ -83,6 +83,9 @@ export const GameEventSchema = z.discriminatedUnion('t', [
     ]),
     round: z.number().int(),
   }),
+  // --- Precio justo ---------------------------------------------------------
+  z.object({ t: z.literal('priceAnswerSubmitted'), playerId: z.string() }),
+  z.object({ t: z.literal('priceRevealed'), round: z.number().int() }),
   // --- Musical -------------------------------------------------------------
   z.object({ t: z.literal('musicTrackSelected'), round: z.number().int() }),
   z.object({ t: z.literal('musicBuzzed'), playerId: z.string() }),

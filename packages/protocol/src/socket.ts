@@ -16,6 +16,7 @@ import {
   MusicalConfigSchema,
   OrdenConfigSchema,
   PochaConfigSchema,
+  PrecioJustoConfigSchema,
   SieteYMediaConfigSchema,
   TuteConfigSchema,
 } from './config.ts';
@@ -281,6 +282,7 @@ const roomCreateSchema = z.object({
     z.literal('escala'),
     z.literal('laronda'),
     z.literal('musical'),
+    z.literal('preciojusto'),
   ]),
   config: GameConfigSchema,
   nick: z.string(),
@@ -317,6 +319,7 @@ const roomConfigSchema = z.object({
     EscalaConfigSchema.partial(),
     LaRondaConfigSchema.partial(),
     MusicalConfigSchema.partial(),
+    PrecioJustoConfigSchema.partial(),
   ]),
 });
 

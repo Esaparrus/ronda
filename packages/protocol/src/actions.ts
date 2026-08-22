@@ -117,6 +117,16 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   }),
   /** El anfitrión puede revelar aunque todavía falte alguna respuesta. */
   z.object({ type: z.literal('finishMatiz') }),
+  // --- Precio justo ---------------------------------------------------------
+  // El valor viaja en céntimos para evitar errores de coma flotante. La vista
+  // privada solo expone que la respuesta está bloqueada; el importe se revela
+  // junto al resto cuando termina la ronda.
+  z.object({
+    type: z.literal('submitPrice'),
+    priceCents: z.number().int().min(1).max(100_000_000),
+  }),
+  /** Acción interna del reloj del servidor; antes del plazo la rechaza el motor. */
+  z.object({ type: z.literal('finishPrice') }),
   // --- Musical -------------------------------------------------------------
   // La URL de preview es pública para que cada móvil pueda reproducir el
   // fragmento, pero el servidor nunca envía la respuesta fuera de la

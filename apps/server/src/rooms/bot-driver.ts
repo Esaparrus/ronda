@@ -14,6 +14,7 @@ import type {
   ChinchonPlayerView,
   ClassicPlayerView,
   MusPlayerView,
+  PrecioJustoPlayerView,
   PartyPlayerView,
   PlayerId,
   RondaPlayerView,
@@ -28,6 +29,7 @@ import {
   decideClassicAction,
   decideMusAction,
   decidePartyAction,
+  decidePrecioJustoAction,
   decidePochaAction,
   decideRondaAction,
 } from './bot-policy.ts';
@@ -141,6 +143,27 @@ function nextBotTurn(room: Room): BotTurn | null {
       }
     }
     return null;
+  }
+
+  if (room.status === 'playing' && state.gameId === 'preciojusto') {
+    const bots = room.playersBySeat().filter((player) => player.isBot);
+    const module = GAMES.preciojusto;
+    if (!module || state.status !== 'playing') return null;
+    const bot = bots.find((candidate) => {
+      const view = module.getPlayerView(state, candidate.playerId);
+      return view.kind === 'player' && view.me.availableActions.some(
+        (action) => action === 'submitPrice' || action === 'finishPrice',
+      );
+    });
+    if (state.phase === 'reveal') {
+      const host = bots.find((candidate) => {
+        const view = module.getPlayerView(state, candidate.playerId);
+        if (view.kind !== 'player') return false;
+        return (view as PrecioJustoPlayerView).me.availableActions.includes('nextRound');
+      });
+      return host ? { playerId: host.playerId, kind: 'nextRound' } : null;
+    }
+    return bot ? { playerId: bot.playerId, kind: 'action' } : null;
   }
 
   // En la consulta online de Mus actúa una pareja a la vez y `turnSeat` es
@@ -284,7 +307,9 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
         return;
       }
       const action =
-        view.gameId === 'musical'
+        view.gameId === 'preciojusto'
+          ? decidePrecioJustoAction(view as PrecioJustoPlayerView)
+          : view.gameId === 'musical'
           ? state.gameId === 'musical' && state.currentTrack
             ? state.config.audioMode === 'online'
               ? view.me.availableActions.includes('musicStartClip')
