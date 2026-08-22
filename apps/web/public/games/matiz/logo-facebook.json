@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-facebook-base.svg",
+  "mask": "/games/matiz/logo-facebook-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#1877f2",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/facebook.svg"
+}

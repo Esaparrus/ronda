@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-engranaje-base.png",
+  "mask": "/games/matiz/emoji-engranaje-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 50002,
+  "targetHex": "#d0cfce",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/2699.png"
+}

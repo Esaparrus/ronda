@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-whatsapp-base.svg",
+  "mask": "/games/matiz/logo-whatsapp-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#25d366",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/whatsapp.svg"
+}

@@ -17,6 +17,10 @@ import {
   OrdenConfigSchema,
   PochaConfigSchema,
   PrecioJustoConfigSchema,
+  BanderasConfigSchema,
+  CifrasConfigSchema,
+  QuienLoHariaConfigSchema,
+  CompletaLaFraseConfigSchema,
   SieteYMediaConfigSchema,
   TuteConfigSchema,
 } from './config.ts';
@@ -283,6 +287,10 @@ const roomCreateSchema = z.object({
     z.literal('laronda'),
     z.literal('musical'),
     z.literal('preciojusto'),
+    z.literal('banderas'),
+    z.literal('cifras'),
+    z.literal('quienloharia'),
+    z.literal('completalafrase'),
   ]),
   config: GameConfigSchema,
   nick: z.string(),
@@ -320,6 +328,10 @@ const roomConfigSchema = z.object({
     LaRondaConfigSchema.partial(),
     MusicalConfigSchema.partial(),
     PrecioJustoConfigSchema.partial(),
+    BanderasConfigSchema.partial(),
+    CifrasConfigSchema.partial(),
+    QuienLoHariaConfigSchema.partial(),
+    CompletaLaFraseConfigSchema.partial(),
   ]),
 });
 

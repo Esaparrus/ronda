@@ -121,6 +121,34 @@ function GlyphPaths({ game }: { game: GameId }) {
           <path d="M12 11.5h4M14 9.5v4" />
         </>
       );
+    case 'banderas':
+      return (
+        <>
+          <path d="M6 21V4" />
+          <path d="M7 5h11l-2.2 3L18 11H7Z" />
+          <path d="M10 5v6M14 5v6" />
+        </>
+      );
+    case 'cifras':
+      return (
+        <>
+          <path d="M8 3 6 21M18 3l-2 18M3 9h18M2 15h18" />
+        </>
+      );
+    case 'quienloharia':
+      return (
+        <>
+          <circle cx="12" cy="8" r="3" />
+          <path d="M5 20a7 7 0 0 1 14 0M4 4l2 1M20 4l-2 1" />
+        </>
+      );
+    case 'completalafrase':
+      return (
+        <>
+          <path d="M4 6h16M4 12h10M4 18h16" />
+          <circle cx="18" cy="12" r="2" />
+        </>
+      );
   }
 }
 

@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-gorra-base.png",
+  "mask": "/games/matiz/emoji-gorra-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 31390,
+  "targetHex": "#186648",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F9E2.png"
+}

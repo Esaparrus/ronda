@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-tiktok-base.svg",
+  "mask": "/games/matiz/logo-tiktok-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#000000",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/tiktok.svg"
+}

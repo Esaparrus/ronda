@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-persona-base.png",
+  "mask": "/games/matiz/emoji-persona-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 26050,
+  "targetHex": "#92d3f5",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F9D1.png"
+}

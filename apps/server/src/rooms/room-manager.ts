@@ -16,8 +16,9 @@ import {
   err,
   ok,
 } from '@ronda/protocol';
-import { GAMES } from '@ronda/engine';
+import { GAMES, isRoadmapGame } from '@ronda/engine';
 import type { PriceQuestion } from '@ronda/engine';
+import type { RoadmapState } from '@ronda/engine';
 import { generateRoomCode } from './codes.ts';
 import { createToken, hashToken } from './tokens.ts';
 import { isValidNick, normalizeNick } from './nick.ts';
@@ -108,6 +109,8 @@ export class RoomManager {
   private scaleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** Plazo de respuesta de Precio justo, creado al iniciar cada ronda. */
   private priceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Plazos de las cuatro rondas de preguntas independientes. */
+  private roadmapTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private inactivityTimeoutMs: number | undefined;
   private presenceTimeoutMs: number | undefined;
   private precioJustoQuestions: readonly PriceQuestion[] | undefined;
@@ -526,6 +529,7 @@ export class RoomManager {
     this.syncColorTimer(room);
     this.syncScaleTimer(room);
     this.syncPriceTimer(room);
+    this.syncRoadmapTimer(room);
     room.hooks.onSnapshot?.(room);
     room.hooks.onTrack?.(room, 'game_started', { players: actives.length });
     return ok(null);
@@ -581,7 +585,8 @@ export class RoomManager {
           state.gameId === 'escala' ||
           state.gameId === 'matiz' ||
           state.gameId === 'musical' ||
-          state.gameId === 'preciojusto')
+          state.gameId === 'preciojusto' ||
+          isRoadmapGame(state.gameId))
       ) {
         // Los modos sociales esperan a todos los jugadores activos para
         // revelar. Marcar la salida en el estado evita dejar una ronda
@@ -607,7 +612,7 @@ export class RoomManager {
             players: state.players.map((candidate) =>
               candidate.playerId === player.playerId ? { ...candidate, left: true } : candidate,
             ),
-          };
+          } as EngineState;
         }
       }
       if (state?.gameId === 'laronda') {
@@ -811,7 +816,8 @@ export class RoomManager {
         input.action.type === 'musicNextClip' ||
         input.action.type === 'musicNextRound' ||
         (input.action.type === 'nextRound' && room.gameId === 'preciojusto') ||
-        (input.action.type === 'showPriceResults' && room.gameId === 'preciojusto')) &&
+        (input.action.type === 'showPriceResults' && room.gameId === 'preciojusto') ||
+        (input.action.type === 'nextRound' && isRoadmapGame(room.gameId))) &&
       !player.isHost
     ) {
       return err('NOT_HOST');
@@ -835,6 +841,7 @@ export class RoomManager {
     this.syncColorTimer(room);
     this.syncScaleTimer(room);
     this.syncPriceTimer(room);
+    this.syncRoadmapTimer(room);
 
     // `nextRound` puede devolver el motor a playing. La sala mantiene un
     // status propio para lobby/persistencia y debe volver a sincronizarlo;
@@ -919,6 +926,7 @@ export class RoomManager {
       this.syncColorTimer(room);
       this.syncScaleTimer(room);
       this.syncPriceTimer(room);
+      this.syncRoadmapTimer(room);
       room.hooks.onTrack?.(room, 'rematch', {});
     }
     room.hooks.onSnapshot?.(room);
@@ -1086,6 +1094,16 @@ export class RoomManager {
     state: EngineState,
     now: number,
   ): EngineState {
+    if (isRoadmapGame(state.gameId)) {
+      const roadmapState = state as RoadmapState;
+      const previousRoadmapState =
+        previous && isRoadmapGame(previous.gameId) ? (previous as RoadmapState) : null;
+      return withRoadmapDeadline(
+        previousRoadmapState,
+        roadmapState,
+        now,
+      );
+    }
     if (state.gameId === 'preciojusto') {
       const seconds = state.config.answerTimeSeconds;
       if (state.status !== 'playing' || state.phase !== 'input' || seconds === 0) {
@@ -1261,6 +1279,90 @@ export class RoomManager {
     const timer = this.priceTimers.get(roomCode);
     if (timer) clearTimeout(timer);
     this.priceTimers.delete(roomCode);
+  }
+
+  /** Programa el cierre de cualquier juego de preguntas independiente. */
+  private syncRoadmapTimer(room: Room): void {
+    const state = room.state;
+    if (
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      !isRoadmapGame(state.gameId)
+    ) {
+      this.clearRoadmapTimer(room.code);
+      return;
+    }
+    const roadmapState = state as RoadmapState;
+    if (roadmapState.phase !== 'input') {
+      this.clearRoadmapTimer(room.code);
+      return;
+    }
+    const deadlineAt = roadmapDeadlineAt(roadmapState);
+    if (deadlineAt === null) {
+      this.clearRoadmapTimer(room.code);
+      return;
+    }
+    if (this.roadmapTimers.has(room.code)) return;
+
+    const delayMs = Math.max(0, deadlineAt - Date.now());
+    const timer = setTimeout(() => {
+      if (this.roadmapTimers.get(room.code) !== timer) return;
+      this.handleRoadmapTimeout(room.code, deadlineAt, Date.now());
+      if (this.roadmapTimers.get(room.code) === timer) this.roadmapTimers.delete(room.code);
+    }, delayMs);
+    timer.unref?.();
+    this.roadmapTimers.set(room.code, timer);
+  }
+
+  private clearRoadmapTimer(roomCode: string): void {
+    const timer = this.roadmapTimers.get(roomCode);
+    if (timer) clearTimeout(timer);
+    this.roadmapTimers.delete(roomCode);
+  }
+
+  private handleRoadmapTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
+    const room = this.rooms.get(roomCode);
+    const state = room?.state;
+    if (
+      !room ||
+      !state ||
+      room.status !== 'playing' ||
+      state.status !== 'playing' ||
+      !isRoadmapGame(state.gameId)
+    ) {
+      return;
+    }
+    const roadmapState = state as RoadmapState;
+    if (roadmapState.phase !== 'input' || roadmapDeadlineAt(roadmapState) !== expectedDeadlineAt) return;
+    if (expectedDeadlineAt > now) {
+      this.clearRoadmapTimer(room.code);
+      this.syncRoadmapTimer(room);
+      return;
+    }
+
+    const actor = room.playersBySeat()[0];
+    if (!actor) return;
+    const finishAction: Extract<
+      GameAction,
+      { type: 'finishFlags' | 'finishCifras' | 'finishWho' | 'finishSentence' }
+    > =
+      roadmapState.gameId === 'banderas'
+        ? { type: 'finishFlags' }
+        : roadmapState.gameId === 'cifras'
+          ? { type: 'finishCifras' }
+          : roadmapState.gameId === 'quienloharia'
+            ? { type: 'finishWho' }
+            : { type: 'finishSentence' };
+    const result = this.applyAction({
+      roomCode,
+      playerId: actor.playerId,
+      clientActionId: `roadmap-timeout:${roomCode}:${roadmapState.version}:${randomUUID()}`,
+      expectedVersion: roadmapState.version,
+      action: finishAction,
+      now,
+    });
+    if (result.ok) room.hooks.onRoadmapTimeout?.(room);
   }
 
   private handlePriceTimeout(roomCode: string, expectedDeadlineAt: number, now: number): void {
@@ -1547,6 +1649,31 @@ export class RoomManager {
     return revealed;
   }
 
+  /** Respaldo para procesos suspendidos o callbacks perdidos del roadmap. */
+  expireOverdueRoadmapAnswers(now: number): number {
+    let revealed = 0;
+    for (const room of this.rooms.values()) {
+      const state = room.state;
+      if (
+        room.status !== 'playing' ||
+        !state ||
+        state.status !== 'playing' ||
+        !isRoadmapGame(state.gameId)
+      ) {
+        continue;
+      }
+      const roadmapState = state as RoadmapState;
+      if (roadmapState.phase !== 'input') continue;
+      const deadlineAt = roadmapDeadlineAt(roadmapState);
+      if (deadlineAt === null || deadlineAt > now) continue;
+      const versionBefore = roadmapState.version;
+      this.clearRoadmapTimer(room.code);
+      this.handleRoadmapTimeout(room.code, deadlineAt, now);
+      if (room.state?.version !== versionBefore) revealed += 1;
+    }
+    return revealed;
+  }
+
   /** Cierra cualquier sala que lleve demasiado tiempo sin mutación válida. */
   sweep(now: number): number {
     let closed = 0;
@@ -1601,6 +1728,7 @@ export class RoomManager {
     this.clearColorTimer(room.code);
     this.clearScaleTimer(room.code);
     this.clearPriceTimer(room.code);
+    this.clearRoadmapTimer(room.code);
     room.status = 'closed';
     room.hooks.onClosed?.(room, reason);
     this.rooms.delete(room.code);
@@ -1608,6 +1736,34 @@ export class RoomManager {
 }
 
 // --- helpers ----------------------------------------------------------------
+
+function roadmapDeadlineAt(state: RoadmapState): number | null {
+  if (state.gameId === 'banderas') return state.flags.deadlineAt;
+  if (state.gameId === 'cifras') return state.cifras.deadlineAt;
+  if (state.gameId === 'quienloharia') return state.who.deadlineAt;
+  return state.sentence.deadlineAt;
+}
+
+function setRoadmapDeadlineAt(state: RoadmapState, deadlineAt: number | null): RoadmapState {
+  if (state.gameId === 'banderas') return { ...state, flags: { ...state.flags, deadlineAt } };
+  if (state.gameId === 'cifras') return { ...state, cifras: { ...state.cifras, deadlineAt } };
+  if (state.gameId === 'quienloharia') return { ...state, who: { ...state.who, deadlineAt } };
+  return { ...state, sentence: { ...state.sentence, deadlineAt } };
+}
+
+function withRoadmapDeadline(
+  previous: RoadmapState | null,
+  state: RoadmapState,
+  now: number,
+): RoadmapState {
+  const seconds = state.config.answerTimeSeconds;
+  if (state.status !== 'playing' || state.phase !== 'input' || seconds === 0) {
+    return setRoadmapDeadlineAt(state, null);
+  }
+  const previousDeadline = previous && previous.gameId === state.gameId ? roadmapDeadlineAt(previous) : null;
+  const sameRound = previous?.gameId === state.gameId && previous.status === 'playing' && previous.phase === 'input' && previous.round === state.round;
+  return setRoadmapDeadlineAt(state, sameRound ? (roadmapDeadlineAt(state) ?? previousDeadline ?? now + seconds * 1000) : now + seconds * 1000);
+}
 
 function randomSeed(): string {
   return randomUUID();

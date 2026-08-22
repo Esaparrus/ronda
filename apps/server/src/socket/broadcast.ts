@@ -29,6 +29,9 @@ import type {
   PrecioJustoCommonView,
   PrecioJustoPlayerView,
   PrecioJustoTableView,
+  RoadmapCommonView,
+  RoadmapPlayerView,
+  RoadmapTableView,
   PartyCommonView,
   PartyPlayerView,
   PartyTableView,
@@ -258,6 +261,110 @@ function buildPrecioJustoLobbyCommon(room: Room): PrecioJustoCommonView {
   };
 }
 
+function buildRoadmapLobbyCommon(room: Room): RoadmapCommonView {
+  const base = {
+    roomCode: room.code,
+    status: room.status === 'closed' ? ('gameEnd' as const) : room.status,
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    rematchVotes: [],
+    phase: 'input' as const,
+  };
+  if (room.gameId === 'banderas') {
+    return {
+      ...base,
+      gameId: 'banderas',
+      config: room.config as Extract<RoadmapCommonView, { gameId: 'banderas' }>['config'],
+      flags: {
+        gameId: 'banderas',
+        phase: 'input',
+        questionId: '',
+        image: '',
+        entityName: null,
+        entityType: null,
+        region: 'mundo',
+        difficulty: 'normal',
+        options: [],
+        explanation: null,
+        correctOptionId: null,
+        deadlineAt: null,
+        submittedPlayerIds: [],
+        answers: null,
+        scoreDeltas: null,
+      },
+    };
+  }
+  if (room.gameId === 'cifras') {
+    return {
+      ...base,
+      gameId: 'cifras',
+      config: room.config as Extract<RoadmapCommonView, { gameId: 'cifras' }>['config'],
+      cifras: {
+        gameId: 'cifras',
+        phase: 'input',
+        questionId: '',
+        kind: 'estimate',
+        prompt: 'La pregunta aparecerá al empezar.',
+        unit: '',
+        definition: '',
+        category: 'todo',
+        items: [],
+        referenceValue: null,
+        itemValues: null,
+        source: null,
+        updatedAt: null,
+        deadlineAt: null,
+        submittedPlayerIds: [],
+        estimates: null,
+        orders: null,
+        scoreDeltas: null,
+      },
+    };
+  }
+  if (room.gameId === 'quienloharia') {
+    return {
+      ...base,
+      gameId: 'quienloharia',
+      config: room.config as Extract<RoadmapCommonView, { gameId: 'quienloharia' }>['config'],
+      who: {
+        gameId: 'quienloharia',
+        phase: 'input',
+        questionId: '',
+        prompt: 'La pregunta aparecerá al empezar.',
+        pack: 'ligero',
+        allowSelfVote: false,
+        resultsVisible: false,
+        deadlineAt: null,
+        submittedPlayerIds: [],
+        votes: null,
+        voteCounts: null,
+        scoreDeltas: null,
+        summary: null,
+      },
+    };
+  }
+  return {
+    ...base,
+    gameId: 'completalafrase',
+    config: room.config as Extract<RoadmapCommonView, { gameId: 'completalafrase' }>['config'],
+    sentence: {
+      gameId: 'completalafrase',
+      phase: 'input',
+      questionId: '',
+      prompt: 'La frase aparecerá al empezar.',
+        category: 'refran',
+        hint: null,
+        deadlineAt: null,
+        canonicalAnswer: null,
+      submittedPlayerIds: [],
+      answers: null,
+      scoreDeltas: null,
+    },
+  };
+}
+
 /** Vista pública mínima de lobby para los cuatro modos sociales. */
 function buildPartyLobbyCommon(room: Room): PartyCommonView {
   const base = {
@@ -432,6 +539,49 @@ function buildRondaLobbyCommon(room: Room): RondaCommonView {
 
 /** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
 function lobbyPlayerView(room: Room, playerId: string): PlayerView {
+  if (
+    room.gameId === 'banderas' ||
+    room.gameId === 'cifras' ||
+    room.gameId === 'quienloharia' ||
+    room.gameId === 'completalafrase'
+  ) {
+    const common = buildRoadmapLobbyCommon(room);
+    if (room.gameId === 'banderas') {
+      const view: Extract<RoadmapPlayerView, { gameId: 'banderas' }> = {
+        kind: 'player',
+        ...(common as Extract<RoadmapCommonView, { gameId: 'banderas' }>),
+        me: {
+          playerId,
+          selectedOptionId: null,
+          submitted: false,
+          availableActions: [],
+        },
+      };
+      return view;
+    }
+    if (room.gameId === 'cifras') {
+      const view: Extract<RoadmapPlayerView, { gameId: 'cifras' }> = {
+        kind: 'player',
+        ...(common as Extract<RoadmapCommonView, { gameId: 'cifras' }>),
+        me: { playerId, submitted: false, selectedOrder: [], availableActions: [] },
+      };
+      return view;
+    }
+    if (room.gameId === 'quienloharia') {
+      const view: Extract<RoadmapPlayerView, { gameId: 'quienloharia' }> = {
+        kind: 'player',
+        ...(common as Extract<RoadmapCommonView, { gameId: 'quienloharia' }>),
+        me: { playerId, selectedPlayerId: null, submitted: false, availableActions: [] },
+      };
+      return view;
+    }
+    const view: Extract<RoadmapPlayerView, { gameId: 'completalafrase' }> = {
+      kind: 'player',
+      ...(common as Extract<RoadmapCommonView, { gameId: 'completalafrase' }>),
+      me: { playerId, submitted: false, hintUsed: false, availableActions: [] },
+    };
+    return view;
+  }
   if (room.gameId === 'preciojusto') {
     const view: PrecioJustoPlayerView = {
       kind: 'player',
@@ -546,6 +696,15 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
 }
 
 function lobbyTableView(room: Room): TableView {
+  if (
+    room.gameId === 'banderas' ||
+    room.gameId === 'cifras' ||
+    room.gameId === 'quienloharia' ||
+    room.gameId === 'completalafrase'
+  ) {
+    const view: RoadmapTableView = { kind: 'table', ...buildRoadmapLobbyCommon(room) };
+    return view;
+  }
   if (room.gameId === 'preciojusto') {
     const view: PrecioJustoTableView = { kind: 'table', ...buildPrecioJustoLobbyCommon(room) };
     return view;

@@ -77,7 +77,7 @@ export async function chaosDisconnect(
 export function chaosStaleVersion(bot: BotHandle): Promise<Result<{ version: number }>> {
   const view = bot.lastView;
   const badVersion = bot.lastVersion + 999;
-  const order = view?.me?.hand ?? [];
+  const order = view?.kind === 'player' && 'hand' in view.me ? view.me.hand : [];
   const clientActionId = crypto.randomUUID();
   return new Promise((resolve) => {
     bot.socket.emit(

@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-trofeo-base.png",
+  "mask": "/games/matiz/emoji-trofeo-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 52765,
+  "targetHex": "#fcea2b",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F3C6.png"
+}

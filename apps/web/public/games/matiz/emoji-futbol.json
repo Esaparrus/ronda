@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-futbol-base.png",
+  "mask": "/games/matiz/emoji-futbol-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 15726,
+  "targetHex": "#d0cfce",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/26BD.png"
+}

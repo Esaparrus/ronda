@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-policia-base.png",
+  "mask": "/games/matiz/emoji-policia-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 28095,
+  "targetHex": "#92d3f5",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F46E.png"
+}

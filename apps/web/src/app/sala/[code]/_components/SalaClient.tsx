@@ -35,6 +35,7 @@ import { PartyGameScreen } from './PartyGameScreen';
 import { MusicalGameScreen } from './MusicalGameScreen';
 import { PrecioJustoGameScreen } from './PrecioJustoGameScreen';
 import { PrecioJustoGameEndScreen } from './PrecioJustoGameEndScreen';
+import { RoadmapGameScreen } from './RoadmapGameScreen';
 import { ClassicGameScreen } from './ClassicGameScreen';
 import { ClassicRoundEndScreen } from './ClassicRoundEndScreen';
 import { RondaGameScreen } from './RondaGameScreen';
@@ -316,6 +317,14 @@ export function SalaClient({ code }: SalaClientProps) {
       ) : null}
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'preciojusto' ? (
         <PrecioJustoGameScreen view={view} />
+      ) : null}
+      {!shouldShowBriefing &&
+      view.status === 'playing' &&
+      (view.gameId === 'banderas' ||
+        view.gameId === 'cifras' ||
+        view.gameId === 'quienloharia' ||
+        view.gameId === 'completalafrase') ? (
+        <RoadmapGameScreen view={view} />
       ) : null}
       {!shouldShowBriefing &&
       (view.status === 'playing' || showSevenHalfBustReveal) &&

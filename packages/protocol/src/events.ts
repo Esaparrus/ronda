@@ -86,6 +86,27 @@ export const GameEventSchema = z.discriminatedUnion('t', [
   // --- Precio justo ---------------------------------------------------------
   z.object({ t: z.literal('priceAnswerSubmitted'), playerId: z.string() }),
   z.object({ t: z.literal('priceRevealed'), round: z.number().int() }),
+  // --- Juegos del roadmap de preguntas ------------------------------------
+  z.object({
+    t: z.literal('roadmapAnswerSubmitted'),
+    playerId: z.string(),
+    gameId: z.union([
+      z.literal('banderas'),
+      z.literal('cifras'),
+      z.literal('quienloharia'),
+      z.literal('completalafrase'),
+    ]),
+  }),
+  z.object({
+    t: z.literal('roadmapRevealed'),
+    gameId: z.union([
+      z.literal('banderas'),
+      z.literal('cifras'),
+      z.literal('quienloharia'),
+      z.literal('completalafrase'),
+    ]),
+    round: z.number().int(),
+  }),
   // --- Musical -------------------------------------------------------------
   z.object({ t: z.literal('musicTrackSelected'), round: z.number().int() }),
   z.object({ t: z.literal('musicBuzzed'), playerId: z.string() }),

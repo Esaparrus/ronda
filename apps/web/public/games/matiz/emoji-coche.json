@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-coche-base.png",
+  "mask": "/games/matiz/emoji-coche-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 42363,
+  "targetHex": "#ea5a47",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F697.png"
+}

@@ -344,6 +344,110 @@ export const PrecioJustoConfigSchema = CommonGameConfigSchema.extend({
 
 export type PrecioJustoConfig = z.infer<typeof PrecioJustoConfigSchema>;
 
+// --- Juegos del roadmap de preguntas --------------------------------------
+
+const ROADMAP_MAX_PLAYERS = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+const ROADMAP_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(20)]);
+const ROADMAP_ANSWER_SECONDS = z.union([
+  z.literal(0),
+  z.literal(10),
+  z.literal(20),
+  z.literal(30),
+]);
+
+export const FLAG_REGIONS = [
+  'espana',
+  'europa',
+  'africa',
+  'america',
+  'asia-oceania',
+  'mundo',
+  'parecidas',
+] as const;
+export const FlagRegionSchema = z.enum(FLAG_REGIONS);
+export type FlagRegion = z.infer<typeof FlagRegionSchema>;
+
+export const FLAG_DIFFICULTIES = ['facil', 'normal', 'dificil'] as const;
+export const FlagDifficultySchema = z.enum(FLAG_DIFFICULTIES);
+export type FlagDifficulty = z.infer<typeof FlagDifficultySchema>;
+
+export const BanderasConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('banderas' satisfies GameId).default('banderas'),
+  maxPlayers: ROADMAP_MAX_PLAYERS.default(6),
+  rounds: ROADMAP_ROUNDS.default(10),
+  answerTimeSeconds: ROADMAP_ANSWER_SECONDS.default(20),
+  region: FlagRegionSchema.default('mundo'),
+  difficulty: FlagDifficultySchema.default('normal'),
+});
+export type BanderasConfig = z.infer<typeof BanderasConfigSchema>;
+
+export const CIFRAS_CATEGORIES = [
+  'edificios',
+  'distancias',
+  'poblacion',
+  'superficie',
+  'profundidad',
+  'montanas',
+  'capacidad',
+  'animales-objetos',
+  'todo',
+] as const;
+export const CifrasCategorySchema = z.enum(CIFRAS_CATEGORIES);
+export type CifrasCategory = z.infer<typeof CifrasCategorySchema>;
+export const CIFRAS_MODES = ['estimacion', 'ordena', 'mixto'] as const;
+export const CifrasModeSchema = z.enum(CIFRAS_MODES);
+export type CifrasMode = z.infer<typeof CifrasModeSchema>;
+
+export const CifrasConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('cifras' satisfies GameId).default('cifras'),
+  maxPlayers: ROADMAP_MAX_PLAYERS.default(6),
+  rounds: ROADMAP_ROUNDS.default(10),
+  answerTimeSeconds: ROADMAP_ANSWER_SECONDS.default(20),
+  category: CifrasCategorySchema.default('todo'),
+  mode: CifrasModeSchema.default('mixto'),
+});
+export type CifrasConfig = z.infer<typeof CifrasConfigSchema>;
+
+export const WHO_PACKS = ['ligero', 'fiesta', 'incomodo', 'parejas', 'adulto'] as const;
+export const WhoPackSchema = z.enum(WHO_PACKS);
+export type WhoPack = z.infer<typeof WhoPackSchema>;
+export const WHO_RESULTS = ['cada-ronda', 'final'] as const;
+export const WhoResultsSchema = z.enum(WHO_RESULTS);
+export type WhoResults = z.infer<typeof WhoResultsSchema>;
+
+export const QuienLoHariaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('quienloharia' satisfies GameId).default('quienloharia'),
+  maxPlayers: ROADMAP_MAX_PLAYERS.default(6),
+  rounds: ROADMAP_ROUNDS.default(10),
+  answerTimeSeconds: ROADMAP_ANSWER_SECONDS.default(20),
+  pack: WhoPackSchema.default('ligero'),
+  allowSelfVote: z.boolean().default(false),
+  results: WhoResultsSchema.default('cada-ronda'),
+  competitive: z.boolean().default(false),
+});
+export type QuienLoHariaConfig = z.infer<typeof QuienLoHariaConfigSchema>;
+
+export const SENTENCE_PACKS = ['refranes', 'expresiones', 'originales'] as const;
+export const SentencePackSchema = z.enum(SENTENCE_PACKS);
+export type SentencePack = z.infer<typeof SentencePackSchema>;
+
+export const CompletaLaFraseConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('completalafrase' satisfies GameId).default('completalafrase'),
+  maxPlayers: ROADMAP_MAX_PLAYERS.default(6),
+  rounds: ROADMAP_ROUNDS.default(10),
+  answerTimeSeconds: ROADMAP_ANSWER_SECONDS.default(20),
+  pack: SentencePackSchema.default('refranes'),
+  hints: z.boolean().default(true),
+});
+export type CompletaLaFraseConfig = z.infer<typeof CompletaLaFraseConfigSchema>;
+
 // --- La Ronda --------------------------------------------------------------
 
 const LA_RONDA_MAX_PLAYERS = z.union([
@@ -462,7 +566,11 @@ export type GameConfig =
   | PartyConfig
   | LaRondaConfig
   | MusicalConfig
-  | PrecioJustoConfig;
+  | PrecioJustoConfig
+  | BanderasConfig
+  | CifrasConfig
+  | QuienLoHariaConfig
+  | CompletaLaFraseConfig;
 
 export const GameConfigSchema = z.discriminatedUnion('gameId', [
   ChinchonConfigSchema,
@@ -481,6 +589,10 @@ export const GameConfigSchema = z.discriminatedUnion('gameId', [
   LaRondaConfigSchema,
   MusicalConfigSchema,
   PrecioJustoConfigSchema,
+  BanderasConfigSchema,
+  CifrasConfigSchema,
+  QuienLoHariaConfigSchema,
+  CompletaLaFraseConfigSchema,
 ]);
 
 /**
@@ -513,3 +625,9 @@ export const DEFAULT_MATIZ_CONFIG: MatizConfig = MatizConfigSchema.parse({});
 export const DEFAULT_LA_RONDA_CONFIG: LaRondaConfig = LaRondaConfigSchema.parse({});
 export const DEFAULT_MUSICAL_CONFIG: MusicalConfig = MusicalConfigSchema.parse({});
 export const DEFAULT_PRECIO_JUSTO_CONFIG: PrecioJustoConfig = PrecioJustoConfigSchema.parse({});
+export const DEFAULT_BANDERAS_CONFIG: BanderasConfig = BanderasConfigSchema.parse({});
+export const DEFAULT_CIFRAS_CONFIG: CifrasConfig = CifrasConfigSchema.parse({});
+export const DEFAULT_QUIEN_LO_HARIA_CONFIG: QuienLoHariaConfig =
+  QuienLoHariaConfigSchema.parse({});
+export const DEFAULT_COMPLETA_LA_FRASE_CONFIG: CompletaLaFraseConfig =
+  CompletaLaFraseConfigSchema.parse({});

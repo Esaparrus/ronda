@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-mastercard-base.svg",
+  "mask": "/games/matiz/logo-mastercard-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#eb001b",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/mastercard.svg"
+}

@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-rana-base.png",
+  "mask": "/games/matiz/emoji-rana-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 110519,
+  "targetHex": "#b1cc33",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F438.png"
+}

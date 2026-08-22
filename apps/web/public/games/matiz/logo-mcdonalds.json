@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-mcdonalds-base.svg",
+  "mask": "/games/matiz/logo-mcdonalds-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#ffc72c",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/mcdonalds.svg"
+}

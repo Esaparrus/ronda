@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-dragon-base.png",
+  "mask": "/games/matiz/emoji-dragon-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 38064,
+  "targetHex": "#5c9e31",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F432.png"
+}

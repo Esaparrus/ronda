@@ -23,6 +23,7 @@ import type {
   PartyState,
   PochaState,
   RondaState,
+  RoadmapState,
 } from '@ronda/engine';
 
 /** Estado del motor de cualquier juego registrado (§10.8: GameModule<S,A>
@@ -36,7 +37,8 @@ export type EngineState =
   | PrecioJustoState
   | ClassicState
   | PartyState
-  | RondaState;
+  | RondaState
+  | RoadmapState;
 
 /** Estado de los juegos "un jugador, una puntuación" (§12.12): todos menos
  * Mus. Se usa donde el servidor lee `winnerId`, `round` o `player.score`,
@@ -48,7 +50,8 @@ export type ScoredEngineState =
   | PrecioJustoState
   | ClassicState
   | PartyState
-  | RondaState;
+  | RondaState
+  | RoadmapState;
 
 /** Estado runtime de un jugador en la sala. */
 export interface PlayerRuntime {
@@ -126,6 +129,8 @@ export interface RoomHooks {
   onScaleTimeout?: (room: Room) => void;
   /** El plazo de precios ha revelado y puntuado la ronda. */
   onPriceTimeout?: (room: Room) => void;
+  /** El plazo de un juego independiente del roadmap ha revelado la ronda. */
+  onRoadmapTimeout?: (room: Room) => void;
   /** Evento de telemetría (P18). */
   onTrack?: (room: Room, kind: string, payload?: Record<string, unknown>) => void;
 }

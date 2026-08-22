@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-regalo-base.png",
+  "mask": "/games/matiz/emoji-regalo-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 62942,
+  "targetHex": "#fcea2b",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F381.png"
+}

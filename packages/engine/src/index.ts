@@ -186,3 +186,34 @@ export {
   type PrecioJustoStatus,
   type PriceQuestion,
 } from './games/preciojusto/index.ts';
+
+// Registro de los juegos independientes del roadmap de preguntas.
+import './games/roadmap/index.ts';
+export {
+  banderasModule,
+  cifrasModule,
+  quienLoHariaModule,
+  completaLaFraseModule,
+  createBanderasState,
+  createCifrasState,
+  createQuienLoHariaState,
+  createCompletaLaFraseState,
+  applyAction as roadmapApplyAction,
+  getPlayerView as roadmapGetPlayerView,
+  getTableView as roadmapGetTableView,
+  relativeErrorPercent,
+  cifrasPointsForRelativeError,
+  normalizeAnswer,
+  isRoadmapGame,
+  type RoadmapState,
+  type BanderasState,
+  type CifrasState,
+  type QuienLoHariaState,
+  type CompletaLaFraseState,
+  type FlagQuestion,
+  type CifrasQuestion,
+  type NumberQuestion,
+  type OrderQuestion,
+  type WhoQuestion,
+  type SentenceQuestion,
+} from './games/roadmap/index.ts';

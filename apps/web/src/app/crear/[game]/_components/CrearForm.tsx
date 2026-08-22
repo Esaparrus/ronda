@@ -7,9 +7,12 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import {
   DEFAULT_CONFIG,
+  DEFAULT_BANDERAS_CONFIG,
   DEFAULT_BRISCA_CONFIG,
   DEFAULT_CINQUILLO_CONFIG,
+  DEFAULT_CIFRAS_CONFIG,
   DEFAULT_COLORES_CONFIG,
+  DEFAULT_COMPLETA_LA_FRASE_CONFIG,
   DEFAULT_ESCOBA_CONFIG,
   DEFAULT_ESCALA_CONFIG,
   DEFAULT_MAYORIA_CONFIG,
@@ -20,12 +23,16 @@ import {
   DEFAULT_ORDEN_CONFIG,
   DEFAULT_POCHA_CONFIG,
   DEFAULT_PRECIO_JUSTO_CONFIG,
+  DEFAULT_QUIEN_LO_HARIA_CONFIG,
   DEFAULT_SIETE_Y_MEDIA_CONFIG,
   DEFAULT_TUTE_CONFIG,
   messageFor,
   type ChinchonConfig,
+  type BanderasConfig,
   type ClassicConfig,
+  type CifrasConfig,
   type ColorTopic,
+  type CompletaLaFraseConfig,
   type EscalaConfig,
   type GameId,
   type MusConfig,
@@ -35,6 +42,7 @@ import {
   type PrecioJustoConfig,
   type PriceCategory,
   type PochaConfig,
+  type QuienLoHariaConfig,
 } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { isValidNick, normalizeNick } from '@/lib/nick';
@@ -76,6 +84,14 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
   const [precioJustoConfig, setPrecioJustoConfig] =
     useState<PrecioJustoConfig>(DEFAULT_PRECIO_JUSTO_CONFIG);
+  const [banderasConfig, setBanderasConfig] =
+    useState<BanderasConfig>(DEFAULT_BANDERAS_CONFIG);
+  const [cifrasConfig, setCifrasConfig] = useState<CifrasConfig>(DEFAULT_CIFRAS_CONFIG);
+  const [quienLoHariaConfig, setQuienLoHariaConfig] = useState<QuienLoHariaConfig>(
+    DEFAULT_QUIEN_LO_HARIA_CONFIG,
+  );
+  const [completaLaFraseConfig, setCompletaLaFraseConfig] =
+    useState<CompletaLaFraseConfig>(DEFAULT_COMPLETA_LA_FRASE_CONFIG);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -116,6 +132,14 @@ export function CrearForm({ gameId }: CrearFormProps) {
               ? musicalConfig
               : gameId === 'preciojusto'
                 ? precioJustoConfig
+                : gameId === 'banderas'
+                  ? banderasConfig
+                  : gameId === 'cifras'
+                    ? cifrasConfig
+                    : gameId === 'quienloharia'
+                      ? quienLoHariaConfig
+                      : gameId === 'completalafrase'
+                        ? completaLaFraseConfig
               : isClassicGame(gameId)
                 ? classicConfig
                 : isPartyGame(gameId)
@@ -186,7 +210,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
         {!isPartyGame(gameId) &&
         gameId !== 'laronda' &&
         gameId !== 'musical' &&
-        gameId !== 'preciojusto' ? (
+        gameId !== 'preciojusto' &&
+        !isRoadmapGame(gameId) ? (
           <CardStylePicker />
         ) : null}
 
@@ -200,6 +225,18 @@ export function CrearForm({ gameId }: CrearFormProps) {
           <MusicalVariants config={musicalConfig} setConfig={setMusicalConfig} />
         ) : gameId === 'preciojusto' ? (
           <PrecioJustoVariants config={precioJustoConfig} setConfig={setPrecioJustoConfig} />
+        ) : isRoadmapGame(gameId) ? (
+          <RoadmapVariants
+            gameId={gameId}
+            banderasConfig={banderasConfig}
+            setBanderasConfig={setBanderasConfig}
+            cifrasConfig={cifrasConfig}
+            setCifrasConfig={setCifrasConfig}
+            quienLoHariaConfig={quienLoHariaConfig}
+            setQuienLoHariaConfig={setQuienLoHariaConfig}
+            completaLaFraseConfig={completaLaFraseConfig}
+            setCompletaLaFraseConfig={setCompletaLaFraseConfig}
+          />
         ) : isClassicGame(gameId) ? (
           <ClassicVariants config={classicConfig} setConfig={setClassicConfig} />
         ) : isPartyGame(gameId) ? (
@@ -507,6 +544,17 @@ function isPartyGame(gameId: GameId): gameId is PartyConfig['gameId'] {
   );
 }
 
+type RoadmapGameId = 'banderas' | 'cifras' | 'quienloharia' | 'completalafrase';
+
+function isRoadmapGame(gameId: GameId): gameId is RoadmapGameId {
+  return (
+    gameId === 'banderas' ||
+    gameId === 'cifras' ||
+    gameId === 'quienloharia' ||
+    gameId === 'completalafrase'
+  );
+}
+
 function isClassicGame(gameId: GameId): gameId is ClassicConfig['gameId'] {
   return (
     gameId === 'brisca' ||
@@ -549,6 +597,10 @@ function gameTitle(gameId: GameId): string {
   if (gameId === 'musical') return 'Musical';
   if (gameId === 'matiz') return 'Matiz';
   if (gameId === 'preciojusto') return 'Precio justo';
+  if (gameId === 'banderas') return 'Banderas';
+  if (gameId === 'cifras') return 'Cifras';
+  if (gameId === 'quienloharia') return 'Quién lo haría';
+  if (gameId === 'completalafrase') return 'Completa la frase';
   return 'Chinchón';
 }
 
@@ -646,6 +698,412 @@ function PrecioJustoVariants({ config, setConfig }: PrecioJustoVariantsProps) {
         ]}
       />
     </section>
+  );
+}
+
+interface RoadmapVariantsProps {
+  gameId: RoadmapGameId;
+  banderasConfig: BanderasConfig;
+  setBanderasConfig: (fn: (prev: BanderasConfig) => BanderasConfig) => void;
+  cifrasConfig: CifrasConfig;
+  setCifrasConfig: (fn: (prev: CifrasConfig) => CifrasConfig) => void;
+  quienLoHariaConfig: QuienLoHariaConfig;
+  setQuienLoHariaConfig: (fn: (prev: QuienLoHariaConfig) => QuienLoHariaConfig) => void;
+  completaLaFraseConfig: CompletaLaFraseConfig;
+  setCompletaLaFraseConfig: (fn: (prev: CompletaLaFraseConfig) => CompletaLaFraseConfig) => void;
+}
+
+function RoadmapVariants({
+  gameId,
+  banderasConfig,
+  setBanderasConfig,
+  cifrasConfig,
+  setCifrasConfig,
+  quienLoHariaConfig,
+  setQuienLoHariaConfig,
+  completaLaFraseConfig,
+  setCompletaLaFraseConfig,
+}: RoadmapVariantsProps) {
+  if (gameId === 'banderas') {
+    return (
+      <section className="flex flex-col gap-6">
+        <RoadmapIntro
+          title="Reconoced la bandera"
+          body="Todos veis la misma imagen. Elegid la respuesta sin que la rapidez dé ventaja."
+        />
+        <RoadmapPlayers
+          value={banderasConfig.maxPlayers}
+          onChange={(value) =>
+            setBanderasConfig((previous) => ({
+              ...previous,
+              maxPlayers: value as BanderasConfig['maxPlayers'],
+            }))
+          }
+        />
+        <RoadmapRounds
+          value={banderasConfig.rounds}
+          onChange={(value) =>
+            setBanderasConfig((previous) => ({
+              ...previous,
+              rounds: value as BanderasConfig['rounds'],
+            }))
+          }
+        />
+        <SegmentedControl
+          legend="Región"
+          helperText="Acota el banco de banderas."
+          value={banderasConfig.region}
+          onChange={(value) =>
+            setBanderasConfig((previous) => ({
+              ...previous,
+              region: value as BanderasConfig['region'],
+            }))
+          }
+          options={[
+            { value: 'mundo', label: 'Mundo' },
+            { value: 'espana', label: 'España' },
+            { value: 'europa', label: 'Europa' },
+            { value: 'america', label: 'América' },
+            { value: 'asia-oceania', label: 'Asia/Oceanía' },
+            { value: 'parecidas', label: 'Parecidas' },
+          ]}
+        />
+        <SegmentedControl
+          legend="Dificultad"
+          helperText="Mezcla banderas fáciles y retorcidas."
+          value={banderasConfig.difficulty}
+          onChange={(value) =>
+            setBanderasConfig((previous) => ({
+              ...previous,
+              difficulty: value as BanderasConfig['difficulty'],
+            }))
+          }
+          options={[
+            { value: 'facil', label: 'Fácil' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'dificil', label: 'Difícil' },
+          ]}
+        />
+        <RoadmapTimer
+          value={banderasConfig.answerTimeSeconds}
+          onChange={(value) =>
+            setBanderasConfig((previous) => ({
+              ...previous,
+              answerTimeSeconds: value as BanderasConfig['answerTimeSeconds'],
+            }))
+          }
+        />
+      </section>
+    );
+  }
+
+  if (gameId === 'cifras') {
+    return (
+      <section className="flex flex-col gap-6">
+        <RoadmapIntro
+          title="Aproxima y ordena"
+          body="Poned números sobre la mesa y aprended el dato al revelar la respuesta."
+        />
+        <RoadmapPlayers
+          value={cifrasConfig.maxPlayers}
+          onChange={(value) =>
+            setCifrasConfig((previous) => ({
+              ...previous,
+              maxPlayers: value as CifrasConfig['maxPlayers'],
+            }))
+          }
+        />
+        <RoadmapRounds
+          value={cifrasConfig.rounds}
+          onChange={(value) =>
+            setCifrasConfig((previous) => ({
+              ...previous,
+              rounds: value as CifrasConfig['rounds'],
+            }))
+          }
+        />
+        <SegmentedControl
+          legend="Tipo de reto"
+          helperText="Estimad, ordenad o mezclad ambos."
+          value={cifrasConfig.mode}
+          onChange={(value) =>
+            setCifrasConfig((previous) => ({
+              ...previous,
+              mode: value as CifrasConfig['mode'],
+            }))
+          }
+          options={[
+            { value: 'mixto', label: 'Mixto' },
+            { value: 'estimacion', label: 'Estimar' },
+            { value: 'ordena', label: 'Ordenar' },
+          ]}
+        />
+        <div className="flex flex-col gap-2.5">
+          <label htmlFor="cifras-category" className="text-16 font-semibold text-hueso">
+            Categoría
+          </label>
+          <p className="text-12 text-humo">Elige un tema o mezcla todos los datos.</p>
+          <select
+            id="cifras-category"
+            value={cifrasConfig.category}
+            onChange={(event) =>
+              setCifrasConfig((previous) => ({
+                ...previous,
+                category: event.target.value as CifrasConfig['category'],
+              }))
+            }
+            className="form-control px-4 text-16"
+          >
+            <option value="todo">De todo</option>
+            <option value="edificios">Edificios</option>
+            <option value="distancias">Distancias</option>
+            <option value="poblacion">Población</option>
+            <option value="superficie">Superficie</option>
+            <option value="profundidad">Profundidad</option>
+            <option value="montanas">Montañas</option>
+            <option value="capacidad">Capacidad</option>
+            <option value="animales-objetos">Animales y objetos</option>
+          </select>
+        </div>
+        <RoadmapTimer
+          value={cifrasConfig.answerTimeSeconds}
+          onChange={(value) =>
+            setCifrasConfig((previous) => ({
+              ...previous,
+              answerTimeSeconds: value as CifrasConfig['answerTimeSeconds'],
+            }))
+          }
+        />
+      </section>
+    );
+  }
+
+  if (gameId === 'quienloharia') {
+    return (
+      <section className="flex flex-col gap-6">
+        <RoadmapIntro
+          title="Señalad a alguien"
+          body="Votad en secreto quién encaja mejor con cada situación. En modo competitivo, la mayoría suma."
+        />
+        <RoadmapPlayers
+          value={quienLoHariaConfig.maxPlayers}
+          onChange={(value) =>
+            setQuienLoHariaConfig((previous) => ({
+              ...previous,
+              maxPlayers: value as QuienLoHariaConfig['maxPlayers'],
+            }))
+          }
+        />
+        <RoadmapRounds
+          value={quienLoHariaConfig.rounds}
+          onChange={(value) =>
+            setQuienLoHariaConfig((previous) => ({
+              ...previous,
+              rounds: value as QuienLoHariaConfig['rounds'],
+            }))
+          }
+        />
+        <div className="flex flex-col gap-2.5">
+          <label htmlFor="who-pack" className="text-16 font-semibold text-hueso">
+            Pack de preguntas
+          </label>
+          <select
+            id="who-pack"
+            value={quienLoHariaConfig.pack}
+            onChange={(event) =>
+              setQuienLoHariaConfig((previous) => ({
+                ...previous,
+                pack: event.target.value as QuienLoHariaConfig['pack'],
+              }))
+            }
+            className="form-control px-4 text-16"
+          >
+            <option value="ligero">Ligero</option>
+            <option value="fiesta">Fiesta</option>
+            <option value="incomodo">Incómodo</option>
+            <option value="parejas">Parejas</option>
+            <option value="adulto">Adulto</option>
+          </select>
+        </div>
+        <SegmentedControl
+          legend="Cómo mostrar resultados"
+          helperText="Revelad cada voto o guardadlo para el final."
+          value={quienLoHariaConfig.results}
+          onChange={(value) =>
+            setQuienLoHariaConfig((previous) => ({
+              ...previous,
+              results: value as QuienLoHariaConfig['results'],
+            }))
+          }
+          options={[
+            { value: 'cada-ronda', label: 'Cada ronda' },
+            { value: 'final', label: 'Solo al final' },
+          ]}
+        />
+        <SegmentedControl
+          legend="Modo competitivo"
+          helperText="La mayoría de votos puede dar un punto."
+          value={quienLoHariaConfig.competitive}
+          onChange={(value) =>
+            setQuienLoHariaConfig((previous) => ({
+              ...previous,
+              competitive: value,
+            }))
+          }
+          options={[
+            { value: false, label: 'Social' },
+            { value: true, label: 'Con puntos' },
+          ]}
+        />
+        <RoadmapTimer
+          value={quienLoHariaConfig.answerTimeSeconds}
+          onChange={(value) =>
+            setQuienLoHariaConfig((previous) => ({
+              ...previous,
+              answerTimeSeconds: value as QuienLoHariaConfig['answerTimeSeconds'],
+            }))
+          }
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-6">
+      <RoadmapIntro
+        title="Termina el refrán"
+        body="Escribid la palabra que falta. Podéis pedir una pista, pero entonces no puntúa."
+      />
+      <RoadmapPlayers
+        value={completaLaFraseConfig.maxPlayers}
+        onChange={(value) =>
+          setCompletaLaFraseConfig((previous) => ({
+            ...previous,
+            maxPlayers: value as CompletaLaFraseConfig['maxPlayers'],
+          }))
+        }
+      />
+      <RoadmapRounds
+        value={completaLaFraseConfig.rounds}
+        onChange={(value) =>
+          setCompletaLaFraseConfig((previous) => ({
+            ...previous,
+            rounds: value as CompletaLaFraseConfig['rounds'],
+          }))
+        }
+      />
+      <div className="flex flex-col gap-2.5">
+        <label htmlFor="sentence-pack" className="text-16 font-semibold text-hueso">
+          Pack de frases
+        </label>
+        <select
+          id="sentence-pack"
+          value={completaLaFraseConfig.pack}
+          onChange={(event) =>
+            setCompletaLaFraseConfig((previous) => ({
+              ...previous,
+              pack: event.target.value as CompletaLaFraseConfig['pack'],
+            }))
+          }
+          className="form-control px-4 text-16"
+        >
+          <option value="refranes">Refranes</option>
+          <option value="expresiones">Expresiones</option>
+          <option value="originales">Originales</option>
+        </select>
+      </div>
+      <SegmentedControl
+        legend="Pistas"
+        helperText="Permite pedir una ayuda durante la ronda."
+        value={completaLaFraseConfig.hints}
+        onChange={(value) =>
+          setCompletaLaFraseConfig((previous) => ({ ...previous, hints: value }))
+        }
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+      <RoadmapTimer
+        value={completaLaFraseConfig.answerTimeSeconds}
+        onChange={(value) =>
+          setCompletaLaFraseConfig((previous) => ({
+            ...previous,
+            answerTimeSeconds: value as CompletaLaFraseConfig['answerTimeSeconds'],
+          }))
+        }
+      />
+    </section>
+  );
+}
+
+function RoadmapIntro({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="surface-panel flex flex-col gap-1 p-4">
+      <p className="text-16 font-semibold text-hueso">{title}</p>
+      <p className="text-14 leading-relaxed text-humo">{body}</p>
+    </div>
+  );
+}
+
+function RoadmapPlayers({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <QuantityStepper
+      legend="Jugadores"
+      helperText="Cuántas personas puede tener la sala."
+      value={value}
+      onChange={onChange}
+      options={[2, 3, 4, 5, 6, 7].map((item) => ({ value: item, label: String(item) }))}
+      valueSuffix="personas"
+    />
+  );
+}
+
+function RoadmapRounds({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <QuantityStepper
+      legend="Rondas"
+      helperText="Cuántas preguntas tendrá la partida."
+      value={value}
+      onChange={onChange}
+      options={[5, 10, 20].map((item) => ({ value: item, label: String(item) }))}
+      valueSuffix="rondas"
+    />
+  );
+}
+
+function RoadmapTimer({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <SegmentedControl
+      legend="Tiempo para responder"
+      helperText="La ronda se revela al responder todos o acabar el plazo."
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 0, label: 'Sin límite' },
+        { value: 10, label: '10 s' },
+        { value: 20, label: '20 s' },
+        { value: 30, label: '30 s' },
+      ]}
+    />
   );
 }
 

@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-hombre-base.png",
+  "mask": "/games/matiz/emoji-hombre-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 26055,
+  "targetHex": "#92d3f5",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F468.png"
+}

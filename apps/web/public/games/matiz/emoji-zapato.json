@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-zapato-base.png",
+  "mask": "/games/matiz/emoji-zapato-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 69034,
+  "targetHex": "#a57939",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F45E.png"
+}

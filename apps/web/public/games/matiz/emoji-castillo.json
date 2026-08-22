@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-castillo-base.png",
+  "mask": "/games/matiz/emoji-castillo-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 53516,
+  "targetHex": "#d0cfce",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F3F0.png"
+}

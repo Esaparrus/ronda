@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-github-base.svg",
+  "mask": "/games/matiz/logo-github-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#181717",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/github.svg"
+}

@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-apple-base.svg",
+  "mask": "/games/matiz/logo-apple-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#111111",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/apple.svg"
+}

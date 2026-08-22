@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-cocacola-base.svg",
+  "mask": "/games/matiz/logo-cocacola-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#d62828",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/cocacola.svg"
+}

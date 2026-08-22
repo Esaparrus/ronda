@@ -34,6 +34,7 @@ import type {
   PrecioJustoConfig,
   PochaConfig,
 } from './config.ts';
+import type { RoadmapCommonView, RoadmapPlayerView, RoadmapTableView } from './roadmap.ts';
 
 export type ViewStatus = 'lobby' | 'playing' | 'roundEnd' | 'gameEnd';
 export type TurnPhase = 'draw' | 'discard' | null;
@@ -864,7 +865,8 @@ export type CommonView =
   | PartyCommonView
   | PrecioJustoCommonView
   | RondaCommonView
-  | MusicalCommonView;
+  | MusicalCommonView
+  | RoadmapCommonView;
 export type PlayerView =
   | ChinchonPlayerView
   | PochaPlayerView
@@ -873,7 +875,8 @@ export type PlayerView =
   | PartyPlayerView
   | PrecioJustoPlayerView
   | RondaPlayerView
-  | MusicalPlayerView;
+  | MusicalPlayerView
+  | RoadmapPlayerView;
 export type TableView =
   | ChinchonTableView
   | PochaTableView
@@ -882,7 +885,8 @@ export type TableView =
   | PartyTableView
   | PrecioJustoTableView
   | RondaTableView
-  | MusicalTableView;
+  | MusicalTableView
+  | RoadmapTableView;
 
 // --- Esquemas zod (tipo derivado por z.infer donde coincide) -----------------
 // Nota: no había (ni hay) un PlayerViewSchema/TableViewSchema en zod -- las

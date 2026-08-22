@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-cupcake-base.png",
+  "mask": "/games/matiz/emoji-cupcake-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 54287,
+  "targetHex": "#ffa7c0",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F9C1.png"
+}

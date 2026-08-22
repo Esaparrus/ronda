@@ -129,6 +129,20 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('finishPrice') }),
   /** El anfitrión confirma que se pueden mostrar los resultados finales. */
   z.object({ type: z.literal('showPriceResults') }),
+  // --- Juegos del roadmap de preguntas ------------------------------------
+  z.object({ type: z.literal('submitFlag'), optionId: cardIdField }),
+  z.object({ type: z.literal('finishFlags') }),
+  z.object({
+    type: z.literal('submitNumber'),
+    value: z.number().finite().min(0).max(1_000_000_000_000),
+  }),
+  z.object({ type: z.literal('submitOrder'), order: z.array(cardIdField).min(3).max(5) }),
+  z.object({ type: z.literal('finishCifras') }),
+  z.object({ type: z.literal('submitWhoVote'), targetPlayerId: cardIdField }),
+  z.object({ type: z.literal('finishWho') }),
+  z.object({ type: z.literal('useSentenceHint') }),
+  z.object({ type: z.literal('submitSentence'), answer: z.string().trim().min(1).max(120) }),
+  z.object({ type: z.literal('finishSentence') }),
   // --- Musical -------------------------------------------------------------
   // La URL de preview es pública para que cada móvil pueda reproducir el
   // fragmento, pero el servidor nunca envía la respuesta fuera de la

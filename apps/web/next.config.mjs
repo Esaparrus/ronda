@@ -10,7 +10,11 @@ const nextConfig = {
   // para el tracing de producción.
   outputFileTracingRoot: path.join(appDirectory, '../..'),
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: '*.mzstatic.com' }],
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.mzstatic.com' },
+      { protocol: 'https', hostname: 'm.media-amazon.com' },
+      { protocol: 'https', hostname: 'images-eu.ssl-images-amazon.com' },
+    ],
   },
 };
 

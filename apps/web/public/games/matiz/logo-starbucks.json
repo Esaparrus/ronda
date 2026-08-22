@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-starbucks-base.svg",
+  "mask": "/games/matiz/logo-starbucks-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#00704a",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/starbucks.svg"
+}

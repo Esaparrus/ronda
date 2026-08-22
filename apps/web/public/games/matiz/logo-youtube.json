@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-youtube-base.svg",
+  "mask": "/games/matiz/logo-youtube-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#ff0000",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/youtube.svg"
+}

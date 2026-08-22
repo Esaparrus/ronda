@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-instagram-base.svg",
+  "mask": "/games/matiz/logo-instagram-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#e4405f",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/instagram.svg"
+}

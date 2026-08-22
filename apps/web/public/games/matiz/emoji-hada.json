@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-hada-base.png",
+  "mask": "/games/matiz/emoji-hada-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 62538,
+  "targetHex": "#fcea2b",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F9DA.png"
+}

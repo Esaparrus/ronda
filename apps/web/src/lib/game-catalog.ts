@@ -132,6 +132,34 @@ export const GAME_CATALOG = [
     duration: '10–25 min',
     kind: 'Estimación',
   },
+  {
+    slug: 'banderas',
+    name: 'Banderas',
+    players: '2–7 jugadores',
+    duration: '10–20 min',
+    kind: 'Quiz visual',
+  },
+  {
+    slug: 'cifras',
+    name: 'Cifras',
+    players: '2–7 jugadores',
+    duration: '10–25 min',
+    kind: 'Estimación y orden',
+  },
+  {
+    slug: 'quienloharia',
+    name: 'Quién lo haría',
+    players: '2–7 jugadores',
+    duration: '10–20 min',
+    kind: 'Social',
+  },
+  {
+    slug: 'completalafrase',
+    name: 'Completa la frase',
+    players: '2–7 jugadores',
+    duration: '10–20 min',
+    kind: 'Palabras',
+  },
 ] as const satisfies readonly GameCatalogEntry[];
 
 export const GAME_CATEGORIES = [
@@ -157,9 +185,21 @@ export const GAME_CATEGORIES = [
     slug: 'otros',
     eyebrow: 'Para cambiar de ritmo',
     title: 'Otros juegos',
-    description: 'Retos sociales, música, color y estimaciones para toda la mesa.',
+    description: 'Retos sociales, música, color, cultura y estimaciones para toda la mesa.',
     icon: 'sparkles',
-    gameSlugs: ['orden', 'colores', 'mayoria', 'escala', 'musical', 'matiz', 'preciojusto'],
+    gameSlugs: [
+      'orden',
+      'colores',
+      'mayoria',
+      'escala',
+      'musical',
+      'matiz',
+      'preciojusto',
+      'banderas',
+      'cifras',
+      'quienloharia',
+      'completalafrase',
+    ],
   },
 ] as const satisfies readonly GameCategory[];
 

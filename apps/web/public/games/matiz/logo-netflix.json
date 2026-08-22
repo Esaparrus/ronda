@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/logo-netflix-base.svg",
+  "mask": "/games/matiz/logo-netflix-mask.svg",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": "logo",
+  "targetHex": "#e50914",
+  "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/netflix.svg"
+}

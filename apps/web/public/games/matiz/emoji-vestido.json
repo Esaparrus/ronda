@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-vestido-base.png",
+  "mask": "/games/matiz/emoji-vestido-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 84354,
+  "targetHex": "#61b2e4",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F457.png"
+}

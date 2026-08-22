@@ -120,6 +120,10 @@ export async function startServer(opts: {
         broadcastRoom(io, room);
         if (botDeps) scheduleBotTurn(botDeps, room.code);
       },
+      onRoadmapTimeout: (room) => {
+        broadcastRoom(io, room);
+        if (botDeps) scheduleBotTurn(botDeps, room.code);
+      },
       onTrack: (room, kind, payload) => {
         // track() nunca lanza (ver playtest-repo.ts): un fallo de telemetría
         // no puede tumbar una partida. `void` porque el llamador (room-

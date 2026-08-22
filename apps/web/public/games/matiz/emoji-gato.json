@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-gato-base.png",
+  "mask": "/games/matiz/emoji-gato-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 105601,
+  "targetHex": "#f4aa41",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F431.png"
+}

@@ -1,0 +1,9 @@
+{
+  "image": "/games/matiz/emoji-supervillano-base.png",
+  "mask": "/games/matiz/emoji-supervillano-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 26000,
+  "targetHex": "#3f3f3f",
+  "source": "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/color/618x618/1F9B9.png"
+}
