@@ -10,6 +10,7 @@ export type PrecioJustoQuestionCategory = Exclude<PriceCategory, 'todo'>;
 export interface PriceQuestion {
   id: string;
   title: string;
+  description: string | null;
   image: string;
   asin: string | null;
   detailPageUrl: string | null;
@@ -34,6 +35,7 @@ function question(
   value: Omit<
     PriceQuestion,
     | 'currency'
+    | 'description'
     | 'marketplace'
     | 'seller'
     | 'conditions'
@@ -45,6 +47,7 @@ function question(
 ): PriceQuestion {
   return {
     ...value,
+    description: null,
     asin: null,
     detailPageUrl: null,
     currency: 'EUR',
@@ -177,7 +180,7 @@ const LEGACY_PRICE_QUESTIONS: readonly PriceQuestion[] = [
   }),
 ];
 
-/** Catálogo que usa el juego: 100 productos locales, con el pequeño catálogo como respaldo. */
+/** Catálogo que usa el juego: productos locales, con el pequeño catálogo como respaldo. */
 export const PRICE_QUESTIONS: readonly PriceQuestion[] =
   OFFLINE_PRICE_QUESTIONS.length > 0 ? OFFLINE_PRICE_QUESTIONS : LEGACY_PRICE_QUESTIONS;
 

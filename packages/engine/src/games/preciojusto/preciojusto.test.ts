@@ -30,8 +30,12 @@ function apply(
 }
 
 describe('Precio justo', () => {
-  it('arranca con el catálogo offline de 100 productos', () => {
-    expect(PRICE_QUESTIONS).toHaveLength(100);
+  it('arranca con un catálogo offline amplio y variado', () => {
+    expect(PRICE_QUESTIONS.length).toBeGreaterThanOrEqual(244);
+    expect(new Set(PRICE_QUESTIONS.map((question) => question.id)).size).toBe(PRICE_QUESTIONS.length);
+    expect(new Set(PRICE_QUESTIONS.map((question) => question.title)).size).toBe(PRICE_QUESTIONS.length);
+    expect(PRICE_QUESTIONS.every((question) => question.title.length > 0)).toBe(true);
+    expect(PRICE_QUESTIONS.every((question) => question.description !== null)).toBe(true);
     expect(new Set(PRICE_QUESTIONS.map((question) => question.category))).toEqual(
       new Set(['hogar', 'tecnologia', 'ocio', 'deporte', 'accesorios', 'curiosos', 'baratos', 'precio-medio']),
     );
@@ -44,6 +48,11 @@ describe('Precio justo', () => {
     expect(first.price.questionOrder).toEqual(second.price.questionOrder);
     expect(first.price.questionOrder.length).toBeGreaterThan(0);
     expect(priceQuestionById(first.price.questionId).category).toBe('tecnologia');
+  });
+
+  it('no repite productos cuando una categoría es más pequeña que la partida', () => {
+    const state = createState({ ...DEFAULT_PRECIO_JUSTO_CONFIG, rounds: 20, category: 'precio-medio' });
+    expect(new Set(state.price.questionOrder.slice(0, 20)).size).toBe(20);
   });
 
   it('mantiene los precios privados hasta la revelación', () => {

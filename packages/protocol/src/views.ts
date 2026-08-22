@@ -612,6 +612,7 @@ export type PrecioJustoAvailableAction =
 export interface PrecioJustoProductPublic {
   id: string;
   title: string;
+  description: string | null;
   image: string;
   asin: string | null;
   detailPageUrl: string | null;

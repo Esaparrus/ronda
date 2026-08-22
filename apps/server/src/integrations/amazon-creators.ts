@@ -279,6 +279,7 @@ function toPriceQuestion(
   return {
     id: `amazon-${asin.toLowerCase()}`,
     title,
+    description: null,
     image,
     asin,
     detailPageUrl,

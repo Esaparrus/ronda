@@ -59,7 +59,12 @@ export function createInitialState(
     rematchVotes: [],
   };
 
-  const availableIds = priceQuestionIdsFor(config.category, questions);
+  const categoryIds = priceQuestionIdsFor(config.category, questions);
+  // Una ronda no debe volver a enseñar una pregunta ya usada. Si una
+  // categoría concreta no tiene suficientes productos para la partida,
+  // ampliamos el mazo al catálogo completo antes que repetir.
+  const availableIds =
+    categoryIds.length >= config.rounds ? categoryIds : priceQuestionIdsFor('todo', questions);
   const questionOrder = shuffled(
     state,
     availableIds.length > 0 ? availableIds : priceQuestionIdsFor('todo', questions),

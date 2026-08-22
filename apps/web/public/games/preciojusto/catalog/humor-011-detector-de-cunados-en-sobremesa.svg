@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 620" role="img" aria-labelledby="title desc">
+  <title id="title">Detector de cuñados en sobremesa</title>
+  <desc id="desc">Navidad Segura</desc>
+  <rect width="800" height="620" rx="42" fill="#f7f1e7"/>
+  <circle cx="400" cy="255" r="166" fill="#d7eee7"/>
+  <text x="400" y="326" text-anchor="middle" font-size="190" font-family="Apple Color Emoji, Segoe UI Emoji, sans-serif">📢</text>
+  <rect x="70" y="470" width="660" height="82" rx="24" fill="#ffffff" fill-opacity=".9"/>
+  <text x="400" y="505" text-anchor="middle" font-size="25" font-weight="700" font-family="Arial, sans-serif" fill="#24252c">Detector de cuñados en sobremesa</text>
+  <text x="400" y="535" text-anchor="middle" font-size="17" font-family="Arial, sans-serif" fill="#6f7078">Navidad Segura</text>
+</svg>

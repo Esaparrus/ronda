@@ -38,6 +38,7 @@ function publicProduct(state: PrecioJustoState): PrecioJustoProductPublic {
   return {
     id: question.id,
     title: question.title,
+    description: question.description,
     image: question.image,
     asin: question.asin,
     detailPageUrl: question.detailPageUrl,

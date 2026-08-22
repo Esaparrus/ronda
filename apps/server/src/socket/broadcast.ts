@@ -235,6 +235,7 @@ function buildPrecioJustoLobbyCommon(room: Room): PrecioJustoCommonView {
       product: {
         id: '',
         title: 'El producto aparecerá al empezar.',
+        description: null,
         image: '',
         asin: null,
         detailPageUrl: null,

@@ -43,6 +43,11 @@ export function PrecioJustoMesaGameBoard({ view }: PrecioJustoMesaGameBoardProps
               {view.price.product.title}
             </h1>
             <p className="text-20 text-humo">{view.price.product.variant}</p>
+            {view.price.product.description ? (
+              <p className="text-15 leading-relaxed text-humo">
+                {view.price.product.description}
+              </p>
+            ) : null}
             <p className="text-14 text-humo">{view.price.product.conditions}</p>
             {view.price.product.detailPageUrl ? (
               <a

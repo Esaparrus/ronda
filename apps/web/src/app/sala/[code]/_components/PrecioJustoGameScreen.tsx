@@ -87,6 +87,11 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
               {view.price.product.title}
             </h1>
             <p className="text-14 text-humo">{view.price.product.variant}</p>
+            {view.price.product.description ? (
+              <p className="text-13 leading-relaxed text-humo">
+                {view.price.product.description}
+              </p>
+            ) : null}
           </div>
           <div className="relative aspect-[4/2.8] w-full bg-white/90">
             <Image
