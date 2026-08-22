@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-092-gastly",
+  "title": "Gastly",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-092-gastly-base.png",
+  "mask": "/games/matiz/pokemon-092-gastly-mask.png",
+  "width": 618,
+  "height": 615,
+  "selectedPixels": 107497,
+  "targetHex": "#927691",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/092.png"
+}

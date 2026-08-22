@@ -1,0 +1,12 @@
+{
+  "id": "logo-png-mcdonalds",
+  "title": "McDonald’s",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-png-mcdonalds-base.png",
+  "mask": "/games/matiz/logo-png-mcdonalds-mask.png",
+  "width": 650,
+  "height": 523,
+  "selectedPixels": 106533,
+  "targetHex": "#ffc500",
+  "source": "https://www.citypng.com/public/uploads/preview/mcdonalds-yellow-m-symbol-logo-high-resolution-70175169479008933cofjbaaw.png?v=2026030821"
+}

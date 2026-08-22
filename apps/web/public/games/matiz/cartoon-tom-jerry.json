@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-tom-jerry",
+  "title": "Tom y Jerry",
+  "subtitle": "Pon el color de Tom",
+  "image": "/games/matiz/cartoon-tom-jerry-base.png",
+  "mask": "/games/matiz/cartoon-tom-jerry-mask.png",
+  "width": 532,
+  "height": 900,
+  "selectedPixels": 91350,
+  "targetHex": "#505050",
+  "source": "https://www.pikpng.com/pngl/m/185-1850751_tom-and-jerry-png-images-free-tom-y.png"
+}

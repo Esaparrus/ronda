@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-048-venonat",
+  "title": "Venonat",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-048-venonat-base.png",
+  "mask": "/games/matiz/pokemon-048-venonat-mask.png",
+  "width": 530,
+  "height": 618,
+  "selectedPixels": 88637,
+  "targetHex": "#5e588e",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/048.png"
+}

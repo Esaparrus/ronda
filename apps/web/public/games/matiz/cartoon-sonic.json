@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-sonic",
+  "title": "Sonic",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/cartoon-sonic-base.png",
+  "mask": "/games/matiz/cartoon-sonic-mask.png",
+  "width": 568,
+  "height": 866,
+  "selectedPixels": 76596,
+  "targetHex": "#00207e",
+  "source": "https://pngimg.com/uploads/sonic_hedgehog/sonic_hedgehog_PNG32.png"
+}

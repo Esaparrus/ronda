@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-095-onix",
+  "title": "Onix",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-095-onix-base.png",
+  "mask": "/games/matiz/pokemon-095-onix-mask.png",
+  "width": 590,
+  "height": 618,
+  "selectedPixels": 50657,
+  "targetHex": "#a1a0aa",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/095.png"
+}

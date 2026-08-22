@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-021-spearow",
+  "title": "Spearow",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-021-spearow-base.png",
+  "mask": "/games/matiz/pokemon-021-spearow-mask.png",
+  "width": 603,
+  "height": 618,
+  "selectedPixels": 104116,
+  "targetHex": "#905f49",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/021.png"
+}

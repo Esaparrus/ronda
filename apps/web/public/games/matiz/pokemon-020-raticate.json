@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-020-raticate",
+  "title": "Raticate",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-020-raticate-base.png",
+  "mask": "/games/matiz/pokemon-020-raticate-mask.png",
+  "width": 618,
+  "height": 607,
+  "selectedPixels": 122017,
+  "targetHex": "#94693a",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/020.png"
+}

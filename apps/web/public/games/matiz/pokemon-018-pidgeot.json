@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-018-pidgeot",
+  "title": "Pidgeot",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-018-pidgeot-base.png",
+  "mask": "/games/matiz/pokemon-018-pidgeot-mask.png",
+  "width": 593,
+  "height": 618,
+  "selectedPixels": 94623,
+  "targetHex": "#cec39e",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/018.png"
+}

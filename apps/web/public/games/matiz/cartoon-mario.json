@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-mario",
+  "title": "Mario",
+  "subtitle": "Pon el color de su pantalón",
+  "image": "/games/matiz/cartoon-mario-base.png",
+  "mask": "/games/matiz/cartoon-mario-mask.png",
+  "width": 436,
+  "height": 899,
+  "selectedPixels": 77752,
+  "targetHex": "#124eae",
+  "source": "https://www.pngkey.com/png/detail/218-2189527_mariostanding-super-mario.png"
+}

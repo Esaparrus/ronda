@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-001-bulbasaur",
+  "title": "Bulbasaur",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-001-bulbasaur-base.png",
+  "mask": "/games/matiz/pokemon-001-bulbasaur-mask.png",
+  "width": 618,
+  "height": 578,
+  "selectedPixels": 164400,
+  "targetHex": "#91c9ad",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/001.png"
+}

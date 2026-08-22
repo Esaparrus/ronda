@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-033-nidorino",
+  "title": "Nidorino",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-033-nidorino-base.png",
+  "mask": "/games/matiz/pokemon-033-nidorino-mask.png",
+  "width": 558,
+  "height": 618,
+  "selectedPixels": 144108,
+  "targetHex": "#907191",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/033.png"
+}

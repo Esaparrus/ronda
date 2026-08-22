@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-054-psyduck",
+  "title": "Psyduck",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-054-psyduck-base.png",
+  "mask": "/games/matiz/pokemon-054-psyduck-mask.png",
+  "width": 481,
+  "height": 618,
+  "selectedPixels": 118482,
+  "targetHex": "#ddb878",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/054.png"
+}

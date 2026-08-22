@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-008-wartortle",
+  "title": "Wartortle",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-008-wartortle-base.png",
+  "mask": "/games/matiz/pokemon-008-wartortle-mask.png",
+  "width": 610,
+  "height": 618,
+  "selectedPixels": 103537,
+  "targetHex": "#b9dfeb",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/008.png"
+}

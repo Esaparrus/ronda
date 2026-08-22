@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-027-sandshrew",
+  "title": "Sandshrew",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-027-sandshrew-base.png",
+  "mask": "/games/matiz/pokemon-027-sandshrew-mask.png",
+  "width": 565,
+  "height": 618,
+  "selectedPixels": 119170,
+  "targetHex": "#e9ca7a",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/027.png"
+}

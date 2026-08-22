@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-005-charmeleon",
+  "title": "Charmeleon",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-005-charmeleon-base.png",
+  "mask": "/games/matiz/pokemon-005-charmeleon-mask.png",
+  "width": 530,
+  "height": 618,
+  "selectedPixels": 98969,
+  "targetHex": "#df7e6e",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/005.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-016-pidgey",
+  "title": "Pidgey",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-016-pidgey-base.png",
+  "mask": "/games/matiz/pokemon-016-pidgey-mask.png",
+  "width": 578,
+  "height": 618,
+  "selectedPixels": 99257,
+  "targetHex": "#bc9561",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/016.png"
+}

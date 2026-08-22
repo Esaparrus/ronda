@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-073-tentacruel",
+  "title": "Tentacruel",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-073-tentacruel-base.png",
+  "mask": "/games/matiz/pokemon-073-tentacruel-mask.png",
+  "width": 618,
+  "height": 481,
+  "selectedPixels": 25514,
+  "targetHex": "#a9a299",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/073.png"
+}

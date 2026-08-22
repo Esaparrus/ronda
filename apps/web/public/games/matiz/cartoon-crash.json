@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-crash",
+  "title": "Crash Bandicoot",
+  "subtitle": "Pon el color de su pelo",
+  "image": "/games/matiz/cartoon-crash-base.png",
+  "mask": "/games/matiz/cartoon-crash-mask.png",
+  "width": 404,
+  "height": 900,
+  "selectedPixels": 44183,
+  "targetHex": "#e85412",
+  "source": "https://image.pngaaa.com/722/281722-middle.png"
+}

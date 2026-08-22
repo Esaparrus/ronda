@@ -1,0 +1,12 @@
+{
+  "id": "logo-png-nike",
+  "title": "Nike",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-png-nike-base.png",
+  "mask": "/games/matiz/logo-png-nike-mask.png",
+  "width": 675,
+  "height": 358,
+  "selectedPixels": 83566,
+  "targetHex": "#000000",
+  "source": "https://img.favpng.com/11/19/7/logo-nike-air-force-one-swoosh-shoe-png-favpng-SRXGFaPjhcHDXrN6mVL0dYFYH.jpg"
+}

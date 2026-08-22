@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-035-clefairy",
+  "title": "Clefairy",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-035-clefairy-base.png",
+  "mask": "/games/matiz/pokemon-035-clefairy-mask.png",
+  "width": 617,
+  "height": 618,
+  "selectedPixels": 178236,
+  "targetHex": "#f9d0d4",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/035.png"
+}

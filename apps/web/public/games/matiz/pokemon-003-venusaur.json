@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-003-venusaur",
+  "title": "Venusaur",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-003-venusaur-base.png",
+  "mask": "/games/matiz/pokemon-003-venusaur-mask.png",
+  "width": 618,
+  "height": 484,
+  "selectedPixels": 86453,
+  "targetHex": "#417f83",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/003.png"
+}

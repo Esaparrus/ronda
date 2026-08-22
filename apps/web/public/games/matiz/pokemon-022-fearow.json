@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-022-fearow",
+  "title": "Fearow",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-022-fearow-base.png",
+  "mask": "/games/matiz/pokemon-022-fearow-mask.png",
+  "width": 618,
+  "height": 575,
+  "selectedPixels": 98765,
+  "targetHex": "#aa784e",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/022.png"
+}

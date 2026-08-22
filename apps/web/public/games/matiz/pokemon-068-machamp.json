@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-068-machamp",
+  "title": "Machamp",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-068-machamp-base.png",
+  "mask": "/games/matiz/pokemon-068-machamp-mask.png",
+  "width": 545,
+  "height": 618,
+  "selectedPixels": 113296,
+  "targetHex": "#9eb2c4",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/068.png"
+}

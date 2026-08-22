@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-040-wigglytuff",
+  "title": "Wigglytuff",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-040-wigglytuff-base.png",
+  "mask": "/games/matiz/pokemon-040-wigglytuff-mask.png",
+  "width": 512,
+  "height": 618,
+  "selectedPixels": 110181,
+  "targetHex": "#f4eef3",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/040.png"
+}

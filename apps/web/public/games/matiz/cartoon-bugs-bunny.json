@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-bugs-bunny",
+  "title": "Bugs Bunny",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/cartoon-bugs-bunny-base.png",
+  "mask": "/games/matiz/cartoon-bugs-bunny-mask.png",
+  "width": 300,
+  "height": 667,
+  "selectedPixels": 21447,
+  "targetHex": "#afb3b6",
+  "source": "https://www.clipartmax.com/png/middle/299-2998364_bugs-bunny-bugs-bunny-clipart-bugs-bunny-pinterest-bugs-bunny-clip-art.png"
+}

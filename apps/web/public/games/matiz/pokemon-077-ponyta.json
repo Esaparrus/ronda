@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-077-ponyta",
+  "title": "Ponyta",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-077-ponyta-base.png",
+  "mask": "/games/matiz/pokemon-077-ponyta-mask.png",
+  "width": 484,
+  "height": 618,
+  "selectedPixels": 76873,
+  "targetHex": "#e9dfb8",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/077.png"
+}

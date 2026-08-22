@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-078-rapidash",
+  "title": "Rapidash",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-078-rapidash-base.png",
+  "mask": "/games/matiz/pokemon-078-rapidash-mask.png",
+  "width": 536,
+  "height": 618,
+  "selectedPixels": 76693,
+  "targetHex": "#f2e9c2",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/078.png"
+}

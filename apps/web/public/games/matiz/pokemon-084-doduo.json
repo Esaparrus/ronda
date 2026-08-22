@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-084-doduo",
+  "title": "Doduo",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-084-doduo-base.png",
+  "mask": "/games/matiz/pokemon-084-doduo-mask.png",
+  "width": 381,
+  "height": 618,
+  "selectedPixels": 47196,
+  "targetHex": "#a97f65",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/084.png"
+}

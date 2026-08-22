@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-046-paras",
+  "title": "Paras",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-046-paras-base.png",
+  "mask": "/games/matiz/pokemon-046-paras-mask.png",
+  "width": 618,
+  "height": 511,
+  "selectedPixels": 90655,
+  "targetHex": "#ea9b5f",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/046.png"
+}

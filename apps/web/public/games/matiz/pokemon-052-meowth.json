@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-052-meowth",
+  "title": "Meowth",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-052-meowth-base.png",
+  "mask": "/games/matiz/pokemon-052-meowth-mask.png",
+  "width": 474,
+  "height": 618,
+  "selectedPixels": 44521,
+  "targetHex": "#f4ebce",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/052.png"
+}

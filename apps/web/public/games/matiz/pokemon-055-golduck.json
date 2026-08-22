@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-055-golduck",
+  "title": "Golduck",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-055-golduck-base.png",
+  "mask": "/games/matiz/pokemon-055-golduck-mask.png",
+  "width": 618,
+  "height": 610,
+  "selectedPixels": 95974,
+  "targetHex": "#80afd2",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/055.png"
+}

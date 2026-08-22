@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-086-seel",
+  "title": "Seel",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-086-seel-base.png",
+  "mask": "/games/matiz/pokemon-086-seel-mask.png",
+  "width": 618,
+  "height": 566,
+  "selectedPixels": 123937,
+  "targetHex": "#e0e8f2",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/086.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-006-charizard",
+  "title": "Charizard",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-006-charizard-base.png",
+  "mask": "/games/matiz/pokemon-006-charizard-mask.png",
+  "width": 618,
+  "height": 488,
+  "selectedPixels": 74127,
+  "targetHex": "#eda161",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/006.png"
+}

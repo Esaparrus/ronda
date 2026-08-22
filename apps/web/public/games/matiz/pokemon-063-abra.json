@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-063-abra",
+  "title": "Abra",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-063-abra-base.png",
+  "mask": "/games/matiz/pokemon-063-abra-mask.png",
+  "width": 618,
+  "height": 439,
+  "selectedPixels": 88545,
+  "targetHex": "#f0d658",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/063.png"
+}

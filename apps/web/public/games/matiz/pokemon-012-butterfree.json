@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-012-butterfree",
+  "title": "Butterfree",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-012-butterfree-base.png",
+  "mask": "/games/matiz/pokemon-012-butterfree-mask.png",
+  "width": 618,
+  "height": 565,
+  "selectedPixels": 112482,
+  "targetHex": "#edf3fb",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/012.png"
+}

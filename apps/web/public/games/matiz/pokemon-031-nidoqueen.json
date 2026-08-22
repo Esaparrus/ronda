@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-031-nidoqueen",
+  "title": "Nidoqueen",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-031-nidoqueen-base.png",
+  "mask": "/games/matiz/pokemon-031-nidoqueen-mask.png",
+  "width": 600,
+  "height": 618,
+  "selectedPixels": 122016,
+  "targetHex": "#658daf",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/031.png"
+}

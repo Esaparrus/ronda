@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-097-hypno",
+  "title": "Hypno",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-097-hypno-base.png",
+  "mask": "/games/matiz/pokemon-097-hypno-mask.png",
+  "width": 580,
+  "height": 618,
+  "selectedPixels": 117617,
+  "targetHex": "#f8d954",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/097.png"
+}

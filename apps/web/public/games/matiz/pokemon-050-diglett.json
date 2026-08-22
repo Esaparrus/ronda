@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-050-diglett",
+  "title": "Diglett",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-050-diglett-base.png",
+  "mask": "/games/matiz/pokemon-050-diglett-mask.png",
+  "width": 618,
+  "height": 573,
+  "selectedPixels": 174425,
+  "targetHex": "#a98a78",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/050.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-091-cloyster",
+  "title": "Cloyster",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-091-cloyster-base.png",
+  "mask": "/games/matiz/pokemon-091-cloyster-mask.png",
+  "width": 618,
+  "height": 593,
+  "selectedPixels": 97560,
+  "targetHex": "#9088a8",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/091.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-013-weedle",
+  "title": "Weedle",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-013-weedle-base.png",
+  "mask": "/games/matiz/pokemon-013-weedle-mask.png",
+  "width": 490,
+  "height": 618,
+  "selectedPixels": 87138,
+  "targetHex": "#ae8457",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/013.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-057-primeape",
+  "title": "Primeape",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-057-primeape-base.png",
+  "mask": "/games/matiz/pokemon-057-primeape-mask.png",
+  "width": 594,
+  "height": 618,
+  "selectedPixels": 38287,
+  "targetHex": "#f2e0d1",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/057.png"
+}

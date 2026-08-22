@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-096-drowzee",
+  "title": "Drowzee",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-096-drowzee-base.png",
+  "mask": "/games/matiz/pokemon-096-drowzee-mask.png",
+  "width": 467,
+  "height": 618,
+  "selectedPixels": 91201,
+  "targetHex": "#eec64a",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/096.png"
+}

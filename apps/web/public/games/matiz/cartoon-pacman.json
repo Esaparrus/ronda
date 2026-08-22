@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-pacman",
+  "title": "Pac-Man",
+  "subtitle": "Pon el color del personaje",
+  "image": "/games/matiz/cartoon-pacman-base.png",
+  "mask": "/games/matiz/cartoon-pacman-mask.png",
+  "width": 788,
+  "height": 900,
+  "selectedPixels": 397280,
+  "targetHex": "#f2f000",
+  "source": "https://image.pngaaa.com/226/4435226-middle.png"
+}

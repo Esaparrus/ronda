@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-064-kadabra",
+  "title": "Kadabra",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-064-kadabra-base.png",
+  "mask": "/games/matiz/pokemon-064-kadabra-mask.png",
+  "width": 530,
+  "height": 618,
+  "selectedPixels": 83819,
+  "targetHex": "#efd357",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/064.png"
+}

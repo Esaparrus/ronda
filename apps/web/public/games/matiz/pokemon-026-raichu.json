@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-026-raichu",
+  "title": "Raichu",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-026-raichu-base.png",
+  "mask": "/games/matiz/pokemon-026-raichu-mask.png",
+  "width": 618,
+  "height": 551,
+  "selectedPixels": 18568,
+  "targetHex": "#fbf1db",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/026.png"
+}

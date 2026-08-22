@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-056-mankey",
+  "title": "Mankey",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-056-mankey-base.png",
+  "mask": "/games/matiz/pokemon-056-mankey-mask.png",
+  "width": 618,
+  "height": 442,
+  "selectedPixels": 43148,
+  "targetHex": "#f4e3d5",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/056.png"
+}

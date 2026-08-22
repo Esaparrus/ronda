@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-007-squirtle",
+  "title": "Squirtle",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-007-squirtle-base.png",
+  "mask": "/games/matiz/pokemon-007-squirtle-mask.png",
+  "width": 598,
+  "height": 618,
+  "selectedPixels": 115017,
+  "targetHex": "#669fb1",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/007.png"
+}

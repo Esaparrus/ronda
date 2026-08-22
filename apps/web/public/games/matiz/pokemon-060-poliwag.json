@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-060-poliwag",
+  "title": "Poliwag",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-060-poliwag-base.png",
+  "mask": "/games/matiz/pokemon-060-poliwag-mask.png",
+  "width": 618,
+  "height": 488,
+  "selectedPixels": 78234,
+  "targetHex": "#5777a0",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/060.png"
+}

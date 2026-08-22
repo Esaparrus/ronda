@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-023-ekans",
+  "title": "Ekans",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-023-ekans-base.png",
+  "mask": "/games/matiz/pokemon-023-ekans-mask.png",
+  "width": 618,
+  "height": 612,
+  "selectedPixels": 174152,
+  "targetHex": "#88607f",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/023.png"
+}

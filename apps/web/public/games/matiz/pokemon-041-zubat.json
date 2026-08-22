@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-041-zubat",
+  "title": "Zubat",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-041-zubat-base.png",
+  "mask": "/games/matiz/pokemon-041-zubat-mask.png",
+  "width": 618,
+  "height": 586,
+  "selectedPixels": 61338,
+  "targetHex": "#a46ea6",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/041.png"
+}

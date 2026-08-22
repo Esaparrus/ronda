@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-093-haunter",
+  "title": "Haunter",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-093-haunter-base.png",
+  "mask": "/games/matiz/pokemon-093-haunter-mask.png",
+  "width": 618,
+  "height": 540,
+  "selectedPixels": 46308,
+  "targetHex": "#584e5e",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/093.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-024-arbok",
+  "title": "Arbok",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-024-arbok-base.png",
+  "mask": "/games/matiz/pokemon-024-arbok-mask.png",
+  "width": 555,
+  "height": 618,
+  "selectedPixels": 67182,
+  "targetHex": "#8e8394",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/024.png"
+}

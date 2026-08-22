@@ -1,0 +1,12 @@
+{
+  "id": "logo-png-netflix",
+  "title": "Netflix",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-png-netflix-base.png",
+  "mask": "/games/matiz/logo-png-netflix-mask.png",
+  "width": 900,
+  "height": 268,
+  "selectedPixels": 94256,
+  "targetHex": "#d82126",
+  "source": "https://pngdownload.io/wp-content/uploads/2025/06/Netflix-Logo-Streaming-Platform-PNG.webp"
+}

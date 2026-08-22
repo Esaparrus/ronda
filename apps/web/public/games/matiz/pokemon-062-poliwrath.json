@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-062-poliwrath",
+  "title": "Poliwrath",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-062-poliwrath-base.png",
+  "mask": "/games/matiz/pokemon-062-poliwrath-mask.png",
+  "width": 618,
+  "height": 425,
+  "selectedPixels": 57126,
+  "targetHex": "#55759d",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/062.png"
+}

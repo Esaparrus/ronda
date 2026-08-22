@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-100-voltorb",
+  "title": "Voltorb",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-100-voltorb-base.png",
+  "mask": "/games/matiz/pokemon-100-voltorb-mask.png",
+  "width": 618,
+  "height": 604,
+  "selectedPixels": 164031,
+  "targetHex": "#e18d88",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/100.png"
+}

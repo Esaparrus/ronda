@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-085-dodrio",
+  "title": "Dodrio",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-085-dodrio-base.png",
+  "mask": "/games/matiz/pokemon-085-dodrio-mask.png",
+  "width": 509,
+  "height": 618,
+  "selectedPixels": 59180,
+  "targetHex": "#9b7766",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/085.png"
+}

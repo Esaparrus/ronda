@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-043-oddish",
+  "title": "Oddish",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-043-oddish-base.png",
+  "mask": "/games/matiz/pokemon-043-oddish-mask.png",
+  "width": 561,
+  "height": 618,
+  "selectedPixels": 89671,
+  "targetHex": "#51a946",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/043.png"
+}

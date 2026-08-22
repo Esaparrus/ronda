@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-034-nidoking",
+  "title": "Nidoking",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-034-nidoking-base.png",
+  "mask": "/games/matiz/pokemon-034-nidoking-mask.png",
+  "width": 618,
+  "height": 480,
+  "selectedPixels": 105206,
+  "targetHex": "#af80af",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/034.png"
+}

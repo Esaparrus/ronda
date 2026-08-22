@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-083-farfetchd",
+  "title": "Farfetch’d",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-083-farfetchd-base.png",
+  "mask": "/games/matiz/pokemon-083-farfetchd-mask.png",
+  "width": 520,
+  "height": 618,
+  "selectedPixels": 59215,
+  "targetHex": "#9f8f8b",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/083.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-015-beedrill",
+  "title": "Beedrill",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-015-beedrill-base.png",
+  "mask": "/games/matiz/pokemon-015-beedrill-mask.png",
+  "width": 515,
+  "height": 618,
+  "selectedPixels": 48832,
+  "targetHex": "#e3e7ee",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/015.png"
+}

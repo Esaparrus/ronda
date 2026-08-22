@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-099-kingler",
+  "title": "Kingler",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-099-kingler-base.png",
+  "mask": "/games/matiz/pokemon-099-kingler-mask.png",
+  "width": 618,
+  "height": 389,
+  "selectedPixels": 53533,
+  "targetHex": "#c17b58",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/099.png"
+}

@@ -10,51 +10,6 @@ import { PlayerStrip } from '@/app/sala/[code]/_components/PlayerStrip';
 import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
 import { MatizMaskedImage } from './MatizMaskedImage';
 
-const ARTWORK = {
-  'popeye-camiseta': {
-    image: '/games/matiz/popeye-camiseta-base.png',
-    mask: '/games/matiz/popeye-camiseta-mask.png',
-  },
-  'pikachu-piel': {
-    image: '/games/matiz/pikachu-piel-base.png',
-    mask: '/games/matiz/pikachu-piel-mask.png',
-  },
-  'homer-piel': {
-    image: '/games/matiz/homer-piel-base.png',
-    mask: '/games/matiz/homer-piel-mask.png',
-  },
-  'bart-piel': {
-    image: '/games/matiz/bart-piel-base.png',
-    mask: '/games/matiz/bart-piel-mask.png',
-  },
-  'bob-cuerpo': {
-    image: '/games/matiz/bob-cuerpo-base.png',
-    mask: '/games/matiz/bob-cuerpo-mask.png',
-  },
-  'bulbasaur-piel': {
-    image: '/games/matiz/bulbasaur-piel-base.png',
-    mask: '/games/matiz/bulbasaur-piel-mask.png',
-  },
-  'charmander-cuerpo': {
-    image: '/games/matiz/charmander-cuerpo-base.png',
-    mask: '/games/matiz/charmander-cuerpo-mask.png',
-  },
-  'squirtle-cuerpo': {
-    image: '/games/matiz/squirtle-cuerpo-base.png',
-    mask: '/games/matiz/squirtle-cuerpo-mask.png',
-  },
-  'eevee-pelo': {
-    image: '/games/matiz/eevee-pelo-base.png',
-    mask: '/games/matiz/eevee-pelo-mask.png',
-  },
-  'psyduck-cuerpo': {
-    image: '/games/matiz/psyduck-cuerpo-base.png',
-    mask: '/games/matiz/psyduck-cuerpo-mask.png',
-  },
-} as const;
-
-type MatizChallengeId = keyof typeof ARTWORK;
-
 export interface MatizArtworkProps {
   challengeId: string;
   color: string;
@@ -63,7 +18,7 @@ export interface MatizArtworkProps {
 }
 
 export function MatizArtwork({ challengeId, color, targetHex = null, className = '' }: MatizArtworkProps) {
-  const art = ARTWORK[challengeId as MatizChallengeId] ?? ARTWORK['popeye-camiseta'];
+  const art = artworkForChallenge(challengeId);
   const fill = targetHex ?? color;
 
   return (
@@ -81,6 +36,19 @@ export function MatizArtwork({ challengeId, color, targetHex = null, className =
   );
 }
 
+function artworkForChallenge(challengeId: string) {
+  if (challengeId === 'popeye-camiseta') {
+    return {
+      image: '/games/matiz/popeye-camiseta-base.png',
+      mask: '/games/matiz/popeye-camiseta-mask.png',
+    };
+  }
+  return {
+    image: `/games/matiz/${challengeId}-base.png`,
+    mask: `/games/matiz/${challengeId}-mask.png`,
+  };
+}
+
 interface MatizPickerProps {
   value: string;
   onChange: (value: string) => void;
@@ -88,10 +56,10 @@ interface MatizPickerProps {
 }
 
 export function MatizPicker({ value, onChange, disabled = false }: MatizPickerProps) {
-  const hsl = useMemo(() => hexToHsl(value), [value]);
+  const pickerColor = useMemo(() => hexToPickerColor(value), [value]);
 
-  function update(next: Partial<HslColor>) {
-    onChange(hslToHex({ ...hsl, ...next }));
+  function update(next: Partial<PickerColor>) {
+    onChange(pickerColorToHex({ ...pickerColor, ...next }));
   }
 
   return (
@@ -116,13 +84,13 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
           <p className="mt-1 font-mono text-20 font-semibold uppercase text-hueso">{value}</p>
         </div>
         <span className="rounded-full bg-tinta px-3 py-1 font-mono text-12 text-humo">
-          HSL {Math.round(hsl.h)}° · {Math.round(hsl.s)}% · {Math.round(hsl.l)}%
+          H {Math.round(pickerColor.h)}° · I {Math.round(pickerColor.s)}%
         </span>
       </div>
 
       <SliderRow
-        label="Tono"
-        value={hsl.h}
+        label="Color"
+        value={pickerColor.h}
         min={0}
         max={360}
         disabled={disabled}
@@ -132,22 +100,12 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
       />
       <SliderRow
         label="Intensidad"
-        value={hsl.s}
+        value={pickerColor.s}
         min={0}
         max={100}
         disabled={disabled}
-        background={`linear-gradient(90deg,hsl(${hsl.h} 0% 55%),hsl(${hsl.h} 100% 50%))`}
+        background={`linear-gradient(90deg,hsl(${pickerColor.h} 0% ${MATIZ_FIXED_LIGHTNESS}%),hsl(${pickerColor.h} 100% ${MATIZ_FIXED_LIGHTNESS}%))`}
         onChange={(next) => update({ s: next })}
-        suffix="%"
-      />
-      <SliderRow
-        label="Luz"
-        value={hsl.l}
-        min={0}
-        max={100}
-        disabled={disabled}
-        background={`linear-gradient(90deg,${COLOR_TOKENS.hueso},hsl(${hsl.h} ${hsl.s}% 50%),${COLOR_TOKENS.mesa})`}
-        onChange={(next) => update({ l: next })}
         suffix="%"
       />
     </section>
@@ -221,7 +179,7 @@ export function MatizPlayerRound({ view }: { view: MatizPlayerView }) {
         <section className="flex w-full max-w-xl flex-col gap-1 text-center">
           <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">{party.title}</span>
           <h1 className="text-20 font-semibold text-hueso">{party.subtitle}</h1>
-          <p className="text-13 text-humo">Ajusta el tono, la intensidad y la luz. Después, bloquea tu color.</p>
+          <p className="text-13 text-humo">Ajusta el color y la intensidad. Después, bloquea tu color.</p>
         </section>
         <MatizArtwork challengeId={party.challengeId} color={color} targetHex={party.targetHex} className="max-w-xl" />
         {party.phase === 'input' ? <MatizPicker value={color} onChange={setColor} disabled={submitted || pendingAction} /> : null}
@@ -326,7 +284,7 @@ export function MatizSoloGame() {
       <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-5 text-center">
         <span className="text-56">🎨</span>
         <span className="eyebrow">Partida individual terminada</span>
-        <h1 className="font-display text-40 leading-display text-hueso">{score}/1000 puntos</h1>
+        <h1 className="font-display text-40 leading-display text-hueso">{score}/{MATIZ_CHALLENGES.length * 100} puntos</h1>
         <p className="text-16 leading-relaxed text-humo">Tu media ha sido {Math.round(score / MATIZ_CHALLENGES.length)} por reto.</p>
         <div className="flex flex-wrap justify-center gap-2">
           {scores.map((points, index) => <span key={index} className="rounded-full bg-oro/10 px-3 py-1 font-mono text-13 text-oro">R{index + 1} · {points}</span>)}
@@ -364,7 +322,19 @@ export function MatizSoloGame() {
   );
 }
 
+const MATIZ_FIXED_LIGHTNESS = 58;
+
+interface PickerColor { h: number; s: number }
 interface HslColor { h: number; s: number; l: number }
+
+function hexToPickerColor(hex: string): PickerColor {
+  const hsl = hexToHsl(hex);
+  return { h: hsl.h, s: hsl.s };
+}
+
+function pickerColorToHex({ h, s }: PickerColor): string {
+  return hslToHex({ h, s, l: MATIZ_FIXED_LIGHTNESS });
+}
 
 function hexToHsl(hex: string): HslColor {
   const r = Number.parseInt(hex.slice(1, 3), 16) / 255;

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-076-golem",
+  "title": "Golem",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-076-golem-base.png",
+  "mask": "/games/matiz/pokemon-076-golem-mask.png",
+  "width": 618,
+  "height": 582,
+  "selectedPixels": 67337,
+  "targetHex": "#585451",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/076.png"
+}

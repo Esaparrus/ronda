@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-072-tentacool",
+  "title": "Tentacool",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-072-tentacool-base.png",
+  "mask": "/games/matiz/pokemon-072-tentacool-mask.png",
+  "width": 618,
+  "height": 509,
+  "selectedPixels": 51355,
+  "targetHex": "#6dbee1",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/072.png"
+}

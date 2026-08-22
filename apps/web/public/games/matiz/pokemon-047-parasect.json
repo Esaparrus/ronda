@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-047-parasect",
+  "title": "Parasect",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-047-parasect-base.png",
+  "mask": "/games/matiz/pokemon-047-parasect-mask.png",
+  "width": 618,
+  "height": 583,
+  "selectedPixels": 85029,
+  "targetHex": "#be8051",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/047.png"
+}

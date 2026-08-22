@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-098-krabby",
+  "title": "Krabby",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-098-krabby-base.png",
+  "mask": "/games/matiz/pokemon-098-krabby-mask.png",
+  "width": 618,
+  "height": 384,
+  "selectedPixels": 50754,
+  "targetHex": "#f19868",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/098.png"
+}

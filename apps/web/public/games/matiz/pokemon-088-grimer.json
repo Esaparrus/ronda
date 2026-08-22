@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-088-grimer",
+  "title": "Grimer",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-088-grimer-base.png",
+  "mask": "/games/matiz/pokemon-088-grimer-mask.png",
+  "width": 618,
+  "height": 431,
+  "selectedPixels": 117591,
+  "targetHex": "#8e7a96",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/088.png"
+}

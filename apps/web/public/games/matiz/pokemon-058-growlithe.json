@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-058-growlithe",
+  "title": "Growlithe",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-058-growlithe-base.png",
+  "mask": "/games/matiz/pokemon-058-growlithe-mask.png",
+  "width": 438,
+  "height": 618,
+  "selectedPixels": 125751,
+  "targetHex": "#f0d9b9",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/058.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-010-caterpie",
+  "title": "Caterpie",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-010-caterpie-base.png",
+  "mask": "/games/matiz/pokemon-010-caterpie-mask.png",
+  "width": 618,
+  "height": 618,
+  "selectedPixels": 94915,
+  "targetHex": "#88c877",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/010.png"
+}

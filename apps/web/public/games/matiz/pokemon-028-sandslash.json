@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-028-sandslash",
+  "title": "Sandslash",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-028-sandslash-base.png",
+  "mask": "/games/matiz/pokemon-028-sandslash-mask.png",
+  "width": 618,
+  "height": 593,
+  "selectedPixels": 83094,
+  "targetHex": "#e3c06d",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/028.png"
+}

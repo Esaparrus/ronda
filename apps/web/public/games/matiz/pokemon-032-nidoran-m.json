@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-032-nidoran-m",
+  "title": "Nidoran♂",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-032-nidoran-m-base.png",
+  "mask": "/games/matiz/pokemon-032-nidoran-m-mask.png",
+  "width": 561,
+  "height": 618,
+  "selectedPixels": 160568,
+  "targetHex": "#9d729e",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/032.png"
+}

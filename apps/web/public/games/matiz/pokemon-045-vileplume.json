@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-045-vileplume",
+  "title": "Vileplume",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-045-vileplume-base.png",
+  "mask": "/games/matiz/pokemon-045-vileplume-mask.png",
+  "width": 618,
+  "height": 564,
+  "selectedPixels": 124122,
+  "targetHex": "#df99a5",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/045.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-049-venomoth",
+  "title": "Venomoth",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-049-venomoth-base.png",
+  "mask": "/games/matiz/pokemon-049-venomoth-mask.png",
+  "width": 618,
+  "height": 409,
+  "selectedPixels": 74295,
+  "targetHex": "#e4d9ec",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/049.png"
+}

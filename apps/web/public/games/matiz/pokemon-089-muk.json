@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-089-muk",
+  "title": "Muk",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-089-muk-base.png",
+  "mask": "/games/matiz/pokemon-089-muk-mask.png",
+  "width": 618,
+  "height": 321,
+  "selectedPixels": 39464,
+  "targetHex": "#a897b2",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/089.png"
+}

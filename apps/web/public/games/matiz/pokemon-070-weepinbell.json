@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-070-weepinbell",
+  "title": "Weepinbell",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-070-weepinbell-base.png",
+  "mask": "/games/matiz/pokemon-070-weepinbell-mask.png",
+  "width": 618,
+  "height": 481,
+  "selectedPixels": 52417,
+  "targetHex": "#89ca8f",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/070.png"
+}

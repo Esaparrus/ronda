@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-039-jigglypuff",
+  "title": "Jigglypuff",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-039-jigglypuff-base.png",
+  "mask": "/games/matiz/pokemon-039-jigglypuff-mask.png",
+  "width": 618,
+  "height": 586,
+  "selectedPixels": 122567,
+  "targetHex": "#f3ced7",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/039.png"
+}

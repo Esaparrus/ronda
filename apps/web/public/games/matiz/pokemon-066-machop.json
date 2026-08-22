@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-066-machop",
+  "title": "Machop",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-066-machop-base.png",
+  "mask": "/games/matiz/pokemon-066-machop-mask.png",
+  "width": 516,
+  "height": 618,
+  "selectedPixels": 108097,
+  "targetHex": "#a7c6cf",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/066.png"
+}

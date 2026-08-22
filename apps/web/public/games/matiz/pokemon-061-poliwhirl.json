@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-061-poliwhirl",
+  "title": "Poliwhirl",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-061-poliwhirl-base.png",
+  "mask": "/games/matiz/pokemon-061-poliwhirl-mask.png",
+  "width": 618,
+  "height": 543,
+  "selectedPixels": 45019,
+  "targetHex": "#dce2ef",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/061.png"
+}

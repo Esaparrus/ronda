@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-kirby",
+  "title": "Kirby",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/cartoon-kirby-base.png",
+  "mask": "/games/matiz/cartoon-kirby-mask.png",
+  "width": 649,
+  "height": 574,
+  "selectedPixels": 123606,
+  "targetHex": "#ff5881",
+  "source": "https://png.klev.club/uploads/posts/2024-04/png-klev-club-4p85-p-kirbi-png-17.png"
+}

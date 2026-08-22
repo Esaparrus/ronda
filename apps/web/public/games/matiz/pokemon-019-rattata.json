@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-019-rattata",
+  "title": "Rattata",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-019-rattata-base.png",
+  "mask": "/games/matiz/pokemon-019-rattata-mask.png",
+  "width": 618,
+  "height": 547,
+  "selectedPixels": 88253,
+  "targetHex": "#a083ab",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/019.png"
+}

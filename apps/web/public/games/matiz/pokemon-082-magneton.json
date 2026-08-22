@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-082-magneton",
+  "title": "Magneton",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-082-magneton-base.png",
+  "mask": "/games/matiz/pokemon-082-magneton-mask.png",
+  "width": 618,
+  "height": 565,
+  "selectedPixels": 36954,
+  "targetHex": "#909092",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/082.png"
+}

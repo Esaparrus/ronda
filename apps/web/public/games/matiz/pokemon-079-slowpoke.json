@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-079-slowpoke",
+  "title": "Slowpoke",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-079-slowpoke-base.png",
+  "mask": "/games/matiz/pokemon-079-slowpoke-mask.png",
+  "width": 618,
+  "height": 501,
+  "selectedPixels": 141626,
+  "targetHex": "#e3a5b7",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/079.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "logo-png-youtube",
+  "title": "YouTube",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-png-youtube-base.png",
+  "mask": "/games/matiz/logo-png-youtube-mask.png",
+  "width": 643,
+  "height": 160,
+  "selectedPixels": 24480,
+  "targetHex": "#ff0000",
+  "source": "https://www.citypng.com/public/uploads/preview/hd-official-youtube-yt-logo-png-701751694786680qxacfiwgqw.png?v=2025091014"
+}

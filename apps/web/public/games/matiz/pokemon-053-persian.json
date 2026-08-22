@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-053-persian",
+  "title": "Persian",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-053-persian-base.png",
+  "mask": "/games/matiz/pokemon-053-persian-mask.png",
+  "width": 618,
+  "height": 555,
+  "selectedPixels": 97196,
+  "targetHex": "#f2dfb7",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/053.png"
+}

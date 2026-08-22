@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-065-alakazam",
+  "title": "Alakazam",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-065-alakazam-base.png",
+  "mask": "/games/matiz/pokemon-065-alakazam-mask.png",
+  "width": 618,
+  "height": 551,
+  "selectedPixels": 84364,
+  "targetHex": "#ead156",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/065.png"
+}

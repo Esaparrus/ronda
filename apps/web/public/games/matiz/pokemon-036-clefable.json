@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-036-clefable",
+  "title": "Clefable",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-036-clefable-base.png",
+  "mask": "/games/matiz/pokemon-036-clefable-mask.png",
+  "width": 618,
+  "height": 611,
+  "selectedPixels": 150528,
+  "targetHex": "#f4dad2",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/036.png"
+}

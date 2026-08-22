@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-014-kakuna",
+  "title": "Kakuna",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-014-kakuna-base.png",
+  "mask": "/games/matiz/pokemon-014-kakuna-mask.png",
+  "width": 342,
+  "height": 618,
+  "selectedPixels": 116389,
+  "targetHex": "#d3bb69",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/014.png"
+}

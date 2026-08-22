@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-080-slowbro",
+  "title": "Slowbro",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-080-slowbro-base.png",
+  "mask": "/games/matiz/pokemon-080-slowbro-mask.png",
+  "width": 562,
+  "height": 618,
+  "selectedPixels": 118240,
+  "targetHex": "#c7939f",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/080.png"
+}

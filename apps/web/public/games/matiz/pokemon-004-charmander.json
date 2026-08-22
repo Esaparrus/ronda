@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-004-charmander",
+  "title": "Charmander",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-004-charmander-base.png",
+  "mask": "/games/matiz/pokemon-004-charmander-mask.png",
+  "width": 550,
+  "height": 618,
+  "selectedPixels": 106714,
+  "targetHex": "#e8aa7d",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/004.png"
+}

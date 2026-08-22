@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-002-ivysaur",
+  "title": "Ivysaur",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-002-ivysaur-base.png",
+  "mask": "/games/matiz/pokemon-002-ivysaur-mask.png",
+  "width": 618,
+  "height": 578,
+  "selectedPixels": 109532,
+  "targetHex": "#82b4b9",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/002.png"
+}

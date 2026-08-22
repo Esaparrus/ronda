@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-090-shellder",
+  "title": "Shellder",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-090-shellder-base.png",
+  "mask": "/games/matiz/pokemon-090-shellder-mask.png",
+  "width": 618,
+  "height": 603,
+  "selectedPixels": 115749,
+  "targetHex": "#837fb8",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/090.png"
+}

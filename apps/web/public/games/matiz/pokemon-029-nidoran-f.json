@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-029-nidoran-f",
+  "title": "Nidoran♀",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-029-nidoran-f-base.png",
+  "mask": "/games/matiz/pokemon-029-nidoran-f-mask.png",
+  "width": 618,
+  "height": 593,
+  "selectedPixels": 137776,
+  "targetHex": "#bfcde8",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/029.png"
+}

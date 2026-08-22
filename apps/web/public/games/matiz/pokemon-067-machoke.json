@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-067-machoke",
+  "title": "Machoke",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-067-machoke-base.png",
+  "mask": "/games/matiz/pokemon-067-machoke-mask.png",
+  "width": 520,
+  "height": 618,
+  "selectedPixels": 79530,
+  "targetHex": "#a9b0ce",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/067.png"
+}

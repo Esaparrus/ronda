@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-081-magnemite",
+  "title": "Magnemite",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-081-magnemite-base.png",
+  "mask": "/games/matiz/pokemon-081-magnemite-mask.png",
+  "width": 618,
+  "height": 345,
+  "selectedPixels": 44141,
+  "targetHex": "#a0c1ca",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/081.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-071-victreebel",
+  "title": "Victreebel",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-071-victreebel-base.png",
+  "mask": "/games/matiz/pokemon-071-victreebel-mask.png",
+  "width": 618,
+  "height": 527,
+  "selectedPixels": 77311,
+  "targetHex": "#88ca8e",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/071.png"
+}

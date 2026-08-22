@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-037-vulpix",
+  "title": "Vulpix",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-037-vulpix-base.png",
+  "mask": "/games/matiz/pokemon-037-vulpix-mask.png",
+  "width": 618,
+  "height": 550,
+  "selectedPixels": 167845,
+  "targetHex": "#c28770",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/037.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "logo-png-google",
+  "title": "Google",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-png-google-base.png",
+  "mask": "/games/matiz/logo-png-google-mask.png",
+  "width": 790,
+  "height": 275,
+  "selectedPixels": 27838,
+  "targetHex": "#4085f3",
+  "source": "https://clipartcraft.com/images/transparent-background-google-logo-invisible-1.png"
+}

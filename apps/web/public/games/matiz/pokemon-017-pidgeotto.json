@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-017-pidgeotto",
+  "title": "Pidgeotto",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-017-pidgeotto-base.png",
+  "mask": "/games/matiz/pokemon-017-pidgeotto-mask.png",
+  "width": 537,
+  "height": 618,
+  "selectedPixels": 93705,
+  "targetHex": "#c5b992",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/017.png"
+}

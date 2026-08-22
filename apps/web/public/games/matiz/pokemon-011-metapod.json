@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-011-metapod",
+  "title": "Metapod",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-011-metapod-base.png",
+  "mask": "/games/matiz/pokemon-011-metapod-mask.png",
+  "width": 545,
+  "height": 618,
+  "selectedPixels": 128397,
+  "targetHex": "#83a651",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/011.png"
+}

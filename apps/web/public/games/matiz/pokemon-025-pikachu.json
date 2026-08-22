@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-025-pikachu",
+  "title": "Pikachu",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-025-pikachu-base.png",
+  "mask": "/games/matiz/pokemon-025-pikachu-mask.png",
+  "width": 618,
+  "height": 582,
+  "selectedPixels": 127303,
+  "targetHex": "#e2c270",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png"
+}

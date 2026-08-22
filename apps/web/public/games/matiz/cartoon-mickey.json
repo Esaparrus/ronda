@@ -1,0 +1,12 @@
+{
+  "id": "cartoon-mickey",
+  "title": "Mickey Mouse",
+  "subtitle": "Pon el color de su pantalón",
+  "image": "/games/matiz/cartoon-mickey-base.png",
+  "mask": "/games/matiz/cartoon-mickey-mask.png",
+  "width": 445,
+  "height": 618,
+  "selectedPixels": 13752,
+  "targetHex": "#da222e",
+  "source": "https://icon2.cleanpng.com/lnd/20241030/jf/c67e4c3bf7a96aa7822221bd175ba5.webp"
+}

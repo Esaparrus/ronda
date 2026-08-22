@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-044-gloom",
+  "title": "Gloom",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-044-gloom-base.png",
+  "mask": "/games/matiz/pokemon-044-gloom-mask.png",
+  "width": 618,
+  "height": 508,
+  "selectedPixels": 81512,
+  "targetHex": "#8a5146",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/044.png"
+}

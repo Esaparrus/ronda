@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-074-geodude",
+  "title": "Geodude",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-074-geodude-base.png",
+  "mask": "/games/matiz/pokemon-074-geodude-mask.png",
+  "width": 618,
+  "height": 244,
+  "selectedPixels": 36656,
+  "targetHex": "#b3b1a9",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/074.png"
+}

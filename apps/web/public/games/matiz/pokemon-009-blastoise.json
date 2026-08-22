@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-009-blastoise",
+  "title": "Blastoise",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-009-blastoise-base.png",
+  "mask": "/games/matiz/pokemon-009-blastoise-mask.png",
+  "width": 572,
+  "height": 618,
+  "selectedPixels": 100105,
+  "targetHex": "#715d4f",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/009.png"
+}

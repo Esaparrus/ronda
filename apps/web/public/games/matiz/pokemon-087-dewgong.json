@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-087-dewgong",
+  "title": "Dewgong",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-087-dewgong-base.png",
+  "mask": "/games/matiz/pokemon-087-dewgong-mask.png",
+  "width": 618,
+  "height": 615,
+  "selectedPixels": 158624,
+  "targetHex": "#ecf2f7",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/087.png"
+}

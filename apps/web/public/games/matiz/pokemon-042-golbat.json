@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-042-golbat",
+  "title": "Golbat",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-042-golbat-base.png",
+  "mask": "/games/matiz/pokemon-042-golbat-mask.png",
+  "width": 618,
+  "height": 533,
+  "selectedPixels": 64196,
+  "targetHex": "#ac6fae",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/042.png"
+}

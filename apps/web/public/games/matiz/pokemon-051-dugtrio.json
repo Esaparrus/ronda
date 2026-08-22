@@ -1,0 +1,12 @@
+{
+  "id": "pokemon-051-dugtrio",
+  "title": "Dugtrio",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/pokemon-051-dugtrio-base.png",
+  "mask": "/games/matiz/pokemon-051-dugtrio-mask.png",
+  "width": 618,
+  "height": 597,
+  "selectedPixels": 170755,
+  "targetHex": "#9e8170",
+  "source": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/051.png"
+}
