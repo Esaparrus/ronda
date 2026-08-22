@@ -20,11 +20,11 @@ export default function MatizPage() {
         description: 'Más de 200 dibujos, personajes y logos para mejorar tu ojo.',
       }}
       toolAction={{
-        href: '/juegos/matiz/preparar',
-        label: 'Preparar tus imágenes',
-        description: 'Sube una imagen y genera su máscara automáticamente.',
+        href: '/juegos/matiz/catalogo',
+        label: 'Elegir imágenes',
+        description: 'Activa o desactiva retos y revisa su origen.',
       }}
-      note="223 retos aislados: 100 Pokémon, personajes de series y videojuegos, prendas y 59 logos reales. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima, y se resuelve con dos barras: color e intensidad."
+      note="223 retos aislados: 100 Pokémon, personajes de series y videojuegos, prendas y 64 logos reales. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima, y se resuelve con dos barras: color e intensidad."
     />
   );
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   ChinchonConfigSchema,
   GameConfigSchema,
+  MatizConfigSchema,
   PochaConfigSchema,
   MusConfigSchema,
   LaRondaConfigSchema,
@@ -126,5 +127,13 @@ describe('GameConfigSchema', () => {
       groupMode: 'groups',
       groupCount: 3,
     });
+  });
+
+  it('permite limitar los retos de Matiz y mantiene el catálogo completo por defecto', () => {
+    expect(MatizConfigSchema.parse({}).challengeIds).toEqual([]);
+    expect(
+      MatizConfigSchema.parse({ challengeIds: ['popeye-camiseta', 'logo-extra-windows'] })
+        .challengeIds,
+    ).toEqual(['popeye-camiseta', 'logo-extra-windows']);
   });
 });

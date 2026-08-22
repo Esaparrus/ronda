@@ -7,6 +7,7 @@ import { useRondaStore } from '@/lib/store';
 import { COLOR_TOKENS, MATIZ_COLOR_TOKENS, MATIZ_HUE_GRADIENT } from '@/lib/tokens';
 import { Button } from '@/components/ui/Button';
 import { PlayerStrip } from '@/app/sala/[code]/_components/PlayerStrip';
+import { readMatizEnabledChallengeIds } from '@/lib/matiz-catalog';
 import { TableHeader } from '@/app/sala/[code]/_components/TableHeader';
 import { MatizMaskedImage } from './MatizMaskedImage';
 
@@ -255,8 +256,21 @@ export function MatizSoloGame() {
   const [revealed, setRevealed] = useState(false);
   const [score, setScore] = useState(0);
   const [scores, setScores] = useState<number[]>([]);
-  const challenge = MATIZ_CHALLENGES[roundIndex % MATIZ_CHALLENGES.length] ?? MATIZ_CHALLENGES[0];
-  const finished = roundIndex >= MATIZ_CHALLENGES.length;
+  const [enabledIds, setEnabledIds] = useState<string[]>(() =>
+    MATIZ_CHALLENGES.map((challenge) => challenge.id),
+  );
+
+  useEffect(() => {
+    setEnabledIds(readMatizEnabledChallengeIds());
+  }, []);
+
+  const activeChallenges = useMemo(() => {
+    const enabledIdSet = new Set(enabledIds);
+    const filtered = MATIZ_CHALLENGES.filter((challenge) => enabledIdSet.has(challenge.id));
+    return filtered.length > 0 ? filtered : MATIZ_CHALLENGES;
+  }, [enabledIds]);
+  const challenge = activeChallenges[roundIndex % activeChallenges.length] ?? activeChallenges[0];
+  const finished = roundIndex >= activeChallenges.length;
 
   function confirm() {
     const points = scoreMatizColor(color, challenge.targetHex);
@@ -284,8 +298,8 @@ export function MatizSoloGame() {
       <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-5 text-center">
         <span className="text-56">🎨</span>
         <span className="eyebrow">Partida individual terminada</span>
-        <h1 className="font-display text-40 leading-display text-hueso">{score}/{MATIZ_CHALLENGES.length * 100} puntos</h1>
-        <p className="text-16 leading-relaxed text-humo">Tu media ha sido {Math.round(score / MATIZ_CHALLENGES.length)} por reto.</p>
+        <h1 className="font-display text-40 leading-display text-hueso">{score}/{activeChallenges.length * 100} puntos</h1>
+        <p className="text-16 leading-relaxed text-humo">Tu media ha sido {Math.round(score / activeChallenges.length)} por reto.</p>
         <div className="flex flex-wrap justify-center gap-2">
           {scores.map((points, index) => <span key={index} className="rounded-full bg-oro/10 px-3 py-1 font-mono text-13 text-oro">R{index + 1} · {points}</span>)}
         </div>
@@ -301,7 +315,7 @@ export function MatizSoloGame() {
           <span className="eyebrow">Partida individual</span>
           <h1 className="mt-1 font-display text-32 leading-display text-hueso">Matiz</h1>
         </div>
-        <span className="rounded-full bg-mesa px-3 py-2 font-mono text-13 text-humo shadow-sm">{roundIndex + 1}/{MATIZ_CHALLENGES.length} · {score} pts</span>
+        <span className="rounded-full bg-mesa px-3 py-2 font-mono text-13 text-humo shadow-sm">{roundIndex + 1}/{activeChallenges.length} · {score} pts</span>
       </header>
       <section className="surface-panel flex flex-col gap-1 p-4 text-center">
         <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">{challenge.title}</span>

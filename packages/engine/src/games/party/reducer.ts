@@ -240,7 +240,10 @@ export function createPartyState(
   }
 
   if (gameId === 'matiz') {
-    const challengeOrder = shuffled(state, challengeIdsFor(gameId));
+    const challengeOrder = shuffled(
+      state,
+      challengeIdsFor(gameId, config.gameId === 'matiz' ? config.challengeIds : []),
+    );
     state.matiz = {
       challengeOrder,
       challengeIndex: 0,

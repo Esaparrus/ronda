@@ -293,6 +293,8 @@ export const MatizConfigSchema = CommonGameConfigSchema.extend({
   gameId: z.literal('matiz' satisfies GameId).default('matiz'),
   maxPlayers: MATIZ_MAX_PLAYERS.default(7),
   rounds: MATIZ_ROUNDS.default(5),
+  /** Retos permitidos en esta sala; vacío conserva el catálogo completo. */
+  challengeIds: z.array(z.string()).default([]),
 });
 
 export type MatizConfig = z.infer<typeof MatizConfigSchema>;

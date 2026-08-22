@@ -77,4 +77,25 @@ describe('Matiz', () => {
     expect(view.party.answers?.p2).toBeUndefined();
     expect(view.party.scoreDeltas?.p2).toBe(0);
   });
+
+  it('usa únicamente los retos seleccionados por quien crea la sala', () => {
+    const state = createPartyState(
+      {
+        config: {
+          ...DEFAULT_MATIZ_CONFIG,
+          rounds: 3,
+          challengeIds: ['popeye-camiseta', 'logo-extra-windows', 'reto-inexistente'],
+        },
+        seed: 'matiz-selection-test',
+        players: PLAYERS,
+        roomCode: 'MSEL',
+      },
+      'matiz',
+    );
+
+    expect(state.matiz?.challengeOrder).toHaveLength(2);
+    expect(state.matiz?.challengeOrder).toEqual(
+      expect.arrayContaining(['popeye-camiseta', 'logo-extra-windows']),
+    );
+  });
 });

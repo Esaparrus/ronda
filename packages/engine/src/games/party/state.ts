@@ -162,6 +162,15 @@ export function questionIdsFor(
   return SCALE_QUESTIONS.map((question) => question.id);
 }
 
-export function challengeIdsFor(gameId: PartyGameId): string[] {
-  return gameId === 'matiz' ? MATIZ_CHALLENGES.map((challenge) => challenge.id) : [];
+export function challengeIdsFor(
+  gameId: PartyGameId,
+  configuredIds: readonly string[] = [],
+): string[] {
+  if (gameId !== 'matiz') return [];
+
+  const catalogIds = MATIZ_CHALLENGES.map((challenge) => challenge.id);
+  const catalogIdSet = new Set<string>(catalogIds);
+  const selectedIds = [...new Set(configuredIds.filter((id) => catalogIdSet.has(id)))];
+
+  return selectedIds.length > 0 ? selectedIds : catalogIds;
 }

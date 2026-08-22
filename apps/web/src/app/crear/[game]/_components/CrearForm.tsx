@@ -4,7 +4,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import {
   DEFAULT_CONFIG,
   DEFAULT_BRISCA_CONFIG,
@@ -53,6 +53,8 @@ import { MusicRegionSelector } from '@/components/ui/MusicRegionSelector';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
 import { GameGlyph } from '@/components/ui/GameGlyph';
 import { Icon } from '@/components/ui/Icon';
+import { MatizChallengeSelector } from '@/components/matiz/MatizChallengeSelector';
+import { readMatizEnabledChallengeIds } from '@/lib/matiz-catalog';
 import { CreateRoomLoading } from './CreateRoomLoading';
 
 export interface CrearFormProps {
@@ -75,6 +77,16 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [precioJustoConfig, setPrecioJustoConfig] =
     useState<PrecioJustoConfig>(DEFAULT_PRECIO_JUSTO_CONFIG);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (gameId !== 'matiz') return;
+
+    setPartyConfig((previous) =>
+      previous.gameId === 'matiz' && previous.challengeIds.length === 0
+        ? { ...previous, challengeIds: readMatizEnabledChallengeIds() }
+        : previous,
+    );
+  }, [gameId]);
 
   const title = `Crear partida de ${gameTitle(gameId)}`;
   const nickErrorMessage = nickError
@@ -795,6 +807,17 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
         options={playerOptions}
         valueSuffix="personas"
       />
+
+      {config.gameId === 'matiz' ? (
+        <MatizChallengeSelector
+          selectedIds={config.challengeIds}
+          onChange={(challengeIds) =>
+            setConfig((previous) =>
+              previous.gameId === 'matiz' ? { ...previous, challengeIds } : previous,
+            )
+          }
+        />
+      ) : null}
 
       {config.gameId === 'orden' ? (
         <QuantityStepper
