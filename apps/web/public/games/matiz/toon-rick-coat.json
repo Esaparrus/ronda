@@ -1,0 +1,12 @@
+{
+  "id": "toon-rick-coat",
+  "title": "Rick Sanchez",
+  "subtitle": "Pon el color de su bata",
+  "image": "/games/matiz/toon-rick-coat-base.png",
+  "mask": "/games/matiz/toon-rick-coat-mask.png",
+  "width": 331,
+  "height": 768,
+  "selectedPixels": 23288,
+  "targetHex": "#f5f5f0",
+  "source": "https://freepngimg.com/save/27467-rick-and-morty-transparent-image/612x792"
+}

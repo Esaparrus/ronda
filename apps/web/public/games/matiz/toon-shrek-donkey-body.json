@@ -1,0 +1,12 @@
+{
+  "id": "toon-shrek-donkey-body",
+  "title": "Burro · Shrek",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/toon-shrek-donkey-body-base.png",
+  "mask": "/games/matiz/toon-shrek-donkey-body-mask.png",
+  "width": 618,
+  "height": 549,
+  "selectedPixels": 19690,
+  "targetHex": "#717168",
+  "source": "https://image.pngaaa.com/345/41345-middle.png"
+}

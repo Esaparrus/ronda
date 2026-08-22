@@ -1,0 +1,12 @@
+{
+  "id": "toon-southpark-cartman-gloves",
+  "title": "Eric Cartman",
+  "subtitle": "Pon el color de sus guantes",
+  "image": "/games/matiz/toon-southpark-cartman-gloves-base.png",
+  "mask": "/games/matiz/toon-southpark-cartman-gloves-mask.png",
+  "width": 900,
+  "height": 348,
+  "selectedPixels": 6150,
+  "targetHex": "#f6c72d",
+  "source": "https://pngimg.com/uploads/south_park/south_park_PNG37.png"
+}

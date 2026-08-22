@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-angry-birds",
+  "title": "Angry Birds",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-angry-birds-base.png",
+  "mask": "/games/matiz/logo-extra-angry-birds-mask.png",
+  "width": 900,
+  "height": 158,
+  "selectedPixels": 87602,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Angry_Birds_logo.svg/960px-Angry_Birds_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

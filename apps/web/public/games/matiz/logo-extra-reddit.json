@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-reddit",
+  "title": "Reddit",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-reddit-base.png",
+  "mask": "/games/matiz/logo-extra-reddit-mask.png",
+  "width": 900,
+  "height": 286,
+  "selectedPixels": 3884,
+  "targetHex": "#ff4500",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Reddit_logo.svg/960px-Reddit_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

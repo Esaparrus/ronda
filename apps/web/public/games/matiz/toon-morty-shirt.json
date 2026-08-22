@@ -1,0 +1,12 @@
+{
+  "id": "toon-morty-shirt",
+  "title": "Morty Smith",
+  "subtitle": "Pon el color de su camiseta",
+  "image": "/games/matiz/toon-morty-shirt-base.png",
+  "mask": "/games/matiz/toon-morty-shirt-mask.png",
+  "width": 331,
+  "height": 768,
+  "selectedPixels": 13115,
+  "targetHex": "#f1cb36",
+  "source": "https://freepngimg.com/save/27467-rick-and-morty-transparent-image/612x792"
+}

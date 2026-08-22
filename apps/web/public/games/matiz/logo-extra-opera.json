@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-opera",
+  "title": "Opera",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-opera-base.png",
+  "mask": "/games/matiz/logo-extra-opera-mask.png",
+  "width": 900,
+  "height": 330,
+  "selectedPixels": 52523,
+  "targetHex": "#ff1b2d",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Opera_2015_logo.svg/960px-Opera_2015_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

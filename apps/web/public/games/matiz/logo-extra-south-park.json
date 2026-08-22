@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-south-park",
+  "title": "South Park",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-south-park-base.png",
+  "mask": "/games/matiz/logo-extra-south-park-mask.png",
+  "width": 900,
+  "height": 108,
+  "selectedPixels": 75231,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/South_Park_logo.svg/960px-South_Park_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

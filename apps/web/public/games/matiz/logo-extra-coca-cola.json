@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-coca-cola",
+  "title": "Coca-Cola",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-coca-cola-base.png",
+  "mask": "/games/matiz/logo-extra-coca-cola-mask.png",
+  "width": 900,
+  "height": 283,
+  "selectedPixels": 100681,
+  "targetHex": "#e61d2b",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Coca-Cola_logo.svg/960px-Coca-Cola_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

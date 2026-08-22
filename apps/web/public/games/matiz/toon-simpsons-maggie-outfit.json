@@ -1,0 +1,12 @@
+{
+  "id": "toon-simpsons-maggie-outfit",
+  "title": "Maggie Simpson",
+  "subtitle": "Pon el color de su ropa",
+  "image": "/games/matiz/toon-simpsons-maggie-outfit-base.png",
+  "mask": "/games/matiz/toon-simpsons-maggie-outfit-mask.png",
+  "width": 762,
+  "height": 622,
+  "selectedPixels": 45755,
+  "targetHex": "#5ca0d6",
+  "source": "https://image.pngaaa.com/148/983148-middle.png"
+}

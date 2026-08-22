@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-call-of-duty",
+  "title": "Call of Duty",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-call-of-duty-base.png",
+  "mask": "/games/matiz/logo-extra-call-of-duty-mask.png",
+  "width": 900,
+  "height": 168,
+  "selectedPixels": 101272,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Call_of_Duty_logo.svg/960px-Call_of_Duty_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

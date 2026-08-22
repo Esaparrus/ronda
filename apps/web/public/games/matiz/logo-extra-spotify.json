@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-spotify",
+  "title": "Spotify",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-spotify-base.png",
+  "mask": "/games/matiz/logo-extra-spotify-mask.png",
+  "width": 900,
+  "height": 247,
+  "selectedPixels": 77123,
+  "targetHex": "#1ed760",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Spotify_New_Full_Logo_RGB_Green.png/960px-Spotify_New_Full_Logo_RGB_Green.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

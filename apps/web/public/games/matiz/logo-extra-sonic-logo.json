@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-sonic-logo",
+  "title": "Sonic the Hedgehog",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-sonic-logo-base.png",
+  "mask": "/games/matiz/logo-extra-sonic-logo-mask.png",
+  "width": 900,
+  "height": 359,
+  "selectedPixels": 80089,
+  "targetHex": "#001478",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Sonic_the_Hedgehog_logo.svg/960px-Sonic_the_Hedgehog_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

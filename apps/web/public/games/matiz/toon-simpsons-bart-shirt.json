@@ -1,0 +1,12 @@
+{
+  "id": "toon-simpsons-bart-shirt",
+  "title": "Bart Simpson",
+  "subtitle": "Pon el color de su camiseta",
+  "image": "/games/matiz/toon-simpsons-bart-shirt-base.png",
+  "mask": "/games/matiz/toon-simpsons-bart-shirt-mask.png",
+  "width": 762,
+  "height": 622,
+  "selectedPixels": 9900,
+  "targetHex": "#f46924",
+  "source": "https://image.pngaaa.com/148/983148-middle.png"
+}

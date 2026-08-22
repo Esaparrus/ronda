@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-mercedes",
+  "title": "Mercedes-Benz",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-mercedes-base.png",
+  "mask": "/games/matiz/logo-extra-mercedes-mask.png",
+  "width": 900,
+  "height": 900,
+  "selectedPixels": 124678,
+  "targetHex": "#313e46",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Mercedes-Benz_Star_2022.svg/960px-Mercedes-Benz_Star_2022.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

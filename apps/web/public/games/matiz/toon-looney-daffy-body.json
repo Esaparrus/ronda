@@ -1,0 +1,12 @@
+{
+  "id": "toon-looney-daffy-body",
+  "title": "Pato Lucas",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/toon-looney-daffy-body-base.png",
+  "mask": "/games/matiz/toon-looney-daffy-body-mask.png",
+  "width": 670,
+  "height": 408,
+  "selectedPixels": 5351,
+  "targetHex": "#23262a",
+  "source": "https://www.clipartmax.com/png/middle/110-1103705_black-duck-cartoon-character.png"
+}

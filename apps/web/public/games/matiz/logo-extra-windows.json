@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-windows",
+  "title": "Windows",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-windows-base.png",
+  "mask": "/games/matiz/logo-extra-windows-mask.png",
+  "width": 900,
+  "height": 900,
+  "selectedPixels": 732732,
+  "targetHex": "#0078d4",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Windows_logo_-_2021.svg/960px-Windows_logo_-_2021.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

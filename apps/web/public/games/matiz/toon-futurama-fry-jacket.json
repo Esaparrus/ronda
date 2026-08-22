@@ -1,0 +1,12 @@
+{
+  "id": "toon-futurama-fry-jacket",
+  "title": "Fry · Futurama",
+  "subtitle": "Pon el color de su chaqueta",
+  "image": "/games/matiz/toon-futurama-fry-jacket-base.png",
+  "mask": "/games/matiz/toon-futurama-fry-jacket-mask.png",
+  "width": 800,
+  "height": 827,
+  "selectedPixels": 26603,
+  "targetHex": "#b42629",
+  "source": "https://flyclipart.com/thumb2/futurama-leela-fry-bender-png-image-546259.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "toon-adventure-jake-body",
+  "title": "Jake · Hora de Aventuras",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/toon-adventure-jake-body-base.png",
+  "mask": "/games/matiz/toon-adventure-jake-body-mask.png",
+  "width": 854,
+  "height": 678,
+  "selectedPixels": 90287,
+  "targetHex": "#f7cf2d",
+  "source": "https://freepngimg.com/save/127354-and-jake-adventure-finn-time/900x900"
+}

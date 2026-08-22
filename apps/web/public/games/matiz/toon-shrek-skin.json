@@ -1,0 +1,12 @@
+{
+  "id": "toon-shrek-skin",
+  "title": "Shrek",
+  "subtitle": "Pon el color de su piel",
+  "image": "/games/matiz/toon-shrek-skin-base.png",
+  "mask": "/games/matiz/toon-shrek-skin-mask.png",
+  "width": 618,
+  "height": 549,
+  "selectedPixels": 11137,
+  "targetHex": "#6f973a",
+  "source": "https://image.pngaaa.com/345/41345-middle.png"
+}

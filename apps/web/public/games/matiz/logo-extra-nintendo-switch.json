@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-nintendo-switch",
+  "title": "Nintendo Switch",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-nintendo-switch-base.png",
+  "mask": "/games/matiz/logo-extra-nintendo-switch-mask.png",
+  "width": 789,
+  "height": 841,
+  "selectedPixels": 219579,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Nintendo_Switch_Logo.svg/960px-Nintendo_Switch_Logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

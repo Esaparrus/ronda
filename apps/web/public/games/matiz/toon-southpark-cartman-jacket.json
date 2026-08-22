@@ -1,0 +1,12 @@
+{
+  "id": "toon-southpark-cartman-jacket",
+  "title": "Eric Cartman",
+  "subtitle": "Pon el color de su chaqueta",
+  "image": "/games/matiz/toon-southpark-cartman-jacket-base.png",
+  "mask": "/games/matiz/toon-southpark-cartman-jacket-mask.png",
+  "width": 900,
+  "height": 348,
+  "selectedPixels": 76254,
+  "targetHex": "#d72d26",
+  "source": "https://pngimg.com/uploads/south_park/south_park_PNG37.png"
+}

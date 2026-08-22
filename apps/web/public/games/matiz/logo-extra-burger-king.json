@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-burger-king",
+  "title": "Burger King",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-burger-king-base.png",
+  "mask": "/games/matiz/logo-extra-burger-king-mask.png",
+  "width": 890,
+  "height": 900,
+  "selectedPixels": 202522,
+  "targetHex": "#ee1d22",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Burger_King_logo_%281999%E2%80%932020%29.svg/960px-Burger_King_logo_%281999%E2%80%932020%29.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

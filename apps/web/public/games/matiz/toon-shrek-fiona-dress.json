@@ -1,0 +1,12 @@
+{
+  "id": "toon-shrek-fiona-dress",
+  "title": "Fiona · Shrek",
+  "subtitle": "Pon el color de su vestido",
+  "image": "/games/matiz/toon-shrek-fiona-dress-base.png",
+  "mask": "/games/matiz/toon-shrek-fiona-dress-mask.png",
+  "width": 618,
+  "height": 549,
+  "selectedPixels": 8030,
+  "targetHex": "#4b9b52",
+  "source": "https://image.pngaaa.com/345/41345-middle.png"
+}

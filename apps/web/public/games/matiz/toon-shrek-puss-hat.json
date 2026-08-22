@@ -1,0 +1,12 @@
+{
+  "id": "toon-shrek-puss-hat",
+  "title": "Gato con Botas",
+  "subtitle": "Pon el color de su gorro",
+  "image": "/games/matiz/toon-shrek-puss-hat-base.png",
+  "mask": "/games/matiz/toon-shrek-puss-hat-mask.png",
+  "width": 618,
+  "height": 549,
+  "selectedPixels": 1404,
+  "targetHex": "#2b529d",
+  "source": "https://image.pngaaa.com/345/41345-middle.png"
+}

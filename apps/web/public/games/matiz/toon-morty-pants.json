@@ -1,0 +1,12 @@
+{
+  "id": "toon-morty-pants",
+  "title": "Morty Smith",
+  "subtitle": "Pon el color de sus pantalones",
+  "image": "/games/matiz/toon-morty-pants-base.png",
+  "mask": "/games/matiz/toon-morty-pants-mask.png",
+  "width": 331,
+  "height": 768,
+  "selectedPixels": 10566,
+  "targetHex": "#4069b4",
+  "source": "https://freepngimg.com/save/27467-rick-and-morty-transparent-image/612x792"
+}

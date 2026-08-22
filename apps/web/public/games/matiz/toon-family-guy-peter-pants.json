@@ -1,0 +1,12 @@
+{
+  "id": "toon-family-guy-peter-pants",
+  "title": "Peter Griffin",
+  "subtitle": "Pon el color de sus pantalones",
+  "image": "/games/matiz/toon-family-guy-peter-pants-base.png",
+  "mask": "/games/matiz/toon-family-guy-peter-pants-mask.png",
+  "width": 658,
+  "height": 406,
+  "selectedPixels": 4263,
+  "targetHex": "#549643",
+  "source": "https://www.nicepng.com/png/detail/888-8883757_watch-family-guy-online-free-stuck-together-torn.png"
+}

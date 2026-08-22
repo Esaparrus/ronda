@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-champions-league",
+  "title": "Champions League",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-champions-league-base.png",
+  "mask": "/games/matiz/logo-extra-champions-league-mask.png",
+  "width": 900,
+  "height": 408,
+  "selectedPixels": 68578,
+  "targetHex": "#00004b",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/UEFA_Champions_League_logo.svg/960px-UEFA_Champions_League_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

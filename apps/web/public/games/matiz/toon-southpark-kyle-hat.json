@@ -1,0 +1,12 @@
+{
+  "id": "toon-southpark-kyle-hat",
+  "title": "Kyle Broflovski",
+  "subtitle": "Pon el color de su gorro",
+  "image": "/games/matiz/toon-southpark-kyle-hat-base.png",
+  "mask": "/games/matiz/toon-southpark-kyle-hat-mask.png",
+  "width": 900,
+  "height": 348,
+  "selectedPixels": 4852,
+  "targetHex": "#40913d",
+  "source": "https://pngimg.com/uploads/south_park/south_park_PNG37.png"
+}

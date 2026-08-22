@@ -1,0 +1,12 @@
+{
+  "id": "toon-futurama-leela-hair",
+  "title": "Leela · Futurama",
+  "subtitle": "Pon el color de su pelo",
+  "image": "/games/matiz/toon-futurama-leela-hair-base.png",
+  "mask": "/games/matiz/toon-futurama-leela-hair-mask.png",
+  "width": 800,
+  "height": 827,
+  "selectedPixels": 25422,
+  "targetHex": "#7d3192",
+  "source": "https://flyclipart.com/thumb2/futurama-leela-fry-bender-png-image-546259.png"
+}

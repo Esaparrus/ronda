@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-gmail",
+  "title": "Gmail",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-gmail-base.png",
+  "mask": "/games/matiz/logo-extra-gmail-mask.png",
+  "width": 900,
+  "height": 675,
+  "selectedPixels": 179096,
+  "targetHex": "#ea4335",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/960px-Gmail_icon_%282020%29.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

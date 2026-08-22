@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-playstation",
+  "title": "PlayStation",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-playstation-base.png",
+  "mask": "/games/matiz/logo-extra-playstation-mask.png",
+  "width": 900,
+  "height": 164,
+  "selectedPixels": 42631,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/PlayStation_logo_and_wordmark.svg/960px-PlayStation_logo_and_wordmark.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

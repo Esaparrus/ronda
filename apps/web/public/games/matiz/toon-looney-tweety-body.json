@@ -1,0 +1,12 @@
+{
+  "id": "toon-looney-tweety-body",
+  "title": "Piolín",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/toon-looney-tweety-body-base.png",
+  "mask": "/games/matiz/toon-looney-tweety-body-mask.png",
+  "width": 670,
+  "height": 408,
+  "selectedPixels": 15546,
+  "targetHex": "#f7de34",
+  "source": "https://www.clipartmax.com/png/middle/110-1103705_black-duck-cartoon-character.png"
+}

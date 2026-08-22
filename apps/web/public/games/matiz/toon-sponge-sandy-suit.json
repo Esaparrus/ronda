@@ -1,0 +1,12 @@
+{
+  "id": "toon-sponge-sandy-suit",
+  "title": "Arenita",
+  "subtitle": "Pon el color de su traje",
+  "image": "/games/matiz/toon-sponge-sandy-suit-base.png",
+  "mask": "/games/matiz/toon-sponge-sandy-suit-mask.png",
+  "width": 618,
+  "height": 412,
+  "selectedPixels": 32931,
+  "targetHex": "#f5f5ee",
+  "source": "https://www.vhv.rs/dpng/d/405-4054868_spongebob-squarepants-download-png-image-spongebob-squarepants-spongebob.png"
+}

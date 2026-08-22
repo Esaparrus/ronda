@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-amazon",
+  "title": "Amazon",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-amazon-base.png",
+  "mask": "/games/matiz/logo-extra-amazon-mask.png",
+  "width": 900,
+  "height": 272,
+  "selectedPixels": 16415,
+  "targetHex": "#ff9900",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/960px-Amazon_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

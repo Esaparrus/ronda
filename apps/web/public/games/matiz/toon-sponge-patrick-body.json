@@ -1,0 +1,12 @@
+{
+  "id": "toon-sponge-patrick-body",
+  "title": "Patricio Estrella",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/toon-sponge-patrick-body-base.png",
+  "mask": "/games/matiz/toon-sponge-patrick-body-mask.png",
+  "width": 618,
+  "height": 412,
+  "selectedPixels": 28272,
+  "targetHex": "#ef97a6",
+  "source": "https://www.vhv.rs/dpng/d/405-4054868_spongebob-squarepants-download-png-image-spongebob-squarepants-spongebob.png"
+}

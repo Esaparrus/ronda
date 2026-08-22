@@ -1,0 +1,12 @@
+{
+  "id": "toon-family-guy-brian-collar",
+  "title": "Brian Griffin",
+  "subtitle": "Pon el color de su collar",
+  "image": "/games/matiz/toon-family-guy-brian-collar-base.png",
+  "mask": "/games/matiz/toon-family-guy-brian-collar-mask.png",
+  "width": 658,
+  "height": 406,
+  "selectedPixels": 42580,
+  "targetHex": "#d52d2a",
+  "source": "https://www.nicepng.com/png/detail/888-8883757_watch-family-guy-online-free-stuck-together-torn.png"
+}

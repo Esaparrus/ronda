@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-valorant",
+  "title": "Valorant",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-valorant-base.png",
+  "mask": "/games/matiz/logo-extra-valorant-mask.png",
+  "width": 900,
+  "height": 129,
+  "selectedPixels": 57074,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Valorant_logo.svg/960px-Valorant_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

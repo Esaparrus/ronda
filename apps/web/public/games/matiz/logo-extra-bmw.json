@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-bmw",
+  "title": "BMW",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-bmw-base.png",
+  "mask": "/games/matiz/logo-extra-bmw-mask.png",
+  "width": 900,
+  "height": 900,
+  "selectedPixels": 108653,
+  "targetHex": "#f2f2f2",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/BMW.svg/960px-BMW.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

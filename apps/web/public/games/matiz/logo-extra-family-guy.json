@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-family-guy",
+  "title": "Padre de Familia",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-family-guy-base.png",
+  "mask": "/games/matiz/logo-extra-family-guy-mask.png",
+  "width": 900,
+  "height": 513,
+  "selectedPixels": 194444,
+  "targetHex": "#00a0d4",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Family_Guy_Logo.svg/960px-Family_Guy_Logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

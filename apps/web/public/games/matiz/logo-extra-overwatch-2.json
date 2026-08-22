@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-overwatch-2",
+  "title": "Overwatch 2",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-overwatch-2-base.png",
+  "mask": "/games/matiz/logo-extra-overwatch-2-mask.png",
+  "width": 900,
+  "height": 653,
+  "selectedPixels": 211064,
+  "targetHex": "#333f49",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Overwatch_2_logo.svg/960px-Overwatch_2_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

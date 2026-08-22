@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-powerpuff-girls",
+  "title": "Las Supernenas",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-powerpuff-girls-base.png",
+  "mask": "/games/matiz/logo-extra-powerpuff-girls-mask.png",
+  "width": 900,
+  "height": 251,
+  "selectedPixels": 61716,
+  "targetHex": "#f471b4",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/The_Powerpuff_Girls_logo.svg/960px-The_Powerpuff_Girls_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

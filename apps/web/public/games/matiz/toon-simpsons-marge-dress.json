@@ -1,0 +1,12 @@
+{
+  "id": "toon-simpsons-marge-dress",
+  "title": "Marge Simpson",
+  "subtitle": "Pon el color de su vestido",
+  "image": "/games/matiz/toon-simpsons-marge-dress-base.png",
+  "mask": "/games/matiz/toon-simpsons-marge-dress-mask.png",
+  "width": 762,
+  "height": 622,
+  "selectedPixels": 2685,
+  "targetHex": "#5baa56",
+  "source": "https://image.pngaaa.com/148/983148-middle.png"
+}

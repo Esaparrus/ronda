@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-epic-games",
+  "title": "Epic Games",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-epic-games-base.png",
+  "mask": "/games/matiz/logo-extra-epic-games-mask.png",
+  "width": 776,
+  "height": 900,
+  "selectedPixels": 479489,
+  "targetHex": "#2f2d2e",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Epic_Games_logo.svg/960px-Epic_Games_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

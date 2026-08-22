@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-futurama",
+  "title": "Futurama",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-futurama-base.png",
+  "mask": "/games/matiz/logo-extra-futurama-mask.png",
+  "width": 900,
+  "height": 293,
+  "selectedPixels": 35439,
+  "targetHex": "#f7f06f",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Futurama_1999_logo.svg/960px-Futurama_1999_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

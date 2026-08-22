@@ -8,7 +8,7 @@ export default function MatizPage() {
       kind="Percepción de color"
       players="1–7 jugadores"
       duration="5–15 min"
-      summary="Completa el color que falta en una ilustración. Ajusta tono, intensidad y luz, y descubre quién se acerca más al original."
+      summary="Completa el color que falta en una ilustración. Ajusta color e intensidad y descubre quién se acerca más al original."
       primaryAction={{
         href: '/crear/matiz',
         label: 'Jugar en grupo',
@@ -17,14 +17,14 @@ export default function MatizPage() {
       secondaryAction={{
         href: '/juegos/matiz/solo',
         label: 'Jugar individual',
-        description: 'Diez dibujos para mejorar tu ojo.',
+        description: 'Más de 200 dibujos, personajes y logos para mejorar tu ojo.',
       }}
       toolAction={{
         href: '/juegos/matiz/preparar',
         label: 'Preparar tus imágenes',
         description: 'Sube una imagen y genera su máscara automáticamente.',
       }}
-      note="Más de 100 retos aislados: personajes cartoon, prendas, herramientas, objetos y logos. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima, y ahora se resuelve con dos barras: color e intensidad."
+      note="223 retos aislados: 100 Pokémon, personajes de series y videojuegos, prendas y 59 logos reales. Cada reto sustituye píxeles concretos de la ilustración, no una caja dibujada por encima, y se resuelve con dos barras: color e intensidad."
     />
   );
 }

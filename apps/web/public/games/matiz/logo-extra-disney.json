@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-disney",
+  "title": "Disney",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-disney-base.png",
+  "mask": "/games/matiz/logo-extra-disney-mask.png",
+  "width": 900,
+  "height": 379,
+  "selectedPixels": 94209,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Disney_wordmark.svg/960px-Disney_wordmark.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

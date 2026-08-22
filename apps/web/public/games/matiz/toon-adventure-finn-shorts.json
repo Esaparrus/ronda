@@ -1,0 +1,12 @@
+{
+  "id": "toon-adventure-finn-shorts",
+  "title": "Finn · Hora de Aventuras",
+  "subtitle": "Pon el color de sus pantalones",
+  "image": "/games/matiz/toon-adventure-finn-shorts-base.png",
+  "mask": "/games/matiz/toon-adventure-finn-shorts-mask.png",
+  "width": 854,
+  "height": 678,
+  "selectedPixels": 46985,
+  "targetHex": "#1f56a1",
+  "source": "https://freepngimg.com/save/127354-and-jake-adventure-finn-time/900x900"
+}

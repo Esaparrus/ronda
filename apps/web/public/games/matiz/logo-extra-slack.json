@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-slack",
+  "title": "Slack",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-slack-base.png",
+  "mask": "/games/matiz/logo-extra-slack-mask.png",
+  "width": 900,
+  "height": 230,
+  "selectedPixels": 6966,
+  "targetHex": "#2eb67d",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Slack_Technologies_Logo.svg/960px-Slack_Technologies_Logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

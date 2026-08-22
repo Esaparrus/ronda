@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-whatsapp",
+  "title": "WhatsApp",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-whatsapp-base.png",
+  "mask": "/games/matiz/logo-extra-whatsapp-mask.png",
+  "width": 898,
+  "height": 900,
+  "selectedPixels": 290811,
+  "targetHex": "#48c857",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/960px-WhatsApp.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

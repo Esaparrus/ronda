@@ -1,0 +1,12 @@
+{
+  "id": "toon-futurama-bender-body",
+  "title": "Bender · Futurama",
+  "subtitle": "Pon el color de su cuerpo",
+  "image": "/games/matiz/toon-futurama-bender-body-base.png",
+  "mask": "/games/matiz/toon-futurama-bender-body-mask.png",
+  "width": 800,
+  "height": 827,
+  "selectedPixels": 45489,
+  "targetHex": "#9da19e",
+  "source": "https://flyclipart.com/thumb2/futurama-leela-fry-bender-png-image-546259.png"
+}

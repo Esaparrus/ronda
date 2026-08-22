@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-gitlab",
+  "title": "GitLab",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-gitlab-base.png",
+  "mask": "/games/matiz/logo-extra-gitlab-mask.png",
+  "width": 900,
+  "height": 276,
+  "selectedPixels": 32333,
+  "targetHex": "#8c929d",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/GitLab_logo.svg/960px-GitLab_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

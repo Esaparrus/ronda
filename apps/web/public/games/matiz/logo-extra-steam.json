@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-steam",
+  "title": "Steam",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-steam-base.png",
+  "mask": "/games/matiz/logo-extra-steam-mask.png",
+  "width": 900,
+  "height": 274,
+  "selectedPixels": 22918,
+  "targetHex": "#c2c1bf",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Steam_logo.svg/960px-Steam_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

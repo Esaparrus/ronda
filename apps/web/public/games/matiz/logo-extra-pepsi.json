@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-pepsi",
+  "title": "Pepsi",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-pepsi-base.png",
+  "mask": "/games/matiz/logo-extra-pepsi-mask.png",
+  "width": 900,
+  "height": 900,
+  "selectedPixels": 131163,
+  "targetHex": "#0e0e96",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Pepsi_2023.svg/960px-Pepsi_2023.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "toon-simpsons-homer-pants",
+  "title": "Homer Simpson",
+  "subtitle": "Pon el color de sus pantalones",
+  "image": "/games/matiz/toon-simpsons-homer-pants-base.png",
+  "mask": "/games/matiz/toon-simpsons-homer-pants-mask.png",
+  "width": 762,
+  "height": 622,
+  "selectedPixels": 44916,
+  "targetHex": "#3666b6",
+  "source": "https://image.pngaaa.com/148/983148-middle.png"
+}

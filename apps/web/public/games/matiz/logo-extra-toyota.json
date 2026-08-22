@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-toyota",
+  "title": "Toyota",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-toyota-base.png",
+  "mask": "/games/matiz/logo-extra-toyota-mask.png",
+  "width": 900,
+  "height": 159,
+  "selectedPixels": 66726,
+  "targetHex": "#eb0a1e",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Toyota_logo.svg/960px-Toyota_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

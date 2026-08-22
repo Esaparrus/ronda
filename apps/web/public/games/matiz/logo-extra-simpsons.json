@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-simpsons",
+  "title": "Los Simpson",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-simpsons-base.png",
+  "mask": "/games/matiz/logo-extra-simpsons-mask.png",
+  "width": 900,
+  "height": 414,
+  "selectedPixels": 86479,
+  "targetHex": "#ffde00",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/The_Simpsons_yellow_logo.svg/960px-The_Simpsons_yellow_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

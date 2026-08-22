@@ -1,0 +1,12 @@
+{
+  "id": "toon-southpark-kenny-parka",
+  "title": "Kenny McCormick",
+  "subtitle": "Pon el color de su parka",
+  "image": "/games/matiz/toon-southpark-kenny-parka-base.png",
+  "mask": "/games/matiz/toon-southpark-kenny-parka-mask.png",
+  "width": 900,
+  "height": 348,
+  "selectedPixels": 39229,
+  "targetHex": "#ee7326",
+  "source": "https://pngimg.com/uploads/south_park/south_park_PNG37.png"
+}

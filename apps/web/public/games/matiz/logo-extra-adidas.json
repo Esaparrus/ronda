@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-adidas",
+  "title": "Adidas",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-adidas-base.png",
+  "mask": "/games/matiz/logo-extra-adidas-mask.png",
+  "width": 900,
+  "height": 622,
+  "selectedPixels": 216242,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/960px-Adidas_Logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

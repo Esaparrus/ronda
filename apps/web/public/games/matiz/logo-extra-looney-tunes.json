@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-looney-tunes",
+  "title": "Looney Tunes",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-looney-tunes-base.png",
+  "mask": "/games/matiz/logo-extra-looney-tunes-mask.png",
+  "width": 900,
+  "height": 432,
+  "selectedPixels": 24927,
+  "targetHex": "#cf0f2e",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Looney_Tunes_logo.svg/960px-Looney_Tunes_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

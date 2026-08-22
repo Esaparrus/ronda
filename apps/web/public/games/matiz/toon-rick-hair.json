@@ -1,0 +1,12 @@
+{
+  "id": "toon-rick-hair",
+  "title": "Rick Sanchez",
+  "subtitle": "Pon el color de su pelo",
+  "image": "/games/matiz/toon-rick-hair-base.png",
+  "mask": "/games/matiz/toon-rick-hair-mask.png",
+  "width": 331,
+  "height": 768,
+  "selectedPixels": 12919,
+  "targetHex": "#71c2da",
+  "source": "https://freepngimg.com/save/27467-rick-and-morty-transparent-image/612x792"
+}

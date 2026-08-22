@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-roblox",
+  "title": "Roblox",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-roblox-base.png",
+  "mask": "/games/matiz/logo-extra-roblox-mask.png",
+  "width": 900,
+  "height": 167,
+  "selectedPixels": 91345,
+  "targetHex": "#000000",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Roblox_Logo_2022.svg/960px-Roblox_Logo_2022.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

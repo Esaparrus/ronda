@@ -1,0 +1,12 @@
+{
+  "id": "toon-simpsons-marge-hair",
+  "title": "Marge Simpson",
+  "subtitle": "Pon el color de su pelo",
+  "image": "/games/matiz/toon-simpsons-marge-hair-base.png",
+  "mask": "/games/matiz/toon-simpsons-marge-hair-mask.png",
+  "width": 762,
+  "height": 622,
+  "selectedPixels": 46405,
+  "targetHex": "#2373b0",
+  "source": "https://image.pngaaa.com/148/983148-middle.png"
+}

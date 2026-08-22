@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-lego",
+  "title": "LEGO",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-lego-base.png",
+  "mask": "/games/matiz/logo-extra-lego-mask.png",
+  "width": 900,
+  "height": 900,
+  "selectedPixels": 484036,
+  "targetHex": "#e3000b",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/960px-LEGO_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "toon-family-guy-chris-shirt",
+  "title": "Chris Griffin",
+  "subtitle": "Pon el color de su camiseta",
+  "image": "/games/matiz/toon-family-guy-chris-shirt-base.png",
+  "mask": "/games/matiz/toon-family-guy-chris-shirt-mask.png",
+  "width": 658,
+  "height": 406,
+  "selectedPixels": 33945,
+  "targetHex": "#4884ca",
+  "source": "https://www.nicepng.com/png/detail/888-8883757_watch-family-guy-online-free-stuck-together-torn.png"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-telegram",
+  "title": "Telegram",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-telegram-base.png",
+  "mask": "/games/matiz/logo-extra-telegram-mask.png",
+  "width": 900,
+  "height": 900,
+  "selectedPixels": 535180,
+  "targetHex": "#30a8de",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/960px-Telegram_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

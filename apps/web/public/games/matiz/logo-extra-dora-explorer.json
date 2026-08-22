@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-dora-explorer",
+  "title": "Dora la Exploradora",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-dora-explorer-base.png",
+  "mask": "/games/matiz/logo-extra-dora-explorer-mask.png",
+  "width": 900,
+  "height": 508,
+  "selectedPixels": 47582,
+  "targetHex": "#f13ea1",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Dora_the_Explorer_logo.svg/960px-Dora_the_Explorer_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

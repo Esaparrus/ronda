@@ -1,0 +1,12 @@
+{
+  "id": "toon-family-guy-meg-shirt",
+  "title": "Meg Griffin",
+  "subtitle": "Pon el color de su camiseta",
+  "image": "/games/matiz/toon-family-guy-meg-shirt-base.png",
+  "mask": "/games/matiz/toon-family-guy-meg-shirt-mask.png",
+  "width": 658,
+  "height": 406,
+  "selectedPixels": 42432,
+  "targetHex": "#e994b4",
+  "source": "https://www.nicepng.com/png/detail/888-8883757_watch-family-guy-online-free-stuck-together-torn.png"
+}

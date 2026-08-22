@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-chrome",
+  "title": "Google Chrome",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-chrome-base.png",
+  "mask": "/games/matiz/logo-extra-chrome-mask.png",
+  "width": 899,
+  "height": 900,
+  "selectedPixels": 169041,
+  "targetHex": "#ffcd43",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Google_Chrome_icon_%28September_2014%29.svg/960px-Google_Chrome_icon_%28September_2014%29.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-marvel",
+  "title": "Marvel",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-marvel-base.png",
+  "mask": "/games/matiz/logo-extra-marvel-mask.png",
+  "width": 900,
+  "height": 363,
+  "selectedPixels": 138121,
+  "targetHex": "#ed1d24",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Marvel_Logo.svg/960px-Marvel_Logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

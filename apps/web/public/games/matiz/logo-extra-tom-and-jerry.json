@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-tom-and-jerry",
+  "title": "Tom y Jerry",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-tom-and-jerry-base.png",
+  "mask": "/games/matiz/logo-extra-tom-and-jerry-mask.png",
+  "width": 900,
+  "height": 189,
+  "selectedPixels": 85075,
+  "targetHex": "#e1393e",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Tom_and_Jerry_logo.svg/960px-Tom_and_Jerry_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

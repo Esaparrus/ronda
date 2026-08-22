@@ -1,0 +1,12 @@
+{
+  "id": "toon-family-guy-stewie-overalls",
+  "title": "Stewie Griffin",
+  "subtitle": "Pon el color de su ropa",
+  "image": "/games/matiz/toon-family-guy-stewie-overalls-base.png",
+  "mask": "/games/matiz/toon-family-guy-stewie-overalls-mask.png",
+  "width": 658,
+  "height": 406,
+  "selectedPixels": 43730,
+  "targetHex": "#d22627",
+  "source": "https://www.nicepng.com/png/detail/888-8883757_watch-family-guy-online-free-stuck-together-torn.png"
+}

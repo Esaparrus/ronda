@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-nintendo",
+  "title": "Nintendo",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-nintendo-base.png",
+  "mask": "/games/matiz/logo-extra-nintendo-mask.png",
+  "width": 900,
+  "height": 222,
+  "selectedPixels": 100214,
+  "targetHex": "#ed1c24",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Nintendo_logo.svg/960px-Nintendo_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

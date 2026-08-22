@@ -1,0 +1,12 @@
+{
+  "id": "toon-southpark-stan-hat",
+  "title": "Stan Marsh",
+  "subtitle": "Pon el color de su gorro",
+  "image": "/games/matiz/toon-southpark-stan-hat-base.png",
+  "mask": "/games/matiz/toon-southpark-stan-hat-mask.png",
+  "width": 900,
+  "height": 348,
+  "selectedPixels": 11366,
+  "targetHex": "#2f63be",
+  "source": "https://pngimg.com/uploads/south_park/south_park_PNG37.png"
+}

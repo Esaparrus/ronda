@@ -1,0 +1,12 @@
+{
+  "id": "toon-adventure-finn-backpack",
+  "title": "Finn · Hora de Aventuras",
+  "subtitle": "Pon el color de su mochila",
+  "image": "/games/matiz/toon-adventure-finn-backpack-base.png",
+  "mask": "/games/matiz/toon-adventure-finn-backpack-mask.png",
+  "width": 854,
+  "height": 678,
+  "selectedPixels": 17095,
+  "targetHex": "#4fa147",
+  "source": "https://freepngimg.com/save/127354-and-jake-adventure-finn-time/900x900"
+}

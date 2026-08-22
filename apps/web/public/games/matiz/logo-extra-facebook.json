@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-facebook",
+  "title": "Facebook",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-facebook-base.png",
+  "mask": "/games/matiz/logo-extra-facebook-mask.png",
+  "width": 900,
+  "height": 900,
+  "selectedPixels": 499858,
+  "targetHex": "#1977f3",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/960px-Facebook_f_logo_%282019%29.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}

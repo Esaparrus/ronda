@@ -1,0 +1,12 @@
+{
+  "id": "logo-extra-counter-strike-2",
+  "title": "Counter-Strike 2",
+  "subtitle": "Pon el color del logo",
+  "image": "/games/matiz/logo-extra-counter-strike-2-base.png",
+  "mask": "/games/matiz/logo-extra-counter-strike-2-mask.png",
+  "width": 900,
+  "height": 185,
+  "selectedPixels": 61893,
+  "targetHex": "#1e202f",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Counter-Strike_2_logo.svg/960px-Counter-Strike_2_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+}
