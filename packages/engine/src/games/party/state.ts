@@ -95,6 +95,10 @@ export interface ScaleRoundState {
   guesses: Record<PlayerId, number>;
   /** Puntos obtenidos en la última resolución. */
   scoreDeltas: Record<PlayerId, number> | null;
+  /** Puntos obtenidos por grupo en la última resolución; solo en equipos. */
+  groupScoreDeltas: Record<string, number> | null;
+  /** Distancia media por grupo en la última resolución; solo en equipos. */
+  groupAverageDistances: Record<string, number> | null;
   /** Marcador acumulado por grupo, indexado como texto por serialización JSON. */
   groupScores: Record<string, number>;
   winnerGroupIndex: number | null;

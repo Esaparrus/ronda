@@ -170,6 +170,12 @@ function buildEscalaCommon(state: PartyState): EscalaCommonView {
       submittedPlayerIds: Object.keys(state.scale.guesses),
       guesses: revealed ? { ...state.scale.guesses } : null,
       scoreDeltas: revealed && state.scale.scoreDeltas ? { ...state.scale.scoreDeltas } : null,
+      groupScoreDeltas:
+        revealed && state.scale.groupScoreDeltas ? { ...state.scale.groupScoreDeltas } : null,
+      groupAverageDistances:
+        revealed && state.scale.groupAverageDistances
+          ? { ...state.scale.groupAverageDistances }
+          : null,
       groups: buildScaleGroups(state),
       winnerGroupIndex: state.scale.winnerGroupIndex ?? null,
     },
@@ -332,7 +338,7 @@ function isScaleGuesser(state: PartyState, playerId: PlayerId): boolean {
   return (
     state.config.gameId !== 'escala' ||
     state.config.groupMode === 'individual' ||
-    player.groupIndex !== state.scale.clueGroupIndex
+    player.groupIndex === state.scale.clueGroupIndex
   );
 }
 

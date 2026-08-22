@@ -295,10 +295,14 @@ function EscalaMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'es
                   (player) =>
                     player.playerId !== party.cluePlayerId &&
                     (view.config.groupMode !== 'groups' ||
-                      player.groupIndex !== party.clueGroupIndex),
+                      player.groupIndex === party.clueGroupIndex),
                 )
                 .map((player) => {
                   const value = party.guesses?.[player.playerId];
+                  const distance =
+                    value === undefined || party.target === null
+                      ? 100
+                      : Math.abs(value - party.target);
                   return (
                     <div
                       key={player.playerId}
@@ -306,13 +310,22 @@ function EscalaMesaBoard({ view }: { view: Extract<PartyTableView, { gameId: 'es
                     >
                       <p className="text-18 font-semibold text-hueso">{player.nick}</p>
                       <p className="mt-1 font-mono text-20 text-oro">
-                        {value === undefined ? 'Sin respuesta' : value} · +
-                        {party.scoreDeltas?.[player.playerId] ?? 0}
+                        {value === undefined ? 'Sin respuesta' : value}
+                        {view.config.groupMode === 'groups'
+                          ? ` · distancia ${distance}`
+                          : ` · +${party.scoreDeltas?.[player.playerId] ?? 0}`}
                       </p>
                     </div>
                   );
                 })}
             </div>
+            {view.config.groupMode === 'groups' && party.clueGroupIndex !== null ? (
+              <p className="text-20 font-semibold text-oro">
+                Grupo {groupLetter(party.clueGroupIndex)} · distancia media{' '}
+                {party.groupAverageDistances?.[String(party.clueGroupIndex)] ?? 100} · +
+                {party.groupScoreDeltas?.[String(party.clueGroupIndex)] ?? 0} puntos
+              </p>
+            ) : null}
             {party.groups ? (
               <div className="flex flex-wrap justify-center gap-3">
                 {party.groups.map((group) => (

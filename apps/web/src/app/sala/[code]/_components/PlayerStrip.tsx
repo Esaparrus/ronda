@@ -75,7 +75,10 @@ export function PlayerStrip({
       aria-label={grouped ? 'Jugadores agrupados por equipos' : 'Jugadores'}
     >
       {grouped ? (
-        <div className="flex gap-2 overflow-x-auto px-2 py-2 [scrollbar-color:theme(colors.oro)_transparent] [scrollbar-width:thin]">
+        <div
+          className="grid gap-1.5 px-2 py-1"
+          style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}
+        >
           {groups.map((group) => {
             const members = ordered.filter((player) => player.groupIndex === group.index);
             const accent = GROUP_ACCENTS[group.index % GROUP_ACCENTS.length] ?? GROUP_ACCENTS[0];
@@ -83,39 +86,44 @@ export function PlayerStrip({
               <section
                 key={group.index}
                 aria-label={`Grupo ${accent.name}, ${group.score} puntos`}
-                className={`min-w-[min(46vw,220px)] flex-1 rounded-2xl border p-1.5 ${accent.section}`}
+                className={`min-w-0 overflow-hidden rounded-xl border p-1 ${accent.section}`}
               >
-                <header className="flex items-center justify-between gap-2 px-2 py-1">
+                <header className="flex min-w-0 items-center justify-between gap-1 px-1 py-0.5">
                   <span
-                    className={`flex items-center gap-1.5 text-11 font-semibold uppercase tracking-wider ${accent.label}`}
+                    className={`flex min-w-0 items-center gap-1 truncate text-[9px] font-semibold uppercase leading-none tracking-wide ${accent.label}`}
                   >
-                    <span aria-hidden="true" className={`size-2 rounded-full ${accent.marker}`} />
-                    Grupo {accent.name}
+                    <span
+                      aria-hidden="true"
+                      className={`size-1.5 shrink-0 rounded-full ${accent.marker}`}
+                    />
+                    <span className="truncate">Grupo {accent.name}</span>
                   </span>
-                  <span className={`whitespace-nowrap font-mono text-11 ${accent.label}`}>
-                    {group.score} puntos
+                  <span
+                    className={`whitespace-nowrap font-mono text-[9px] leading-none ${accent.label}`}
+                  >
+                    {group.score} pt
                   </span>
                 </header>
-                <div className="flex flex-wrap justify-center gap-1">
+                <div className="grid min-w-0 grid-flow-col auto-cols-fr gap-0.5">
                   {members.map((p) => {
                     const isAlert = alertPlayerSet.has(p.playerId);
                     const isTurn = p.playerId === turnPlayerId;
                     return (
                       <div
                         key={p.playerId}
-                        title={p.nick}
-                        className={`flex min-w-14 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1 transition-colors ${
+                        title={`${p.nick}${p.playerId === myPlayerId ? ' (tú)' : ''}`}
+                        className={`flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-0.5 py-0.5 transition-colors ${
                           isTurn ? `ring-1 ring-inset ${accent.active}` : ''
                         } ${isAlert ? 'bg-brasa/10 ring-1 ring-inset ring-brasa/60' : ''}`}
                       >
                         <Avatar
                           name={p.nick}
                           colorIndex={p.colorIndex}
-                          size={28}
+                          size={22}
                           className={`${p.connected ? '' : 'opacity-40'} ${isAlert ? 'grayscale opacity-80' : ''}`}
                         />
                         <span
-                          className={`max-w-full truncate text-11 ${
+                          className={`max-w-full truncate text-[9px] leading-none ${
                             isAlert ? 'text-brasa' : 'text-hueso'
                           }`}
                         >

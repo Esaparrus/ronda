@@ -130,8 +130,7 @@ export function SalaClient({ code }: SalaClientProps) {
 
   const showSevenHalfBustReveal =
     sevenHalfBustRevealRound !== null && sevenHalfBustRevealRound === sevenHalfBustRevealCandidate;
-  const isPlaying =
-    (view?.status === 'playing' || showSevenHalfBustReveal) && !shouldShowBriefing;
+  const isPlaying = (view?.status === 'playing' || showSevenHalfBustReveal) && !shouldShowBriefing;
   const usesIntegratedGameHeader = isPlaying && view?.gameId === 'laronda';
 
   // Una partida es una superficie de juego, no una página desplazable. Se
@@ -263,14 +262,16 @@ export function SalaClient({ code }: SalaClientProps) {
     >
       <Banner status={connection} className="shrink-0" />
       {isPlaying && !usesIntegratedGameHeader ? (
-        <div className="liquid-glass liquid-glass--strong flex shrink-0 justify-end border-x-0 border-t-0 px-3 py-1.5">
+        <div className="liquid-glass liquid-glass--strong flex shrink-0 justify-end border-x-0 border-t-0 px-3 py-1">
           <button
             type="button"
             onClick={() => setConfirmLeave(true)}
-            className="glass-button !min-h-10 px-3 text-13 font-semibold text-humo"
+            aria-label="Salir de la partida"
+            title="Salir de la partida"
+            className="glass-button !size-8 !min-h-8 !gap-0 !rounded-full !p-0 text-humo"
           >
             <Icon name="arrow-left" size={16} />
-            Salir
+            <span className="sr-only">Salir</span>
           </button>
         </div>
       ) : null}

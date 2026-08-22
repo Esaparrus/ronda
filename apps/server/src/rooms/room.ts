@@ -287,6 +287,22 @@ export class Room {
       return true;
     }
 
+    if (
+      state.gameId === 'escala' &&
+      state.config.gameId === 'escala' &&
+      state.config.groupMode === 'groups'
+    ) {
+      for (const p of state.players) {
+        const score =
+          p.groupIndex === null || !state.scale
+            ? 0
+            : state.scale.groupScores[String(p.groupIndex)] ?? 0;
+        const won = state.scale?.winnerGroupIndex === p.groupIndex;
+        this.addStatsRow(p, { won, rounds: state.round, score });
+      }
+      return true;
+    }
+
     for (const p of state.players) {
       this.addStatsRow(p, {
         won: state.winnerId === p.playerId,

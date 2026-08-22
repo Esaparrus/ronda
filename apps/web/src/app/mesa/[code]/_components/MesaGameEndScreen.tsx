@@ -20,7 +20,8 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
   const rest = view.players
     .filter((p) => p.playerId !== view.winnerId)
     .sort((a, b) => (view.gameId === 'chinchon' ? a.score - b.score : b.score - a.score));
-  const standings = winner ? [winner, ...rest] : rest;
+  const isScaleGroups = view.gameId === 'escala' && view.config.groupMode === 'groups';
+  const standings = isScaleGroups ? [] : winner ? [winner, ...rest] : rest;
   const winningGroupIndex =
     view.gameId === 'escala' && view.config.groupMode === 'groups'
       ? view.party.winnerGroupIndex
@@ -52,35 +53,37 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
         </p>
       </header>
 
-      <ol className="flex w-full max-w-2xl flex-col gap-3">
-        {standings.map((p, i) => (
-          <li
-            key={p.playerId}
-            className="flex items-center gap-4 rounded-lg border border-linea bg-mesa px-5 py-3"
-            style={{
-              animation: `stagger-reveal 300ms ease-out both`,
-              animationDelay: `${i * STAGGER_MS}ms`,
-            }}
-          >
-            <span className="w-8 text-center font-mono text-[clamp(1rem,1.6vw,1.4rem)] text-humo">
-              {i + 1}
-            </span>
-            <Avatar name={p.nick} colorIndex={p.colorIndex} size={44} />
-            <span className="flex-1 text-left text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">
-              {p.nick}
-            </span>
-            {p.playerId === view.winnerId ? (
-              <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">
-                {winningGroupIndex === null ? 'Ganador' : 'Grupo ganador'}
-              </Pill>
-            ) : null}
-            {p.eliminated ? (
-              <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">Eliminado</Pill>
-            ) : null}
-            <span className="font-mono text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">{p.score}</span>
-          </li>
-        ))}
-      </ol>
+      {!isScaleGroups ? (
+        <ol className="flex w-full max-w-2xl flex-col gap-3">
+          {standings.map((p, i) => (
+            <li
+              key={p.playerId}
+              className="flex items-center gap-4 rounded-lg border border-linea bg-mesa px-5 py-3"
+              style={{
+                animation: `stagger-reveal 300ms ease-out both`,
+                animationDelay: `${i * STAGGER_MS}ms`,
+              }}
+            >
+              <span className="w-8 text-center font-mono text-[clamp(1rem,1.6vw,1.4rem)] text-humo">
+                {i + 1}
+              </span>
+              <Avatar name={p.nick} colorIndex={p.colorIndex} size={44} />
+              <span className="flex-1 text-left text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">
+                {p.nick}
+              </span>
+              {p.playerId === view.winnerId ? (
+                <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">
+                  {winningGroupIndex === null ? 'Ganador' : 'Grupo ganador'}
+                </Pill>
+              ) : null}
+              {p.eliminated ? (
+                <Pill className="text-[clamp(0.8rem,1.2vw,1rem)]">Eliminado</Pill>
+              ) : null}
+              <span className="font-mono text-[clamp(1.1rem,2vw,1.5rem)] text-hueso">{p.score}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
 
       {view.gameId === 'escala' && view.party.groups ? (
         <section className="flex w-full max-w-2xl flex-col gap-3">
@@ -100,6 +103,12 @@ export function MesaGameEndScreen({ view }: MesaGameEndScreenProps) {
                 </span>
                 <span className="ml-3 font-mono text-[clamp(1.1rem,2vw,1.5rem)] text-oro">
                   {group.score}
+                </span>
+                <span className="mt-1 block text-[clamp(0.75rem,1.2vw,0.95rem)] text-humo">
+                  {group.playerIds
+                    .map((playerId) => view.players.find((player) => player.playerId === playerId)?.nick)
+                    .filter((nick): nick is string => Boolean(nick))
+                    .join(', ')}
                 </span>
               </div>
             ))}

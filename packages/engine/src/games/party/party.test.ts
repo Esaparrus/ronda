@@ -416,10 +416,12 @@ describe('modos sociales', () => {
     expect(state.scale?.clueGroupIndex).toBe(0);
 
     state = apply(state, 'p1', { type: 'submitScaleClue', clue: 'Plan polémico' });
-    expect(getPlayerView(state, 'p3').me.availableActions).not.toContain('submitScale');
-    expect(getPlayerView(state, 'p2').me.availableActions).toContain('submitScale');
-    state = apply(state, 'p2', { type: 'submitScale', value: 30 });
-    state = apply(state, 'p4', { type: 'submitScale', value: 70 });
+    expect(getPlayerView(state, 'p3').me.availableActions).toContain('submitScale');
+    expect(getPlayerView(state, 'p2').me.availableActions).not.toContain('submitScale');
+    expect(
+      applyAction(state, 'p2', { type: 'submitScale', value: 30 }, 0),
+    ).toMatchObject({ ok: false, code: 'INVALID_ACTION' });
+    state = apply(state, 'p3', { type: 'submitScale', value: 30 });
     expect(state.phase).toBe('reveal');
 
     state = apply(state, 'p3', { type: 'nextRound' });
@@ -429,12 +431,62 @@ describe('modos sociales', () => {
     expect(state.scale?.clueGroupIndex).toBe(1);
 
     state = apply(state, 'p2', { type: 'submitScaleClue', clue: 'Otra forma de verlo' });
-    expect(getPlayerView(state, 'p1').me.availableActions).toContain('submitScale');
-    expect(getPlayerView(state, 'p4').me.availableActions).not.toContain('submitScale');
-    state = apply(state, 'p1', { type: 'submitScale', value: 40 });
-    state = apply(state, 'p3', { type: 'submitScale', value: 60 });
+    expect(getPlayerView(state, 'p4').me.availableActions).toContain('submitScale');
+    expect(getPlayerView(state, 'p1').me.availableActions).not.toContain('submitScale');
+    state = apply(state, 'p4', { type: 'submitScale', value: 40 });
     expect(state.phase).toBe('reveal');
     expect(state.scale?.groupScores).not.toEqual({ '0': 0, '1': 0 });
+
+    state = apply(state, 'p4', { type: 'nextRound' });
+    expect(state.scale?.questionId).toBe(firstQuestionId);
+    expect(state.scale?.target).toBe(firstTarget);
+    expect(state.scale?.cluePlayerId).toBe('p3');
+
+    state = apply(state, 'p3', { type: 'submitScaleClue', clue: 'Una tercera mirada' });
+    state = apply(state, 'p1', { type: 'submitScale', value: 50 });
+    expect(state.phase).toBe('reveal');
+
+    state = apply(state, 'p1', { type: 'nextRound' });
+    expect(state.scale?.questionId).toBe(firstQuestionId);
+    expect(state.scale?.target).toBe(firstTarget);
+    expect(state.scale?.cluePlayerId).toBe('p4');
+
+    state = apply(state, 'p4', { type: 'submitScaleClue', clue: 'La última mirada' });
+    state = apply(state, 'p2', { type: 'submitScale', value: 50 });
+    expect(state.phase).toBe('reveal');
+
+    state = apply(state, 'p2', { type: 'nextRound' });
+    expect(state.scale?.questionIndex).toBe(1);
+    expect(state.scale?.questionId).not.toBe(firstQuestionId);
+  });
+
+  it('puntúa al equipo con la media de las distancias de sus respuestas', () => {
+    const config = {
+      ...DEFAULT_ESCALA_CONFIG,
+      groupMode: 'groups' as const,
+      groupCount: 2 as const,
+    };
+    let state = createPartyState(
+      {
+        config,
+        seed: 'scale-average-test',
+        players: UNEVEN_GROUP_PLAYERS,
+        roomCode: 'TEST',
+      },
+      'escala',
+    );
+    if (!state.scale) throw new Error('sin ronda de Escala');
+    state.scale.target = 50;
+
+    state = apply(state, 'p1', { type: 'submitScaleClue', clue: 'Plan intermedio' });
+    state = apply(state, 'p3', { type: 'submitScale', value: 40 });
+    state = apply(state, 'p5', { type: 'submitScale', value: 60 });
+
+    expect(state.phase).toBe('reveal');
+    expect(state.scale?.groupAverageDistances).toEqual({ '0': 10 });
+    expect(state.scale?.groupScoreDeltas).toEqual({ '0': 4 });
+    expect(state.scale?.groupScores).toEqual({ '0': 4, '1': 0 });
+    expect(state.scale?.scoreDeltas).toEqual({});
   });
 
   it('repite la rotación del grupo pequeño hasta igualar al más grande', () => {

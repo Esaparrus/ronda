@@ -14,8 +14,8 @@ mesa.
   decide el orden de llegada.
 - Una ronda queda bloqueada mientras se revela el resultado. Después se pulsa
   «Siguiente»; basta con que lo haga una persona para evitar esperas eternas.
-- Primera versión: todos contra todos. Los equipos quedan como variante
-  posterior para los modos que los soporten sin cambiar sus reglas básicas.
+- Primera versión: todos contra todos. Escala también admite una variante por
+  equipos sin cambiar la regla básica de leer la pista.
 - Los textos, preguntas, extremos y colores serán contenido propio de Ronda;
   no se copian cartas ni listas protegidas de otros juegos.
 
@@ -112,10 +112,14 @@ propias.
    «plan de 5 € — plan de 100 €».
 2. Un jugador recibe en privado una posición secreta entre 0 y 100.
 3. Ese jugador da una pista hablando con el grupo, sin enseñar el número.
-4. El resto coloca su estimación en una barra de 0 a 100 en su móvil.
-5. Se revelan el objetivo y las estimaciones. Cada jugador puntúa por cercanía:
-   4 puntos a 0–10, 3 a 11–20, 2 a 21–30, 1 a 31–40 y 0 más lejos.
-6. El jugador que conoce el objetivo rota cada ronda y no estima esa ronda.
+4. En individual, el resto coloca su estimación en una barra de 0 a 100 en su
+   móvil. En equipos, solo lo hacen las personas del grupo de quien da la pista.
+5. Se revelan el objetivo y las estimaciones. En individual, cada jugador puntúa
+   por cercanía: 4 puntos a 0–10, 3 a 11–20, 2 a 21–30, 1 a 31–40 y 0 más
+   lejos. En equipos solo estima el grupo de la persona guía y el grupo recibe
+   la puntuación correspondiente a la distancia media de sus estimaciones.
+6. El jugador que conoce el objetivo rota cada ronda y no estima esa ronda; en
+   equipos, el grupo contrario responde cuando le toca dar su propia pista.
 7. La partida termina al alcanzar el objetivo de puntos elegido (con un máximo
    de seguridad de rondas).
 
@@ -143,5 +147,5 @@ personales en una broma.
   aplicaciones que ya existen.
 - Modo online específico para Orden: pierde la gracia porque depende de hablar
   y reaccionar juntos en el mismo sitio.
-- Equipos, preguntas creadas por usuarios y contenido adulto como variantes
-  posteriores, una vez probado el flujo básico.
+- Equipos para otros modos, preguntas creadas por usuarios y contenido adulto
+  como variantes posteriores, una vez probado el flujo básico.

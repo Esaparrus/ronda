@@ -485,6 +485,8 @@ function buildPartyLobbyCommon(room: Room): PartyCommonView {
       submittedPlayerIds: [],
       guesses: null,
       scoreDeltas: null,
+      groupScoreDeltas: null,
+      groupAverageDistances: null,
       groups:
         config.groupMode === 'groups'
           ? Array.from({ length: config.groupCount }, (_, index) => ({

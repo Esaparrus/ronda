@@ -646,15 +646,16 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
   const { party, me } = view;
   const isGuide = party.cluePlayerId === me.playerId;
   const myPlayer = view.players.find((player) => player.playerId === me.playerId);
-  const isTeammateOfGuide =
+  const isOpponentOfGuide =
     view.config.groupMode === 'groups' &&
     myPlayer?.groupIndex !== null &&
-    myPlayer?.groupIndex === party.clueGroupIndex &&
+    myPlayer?.groupIndex !== undefined &&
+    myPlayer?.groupIndex !== party.clueGroupIndex &&
     !isGuide;
   const guesserCount = view.players.filter((player) => {
     if (player.playerId === party.cluePlayerId) return false;
     if (view.config.groupMode !== 'groups') return true;
-    return player.groupIndex !== party.clueGroupIndex;
+    return player.groupIndex === party.clueGroupIndex;
   }).length;
 
   useEffect(() => {
@@ -690,30 +691,34 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
             : `${player.score} puntos`;
         }}
       />
-      <main className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 py-6">
-        <section className="surface-panel w-full max-w-md p-5 text-center">
+      <main className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-hidden px-3 py-2">
+        <section className="surface-panel w-full max-w-md p-3 text-center">
           <span className="text-12 uppercase tracking-wider text-humo">Escala</span>
-          <div className="mt-3 flex items-center justify-between gap-3 text-16 font-semibold text-hueso">
+          <div className="mt-2 flex items-center justify-between gap-2 text-15 font-semibold text-hueso">
             <span>{party.leftLabel}</span>
             <span className="text-humo">·</span>
             <span>{party.rightLabel}</span>
           </div>
-          <p className="mt-3 text-14 text-humo">
+          <p className="mt-2 text-13 text-humo">
             {isGuide
               ? view.config.modo === 'online'
                 ? 'Escribe una palabra o frase que apunte a tu objetivo.'
                 : 'Di una palabra o frase en voz alta y confírmala aquí.'
-              : party.clue
-                ? 'Lee la pista y coloca el punto que te parezca.'
-                : 'La guía está preparando su pista.'}
+              : isOpponentOfGuide
+                ? party.clue
+                  ? 'Esta vuelta responde el grupo de la guía.'
+                  : 'El otro grupo está preparando la pista.'
+                : party.clue
+                  ? 'Lee la pista y coloca el punto que te parezca.'
+                  : 'La guía está preparando su pista.'}
           </p>
         </section>
 
         {party.clue ? (
-          <section className="surface-panel w-full max-w-md p-5 text-center">
+          <section className="surface-panel w-full max-w-md p-3 text-center">
             <p className="text-12 uppercase tracking-wider text-humo">Pista de la ronda</p>
-            <p className="mt-2 text-24 font-semibold text-hueso">«{party.clue}»</p>
-            <p className="mt-2 text-12 text-humo">
+            <p className="mt-1 text-22 font-semibold leading-tight text-hueso">«{party.clue}»</p>
+            <p className="mt-1 text-12 text-humo">
               {party.submittedPlayerIds.length}/{guesserCount} estimaciones confirmadas
             </p>
           </section>
@@ -747,15 +752,15 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
           </div>
         ) : null}
 
-        {party.phase === 'input' && isTeammateOfGuide ? (
+        {party.phase === 'input' && isOpponentOfGuide ? (
           <p className="rounded-lg border border-linea bg-mesa px-4 py-3 text-center text-14 text-humo">
-            Tu grupo está dando la pista en esta vuelta. Espera la siguiente escala para estimar.
+            Esta vuelta responde el grupo de la guía. Espera a vuestro siguiente turno.
           </p>
         ) : null}
 
         {party.phase === 'input' && me.availableActions.includes('submitScale') && !me.submitted ? (
-          <div className="flex w-full max-w-md flex-col gap-4">
-            <label htmlFor="scale-guess" className="flex justify-between text-16 text-hueso">
+          <div className="flex w-full max-w-md flex-col gap-2">
+            <label htmlFor="scale-guess" className="flex justify-between text-15 text-hueso">
               <span>Tu estimación</span>
               <span className="font-mono text-oro">{guess}</span>
             </label>
@@ -766,15 +771,19 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
               max={100}
               value={guess}
               onChange={(event) => setGuess(Number(event.target.value))}
-              className="ronda-range my-3"
+              className="ronda-range my-2"
               style={{ '--range-value': `${guess}%` } as CSSProperties}
             />
-            <div className="flex justify-between text-12 text-humo">
+            <div className="-mt-1 flex justify-between text-11 text-humo">
               <span>0</span>
               <span>50</span>
               <span>100</span>
             </div>
-            <Button onClick={submitGuess} loading={pendingAction}>
+            <Button
+              onClick={submitGuess}
+              loading={pendingAction}
+              className="!min-h-12 rounded-2xl px-5 text-14"
+            >
               Aceptar estimación
             </Button>
           </div>
@@ -786,6 +795,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
           <Button
             onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
             loading={pendingAction}
+            className="!min-h-12 rounded-2xl px-5 text-14"
           >
             Siguiente persona
           </Button>
@@ -800,47 +810,69 @@ function ScaleReveal({ view }: { view: EscalaPlayerView }) {
   const guessers = view.players.filter(
     (player) =>
       player.playerId !== view.party.cluePlayerId &&
-      (view.config.groupMode !== 'groups' || player.groupIndex !== view.party.clueGroupIndex),
+      (view.config.groupMode !== 'groups' || player.groupIndex === view.party.clueGroupIndex),
   );
+  const groupIndex = view.party.clueGroupIndex;
+  const groupAverageDistance =
+    groupIndex === null ? undefined : view.party.groupAverageDistances?.[String(groupIndex)];
+  const groupPoints = groupIndex === null ? undefined : view.party.groupScoreDeltas?.[String(groupIndex)];
   return (
-    <section className="surface-panel flex w-full max-w-md flex-col gap-3 p-4">
-      <p className="text-16 font-semibold text-oro">Punto secreto: {view.party.target}/100</p>
+    <section className="surface-panel flex w-full max-w-md flex-col gap-1 p-2">
+      <p className="text-14 font-semibold leading-tight text-oro">
+        Punto secreto: {view.party.target}/100
+      </p>
       {view.party.clue ? (
-        <p className="text-14 text-humo">
+        <p className="text-12 leading-tight text-humo">
           Pista: <span className="font-semibold text-hueso">«{view.party.clue}»</span>
         </p>
       ) : null}
       {guesses
         ? guessers.map((player) => {
             const value = guesses[player.playerId];
+            const distance =
+              value === undefined || view.party.target === null
+                ? 100
+                : Math.abs(value - view.party.target);
             return (
               <div
                 key={player.playerId}
-                className="flex items-center justify-between gap-3 text-14 text-humo"
+                className="flex items-center justify-between gap-2 text-12 leading-tight text-humo"
               >
-                <span>
+                <span className="min-w-0 truncate">
                   {player.nick}: {value === undefined ? 'Sin respuesta' : value}
                 </span>
-                <span className="font-mono text-oro">+{scoreDeltas?.[player.playerId] ?? 0}</span>
+                {view.config.groupMode === 'groups' ? (
+                  <span className="font-mono text-oro">dist. {distance}</span>
+                ) : (
+                  <span className="font-mono text-oro">+{scoreDeltas?.[player.playerId] ?? 0}</span>
+                )}
               </div>
             );
           })
         : null}
+      {view.config.groupMode === 'groups' && groupAverageDistance !== undefined ? (
+        <p className="mt-1 border-t border-linea pt-1 text-12 font-semibold text-oro">
+          Grupo {groupIndex === null ? '' : groupLetter(groupIndex)} · distancia media{' '}
+          {groupAverageDistance} · +{groupPoints ?? 0} puntos
+        </p>
+      ) : null}
       {view.party.groups ? (
-        <div className="mt-2 border-t border-linea pt-3">
-          <p className="text-12 uppercase tracking-wider text-humo">Marcador de grupos</p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="mt-1 border-t border-linea pt-2">
+          <p className="text-[10px] uppercase leading-none tracking-wider text-humo">
+            Marcador de grupos
+          </p>
+          <div className="mt-1 grid grid-cols-2 gap-1">
             {view.party.groups.map((group) => (
               <div
                 key={group.index}
-                className={`rounded-lg border px-3 py-2 ${
+                className={`rounded-lg border px-2 py-1 ${
                   group.index === view.party.winnerGroupIndex
                     ? 'border-oro bg-oro/10'
                     : 'border-linea bg-tinta/20'
                 }`}
               >
-                <span className="text-13 text-humo">Grupo {groupLetter(group.index)}</span>
-                <span className="ml-2 font-mono text-oro">{group.score}</span>
+                <span className="text-11 text-humo">Grupo {groupLetter(group.index)}</span>
+                <span className="ml-1 font-mono text-11 text-oro">{group.score}</span>
               </div>
             ))}
           </div>

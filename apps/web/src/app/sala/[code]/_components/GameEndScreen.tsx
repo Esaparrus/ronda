@@ -29,7 +29,8 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
   const rest = view.players
     .filter((p) => p.playerId !== view.winnerId)
     .sort((a, b) => (view.gameId === 'chinchon' ? a.score - b.score : b.score - a.score));
-  const standings = winner ? [winner, ...rest] : rest;
+  const isScaleGroups = view.gameId === 'escala' && view.config.groupMode === 'groups';
+  const standings = isScaleGroups ? [] : winner ? [winner, ...rest] : rest;
   const winningGroupIndex =
     view.gameId === 'escala' && view.config.groupMode === 'groups'
       ? view.party.winnerGroupIndex
@@ -65,20 +66,22 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
         </p>
       </header>
 
-      <ol className="flex flex-col gap-2">
-        {standings.map((p, i) => (
-          <li key={p.playerId} className="interactive-surface flex items-center gap-3 px-3 py-2">
-            <span className="w-5 text-center font-mono text-14 text-humo">{i + 1}</span>
-            <Avatar name={p.nick} colorIndex={p.colorIndex} size={32} />
-            <span className="flex-1 text-16 text-hueso">{p.nick}</span>
-            {p.playerId === view.winnerId ? (
-              <Pill>{winningGroupIndex === null ? 'Ganador' : 'Grupo ganador'}</Pill>
-            ) : null}
-            {p.eliminated ? <Pill>Eliminado</Pill> : null}
-            <span className="font-mono text-16 text-hueso">{p.score}</span>
-          </li>
-        ))}
-      </ol>
+      {!isScaleGroups ? (
+        <ol className="flex flex-col gap-2">
+          {standings.map((p, i) => (
+            <li key={p.playerId} className="interactive-surface flex items-center gap-3 px-3 py-2">
+              <span className="w-5 text-center font-mono text-14 text-humo">{i + 1}</span>
+              <Avatar name={p.nick} colorIndex={p.colorIndex} size={32} />
+              <span className="flex-1 text-16 text-hueso">{p.nick}</span>
+              {p.playerId === view.winnerId ? (
+                <Pill>{winningGroupIndex === null ? 'Ganador' : 'Grupo ganador'}</Pill>
+              ) : null}
+              {p.eliminated ? <Pill>Eliminado</Pill> : null}
+              <span className="font-mono text-16 text-hueso">{p.score}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
 
       {view.gameId === 'escala' && view.party.groups ? (
         <section className="surface-panel flex flex-col gap-3 p-4">
@@ -95,6 +98,12 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
               >
                 <span className="text-14 text-humo">Grupo {groupLetter(group.index)}</span>
                 <span className="ml-2 font-mono text-18 text-oro">{group.score}</span>
+                <span className="mt-1 block text-12 text-humo">
+                  {group.playerIds
+                    .map((playerId) => view.players.find((player) => player.playerId === playerId)?.nick)
+                    .filter((nick): nick is string => Boolean(nick))
+                    .join(', ')}
+                </span>
               </div>
             ))}
           </div>

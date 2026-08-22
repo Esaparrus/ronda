@@ -90,6 +90,12 @@ function cloneState(state: PartyState): PartyState {
           clueSequence: [...state.scale.clueSequence],
           guesses: { ...state.scale.guesses },
           scoreDeltas: state.scale.scoreDeltas ? { ...state.scale.scoreDeltas } : null,
+          groupScoreDeltas: state.scale.groupScoreDeltas
+            ? { ...state.scale.groupScoreDeltas }
+            : null,
+          groupAverageDistances: state.scale.groupAverageDistances
+            ? { ...state.scale.groupAverageDistances }
+            : null,
           groupScores: { ...state.scale.groupScores },
         }
       : null,
@@ -298,6 +304,8 @@ export function createPartyState(
       deadlineAt: null,
       guesses: {},
       scoreDeltas: null,
+      groupScoreDeltas: null,
+      groupAverageDistances: null,
       groupScores: initialScaleGroupScores(state),
       winnerGroupIndex: null,
     };
@@ -788,7 +796,7 @@ function isScaleGuesser(state: PartyState, playerId: PlayerId): boolean {
   const player = findPlayer(state, playerId);
   if (!player || player.left) return false;
   if (state.config.gameId !== 'escala' || state.config.groupMode === 'individual') return true;
-  return player.groupIndex !== state.scale.clueGroupIndex;
+  return player.groupIndex === state.scale.clueGroupIndex;
 }
 
 function scaleGuessers(state: PartyState): PartyPlayer[] {
@@ -865,6 +873,35 @@ function resolveScaleRound(state: PartyState, events: GameEvent[]): void {
 
 function scoreScale(state: PartyState): void {
   if (!state.scale) return;
+
+  if (state.config.gameId === 'escala' && state.config.groupMode === 'groups') {
+    const groupIndex = state.scale.clueGroupIndex;
+    const target = state.scale.target;
+    const guessers = scaleGuessers(state);
+    const distances = guessers.map((player) => {
+      const guess = state.scale?.guesses[player.playerId];
+      // Una respuesta que falta conserva la penalización de cero puntos que
+      // tenía el modo individual, pero la aplica a la media del equipo.
+      return guess === undefined ? 100 : Math.abs(guess - target);
+    });
+    const averageDistance =
+      distances.length > 0
+        ? distances.reduce((total, distance) => total + distance, 0) / distances.length
+        : 100;
+    const points = scalePoints(averageDistance);
+
+    state.scale.scoreDeltas = {};
+    state.scale.groupScoreDeltas =
+      groupIndex === null ? {} : { [String(groupIndex)]: points };
+    state.scale.groupAverageDistances =
+      groupIndex === null ? {} : { [String(groupIndex)]: roundScaleDistance(averageDistance) };
+    if (groupIndex !== null) {
+      const key = String(groupIndex);
+      state.scale.groupScores[key] = (state.scale.groupScores[key] ?? 0) + points;
+    }
+    return;
+  }
+
   const scoreDeltas: Record<PlayerId, number> = {};
   for (const player of activePlayers(state)) {
     if (!isScaleGuesser(state, player.playerId)) continue;
@@ -878,6 +915,12 @@ function scoreScale(state: PartyState): void {
     }
   }
   state.scale.scoreDeltas = scoreDeltas;
+  state.scale.groupScoreDeltas = null;
+  state.scale.groupAverageDistances = null;
+}
+
+function roundScaleDistance(distance: number): number {
+  return Math.round(distance * 10) / 10;
 }
 
 function scaleSetComplete(state: PartyState): boolean {
@@ -1100,6 +1143,8 @@ function nextScaleRound(
     deadlineAt: null,
     guesses: {},
     scoreDeltas: null,
+    groupScoreDeltas: null,
+    groupAverageDistances: null,
     groupScores: { ...current.groupScores },
     winnerGroupIndex: null,
   };
@@ -1121,6 +1166,8 @@ function nextScaleTurn(
     deadlineAt: null,
     guesses: {},
     scoreDeltas: null,
+    groupScoreDeltas: null,
+    groupAverageDistances: null,
   };
 }
 

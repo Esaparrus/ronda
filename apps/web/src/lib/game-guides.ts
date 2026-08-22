@@ -349,7 +349,7 @@ export const GAME_GUIDES = {
       },
       {
         title: 'El resto coloca su apuesta',
-        body: 'La pista se revela al aceptarla. Cada participante coloca su marcador al lugar que mejor encaja antes de que termine el tiempo.',
+        body: 'La pista se revela al aceptarla. En individual, cada participante coloca su marcador; en equipos, solo responde el mismo grupo que ha dado la pista.',
       },
       {
         title: 'Revelad y medid la distancia',
@@ -357,9 +357,9 @@ export const GAME_GUIDES = {
       },
     ],
     victory:
-      'La cercanía concede 4 puntos a 0–10 de distancia, 3 a 11–20, 2 a 21–30, 1 a 31–40 y 0 a más de 40. La guía rota y gana quien llegue antes al objetivo de puntos.',
+      'La cercanía concede 4 puntos a 0–10 de distancia, 3 a 11–20, 2 a 21–30, 1 a 31–40 y 0 a más de 40. En equipos se usa la distancia media de las respuestas del grupo. La guía rota y gana quien llegue antes al objetivo de puntos.',
     keyRule:
-      'La persona guía no coloca una apuesta. En equipos, todos juegan la misma escala por turnos dentro de cada grupo y se suman los puntos del equipo.',
+      'La persona guía no coloca una apuesta. En equipos, solo responde su propio grupo; el otro grupo compite en su turno y la puntuación de cada turno sale de la media de sus distancias.',
   },
   musical: {
     title: 'Musical',

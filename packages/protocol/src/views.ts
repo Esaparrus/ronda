@@ -464,6 +464,10 @@ export interface EscalaPublic {
   submittedPlayerIds: PlayerId[];
   guesses: Record<PlayerId, number> | null;
   scoreDeltas: Record<PlayerId, number> | null;
+  /** Puntos obtenidos por cada grupo en la resolución actual. Solo en equipos. */
+  groupScoreDeltas: Record<string, number> | null;
+  /** Distancia media de cada grupo en la resolución actual. Solo en equipos. */
+  groupAverageDistances: Record<string, number> | null;
   groups: EscalaGroupPublic[] | null;
   winnerGroupIndex: number | null;
 }
