@@ -706,12 +706,7 @@ summary {
   box-shadow: 0 8px 18px rgb(31 174 82 / 0.2);
 }
 
-.game-glyph-tile[data-category='grupo'] {
-  background: linear-gradient(145deg, #af52de, #7d39b5);
-  box-shadow: 0 8px 18px rgb(175 82 222 / 0.2);
-}
-
-.game-glyph-tile[data-category='retos'] {
+.game-glyph-tile[data-category='otros'] {
   background: linear-gradient(145deg, #ff5d55, #bf5af2);
   box-shadow: 0 8px 18px rgb(191 90 242 / 0.2);
 }

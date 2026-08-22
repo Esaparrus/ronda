@@ -11,7 +11,7 @@ export interface GameCatalogEntry {
 export type GameCategoryIcon = 'cards' | 'users' | 'sparkles';
 
 export interface GameCategory {
-  readonly slug: 'cartas' | 'grupo' | 'retos';
+  readonly slug: 'cartas' | 'otros';
   readonly eyebrow: string;
   readonly title: string;
   readonly description: string;
@@ -138,7 +138,7 @@ export const GAME_CATEGORIES = [
   {
     slug: 'cartas',
     eyebrow: 'Baraja española',
-    title: 'Juegos de cartas',
+    title: 'Cartas',
     description: 'Bazas, capturas y combinaciones con los clásicos de toda la vida.',
     icon: 'cards',
     gameSlugs: [
@@ -154,20 +154,12 @@ export const GAME_CATEGORIES = [
     ],
   },
   {
-    slug: 'grupo',
-    eyebrow: 'Para toda la mesa',
-    title: 'Juegos de grupo',
-    description: 'Retos sociales y partidas rápidas para jugar juntos sin complicaciones.',
-    icon: 'users',
-    gameSlugs: ['orden', 'colores', 'mayoria', 'escala'],
-  },
-  {
-    slug: 'retos',
+    slug: 'otros',
     eyebrow: 'Para cambiar de ritmo',
-    title: 'Retos y experiencias',
-    description: 'Música, color y estimaciones para darle otro aire a la sobremesa.',
+    title: 'Otros juegos',
+    description: 'Retos sociales, música, color y estimaciones para toda la mesa.',
     icon: 'sparkles',
-    gameSlugs: ['musical', 'matiz', 'preciojusto'],
+    gameSlugs: ['orden', 'colores', 'mayoria', 'escala', 'musical', 'matiz', 'preciojusto'],
   },
 ] as const satisfies readonly GameCategory[];
 

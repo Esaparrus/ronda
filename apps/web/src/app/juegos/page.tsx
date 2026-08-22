@@ -25,9 +25,9 @@ export default function JuegosPage() {
       <section className="flex flex-col gap-3" aria-labelledby="catalog-categories-title">
         <div className="flex items-end justify-between gap-3 px-1">
           <div className="flex flex-col gap-1">
-            <span className="eyebrow">Elige cómo jugar</span>
+            <span className="eyebrow">Elige una sección</span>
             <h2 id="catalog-categories-title" className="text-[21px] font-semibold text-hueso">
-              Explora por tipo
+              Elige una sección
             </h2>
           </div>
           <span className="text-12 font-medium text-humo">{GAME_CATEGORIES.length} categorías</span>
