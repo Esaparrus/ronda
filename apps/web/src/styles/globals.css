@@ -701,6 +701,21 @@ summary {
   box-shadow: 0 8px 18px rgb(21 158 140 / 0.22);
 }
 
+.game-glyph-tile[data-category='cartas'] {
+  background: linear-gradient(145deg, #34c759, #159843);
+  box-shadow: 0 8px 18px rgb(31 174 82 / 0.2);
+}
+
+.game-glyph-tile[data-category='grupo'] {
+  background: linear-gradient(145deg, #af52de, #7d39b5);
+  box-shadow: 0 8px 18px rgb(175 82 222 / 0.2);
+}
+
+.game-glyph-tile[data-category='retos'] {
+  background: linear-gradient(145deg, #ff5d55, #bf5af2);
+  box-shadow: 0 8px 18px rgb(191 90 242 / 0.2);
+}
+
 .game-card {
   position: relative;
   overflow: hidden;
@@ -714,6 +729,23 @@ summary {
   height: 104px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--color-oro) 5%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.catalog-category-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.catalog-category-card::after {
+  position: absolute;
+  right: -38px;
+  bottom: -52px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-oro) 7%, transparent);
   content: '';
   pointer-events: none;
 }

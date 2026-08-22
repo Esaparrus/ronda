@@ -1,0 +1,182 @@
+import type { GameId } from '@ronda/protocol';
+
+export interface GameCatalogEntry {
+  readonly slug: GameId;
+  readonly name: string;
+  readonly players: string;
+  readonly duration: string;
+  readonly kind: string;
+}
+
+export type GameCategoryIcon = 'cards' | 'users' | 'sparkles';
+
+export interface GameCategory {
+  readonly slug: 'cartas' | 'grupo' | 'retos';
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly description: string;
+  readonly icon: GameCategoryIcon;
+  readonly gameSlugs: readonly GameId[];
+}
+
+export const GAME_CATALOG = [
+  {
+    slug: 'laronda',
+    name: 'La Ronda',
+    players: '3–8 jugadores',
+    duration: '10–20 min',
+    kind: 'Cartas y pique',
+  },
+  {
+    slug: 'chinchon',
+    name: 'Chinchón',
+    players: '2–4 jugadores',
+    duration: '15–30 min',
+    kind: 'Cartas',
+  },
+  {
+    slug: 'pocha',
+    name: 'Pocha',
+    players: '2–6 jugadores',
+    duration: '20–45 min',
+    kind: 'Bazas',
+  },
+  {
+    slug: 'mus',
+    name: 'Mus',
+    players: '4 jugadores, por parejas',
+    duration: '30–60 min',
+    kind: 'Parejas',
+  },
+  {
+    slug: 'brisca',
+    name: 'Brisca',
+    players: '2–4 jugadores',
+    duration: '10–25 min',
+    kind: 'Bazas',
+  },
+  {
+    slug: 'escoba',
+    name: 'Escoba',
+    players: '2–4 jugadores',
+    duration: '15–25 min',
+    kind: 'Capturas',
+  },
+  {
+    slug: 'sieteymedia',
+    name: 'Siete y media',
+    players: '2–7 jugadores',
+    duration: '10–20 min',
+    kind: 'Tentar la suerte',
+  },
+  {
+    slug: 'tute',
+    name: 'Tute',
+    players: '2 jugadores',
+    duration: '20–35 min',
+    kind: 'Bazas',
+  },
+  {
+    slug: 'cinquillo',
+    name: 'Cinquillo',
+    players: '2–6 jugadores',
+    duration: '10–20 min',
+    kind: 'Descarte',
+  },
+  {
+    slug: 'orden',
+    name: 'Orden',
+    players: '2–7 jugadores',
+    duration: '10–20 min',
+    kind: 'Cooperativo',
+  },
+  {
+    slug: 'colores',
+    name: 'Colores',
+    players: '2–7 jugadores',
+    duration: '15–25 min',
+    kind: 'Social',
+  },
+  {
+    slug: 'mayoria',
+    name: 'Mayoría',
+    players: '2–7 jugadores',
+    duration: '10–20 min',
+    kind: 'Social',
+  },
+  {
+    slug: 'escala',
+    name: 'Escala',
+    players: '2–7 jugadores',
+    duration: '15–25 min',
+    kind: 'Social',
+  },
+  {
+    slug: 'musical',
+    name: 'Musical',
+    players: '1–8 jugadores',
+    duration: '10–25 min',
+    kind: 'Música',
+  },
+  {
+    slug: 'matiz',
+    name: 'Matiz',
+    players: '1–7 jugadores',
+    duration: '5–15 min',
+    kind: 'Color y precisión',
+  },
+  {
+    slug: 'preciojusto',
+    name: 'Precio justo',
+    players: '2–7 jugadores',
+    duration: '10–25 min',
+    kind: 'Estimación',
+  },
+] as const satisfies readonly GameCatalogEntry[];
+
+export const GAME_CATEGORIES = [
+  {
+    slug: 'cartas',
+    eyebrow: 'Baraja española',
+    title: 'Juegos de cartas',
+    description: 'Bazas, capturas y combinaciones con los clásicos de toda la vida.',
+    icon: 'cards',
+    gameSlugs: [
+      'laronda',
+      'chinchon',
+      'pocha',
+      'mus',
+      'brisca',
+      'escoba',
+      'sieteymedia',
+      'tute',
+      'cinquillo',
+    ],
+  },
+  {
+    slug: 'grupo',
+    eyebrow: 'Para toda la mesa',
+    title: 'Juegos de grupo',
+    description: 'Retos sociales y partidas rápidas para jugar juntos sin complicaciones.',
+    icon: 'users',
+    gameSlugs: ['orden', 'colores', 'mayoria', 'escala'],
+  },
+  {
+    slug: 'retos',
+    eyebrow: 'Para cambiar de ritmo',
+    title: 'Retos y experiencias',
+    description: 'Música, color y estimaciones para darle otro aire a la sobremesa.',
+    icon: 'sparkles',
+    gameSlugs: ['musical', 'matiz', 'preciojusto'],
+  },
+] as const satisfies readonly GameCategory[];
+
+export const GAME_COUNT = GAME_CATALOG.length;
+
+export function findGameCategory(slug: string): GameCategory | undefined {
+  return GAME_CATEGORIES.find((category) => category.slug === slug);
+}
+
+export function getGamesForCategory(category: Pick<GameCategory, 'gameSlugs'>) {
+  return GAME_CATALOG.filter((game) => category.gameSlugs.some((slug) => slug === game.slug));
+}

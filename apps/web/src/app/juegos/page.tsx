@@ -1,27 +1,9 @@
 // Catálogo. Contrato P13 / §7: cada juego tiene su propia ficha
-// (/juegos/chinchon, /juegos/pocha) -- este es solo el listado para elegir.
+// (/juegos/chinchon, /juegos/pocha). La portada del catálogo agrupa los juegos
+// por tipo para que siga siendo fácil encontrar uno cuando la colección crece.
 import Link from 'next/link';
-import { GameGlyph } from '@/components/ui/GameGlyph';
 import { Icon } from '@/components/ui/Icon';
-
-const GAMES = [
-  { slug: 'laronda', name: 'La Ronda', players: '3–8 jugadores', duration: '10–20 min', kind: 'Cartas y pique' },
-  { slug: 'chinchon', name: 'Chinchón', players: '2–4 jugadores', duration: '15–30 min', kind: 'Cartas' },
-  { slug: 'pocha', name: 'Pocha', players: '2–6 jugadores', duration: '20–45 min', kind: 'Bazas' },
-  { slug: 'mus', name: 'Mus', players: '4 jugadores, por parejas', duration: '30–60 min', kind: 'Parejas' },
-  { slug: 'brisca', name: 'Brisca', players: '2–4 jugadores', duration: '10–25 min', kind: 'Bazas' },
-  { slug: 'escoba', name: 'Escoba', players: '2–4 jugadores', duration: '15–25 min', kind: 'Capturas' },
-  { slug: 'sieteymedia', name: 'Siete y media', players: '2–7 jugadores', duration: '10–20 min', kind: 'Tentar la suerte' },
-  { slug: 'tute', name: 'Tute', players: '2 jugadores', duration: '20–35 min', kind: 'Bazas' },
-  { slug: 'cinquillo', name: 'Cinquillo', players: '2–6 jugadores', duration: '10–20 min', kind: 'Descarte' },
-  { slug: 'orden', name: 'Orden', players: '2–7 jugadores', duration: '10–20 min', kind: 'Cooperativo' },
-  { slug: 'colores', name: 'Colores', players: '2–7 jugadores', duration: '15–25 min', kind: 'Social' },
-  { slug: 'mayoria', name: 'Mayoría', players: '2–7 jugadores', duration: '10–20 min', kind: 'Social' },
-  { slug: 'escala', name: 'Escala', players: '2–7 jugadores', duration: '15–25 min', kind: 'Social' },
-  { slug: 'musical', name: 'Musical', players: '1–8 jugadores', duration: '10–25 min', kind: 'Música' },
-  { slug: 'matiz', name: 'Matiz', players: '1–7 jugadores', duration: '5–15 min', kind: 'Color y precisión' },
-  { slug: 'preciojusto', name: 'Precio justo', players: '2–7 jugadores', duration: '10–25 min', kind: 'Estimación' },
-] as const;
+import { GAME_CATEGORIES } from '@/lib/game-catalog';
 
 export default function JuegosPage() {
   return (
@@ -35,45 +17,57 @@ export default function JuegosPage() {
           <span className="eyebrow">Tu próxima partida</span>
           <h1 className="font-display text-40 leading-display text-hueso">¿A qué jugamos?</h1>
           <p className="max-w-sm text-15 leading-relaxed text-humo">
-            Clásicos de cartas y juegos rápidos para compartir la sobremesa.
+            Elige una categoría y encuentra el juego perfecto para compartir la sobremesa.
           </p>
         </div>
       </header>
 
-      <ul className="grid grid-cols-2 gap-3">
-        {GAMES.map((g) => (
-          <li key={g.slug}>
-            <Link
-              href={`/juegos/${g.slug}`}
-              className="interactive-surface game-card group flex h-full min-h-[184px] flex-col items-start gap-3 p-3.5"
-            >
-              <span
-                className="game-glyph-tile size-13 shrink-0 rounded-[17px] transition-transform group-hover:-rotate-2 group-hover:scale-[1.04]"
-                data-game={g.slug}
+      <section className="flex flex-col gap-3" aria-labelledby="catalog-categories-title">
+        <div className="flex items-end justify-between gap-3 px-1">
+          <div className="flex flex-col gap-1">
+            <span className="eyebrow">Elige cómo jugar</span>
+            <h2 id="catalog-categories-title" className="text-[21px] font-semibold text-hueso">
+              Explora por tipo
+            </h2>
+          </div>
+          <span className="text-12 font-medium text-humo">{GAME_CATEGORIES.length} categorías</span>
+        </div>
+
+        <ul className="grid grid-cols-1 gap-3">
+          {GAME_CATEGORIES.map((category) => (
+            <li key={category.slug}>
+              <Link
+                href={`/juegos/categoria/${category.slug}`}
+                className="interactive-surface catalog-category-card group flex min-h-[144px] items-center gap-4 p-4"
               >
-                <GameGlyph game={g.slug} size={25} />
-              </span>
-              <span className="relative z-[1] flex min-w-0 flex-1 flex-col gap-1.5">
-                <span className="text-11 font-bold uppercase tracking-[0.08em] text-oro">
-                  {g.kind}
+                <span
+                  className="game-glyph-tile size-16 shrink-0 rounded-[20px] transition-transform group-hover:-rotate-2 group-hover:scale-[1.04]"
+                  data-category={category.slug}
+                >
+                  <Icon name={category.icon} size={29} />
                 </span>
-                <span className="text-[17px] font-semibold leading-tight text-hueso">{g.name}</span>
-                <span className="mt-auto flex items-start gap-1.5 text-11 leading-snug text-humo">
-                  <Icon name="users" size={13} className="mt-0.5 shrink-0" />
-                  {g.players}
+                <span className="relative z-[1] flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="text-11 font-bold uppercase tracking-[0.08em] text-oro">
+                    {category.eyebrow}
+                  </span>
+                  <span className="text-[20px] font-semibold leading-tight text-hueso">
+                    {category.title}
+                  </span>
+                  <span className="max-w-sm text-13 leading-snug text-humo">
+                    {category.description}
+                  </span>
+                  <span className="mt-1 text-12 font-semibold text-oro">
+                    {category.gameSlugs.length} juegos
+                  </span>
                 </span>
-                <span className="flex items-center gap-1.5 text-11 text-humo">
-                  <Icon name="clock" size={13} />
-                  {g.duration}
+                <span className="relative z-[1] grid size-8 shrink-0 place-items-center rounded-full bg-tinta/70 text-oro transition-transform group-hover:translate-x-0.5">
+                  <Icon name="arrow-right" size={15} />
                 </span>
-              </span>
-              <span className="absolute right-3 top-3 grid size-7 place-items-center rounded-full bg-tinta/70 text-oro transition-transform group-hover:translate-x-0.5">
-                <Icon name="arrow-right" size={14} />
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
   );
 }

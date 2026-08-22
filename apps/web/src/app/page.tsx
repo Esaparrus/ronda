@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { RondaMark } from '@/components/ui/RondaMark';
+import { GAME_COUNT } from '@/lib/game-catalog';
 import { clearToken, listSavedRooms } from '@/lib/token';
 
 export default function Page() {
@@ -110,9 +111,12 @@ export default function Page() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-center gap-2" aria-label="Características">
+      <div
+        className="flex flex-wrap items-center justify-center gap-2"
+        aria-label="Características"
+      >
         <span className="meta-chip">
-          <Icon name="cards" size={14} /> 14 juegos
+          <Icon name="cards" size={14} /> {GAME_COUNT} juegos
         </span>
         <span className="meta-chip">
           <Icon name="person" size={14} /> Sin registro
