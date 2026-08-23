@@ -281,12 +281,7 @@ const MATIZ_MAX_PLAYERS = z.union([
   z.literal(6),
   z.literal(7),
 ]);
-const MATIZ_ROUNDS = z.union([
-  z.literal(3),
-  z.literal(5),
-  z.literal(7),
-  z.literal(10),
-]);
+const MATIZ_ROUNDS = z.union([z.literal(3), z.literal(5), z.literal(7), z.literal(10)]);
 
 /** Reto visual de coincidencia de color, simultáneo y sin turnos. */
 export const MatizConfigSchema = CommonGameConfigSchema.extend({
@@ -312,12 +307,7 @@ const PRICE_MAX_PLAYERS = z.union([
   z.literal(7),
 ]);
 const PRICE_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(20)]);
-const PRICE_ANSWER_SECONDS = z.union([
-  z.literal(0),
-  z.literal(10),
-  z.literal(20),
-  z.literal(30),
-]);
+const PRICE_ANSWER_SECONDS = z.union([z.literal(0), z.literal(10), z.literal(20), z.literal(30)]);
 
 export const PRICE_CATEGORIES = [
   'todo',
@@ -355,12 +345,10 @@ const ROADMAP_MAX_PLAYERS = z.union([
   z.literal(7),
 ]);
 const ROADMAP_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(20)]);
-const ROADMAP_ANSWER_SECONDS = z.union([
-  z.literal(0),
-  z.literal(10),
-  z.literal(20),
-  z.literal(30),
-]);
+const ROADMAP_ANSWER_SECONDS = z.union([z.literal(0), z.literal(10), z.literal(20), z.literal(30)]);
+
+/** Ventana de presión que se abre para el resto al bloquear la primera respuesta de Banderas. */
+export const BANDERAS_PRESSURE_SECONDS = 5;
 
 export const FLAG_REGIONS = [
   'espana',
@@ -627,7 +615,6 @@ export const DEFAULT_MUSICAL_CONFIG: MusicalConfig = MusicalConfigSchema.parse({
 export const DEFAULT_PRECIO_JUSTO_CONFIG: PrecioJustoConfig = PrecioJustoConfigSchema.parse({});
 export const DEFAULT_BANDERAS_CONFIG: BanderasConfig = BanderasConfigSchema.parse({});
 export const DEFAULT_CIFRAS_CONFIG: CifrasConfig = CifrasConfigSchema.parse({});
-export const DEFAULT_QUIEN_LO_HARIA_CONFIG: QuienLoHariaConfig =
-  QuienLoHariaConfigSchema.parse({});
+export const DEFAULT_QUIEN_LO_HARIA_CONFIG: QuienLoHariaConfig = QuienLoHariaConfigSchema.parse({});
 export const DEFAULT_COMPLETA_LA_FRASE_CONFIG: CompletaLaFraseConfig =
   CompletaLaFraseConfigSchema.parse({});

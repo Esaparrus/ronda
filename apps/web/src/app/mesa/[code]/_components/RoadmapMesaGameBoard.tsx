@@ -1,4 +1,5 @@
 import type { RoadmapTableView } from '@ronda/protocol';
+import { BANDERAS_PRESSURE_SECONDS } from '@ronda/protocol';
 import { ColorCountdownHeader } from '@/app/sala/[code]/_components/ColorCountdownHeader';
 
 export interface RoadmapMesaGameBoardProps {
@@ -14,12 +15,16 @@ export function RoadmapMesaGameBoard({ view }: RoadmapMesaGameBoardProps) {
 
 function BanderasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'banderas' }> }) {
   const revealed = view.phase === 'reveal';
+  const pressureActive = view.flags.submittedPlayerIds.length > 0;
   return (
     <main className="flex min-h-dvh flex-1 flex-col">
       <ColorCountdownHeader
         left={`Banderas · ronda ${view.round}/${view.config.rounds}`}
         deadlineAt={view.phase === 'input' ? view.flags.deadlineAt : null}
-        durationSeconds={view.config.answerTimeSeconds || 1}
+        durationSeconds={
+          pressureActive ? BANDERAS_PRESSURE_SECONDS : view.config.answerTimeSeconds || 1
+        }
+        timerVariant={pressureActive ? 'countdown' : 'default'}
       />
       <div className="flex flex-1 flex-col items-center gap-7 overflow-y-auto px-8 py-8 text-center">
         <section className="w-full max-w-3xl overflow-hidden rounded-3xl border border-linea bg-white/95 p-8 shadow-lg">
@@ -50,7 +55,10 @@ function BanderasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'ban
                 >
                   <span className="font-semibold">{option.label}</span>
                   <span className="float-right font-mono text-oro">
-                    {Object.values(view.flags.answers ?? {}).filter((id) => id === option.id).length}
+                    {
+                      Object.values(view.flags.answers ?? {}).filter((id) => id === option.id)
+                        .length
+                    }
                   </span>
                 </div>
               ))}
@@ -89,7 +97,10 @@ function CifrasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'cifra
         {view.cifras.kind === 'order' ? (
           <div className="grid w-full max-w-4xl gap-3 md:grid-cols-2">
             {view.cifras.items.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-linea bg-mesa/80 px-5 py-4 text-left">
+              <div
+                key={item.id}
+                className="rounded-2xl border border-linea bg-mesa/80 px-5 py-4 text-left"
+              >
                 <p className="text-18 font-semibold text-hueso">{item.label}</p>
                 {revealed ? (
                   <p className="mt-1 font-mono text-16 text-oro">
@@ -110,7 +121,8 @@ function CifrasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'cifra
         ) : null}
         {revealed ? (
           <p className="text-20 text-humo">
-            {view.cifras.submittedPlayerIds.length}/{view.players.length} respuestas · puntos calculados en cada móvil
+            {view.cifras.submittedPlayerIds.length}/{view.players.length} respuestas · puntos
+            calculados en cada móvil
           </p>
         ) : (
           <p className="text-28 text-humo">
@@ -122,7 +134,11 @@ function CifrasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'cifra
   );
 }
 
-function QuienLoHariaMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'quienloharia' }> }) {
+function QuienLoHariaMesa({
+  view,
+}: {
+  view: Extract<RoadmapTableView, { gameId: 'quienloharia' }>;
+}) {
   const revealed = view.phase === 'reveal';
   return (
     <main className="flex min-h-dvh flex-1 flex-col">
@@ -141,17 +157,24 @@ function QuienLoHariaMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 
         {revealed && view.who.resultsVisible ? (
           <div className="grid w-full max-w-5xl gap-3 md:grid-cols-2 xl:grid-cols-3">
             {view.players.map((player) => (
-              <div key={player.playerId} className="rounded-2xl border border-linea bg-mesa/80 px-5 py-5 text-left">
+              <div
+                key={player.playerId}
+                className="rounded-2xl border border-linea bg-mesa/80 px-5 py-5 text-left"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="truncate text-20 font-semibold text-hueso">{player.nick}</span>
-                  <span className="font-mono text-32 text-oro">{view.who.voteCounts?.[player.playerId] ?? 0}</span>
+                  <span className="font-mono text-32 text-oro">
+                    {view.who.voteCounts?.[player.playerId] ?? 0}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <p className="text-28 text-humo">
-            {revealed ? 'Los resultados se guardan para el final' : `${view.who.submittedPlayerIds.length}/${view.players.length} votos bloqueados`}
+            {revealed
+              ? 'Los resultados se guardan para el final'
+              : `${view.who.submittedPlayerIds.length}/${view.players.length} votos bloqueados`}
           </p>
         )}
       </div>
@@ -159,7 +182,11 @@ function QuienLoHariaMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 
   );
 }
 
-function CompletaLaFraseMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'completalafrase' }> }) {
+function CompletaLaFraseMesa({
+  view,
+}: {
+  view: Extract<RoadmapTableView, { gameId: 'completalafrase' }>;
+}) {
   const revealed = view.phase === 'reveal';
   return (
     <main className="flex min-h-dvh flex-1 flex-col">
@@ -187,9 +214,14 @@ function CompletaLaFraseMesa({ view }: { view: Extract<RoadmapTableView, { gameI
               {view.players.map((player) => {
                 const answer = view.sentence.answers?.[player.playerId];
                 return (
-                  <div key={player.playerId} className="rounded-2xl border border-linea bg-mesa/80 px-5 py-4 text-left">
+                  <div
+                    key={player.playerId}
+                    className="rounded-2xl border border-linea bg-mesa/80 px-5 py-4 text-left"
+                  >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-18 font-semibold text-hueso">{player.nick}</span>
+                      <span className="truncate text-18 font-semibold text-hueso">
+                        {player.nick}
+                      </span>
                       <span className="font-mono text-24 text-oro">+{answer?.points ?? 0}</span>
                     </div>
                     <p className="mt-1 text-14 text-humo">{answer?.answer ?? 'Sin respuesta'}</p>

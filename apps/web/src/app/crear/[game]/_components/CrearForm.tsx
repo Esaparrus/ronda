@@ -82,16 +82,17 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [rondaConfig, setRondaConfig] = useState<LaRondaConfig>(DEFAULT_LA_RONDA_CONFIG);
   const [classicConfig, setClassicConfig] = useState<ClassicConfig>(() => classicDefaults(gameId));
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
-  const [precioJustoConfig, setPrecioJustoConfig] =
-    useState<PrecioJustoConfig>(DEFAULT_PRECIO_JUSTO_CONFIG);
-  const [banderasConfig, setBanderasConfig] =
-    useState<BanderasConfig>(DEFAULT_BANDERAS_CONFIG);
+  const [precioJustoConfig, setPrecioJustoConfig] = useState<PrecioJustoConfig>(
+    DEFAULT_PRECIO_JUSTO_CONFIG,
+  );
+  const [banderasConfig, setBanderasConfig] = useState<BanderasConfig>(DEFAULT_BANDERAS_CONFIG);
   const [cifrasConfig, setCifrasConfig] = useState<CifrasConfig>(DEFAULT_CIFRAS_CONFIG);
   const [quienLoHariaConfig, setQuienLoHariaConfig] = useState<QuienLoHariaConfig>(
     DEFAULT_QUIEN_LO_HARIA_CONFIG,
   );
-  const [completaLaFraseConfig, setCompletaLaFraseConfig] =
-    useState<CompletaLaFraseConfig>(DEFAULT_COMPLETA_LA_FRASE_CONFIG);
+  const [completaLaFraseConfig, setCompletaLaFraseConfig] = useState<CompletaLaFraseConfig>(
+    DEFAULT_COMPLETA_LA_FRASE_CONFIG,
+  );
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -140,11 +141,11 @@ export function CrearForm({ gameId }: CrearFormProps) {
                       ? quienLoHariaConfig
                       : gameId === 'completalafrase'
                         ? completaLaFraseConfig
-              : isClassicGame(gameId)
-                ? classicConfig
-                : isPartyGame(gameId)
-                  ? partyConfig
-                  : chinchonConfig;
+                        : isClassicGame(gameId)
+                          ? classicConfig
+                          : isPartyGame(gameId)
+                            ? partyConfig
+                            : chinchonConfig;
     const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
     if (created) {
       const code = useRondaStore.getState().roomCode;
@@ -682,8 +683,8 @@ function PrecioJustoVariants({ config, setConfig }: PrecioJustoVariantsProps) {
       <div className="rounded-xl border border-linea bg-mesa/70 px-4 py-3 text-14 leading-relaxed text-humo">
         <p className="font-semibold text-hueso">Cómo se puntúa</p>
         <p className="mt-1">
-          0 % de error: 100 puntos · hasta 5 %: 90 · hasta 10 %: 80 · hasta 20 %: 60 · hasta 35
-          %: 30 · 50 % o más: 0.
+          0 % de error: 100 puntos · hasta 5 %: 90 · hasta 10 %: 80 · hasta 20 %: 60 · hasta 35 %:
+          30 · 50 % o más: 0.
         </p>
       </div>
 
@@ -729,7 +730,7 @@ function RoadmapVariants({
       <section className="flex flex-col gap-6">
         <RoadmapIntro
           title="Reconoced la bandera"
-          body="Todos veis la misma imagen. Elegid la respuesta sin que la rapidez dé ventaja. El banco usa únicamente banderas difíciles y parecidas."
+          body="Todos veis la misma imagen. Elegid una opción y confirmadla con OK. La primera respuesta bloqueada activa 5 segundos de presión para el resto. El banco usa únicamente banderas difíciles y parecidas."
         />
         <RoadmapPlayers
           value={banderasConfig.maxPlayers}
@@ -1037,13 +1038,7 @@ function RoadmapIntro({ title, body }: { title: string; body: string }) {
   );
 }
 
-function RoadmapPlayers({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-}) {
+function RoadmapPlayers({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
     <QuantityStepper
       legend="Jugadores"
@@ -1056,13 +1051,7 @@ function RoadmapPlayers({
   );
 }
 
-function RoadmapRounds({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-}) {
+function RoadmapRounds({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
     <QuantityStepper
       legend="Rondas"
@@ -1075,13 +1064,7 @@ function RoadmapRounds({
   );
 }
 
-function RoadmapTimer({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-}) {
+function RoadmapTimer({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
     <SegmentedControl
       legend="Tiempo para responder"
@@ -1239,7 +1222,7 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
                   ? 'Pistas con polémica'
                   : config.gameId === 'matiz'
                     ? 'Dibujos y precisión'
-                  : 'Juego para hablar en la mesa'}
+                    : 'Juego para hablar en la mesa'}
             </p>
             <p className="mt-1 text-14 text-humo">
               Cada móvil guarda su información privada. No necesitas cartas físicas.
@@ -1388,22 +1371,19 @@ function PartyVariants({ config, setConfig }: PartyVariantsProps) {
                   ? 'Límite de seguridad si nadie alcanza antes los puntos para ganar.'
                   : config.gameId === 'matiz'
                     ? 'Cuántos dibujos vais a intentar colorear.'
-                  : 'Número máximo de preguntas de la partida.'
+                    : 'Número máximo de preguntas de la partida.'
               }
               value={config.rounds}
               onChange={(value) => setField('rounds', value)}
-              options={(
-                config.gameId === 'colores'
-                  ? [10, 15, 20]
-                  : config.gameId === 'matiz'
-                    ? [3, 5, 7, 10]
-                    : [5, 7, 10, 12]
-              ).map(
-                (value) => ({
-                  value,
-                  label: String(value),
-                }),
-              )}
+              options={(config.gameId === 'colores'
+                ? [10, 15, 20]
+                : config.gameId === 'matiz'
+                  ? [3, 5, 7, 10]
+                  : [5, 7, 10, 12]
+              ).map((value) => ({
+                value,
+                label: String(value),
+              }))}
               valueSuffix="rondas"
             />
           )}

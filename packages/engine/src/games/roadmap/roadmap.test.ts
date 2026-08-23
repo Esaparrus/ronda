@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BANDERAS_PRESSURE_SECONDS,
   DEFAULT_BANDERAS_CONFIG,
   DEFAULT_CIFRAS_CONFIG,
   DEFAULT_COMPLETA_LA_FRASE_CONFIG,
@@ -37,7 +38,12 @@ const PLAYERS = [
   { playerId: 'p2' as PlayerId, nick: 'Beto', seat: 1 },
 ];
 
-function applyRoadmap(state: RoadmapState, playerId: PlayerId, action: GameAction, now = 0): RoadmapState {
+function applyRoadmap(
+  state: RoadmapState,
+  playerId: PlayerId,
+  action: GameAction,
+  now = 0,
+): RoadmapState {
   const result = applyAction(state, playerId, action, now);
   if (!result.ok) throw new Error(`${result.code}: ${result.detail ?? ''}`);
   return result.value.state;
@@ -60,7 +66,9 @@ describe('juegos independientes del roadmap', () => {
       roomCode: 'HARD',
     });
     expect(legacyConfigState.config.difficulty).toBe('dificil');
-    expect(legacyConfigState.questions.every((question) => question.difficulty === 'dificil')).toBe(true);
+    expect(legacyConfigState.questions.every((question) => question.difficulty === 'dificil')).toBe(
+      true,
+    );
   });
 
   it('Banderas mantiene la respuesta y la entidad ocultas hasta revelar', () => {
@@ -89,6 +97,36 @@ describe('juegos independientes del roadmap', () => {
     expect(revealed.players.find((player) => player.playerId === 'p2')?.score).toBe(1);
   });
 
+  it('Banderas abre cinco segundos para el resto al confirmar la primera respuesta', () => {
+    const state = createBanderasState({
+      config: { ...DEFAULT_BANDERAS_CONFIG, rounds: 5, answerTimeSeconds: 20 },
+      seed: 'flags-pressure',
+      players: PLAYERS,
+      roomCode: 'PRESS',
+    });
+    const question = flagQuestionById(state.flags.questionId, state.questions);
+    const first = applyAction(
+      state,
+      'p1',
+      { type: 'submitFlag', optionId: question.options[0]?.id ?? '' },
+      1_000,
+    );
+    if (!first.ok) throw new Error('la primera respuesta debería aceptarse');
+
+    expect(first.value.state.gameId).toBe('banderas');
+    expect((first.value.state as BanderasState).flags.deadlineAt).toBe(
+      1_000 + BANDERAS_PRESSURE_SECONDS * 1_000,
+    );
+
+    const late = applyAction(
+      first.value.state,
+      'p2',
+      { type: 'submitFlag', optionId: question.correctOptionId },
+      6_000,
+    );
+    expect(late.ok).toBe(false);
+  });
+
   it('Cifras aplica la curva de precisión documentada', () => {
     expect(cifrasPointsForRelativeError(0)).toBe(100);
     expect(cifrasPointsForRelativeError(1)).toBe(98);
@@ -105,7 +143,10 @@ describe('juegos independientes del roadmap', () => {
     });
     const question = cifrasQuestionById(state.cifras.questionId, state.questions);
     if (question.kind !== 'estimate') throw new Error('La pregunta de test no es de estimación');
-    const exact = applyRoadmap(state, 'p1', { type: 'submitNumber', value: question.referenceValue });
+    const exact = applyRoadmap(state, 'p1', {
+      type: 'submitNumber',
+      value: question.referenceValue,
+    });
     expect(getPlayerView(exact as CifrasState, 'p1').cifras.referenceValue).toBeNull();
     const revealed = applyRoadmap(exact, 'p2', { type: 'submitNumber', value: 0 }) as CifrasState;
     expect(revealed.phase).toBe('reveal');
@@ -124,9 +165,7 @@ describe('juegos independientes del roadmap', () => {
     if (question.kind !== 'order') throw new Error('La pregunta de test no es de ordenar');
     const correctOrder = [...question.items]
       .sort((left, right) =>
-        question.direction === 'asc'
-          ? left.value - right.value
-          : right.value - left.value,
+        question.direction === 'asc' ? left.value - right.value : right.value - left.value,
       )
       .map((item) => item.id);
     const afterFirst = applyRoadmap(state, 'p1', { type: 'submitOrder', order: correctOrder });
@@ -149,7 +188,10 @@ describe('juegos independientes del roadmap', () => {
     });
     const afterFirst = applyRoadmap(state, 'p1', { type: 'submitWhoVote', targetPlayerId: 'p2' });
     expect(getPlayerView(afterFirst as QuienLoHariaState, 'p1').who.votes).toBeNull();
-    const revealed = applyRoadmap(afterFirst, 'p2', { type: 'submitWhoVote', targetPlayerId: 'p1' }) as QuienLoHariaState;
+    const revealed = applyRoadmap(afterFirst, 'p2', {
+      type: 'submitWhoVote',
+      targetPlayerId: 'p1',
+    }) as QuienLoHariaState;
     expect(revealed.phase).toBe('reveal');
     expect(getTableView(revealed).who.voteCounts).toEqual({ p1: 1, p2: 1 });
   });

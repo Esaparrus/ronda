@@ -14,7 +14,7 @@ export default function BanderasPage() {
         label: 'Jugar en grupo',
         description: 'Crea una sala y comparte el código con la mesa.',
       }}
-      note="Incluye banderas nacionales y territoriales dibujadas como material original de juego. La puntuación premia acertar, no responder antes."
+      note="Incluye banderas nacionales y territoriales dibujadas como material original de juego. La primera respuesta bloqueada activa 5 segundos para el resto; la puntuación premia acertar."
     />
   );
 }

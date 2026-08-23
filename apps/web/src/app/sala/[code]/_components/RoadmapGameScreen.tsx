@@ -8,6 +8,7 @@ import type {
   QuienLoHariaPlayerView,
   RoadmapPlayerView,
 } from '@ronda/protocol';
+import { BANDERAS_PRESSURE_SECONDS } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
 import { PlayerStrip } from './PlayerStrip';
@@ -30,12 +31,30 @@ function BanderasScreen({ view }: { view: BanderasPlayerView }) {
   const canSubmit = view.me.availableActions.includes('submitFlag');
   const canFinish = view.me.availableActions.includes('finishFlags');
   const canAdvance = view.me.availableActions.includes('nextRound');
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const pressureActive = view.flags.submittedPlayerIds.length > 0;
+  const timerSeconds = pressureActive
+    ? BANDERAS_PRESSURE_SECONDS
+    : view.config.answerTimeSeconds || 1;
+
+  useEffect(() => {
+    setSelectedOptionId(view.me.submitted ? view.me.selectedOptionId : null);
+  }, [view.flags.questionId, view.me.submitted, view.me.selectedOptionId]);
+
+  function confirmAnswer() {
+    if (!selectedOptionId || !canSubmit || pendingAction) return;
+    void useRondaStore.getState().sendAction({
+      type: 'submitFlag',
+      optionId: selectedOptionId,
+    });
+  }
 
   return (
     <GameFrame
       title={`Banderas · ronda ${view.round}/${view.config.rounds}`}
       deadlineAt={view.phase === 'input' ? view.flags.deadlineAt : null}
-      durationSeconds={view.config.answerTimeSeconds || 1}
+      durationSeconds={timerSeconds}
+      timerVariant={pressureActive ? 'countdown' : 'default'}
       players={view.players}
       myPlayerId={view.me.playerId}
       submittedPlayerIds={view.flags.submittedPlayerIds}
@@ -50,28 +69,44 @@ function BanderasScreen({ view }: { view: BanderasPlayerView }) {
           />
         </div>
         {view.phase === 'input' ? (
-          <div className="grid grid-cols-2 gap-2">
-            {view.flags.options.map((option) => (
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              {view.flags.options.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={!canSubmit || pendingAction}
+                  aria-pressed={selectedOptionId === option.id}
+                  onClick={() => setSelectedOptionId(option.id)}
+                  className={`min-h-12 rounded-2xl border px-3 py-2 text-center text-14 font-semibold leading-tight transition-colors disabled:opacity-55 sm:min-h-14 sm:px-4 sm:text-15 ${
+                    selectedOptionId === option.id
+                      ? 'border-oro bg-oro/15 text-oro ring-2 ring-oro/20'
+                      : 'border-linea bg-mesa/80 text-hueso hover:border-oro/60'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {!view.me.submitted ? (
               <button
-                key={option.id}
                 type="button"
-                disabled={!canSubmit || pendingAction}
-                aria-pressed={view.me.selectedOptionId === option.id}
-                onClick={() =>
-                  void useRondaStore.getState().sendAction({
-                    type: 'submitFlag',
-                    optionId: option.id,
-                  })
-                }
-                className={`min-h-12 rounded-2xl border px-3 py-2 text-center text-14 font-semibold leading-tight transition-colors disabled:opacity-55 sm:min-h-14 sm:px-4 sm:text-15 ${
-                  view.me.selectedOptionId === option.id
-                    ? 'border-oro bg-oro/15 text-oro'
-                    : 'border-linea bg-mesa/80 text-hueso hover:border-oro/60'
-                }`}
+                disabled={!selectedOptionId || !canSubmit || pendingAction}
+                onClick={confirmAnswer}
+                className="mx-auto min-h-11 rounded-2xl border border-oro bg-oro px-5 py-2 text-14 font-bold text-white shadow-md transition-[transform,filter,opacity] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {option.label}
+                ✓ OK, bloquear respuesta
               </button>
-            ))}
+            ) : (
+              <p className="text-center text-13 font-semibold text-equipo-turquesa">
+                ✓ Respuesta bloqueada
+              </p>
+            )}
+            {pressureActive && !view.me.submitted ? (
+              <p className="text-center text-12 text-brasa" aria-live="polite">
+                ¡Alguien se ha adelantado! Elige y confirma.
+              </p>
+            ) : null}
           </div>
         ) : (
           <BanderasReveal view={view} canAdvance={canAdvance} pending={pendingAction} />
@@ -192,7 +227,11 @@ function CifrasScreen({ view }: { view: CifrasPlayerView }) {
               disabled={!canSubmit || pendingAction}
               autoFocus
             />
-            <Button type="submit" loading={pendingAction} disabled={!numberInput.trim() || !canSubmit}>
+            <Button
+              type="submit"
+              loading={pendingAction}
+              disabled={!numberInput.trim() || !canSubmit}
+            >
               Bloquear mi estimación
             </Button>
           </form>
@@ -244,7 +283,9 @@ function OrderPicker({
       <div className="rounded-2xl border border-linea bg-mesa/70 p-3">
         <p className="mb-2 text-12 uppercase tracking-wider text-humo">Tu orden</p>
         <div className="flex flex-col gap-2">
-          {order.length === 0 ? <p className="px-2 py-3 text-14 text-humo">Toca las tarjetas de abajo.</p> : null}
+          {order.length === 0 ? (
+            <p className="px-2 py-3 text-14 text-humo">Toca las tarjetas de abajo.</p>
+          ) : null}
           {order.map((id, index) => (
             <button
               key={id}
@@ -297,14 +338,18 @@ function CifrasReveal({
             {formatNumber(view.cifras.referenceValue)} {view.cifras.unit}
           </p>
           <p className="mt-1 text-13 text-humo">
-            {view.cifras.source ?? 'Referencia editorial'} · {view.cifras.updatedAt ?? 'actualizado'}
+            {view.cifras.source ?? 'Referencia editorial'} ·{' '}
+            {view.cifras.updatedAt ?? 'actualizado'}
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {view.players.map((player) => {
             const result = view.cifras.estimates?.[player.playerId];
             return (
-              <div key={player.playerId} className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3">
+              <div
+                key={player.playerId}
+                className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="truncate text-14 font-semibold text-hueso">{player.nick}</span>
                   <span className="font-mono text-20 text-oro">+{result?.points ?? 0}</span>
@@ -330,14 +375,21 @@ function CifrasReveal({
       <div className="rounded-3xl border border-oro/60 bg-oro/10 px-5 py-5 text-center">
         <p className="eyebrow">Orden correcto</p>
         <p className="mt-2 text-16 font-semibold text-hueso">
-          {correctOrder.map((id) => view.cifras.items.find((item) => item.id === id)?.label ?? id).join(' → ')}
+          {correctOrder
+            .map((id) => view.cifras.items.find((item) => item.id === id)?.label ?? id)
+            .join(' → ')}
         </p>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {view.cifras.items.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3 text-left">
+          <div
+            key={item.id}
+            className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3 text-left"
+          >
             <p className="text-14 font-semibold text-hueso">{item.label}</p>
-            <p className="font-mono text-14 text-oro">{formatNumber(values?.[item.id])} {view.cifras.unit}</p>
+            <p className="font-mono text-14 text-oro">
+              {formatNumber(values?.[item.id])} {view.cifras.unit}
+            </p>
           </div>
         ))}
       </div>
@@ -345,13 +397,18 @@ function CifrasReveal({
         {view.players.map((player) => {
           const result = view.cifras.orders?.[player.playerId];
           return (
-            <div key={player.playerId} className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3">
+            <div
+              key={player.playerId}
+              className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3"
+            >
               <div className="flex items-center justify-between gap-3">
                 <span className="truncate text-14 font-semibold text-hueso">{player.nick}</span>
                 <span className="font-mono text-20 text-oro">+{result?.points ?? 0}</span>
               </div>
               <p className="mt-1 text-12 text-humo">
-                {result ? `${result.correctPositions}/${view.cifras.items.length} posiciones correctas` : 'Sin respuesta'}
+                {result
+                  ? `${result.correctPositions}/${view.cifras.items.length} posiciones correctas`
+                  : 'Sin respuesta'}
               </p>
             </div>
           );
@@ -440,9 +497,14 @@ function WhoReveal({
       {view.who.resultsVisible ? (
         <div className="grid gap-2 sm:grid-cols-2">
           {view.players.map((player) => (
-            <div key={player.playerId} className="flex items-center justify-between rounded-2xl border border-linea bg-mesa/75 px-4 py-3">
+            <div
+              key={player.playerId}
+              className="flex items-center justify-between rounded-2xl border border-linea bg-mesa/75 px-4 py-3"
+            >
               <span className="truncate text-14 font-semibold text-hueso">{player.nick}</span>
-              <span className="font-mono text-22 text-oro">{view.who.voteCounts?.[player.playerId] ?? 0}</span>
+              <span className="font-mono text-22 text-oro">
+                {view.who.voteCounts?.[player.playerId] ?? 0}
+              </span>
             </div>
           ))}
         </div>
@@ -485,7 +547,9 @@ function CompletaLaFraseScreen({ view }: { view: CompletaLaFrasePlayerView }) {
       <section className="flex w-full max-w-2xl flex-col gap-5">
         <div className="surface-panel px-5 py-7 text-center">
           <p className="eyebrow">{view.sentence.category}</p>
-          <h1 className="mt-2 font-display text-32 leading-tight text-hueso">{view.sentence.prompt}</h1>
+          <h1 className="mt-2 font-display text-32 leading-tight text-hueso">
+            {view.sentence.prompt}
+          </h1>
         </div>
         {view.phase === 'input' ? (
           <form className="flex flex-col gap-3" onSubmit={submit}>
@@ -506,7 +570,9 @@ function CompletaLaFraseScreen({ view }: { view: CompletaLaFrasePlayerView }) {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => void useRondaStore.getState().sendAction({ type: 'useSentenceHint' })}
+                onClick={() =>
+                  void useRondaStore.getState().sendAction({ type: 'useSentenceHint' })
+                }
                 loading={pendingAction}
               >
                 Necesito una pista
@@ -549,20 +615,28 @@ function SentenceReveal({
     <section className="flex flex-col gap-4">
       <div className="rounded-3xl border border-oro/60 bg-oro/10 px-5 py-5 text-center">
         <p className="eyebrow">Respuesta esperada</p>
-        <p className="mt-1 font-display text-36 text-hueso">{view.sentence.canonicalAnswer ?? '—'}</p>
-        {view.sentence.hint ? <p className="mt-1 text-13 text-humo">Pista: {view.sentence.hint}</p> : null}
+        <p className="mt-1 font-display text-36 text-hueso">
+          {view.sentence.canonicalAnswer ?? '—'}
+        </p>
+        {view.sentence.hint ? (
+          <p className="mt-1 text-13 text-humo">Pista: {view.sentence.hint}</p>
+        ) : null}
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {view.players.map((player) => {
           const result = view.sentence.answers?.[player.playerId];
           return (
-            <div key={player.playerId} className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3">
+            <div
+              key={player.playerId}
+              className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3"
+            >
               <div className="flex items-center justify-between gap-3">
                 <span className="truncate text-14 font-semibold text-hueso">{player.nick}</span>
                 <span className="font-mono text-20 text-oro">+{result?.points ?? 0}</span>
               </div>
               <p className="mt-1 text-12 text-humo">
-                {result?.answer ?? 'Sin respuesta'}{result?.hintUsed ? ' · con pista' : ''}
+                {result?.answer ?? 'Sin respuesta'}
+                {result?.hintUsed ? ' · con pista' : ''}
               </p>
             </div>
           );
@@ -575,7 +649,10 @@ function SentenceReveal({
 
 function RevealNextAction({ canAdvance, pending }: { canAdvance: boolean; pending: boolean }) {
   return canAdvance ? (
-    <Button onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })} loading={pending}>
+    <Button
+      onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+      loading={pending}
+    >
       Siguiente ronda
     </Button>
   ) : (
@@ -587,6 +664,7 @@ function GameFrame({
   title,
   deadlineAt,
   durationSeconds,
+  timerVariant,
   players,
   myPlayerId,
   submittedPlayerIds,
@@ -596,6 +674,7 @@ function GameFrame({
   title: string;
   deadlineAt: number | null;
   durationSeconds: number;
+  timerVariant?: 'default' | 'countdown';
   players: RoadmapPlayerView['players'];
   myPlayerId: string;
   submittedPlayerIds: string[];
@@ -608,14 +687,28 @@ function GameFrame({
         left={title}
         deadlineAt={deadlineAt}
         durationSeconds={durationSeconds}
+        timerVariant={timerVariant}
       />
       <PlayerStrip
         players={players}
         turnPlayerId={null}
         myPlayerId={myPlayerId}
-        renderInfo={(player) =>
-          `${player.score} puntos · ${submittedPlayerIds.includes(player.playerId) ? 'listo' : 'pensando'}`
-        }
+        renderInfo={(player) => (
+          <span
+            className="inline-flex items-center gap-1 whitespace-nowrap"
+            title={
+              submittedPlayerIds.includes(player.playerId) ? 'Respuesta bloqueada' : 'Pensando'
+            }
+          >
+            <span>{player.score} pt</span>
+            <span aria-hidden="true">
+              {submittedPlayerIds.includes(player.playerId) ? '✅' : '🤔'}
+            </span>
+            <span className="sr-only">
+              {submittedPlayerIds.includes(player.playerId) ? 'respuesta bloqueada' : 'pensando'}
+            </span>
+          </span>
+        )}
       />
       <main className={`flex min-h-0 flex-1 flex-col items-center ${mainClassName}`}>
         {children}

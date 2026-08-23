@@ -8,6 +8,7 @@ export interface ColorCountdownHeaderProps {
   left: string;
   deadlineAt: number | null;
   durationSeconds?: number;
+  timerVariant?: 'default' | 'countdown';
 }
 
 /** Mantiene el repintado del reloj aislado del selector y del marcador. */
@@ -15,6 +16,7 @@ export function ColorCountdownHeader({
   left,
   deadlineAt,
   durationSeconds = COLOR_ANSWER_SECONDS,
+  timerVariant = 'default',
 }: ColorCountdownHeaderProps) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -28,7 +30,12 @@ export function ColorCountdownHeader({
     deadlineAt === null
       ? null
       : Math.min(durationSeconds, Math.max(0, Math.ceil((deadlineAt - now) / 1000)));
-  const timerLabel = secondsLeft === null ? null : `00:${String(secondsLeft).padStart(2, '0')}`;
+  const timerLabel =
+    secondsLeft === null
+      ? null
+      : timerVariant === 'countdown'
+        ? String(secondsLeft)
+        : `00:${String(secondsLeft).padStart(2, '0')}`;
   const timerProgress =
     deadlineAt === null
       ? null
@@ -40,6 +47,7 @@ export function ColorCountdownHeader({
       turnNick={null}
       timerLabel={timerLabel}
       timerUrgent={secondsLeft !== null && secondsLeft <= 5}
+      timerVariant={timerVariant}
       timerProgress={timerProgress}
     />
   );

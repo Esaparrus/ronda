@@ -15,6 +15,8 @@ export interface TableHeaderProps {
   timerLabel?: string | null;
   /** Cuando quedan pocos segundos, se resalta para llamar la atención. */
   timerUrgent?: boolean;
+  /** Presenta el número de segundos grande, para la ventana de presión de Banderas. */
+  timerVariant?: 'default' | 'countdown';
   /** Fracción de tiempo que queda, entre 0 y 1, para la barra visual. */
   timerProgress?: number | null;
   /** Mensaje puntual de estado, por ejemplo "Te has pasado". */
@@ -28,6 +30,7 @@ export function TableHeader({
   turnNick,
   timerLabel,
   timerUrgent = false,
+  timerVariant = 'default',
   timerProgress = null,
   statusLabel = null,
   statusTone = 'calm',
@@ -57,14 +60,16 @@ export function TableHeader({
           ) : null}
           {timerLabel ? (
             <div
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 ${
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border ${
+                timerVariant === 'countdown' ? 'min-w-14 justify-center px-3 py-1' : 'px-2.5 py-1'
+              } ${
                 timerTone === 'critical'
                   ? 'border-brasa bg-brasa/15'
                   : timerTone === 'warning'
                     ? 'border-alerta/70 bg-alerta/10'
                     : 'border-linea bg-tinta/30'
               }`}
-              aria-label={`Tiempo restante: ${timerLabel}`}
+              aria-label={`Tiempo restante: ${timerLabel}${timerVariant === 'countdown' ? ' segundos' : ''}`}
             >
               <span
                 aria-hidden="true"
@@ -77,7 +82,11 @@ export function TableHeader({
                 }`}
               />
               <span
-                className={`font-mono text-12 uppercase leading-none tracking-wider ${
+                className={`font-mono leading-none ${
+                  timerVariant === 'countdown'
+                    ? 'text-24 font-bold tracking-normal'
+                    : 'text-12 uppercase tracking-wider'
+                } ${
                   timerTone === 'critical'
                     ? 'text-brasa'
                     : timerTone === 'warning'
@@ -99,7 +108,7 @@ export function TableHeader({
       {timerLabel ? (
         <div
           role="progressbar"
-          aria-label={`Tiempo restante: ${timerLabel}`}
+          aria-label={`Tiempo restante: ${timerLabel}${timerVariant === 'countdown' ? ' segundos' : ''}`}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round((timerProgress ?? 0) * 100)}

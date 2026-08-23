@@ -83,8 +83,9 @@ rápido y relajado.
 
 1. Aparece una bandera grande.
 2. Debajo aparecen cuatro botones con nombres.
-3. El jugador pulsa una respuesta.
-4. La respuesta queda bloqueada.
+3. El jugador pulsa una respuesta y la confirma con «OK».
+4. La respuesta queda bloqueada. El primer bloqueo abre una cuenta atrás de 5
+   segundos para el resto de jugadores.
 5. Cuando todos responden o se acaba el tiempo, se revela la correcta.
 6. Se suma un acierto o un fallo y comienza la siguiente bandera.
 
@@ -127,6 +128,8 @@ Regla única y visible:
 
 - respuesta correcta: **1 punto**;
 - respuesta incorrecta o tiempo agotado: **0 puntos**;
+- bloquear antes no da puntos extra, pero sí reduce a 5 segundos la ventana
+  disponible para quienes aún están pensando;
 - gana quien consigue más aciertos al terminar las rondas.
 
 No habrá bonus por responder antes. Si hay empate, se mostrará empate. El

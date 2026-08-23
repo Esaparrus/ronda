@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  DEFAULT_BANDERAS_CONFIG,
   DEFAULT_COLORES_CONFIG,
   DEFAULT_CONFIG,
   DEFAULT_MUS_CONFIG,
@@ -99,6 +100,53 @@ describe('BotDriver', () => {
       expect(state?.gameId).toBe('orden');
       expect(state?.version).toBe(1);
       expect(state?.players.filter((player) => player.hand.length === 0)).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('permite practicar Banderas contra un robot y activa la presión de 5 segundos', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+      const manager = new RoomManager();
+      const created = manager.createRoom({
+        gameId: 'banderas',
+        config: { ...DEFAULT_BANDERAS_CONFIG, rounds: 5, answerTimeSeconds: 20 },
+        nick: 'Ana',
+        now: NOW,
+      });
+      if (!created.ok) throw new Error('no se pudo crear la sala');
+      const bot = manager.addBot({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!bot.ok) throw new Error('no se pudo añadir el robot');
+      const started = manager.start({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      if (!started.ok) throw new Error('no se pudo empezar la partida');
+
+      const deps: BotDriverDeps = {
+        io: { to: vi.fn() } as unknown as TypedIoServer,
+        mgr: manager,
+        now: () => Date.now(),
+      };
+      scheduleBotTurn(deps, created.value.roomCode);
+      vi.advanceTimersByTime(700);
+
+      const state = manager.getRoomByCode(created.value.roomCode)?.state;
+      if (!state || state.gameId !== 'banderas') throw new Error('estado incorrecto');
+      expect(state.flags.submissions[bot.value.playerId]).toBeDefined();
+      expect(state.flags.deadlineAt).toBe(NOW + 700 + 5_000);
+      manager.closeByHost({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: Date.now(),
+      });
     } finally {
       vi.useRealTimers();
     }
@@ -235,9 +283,15 @@ describe('BotDriver', () => {
       };
       scheduleBotTurn(deps, created.value.roomCode);
       vi.advanceTimersByTime(5_000);
-      expect(room.state?.gameId === 'musical' && room.state.players.find((p) => p.playerId === bot.value.playerId)?.onlineClipStartedAt).toBe(NOW);
+      expect(
+        room.state?.gameId === 'musical' &&
+          room.state.players.find((p) => p.playerId === bot.value.playerId)?.onlineClipStartedAt,
+      ).toBe(NOW);
       vi.advanceTimersByTime(5_000);
-      expect(room.state?.gameId === 'musical' && room.state.players.find((p) => p.playerId === bot.value.playerId)?.onlineClipResolvedAt).toBe(NOW);
+      expect(
+        room.state?.gameId === 'musical' &&
+          room.state.players.find((p) => p.playerId === bot.value.playerId)?.onlineClipResolvedAt,
+      ).toBe(NOW);
       vi.advanceTimersByTime(5_000);
       expect(room.state?.phase).toBe('reveal');
       expect(room.state?.roundResult?.winnerId).toBe(bot.value.playerId);

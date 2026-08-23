@@ -9,7 +9,7 @@
 // estrategia competitiva específica para cada juego, siempre sobre la vista
 // censurada que recibiría un jugador real.
 import { randomUUID } from 'node:crypto';
-import { GAMES } from '@ronda/engine';
+import { GAMES, isRoadmapGame, type RoadmapState } from '@ronda/engine';
 import type {
   ChinchonPlayerView,
   ClassicPlayerView,
@@ -17,6 +17,7 @@ import type {
   PrecioJustoPlayerView,
   PartyPlayerView,
   PlayerId,
+  RoadmapPlayerView,
   RondaPlayerView,
 } from '@ronda/protocol';
 import type { TypedIoServer } from '../io.ts';
@@ -32,6 +33,7 @@ import {
   decidePrecioJustoAction,
   decidePochaAction,
   decideRondaAction,
+  decideRoadmapAction,
 } from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
@@ -151,8 +153,11 @@ function nextBotTurn(room: Room): BotTurn | null {
     if (!module || state.status !== 'playing') return null;
     const bot = bots.find((candidate) => {
       const view = module.getPlayerView(state, candidate.playerId);
-      return view.kind === 'player' && view.me.availableActions.some(
-        (action) => action === 'submitPrice' || action === 'finishPrice',
+      return (
+        view.kind === 'player' &&
+        view.me.availableActions.some(
+          (action) => action === 'submitPrice' || action === 'finishPrice',
+        )
       );
     });
     if (state.phase === 'reveal') {
@@ -169,6 +174,38 @@ function nextBotTurn(room: Room): BotTurn | null {
       });
       return resultsHost ? { playerId: resultsHost.playerId, kind: 'showResults' } : null;
     }
+    return bot ? { playerId: bot.playerId, kind: 'action' } : null;
+  }
+
+  // Los juegos del roadmap son respuestas simultáneas y dejan `turnSeat` a
+  // null. Buscar bots por las acciones disponibles evita que la IA se quede
+  // parada como si la ronda no tuviera turno.
+  if (room.status === 'playing' && isRoadmapGame(state.gameId)) {
+    const roadmapState = state as RoadmapState;
+    const module = GAMES[room.gameId];
+    if (!module || roadmapState.status !== 'playing') return null;
+    const bots = room.playersBySeat().filter((player) => player.isBot);
+    if (roadmapState.phase === 'reveal') {
+      const host = bots.find((bot) => bot.seat === 0);
+      if (!host) return null;
+      const view = module.getPlayerView(roadmapState, host.playerId);
+      if (view.kind !== 'player') return null;
+      return (view as RoadmapPlayerView).me.availableActions.includes('nextRound')
+        ? { playerId: host.playerId, kind: 'nextRound' }
+        : null;
+    }
+    const bot = bots.find((candidate) => {
+      const view = module.getPlayerView(roadmapState, candidate.playerId);
+      if (view.kind !== 'player') return false;
+      return (view as RoadmapPlayerView).me.availableActions.some(
+        (action) =>
+          action === 'submitFlag' ||
+          action === 'submitNumber' ||
+          action === 'submitOrder' ||
+          action === 'submitWhoVote' ||
+          action === 'submitSentence',
+      );
+    });
     return bot ? { playerId: bot.playerId, kind: 'action' } : null;
   }
 
@@ -312,44 +349,58 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
         if (r.ok) broadcastRoom(deps.io, room);
         return;
       }
+      if (isRoadmapGame(view.gameId)) {
+        const action = decideRoadmapAction(view as RoadmapPlayerView);
+        if (!action) return;
+        const r = deps.mgr.applyAction({
+          roomCode,
+          playerId: turn.playerId,
+          clientActionId: randomUUID(),
+          expectedVersion: state.version,
+          action,
+          now: deps.now(),
+        });
+        if (r.ok) broadcastRoom(deps.io, room);
+        return;
+      }
       const action =
         view.gameId === 'preciojusto'
           ? decidePrecioJustoAction(view as PrecioJustoPlayerView)
           : view.gameId === 'musical'
-          ? state.gameId === 'musical' && state.currentTrack
-            ? state.config.audioMode === 'online'
-              ? view.me.availableActions.includes('musicStartClip')
-                ? { type: 'musicStartClip' as const }
-                : view.me.availableActions.includes('musicResolveClip')
-                  ? { type: 'musicResolveClip' as const }
+            ? state.gameId === 'musical' && state.currentTrack
+              ? state.config.audioMode === 'online'
+                ? view.me.availableActions.includes('musicStartClip')
+                  ? { type: 'musicStartClip' as const }
+                  : view.me.availableActions.includes('musicResolveClip')
+                    ? { type: 'musicResolveClip' as const }
+                    : {
+                        type: 'musicSubmitGuess' as const,
+                        artist: state.currentTrack.artist,
+                        title: state.currentTrack.title,
+                        year: state.currentTrack.year,
+                      }
+                : state.config.mode === 'velocidad' && state.buzzedPlayerId === null
+                  ? { type: 'musicBuzz' as const }
                   : {
                       type: 'musicSubmitGuess' as const,
                       artist: state.currentTrack.artist,
                       title: state.currentTrack.title,
                       year: state.currentTrack.year,
                     }
-              : state.config.mode === 'velocidad' && state.buzzedPlayerId === null
-                ? { type: 'musicBuzz' as const }
-                : {
-                    type: 'musicSubmitGuess' as const,
-                    artist: state.currentTrack.artist,
-                    title: state.currentTrack.title,
-                    year: state.currentTrack.year,
-                  }
-            : null
-          : view.gameId === 'mus'
-            ? decideMusAction(view as MusPlayerView)
-            : view.gameId === 'laronda'
-              ? decideRondaAction(view as RondaPlayerView)
-              : view.gameId === 'pocha'
-                ? decidePochaAction(view)
-                : view.gameId === 'brisca' ||
-                    view.gameId === 'escoba' ||
-                    view.gameId === 'sieteymedia' ||
-                    view.gameId === 'tute' ||
-                    view.gameId === 'cinquillo'
-                  ? decideClassicAction(view as ClassicPlayerView)
-                  : decideChinchonAction(view as ChinchonPlayerView);
+              : null
+            : view.gameId === 'mus'
+              ? decideMusAction(view as MusPlayerView)
+              : view.gameId === 'laronda'
+                ? decideRondaAction(view as RondaPlayerView)
+                : view.gameId === 'pocha'
+                  ? decidePochaAction(view)
+                  : view.gameId === 'brisca' ||
+                      view.gameId === 'escoba' ||
+                      view.gameId === 'sieteymedia' ||
+                      view.gameId === 'tute' ||
+                      view.gameId === 'cinquillo'
+                    ? decideClassicAction(view as ClassicPlayerView)
+                    : decideChinchonAction(view as ChinchonPlayerView);
       if (!action) return;
       const r = deps.mgr.applyAction({
         roomCode,
