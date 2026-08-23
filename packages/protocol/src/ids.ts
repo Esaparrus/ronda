@@ -30,7 +30,8 @@ export type GameId =
   | 'banderas'
   | 'cifras'
   | 'quienloharia'
-  | 'completalafrase';
+  | 'completalafrase'
+  | 'granronda';
 
 /**
  * Identificador de carta: '<suit>-<rank>' con suit ∈ {oros,copas,espadas,

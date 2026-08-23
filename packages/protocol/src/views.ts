@@ -25,6 +25,7 @@ import type {
   ChinchonConfig,
   ColoresConfig,
   EscalaConfig,
+  GranRondaConfig,
   LaRondaConfig,
   MayoriaConfig,
   MatizConfig,
@@ -859,6 +860,79 @@ export interface RondaTableView extends RondaCommonView {
   kind: 'table';
 }
 
+// --- La Gran Ronda --------------------------------------------------------
+
+export type GranRondaPhase = 'movement' | 'routeChoice' | 'minigameInput' | 'minigameReveal';
+export type GranRondaSpaceType = 'start' | 'oros' | 'perdida' | 'sello' | 'evento' | 'atajo';
+export type GranRondaAvailableAction =
+  | 'rollGranRonda'
+  | 'chooseGranRondaPath'
+  | 'submitGranRondaAnswer'
+  | 'finishGranRondaMiniGame'
+  | 'nextRound';
+
+export interface GranRondaBoardSpace {
+  id: string;
+  index: number;
+  label: string;
+  type: GranRondaSpaceType;
+  nextIds: string[];
+}
+
+export interface GranRondaBoardPlayer {
+  playerId: PlayerId;
+  position: string;
+  coins: number;
+  seals: number;
+  lastRoll: number | null;
+  lastSpaceId: string | null;
+}
+
+export interface GranRondaMiniGameOption {
+  id: string;
+  label: string;
+}
+
+export interface GranRondaMiniGamePublic {
+  id: string;
+  title: string;
+  prompt: string;
+  options: GranRondaMiniGameOption[];
+  submittedPlayerIds: PlayerId[];
+  correctOptionId: string | null;
+  answers: Record<PlayerId, string> | null;
+  scoreDeltas: Record<PlayerId, number> | null;
+}
+
+export interface GranRondaCommonView extends CommonViewBase {
+  gameId: 'granronda';
+  config: GranRondaConfig;
+  phase: GranRondaPhase;
+  board: GranRondaBoardSpace[];
+  boardPlayers: GranRondaBoardPlayer[];
+  stampSpaceId: string;
+  routeOptions: string[];
+  miniGame: GranRondaMiniGamePublic;
+}
+
+export interface GranRondaPlayerViewMe {
+  playerId: PlayerId;
+  position: string;
+  coins: number;
+  seals: number;
+  selectedOptionId: string | null;
+  availableActions: GranRondaAvailableAction[];
+}
+
+export interface GranRondaPlayerView extends GranRondaCommonView {
+  kind: 'player';
+  me: GranRondaPlayerViewMe;
+}
+
+export interface GranRondaTableView extends GranRondaCommonView {
+  kind: 'table';
+}
+
 // --- Uniones públicas (§2.5, ensanchadas en P22, P28 y modos sociales) ------
 
 export type CommonView =
@@ -869,6 +943,7 @@ export type CommonView =
   | PartyCommonView
   | PrecioJustoCommonView
   | RondaCommonView
+  | GranRondaCommonView
   | MusicalCommonView
   | RoadmapCommonView;
 export type PlayerView =
@@ -879,6 +954,7 @@ export type PlayerView =
   | PartyPlayerView
   | PrecioJustoPlayerView
   | RondaPlayerView
+  | GranRondaPlayerView
   | MusicalPlayerView
   | RoadmapPlayerView;
 export type TableView =
@@ -889,6 +965,7 @@ export type TableView =
   | PartyTableView
   | PrecioJustoTableView
   | RondaTableView
+  | GranRondaTableView
   | MusicalTableView
   | RoadmapTableView;
 

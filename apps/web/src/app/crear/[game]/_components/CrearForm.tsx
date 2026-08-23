@@ -15,6 +15,7 @@ import {
   DEFAULT_COMPLETA_LA_FRASE_CONFIG,
   DEFAULT_ESCOBA_CONFIG,
   DEFAULT_ESCALA_CONFIG,
+  DEFAULT_GRAN_RONDA_CONFIG,
   DEFAULT_MAYORIA_CONFIG,
   DEFAULT_MUS_CONFIG,
   DEFAULT_LA_RONDA_CONFIG,
@@ -35,6 +36,7 @@ import {
   type CompletaLaFraseConfig,
   type EscalaConfig,
   type GameId,
+  type GranRondaConfig,
   type MusConfig,
   type MusicalConfig,
   type LaRondaConfig,
@@ -80,6 +82,9 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const [musConfig, setMusConfig] = useState<MusConfig>(DEFAULT_MUS_CONFIG);
   const [musicalConfig, setMusicalConfig] = useState<MusicalConfig>(DEFAULT_MUSICAL_CONFIG);
   const [rondaConfig, setRondaConfig] = useState<LaRondaConfig>(DEFAULT_LA_RONDA_CONFIG);
+  const [granRondaConfig, setGranRondaConfig] = useState<GranRondaConfig>(
+    DEFAULT_GRAN_RONDA_CONFIG,
+  );
   const [classicConfig, setClassicConfig] = useState<ClassicConfig>(() => classicDefaults(gameId));
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
   const [precioJustoConfig, setPrecioJustoConfig] = useState<PrecioJustoConfig>(
@@ -125,6 +130,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
     const config =
       gameId === 'laronda'
         ? rondaConfig
+        : gameId === 'granronda'
+          ? granRondaConfig
         : gameId === 'mus'
           ? musConfig
           : gameId === 'pocha'
@@ -210,6 +217,7 @@ export function CrearForm({ gameId }: CrearFormProps) {
 
         {!isPartyGame(gameId) &&
         gameId !== 'laronda' &&
+        gameId !== 'granronda' &&
         gameId !== 'musical' &&
         gameId !== 'preciojusto' &&
         !isRoadmapGame(gameId) ? (
@@ -218,6 +226,8 @@ export function CrearForm({ gameId }: CrearFormProps) {
 
         {gameId === 'laronda' ? (
           <LaRondaVariants config={rondaConfig} setConfig={setRondaConfig} />
+        ) : gameId === 'granronda' ? (
+          <GranRondaVariants config={granRondaConfig} setConfig={setGranRondaConfig} />
         ) : gameId === 'mus' ? (
           <MusVariants config={musConfig} setConfig={setMusConfig} />
         ) : gameId === 'pocha' ? (
@@ -584,6 +594,7 @@ function partyDefaults(gameId: GameId): PartyConfig {
 
 function gameTitle(gameId: GameId): string {
   if (gameId === 'laronda') return 'La Ronda';
+  if (gameId === 'granronda') return 'La Gran Ronda';
   if (gameId === 'orden') return 'Orden';
   if (gameId === 'colores') return 'Colores';
   if (gameId === 'mayoria') return 'Mayoría';
@@ -793,8 +804,8 @@ function RoadmapVariants({
     return (
       <section className="flex flex-col gap-6">
         <RoadmapIntro
-          title="Aproxima y ordena"
-          body="Poned números sobre la mesa y aprended el dato al revelar la respuesta."
+          title="Aproxima, ordena y compara"
+          body="Poned números sobre la mesa, moved las tarjetas y elegid entre dos opciones."
         />
         <RoadmapPlayers
           value={cifrasConfig.maxPlayers}
@@ -816,7 +827,7 @@ function RoadmapVariants({
         />
         <SegmentedControl
           legend="Tipo de reto"
-          helperText="Estimad, ordenad o mezclad ambos."
+          helperText="Estimad, ordenad, comparad o mezclad todos los retos."
           value={cifrasConfig.mode}
           onChange={(value) =>
             setCifrasConfig((previous) => ({
@@ -828,6 +839,7 @@ function RoadmapVariants({
             { value: 'mixto', label: 'Mixto' },
             { value: 'estimacion', label: 'Estimar' },
             { value: 'ordena', label: 'Ordenar' },
+            { value: 'comparar', label: 'Comparar' },
           ]}
         />
         <div className="flex flex-col gap-2.5">
@@ -855,6 +867,11 @@ function RoadmapVariants({
             <option value="montanas">Montañas</option>
             <option value="capacidad">Capacidad</option>
             <option value="animales-objetos">Animales y objetos</option>
+            <option value="empresas">Empresas y marcas</option>
+            <option value="deporte">Deporte</option>
+            <option value="historia">Historia</option>
+            <option value="tecnologia">Tecnología</option>
+            <option value="cultura">Cultura</option>
           </select>
         </div>
         <RoadmapTimer
@@ -963,8 +980,8 @@ function RoadmapVariants({
   return (
     <section className="flex flex-col gap-6">
       <RoadmapIntro
-        title="Termina el refrán"
-        body="Escribid la palabra que falta. Podéis pedir una pista, pero entonces no puntúa."
+        title="Completa citas, refranes y frases populares"
+        body="Escribid la palabra que falta. Podéis mezclar todos los estilos o elegir un pack concreto."
       />
       <RoadmapPlayers
         value={completaLaFraseConfig.maxPlayers}
@@ -999,9 +1016,13 @@ function RoadmapVariants({
           }
           className="form-control px-4 text-16"
         >
+          <option value="todo">De todo · aleatorio</option>
           <option value="refranes">Refranes</option>
           <option value="expresiones">Expresiones</option>
-          <option value="originales">Originales</option>
+          <option value="citas">Citas célebres</option>
+          <option value="historicas">Frases históricas</option>
+          <option value="humor">Humor</option>
+          <option value="memes">Memes y cultura popular</option>
         </select>
       </div>
       <SegmentedControl
@@ -1104,6 +1125,55 @@ function LaRondaVariants({ config, setConfig }: LaRondaVariantsProps) {
         helperText="Efectos breves al servir tapas y pedir la cuenta."
         value={config.soundEnabled}
         onChange={(value) => updateConfig(setConfig, 'soundEnabled', value)}
+        options={[
+          { value: true, label: 'Sí' },
+          { value: false, label: 'No' },
+        ]}
+      />
+    </>
+  );
+}
+
+interface GranRondaVariantsProps {
+  config: GranRondaConfig;
+  setConfig: (fn: (prev: GranRondaConfig) => GranRondaConfig) => void;
+}
+
+function GranRondaVariants({ config, setConfig }: GranRondaVariantsProps) {
+  return (
+    <>
+      <div className="surface-panel flex flex-col gap-1 p-4">
+        <p className="text-16 font-semibold text-hueso">Tablero, rutas y pulsos rápidos</p>
+        <p className="text-14 leading-relaxed text-humo">
+          Todos movéis por el mismo mapa. Los Oros sirven para comprar Sellos; los minijuegos dan
+          una pequeña recompensa y no dependen de la velocidad del móvil.
+        </p>
+      </div>
+      <QuantityStepper
+        legend="Jugadores"
+        helperText="La partida empieza desde tres personas y admite hasta siete."
+        value={config.maxPlayers}
+        onChange={(value) =>
+          setConfig((previous) => ({ ...previous, maxPlayers: value as GranRondaConfig['maxPlayers'] }))
+        }
+        options={[3, 4, 5, 6, 7].map((value) => ({ value, label: String(value) }))}
+        valueSuffix="personas"
+      />
+      <QuantityStepper
+        legend="Rondas"
+        helperText="Cada ronda tiene movimiento y un minijuego de una pregunta."
+        value={config.rounds}
+        onChange={(value) =>
+          setConfig((previous) => ({ ...previous, rounds: value as GranRondaConfig['rounds'] }))
+        }
+        options={[4, 6, 8, 10].map((value) => ({ value, label: String(value) }))}
+        valueSuffix="rondas"
+      />
+      <SegmentedControl
+        legend="Sonido"
+        helperText="Activa los efectos breves del tablero."
+        value={config.soundEnabled}
+        onChange={(value) => setConfig((previous) => ({ ...previous, soundEnabled: value }))}
         options={[
           { value: true, label: 'Sí' },
           { value: false, label: 'No' },

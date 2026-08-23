@@ -701,6 +701,11 @@ summary {
   box-shadow: 0 8px 18px rgb(21 158 140 / 0.22);
 }
 
+.game-glyph-tile[data-game='granronda'] {
+  background: linear-gradient(145deg, #34c759, #007aff 58%, #5856d6);
+  box-shadow: 0 8px 18px rgb(0 122 255 / 0.22);
+}
+
 .game-glyph-tile[data-category='cartas'] {
   background: linear-gradient(145deg, #34c759, #159843);
   box-shadow: 0 8px 18px rgb(31 174 82 / 0.2);
@@ -2158,6 +2163,84 @@ summary {
   content: '\2191';
   font-family: var(--font-mono);
   font-weight: 700;
+}
+
+.order-direction {
+  border: 1px solid color-mix(in srgb, var(--color-oro) 45%, var(--color-linea));
+  background: color-mix(in srgb, var(--color-oro) 10%, white);
+  box-shadow: 0 4px 12px rgb(47 61 89 / 0.08);
+}
+
+.order-direction__icon {
+  border: 1px solid color-mix(in srgb, var(--color-oro) 55%, transparent);
+  background: color-mix(in srgb, var(--color-oro) 18%, white);
+  color: var(--color-oro);
+}
+
+.order-picker__list {
+  overflow: hidden;
+}
+
+.order-card {
+  border-color: color-mix(in srgb, var(--color-oro) 38%, var(--color-linea));
+  background: color-mix(in srgb, var(--color-mesa) 82%, var(--color-oro));
+  box-shadow:
+    0 3px 0 color-mix(in srgb, var(--color-linea) 64%, transparent),
+    0 8px 16px rgb(47 61 89 / 0.08);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.order-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-oro) 52%, transparent);
+  outline-offset: 2px;
+}
+
+.order-card--dragging {
+  border-color: var(--color-oro);
+  background: color-mix(in srgb, var(--color-oro) 18%, white);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-oro) 22%, transparent),
+    0 12px 24px rgb(47 61 89 / 0.2);
+  cursor: grabbing;
+  transform: scale(1.015);
+}
+
+.order-card__rank {
+  border: 1px solid color-mix(in srgb, var(--color-oro) 45%, transparent);
+  background: color-mix(in srgb, var(--color-oro) 16%, white);
+  color: var(--color-oro);
+}
+
+.order-card__grip {
+  color: color-mix(in srgb, var(--color-humo) 76%, white);
+  letter-spacing: -0.12em;
+}
+
+.order-card__move {
+  display: inline-grid;
+  width: 28px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid var(--color-linea);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.72);
+  color: var(--color-humo);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.order-card__move:not(:disabled):hover {
+  border-color: var(--color-oro);
+  color: var(--color-oro);
+}
+
+.order-card__move:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
 }
 
 .timer-track {

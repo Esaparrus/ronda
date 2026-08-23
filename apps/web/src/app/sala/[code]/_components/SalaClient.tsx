@@ -39,6 +39,7 @@ import { RoadmapGameScreen } from './RoadmapGameScreen';
 import { ClassicGameScreen } from './ClassicGameScreen';
 import { ClassicRoundEndScreen } from './ClassicRoundEndScreen';
 import { RondaGameScreen } from './RondaGameScreen';
+import { GranRondaGameScreen } from './GranRondaGameScreen';
 import { RondaRoundEndScreen } from './RondaRoundEndScreen';
 import { RondaGameEndScreen } from './RondaGameEndScreen';
 import { TurnAnnouncement } from './TurnAnnouncement';
@@ -131,7 +132,8 @@ export function SalaClient({ code }: SalaClientProps) {
   const showSevenHalfBustReveal =
     sevenHalfBustRevealRound !== null && sevenHalfBustRevealRound === sevenHalfBustRevealCandidate;
   const isPlaying = (view?.status === 'playing' || showSevenHalfBustReveal) && !shouldShowBriefing;
-  const usesIntegratedGameHeader = isPlaying && view?.gameId === 'laronda';
+  const usesIntegratedGameHeader =
+    isPlaying && (view?.gameId === 'laronda' || view?.gameId === 'granronda');
 
   // Una partida es una superficie de juego, no una página desplazable. Se
   // bloquea el scroll de la raíz solo mientras se juega; lobby, fin de ronda
@@ -313,6 +315,11 @@ export function SalaClient({ code }: SalaClientProps) {
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'laronda' ? (
         <RondaGameScreen view={view} onRequestLeave={() => setConfirmLeave(true)} />
       ) : null}
+      {!shouldShowBriefing &&
+      (view.status === 'playing' || view.status === 'gameEnd') &&
+      view.gameId === 'granronda' ? (
+        <GranRondaGameScreen view={view} onRequestLeave={() => setConfirmLeave(true)} />
+      ) : null}
       {!shouldShowBriefing && view.status === 'playing' && view.gameId === 'musical' ? (
         <MusicalGameScreen view={view} />
       ) : null}
@@ -373,6 +380,7 @@ export function SalaClient({ code }: SalaClientProps) {
       {view.status === 'gameEnd' &&
       view.gameId !== 'mus' &&
       view.gameId !== 'laronda' &&
+      view.gameId !== 'granronda' &&
       view.gameId !== 'preciojusto' &&
       !showSevenHalfBustReveal ? (
         <GameEndScreen view={view} />

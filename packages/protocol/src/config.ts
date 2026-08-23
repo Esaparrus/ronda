@@ -385,11 +385,16 @@ export const CIFRAS_CATEGORIES = [
   'montanas',
   'capacidad',
   'animales-objetos',
+  'empresas',
+  'deporte',
+  'historia',
+  'tecnologia',
+  'cultura',
   'todo',
 ] as const;
 export const CifrasCategorySchema = z.enum(CIFRAS_CATEGORIES);
 export type CifrasCategory = z.infer<typeof CifrasCategorySchema>;
-export const CIFRAS_MODES = ['estimacion', 'ordena', 'mixto'] as const;
+export const CIFRAS_MODES = ['estimacion', 'ordena', 'comparar', 'mixto'] as const;
 export const CifrasModeSchema = z.enum(CIFRAS_MODES);
 export type CifrasMode = z.infer<typeof CifrasModeSchema>;
 
@@ -422,7 +427,18 @@ export const QuienLoHariaConfigSchema = CommonGameConfigSchema.extend({
 });
 export type QuienLoHariaConfig = z.infer<typeof QuienLoHariaConfigSchema>;
 
-export const SENTENCE_PACKS = ['refranes', 'expresiones', 'originales'] as const;
+// `originales` se conserva solo para que una sala antigua pueda seguir
+// decodificándose; ya no se ofrece en la interfaz ni se alimenta con contenido.
+export const SENTENCE_PACKS = [
+  'todo',
+  'refranes',
+  'expresiones',
+  'citas',
+  'historicas',
+  'humor',
+  'memes',
+  'originales',
+] as const;
 export const SentencePackSchema = z.enum(SENTENCE_PACKS);
 export type SentencePack = z.infer<typeof SentencePackSchema>;
 
@@ -431,7 +447,7 @@ export const CompletaLaFraseConfigSchema = CommonGameConfigSchema.extend({
   maxPlayers: ROADMAP_MAX_PLAYERS.default(6),
   rounds: ROADMAP_ROUNDS.default(10),
   answerTimeSeconds: ROADMAP_ANSWER_SECONDS.default(20),
-  pack: SentencePackSchema.default('refranes'),
+  pack: SentencePackSchema.default('todo'),
   hints: z.boolean().default(true),
 });
 export type CompletaLaFraseConfig = z.infer<typeof CompletaLaFraseConfigSchema>;
@@ -454,6 +470,26 @@ export const LaRondaConfigSchema = CommonGameConfigSchema.extend({
 });
 
 export type LaRondaConfig = z.infer<typeof LaRondaConfigSchema>;
+
+// --- La Gran Ronda --------------------------------------------------------
+
+const GRAN_RONDA_MAX_PLAYERS = z.union([
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+const GRAN_RONDA_ROUNDS = z.union([z.literal(4), z.literal(6), z.literal(8), z.literal(10)]);
+
+/** Modo de tablero propio con economía, rutas y minijuegos breves. */
+export const GranRondaConfigSchema = CommonGameConfigSchema.extend({
+  gameId: z.literal('granronda' satisfies GameId).default('granronda'),
+  maxPlayers: GRAN_RONDA_MAX_PLAYERS.default(6),
+  rounds: GRAN_RONDA_ROUNDS.default(6),
+});
+
+export type GranRondaConfig = z.infer<typeof GranRondaConfigSchema>;
 
 // --- Musical ---------------------------------------------------------------
 
@@ -553,6 +589,7 @@ export type GameConfig =
   | ClassicConfig
   | PartyConfig
   | LaRondaConfig
+  | GranRondaConfig
   | MusicalConfig
   | PrecioJustoConfig
   | BanderasConfig
@@ -575,6 +612,7 @@ export const GameConfigSchema = z.discriminatedUnion('gameId', [
   EscalaConfigSchema,
   MatizConfigSchema,
   LaRondaConfigSchema,
+  GranRondaConfigSchema,
   MusicalConfigSchema,
   PrecioJustoConfigSchema,
   BanderasConfigSchema,
@@ -611,6 +649,7 @@ export const DEFAULT_MAYORIA_CONFIG: MayoriaConfig = MayoriaConfigSchema.parse({
 export const DEFAULT_ESCALA_CONFIG: EscalaConfig = EscalaConfigSchema.parse({});
 export const DEFAULT_MATIZ_CONFIG: MatizConfig = MatizConfigSchema.parse({});
 export const DEFAULT_LA_RONDA_CONFIG: LaRondaConfig = LaRondaConfigSchema.parse({});
+export const DEFAULT_GRAN_RONDA_CONFIG: GranRondaConfig = GranRondaConfigSchema.parse({});
 export const DEFAULT_MUSICAL_CONFIG: MusicalConfig = MusicalConfigSchema.parse({});
 export const DEFAULT_PRECIO_JUSTO_CONFIG: PrecioJustoConfig = PrecioJustoConfigSchema.parse({});
 export const DEFAULT_BANDERAS_CONFIG: BanderasConfig = BanderasConfigSchema.parse({});

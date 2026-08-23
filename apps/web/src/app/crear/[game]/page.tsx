@@ -26,6 +26,7 @@ const GAME_IDS = [
   'cifras',
   'quienloharia',
   'completalafrase',
+  'granronda',
 ] as const;
 type SupportedGameId = (typeof GAME_IDS)[number];
 

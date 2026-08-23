@@ -36,6 +36,7 @@ import { RoadmapMesaGameBoard } from './RoadmapMesaGameBoard';
 import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
 import { ClassicMesaRoundEndScreen } from './ClassicMesaRoundEndScreen';
 import { RondaMesaScreen } from './RondaMesaScreen';
+import { GranRondaMesaGameBoard } from './GranRondaMesaGameBoard';
 
 export interface MesaClientProps {
   code: string;
@@ -144,6 +145,9 @@ export function MesaClient({ code }: MesaClientProps) {
       {tableView.gameId === 'laronda' && tableView.status !== 'lobby' ? (
         <RondaMesaScreen view={tableView} />
       ) : null}
+      {tableView.gameId === 'granronda' && tableView.status !== 'lobby' ? (
+        <GranRondaMesaGameBoard view={tableView} />
+      ) : null}
       {tableView.status === 'playing' &&
       (tableView.gameId === 'brisca' ||
         tableView.gameId === 'escoba' ||
@@ -174,6 +178,7 @@ export function MesaClient({ code }: MesaClientProps) {
       {tableView.status === 'gameEnd' &&
       tableView.gameId !== 'mus' &&
       tableView.gameId !== 'laronda' &&
+      tableView.gameId !== 'granronda' &&
       tableView.gameId !== 'preciojusto' ? (
         <MesaGameEndScreen view={tableView} />
       ) : null}

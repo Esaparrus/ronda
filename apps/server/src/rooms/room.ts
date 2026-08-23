@@ -17,6 +17,7 @@ import type {
 import type {
   ChinchonState,
   ClassicState,
+  GranRondaState,
   MusState,
   MusicalState,
   PrecioJustoState,
@@ -36,6 +37,7 @@ export type EngineState =
   | MusicalState
   | PrecioJustoState
   | ClassicState
+  | GranRondaState
   | PartyState
   | RondaState
   | RoadmapState;
@@ -49,6 +51,7 @@ export type ScoredEngineState =
   | MusicalState
   | PrecioJustoState
   | ClassicState
+  | GranRondaState
   | PartyState
   | RondaState
   | RoadmapState;

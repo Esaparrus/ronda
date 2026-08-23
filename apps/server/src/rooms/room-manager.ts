@@ -40,7 +40,7 @@ import { decideChinchonTimeoutDiscard } from './bot-policy.ts';
  * §10.6, no el de un juego concreto). */
 export function minPlayersFor(gameId: GameId): number {
   if (gameId === 'mus') return 4;
-  if (gameId === 'laronda') return 3;
+  if (gameId === 'laronda' || gameId === 'granronda') return 3;
   return 2;
 }
 
@@ -584,6 +584,7 @@ export class RoomManager {
           state.gameId === 'mayoria' ||
           state.gameId === 'escala' ||
           state.gameId === 'matiz' ||
+          state.gameId === 'granronda' ||
           state.gameId === 'musical' ||
           state.gameId === 'preciojusto' ||
           isRoadmapGame(state.gameId))
@@ -807,6 +808,9 @@ export class RoomManager {
         room.gameId === 'colores' ||
         room.gameId === 'mayoria' ||
         room.gameId === 'matiz');
+    const granRondaHostAction =
+      room.gameId === 'granronda' &&
+      (input.action.type === 'finishGranRondaMiniGame' || input.action.type === 'nextRound');
     if (
       (input.action.type === 'setOrderCards' ||
         input.action.type === 'endOrder' ||
@@ -817,7 +821,8 @@ export class RoomManager {
         input.action.type === 'musicNextRound' ||
         (input.action.type === 'nextRound' && room.gameId === 'preciojusto') ||
         (input.action.type === 'showPriceResults' && room.gameId === 'preciojusto') ||
-        (input.action.type === 'nextRound' && isRoadmapGame(room.gameId))) &&
+        (input.action.type === 'nextRound' && isRoadmapGame(room.gameId)) ||
+        granRondaHostAction) &&
       !player.isHost
     ) {
       return err('NOT_HOST');

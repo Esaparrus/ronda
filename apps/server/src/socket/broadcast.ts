@@ -11,7 +11,7 @@
 import type { Server as IoServerType } from 'socket.io';
 import type { TypedIoServer } from '../io.ts';
 import type { Room } from '../rooms/room.ts';
-import { GAMES } from '@ronda/engine';
+import { GAMES, GRAN_RONDA_BOARD, GRAN_RONDA_MINIGAMES } from '@ronda/engine';
 import type {
   ChinchonCommonView,
   ChinchonPlayerView,
@@ -19,6 +19,9 @@ import type {
   ClassicCommonView,
   ClassicPlayerView,
   ClassicTableView,
+  GranRondaCommonView,
+  GranRondaPlayerView,
+  GranRondaTableView,
   GameEvent,
   MusCommonView,
   MusPlayerView,
@@ -310,6 +313,7 @@ function buildRoadmapLobbyCommon(room: Room): RoadmapCommonView {
         unit: '',
         definition: '',
         category: 'todo',
+        direction: null,
         items: [],
         referenceValue: null,
         itemValues: null,
@@ -319,6 +323,7 @@ function buildRoadmapLobbyCommon(room: Room): RoadmapCommonView {
         submittedPlayerIds: [],
         estimates: null,
         orders: null,
+        choices: null,
         scoreDeltas: null,
       },
     };
@@ -354,10 +359,12 @@ function buildRoadmapLobbyCommon(room: Room): RoadmapCommonView {
       phase: 'input',
       questionId: '',
       prompt: 'La frase aparecerá al empezar.',
-        category: 'refran',
-        hint: null,
-        deadlineAt: null,
-        canonicalAnswer: null,
+      category: 'refran',
+      author: null,
+      source: null,
+      hint: null,
+      deadlineAt: null,
+      canonicalAnswer: null,
       submittedPlayerIds: [],
       answers: null,
       scoreDeltas: null,
@@ -539,6 +546,44 @@ function buildRondaLobbyCommon(room: Room): RondaCommonView {
   };
 }
 
+function buildGranRondaLobbyCommon(room: Room): GranRondaCommonView {
+  const question = GRAN_RONDA_MINIGAMES[0];
+  if (!question) throw new Error('Falta contenido de La Gran Ronda');
+  return {
+    roomCode: room.code,
+    gameId: 'granronda',
+    config: room.config as GranRondaCommonView['config'],
+    status: room.status === 'closed' ? 'gameEnd' : room.status,
+    round: 0,
+    players: buildLobbyPlayers(room),
+    turnPlayerId: null,
+    winnerId: null,
+    rematchVotes: [],
+    phase: 'movement',
+    board: GRAN_RONDA_BOARD.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
+    boardPlayers: room.playersBySeat().map((player) => ({
+      playerId: player.playerId,
+      position: 'salida',
+      coins: 5,
+      seals: 0,
+      lastRoll: null,
+      lastSpaceId: null,
+    })),
+    stampSpaceId: 'plaza-copas',
+    routeOptions: [],
+    miniGame: {
+      id: question.id,
+      title: question.title,
+      prompt: question.prompt,
+      options: question.options.map((option) => ({ ...option })),
+      submittedPlayerIds: [],
+      correctOptionId: null,
+      answers: null,
+      scoreDeltas: null,
+    },
+  };
+}
+
 /** Vista de lobby para un jugador (sin mano, sin `me` privado relevante). */
 function lobbyPlayerView(room: Room, playerId: string): PlayerView {
   if (
@@ -565,7 +610,13 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
       const view: Extract<RoadmapPlayerView, { gameId: 'cifras' }> = {
         kind: 'player',
         ...(common as Extract<RoadmapCommonView, { gameId: 'cifras' }>),
-        me: { playerId, submitted: false, selectedOrder: [], availableActions: [] },
+        me: {
+          playerId,
+          submitted: false,
+          selectedOrder: [],
+          selectedChoiceId: null,
+          availableActions: [],
+        },
       };
       return view;
     }
@@ -603,6 +654,21 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
         legalTargetTypes: [],
         legalTargetPlayerIds: [],
         availableBillModes: [],
+        availableActions: [],
+      },
+    };
+    return view;
+  }
+  if (room.gameId === 'granronda') {
+    const view: GranRondaPlayerView = {
+      kind: 'player',
+      ...buildGranRondaLobbyCommon(room),
+      me: {
+        playerId,
+        position: 'salida',
+        coins: 5,
+        seals: 0,
+        selectedOptionId: null,
         availableActions: [],
       },
     };
@@ -713,6 +779,10 @@ function lobbyTableView(room: Room): TableView {
   }
   if (room.gameId === 'laronda') {
     const view: RondaTableView = { kind: 'table', ...buildRondaLobbyCommon(room) };
+    return view;
+  }
+  if (room.gameId === 'granronda') {
+    const view: GranRondaTableView = { kind: 'table', ...buildGranRondaLobbyCommon(room) };
     return view;
   }
   if (

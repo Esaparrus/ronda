@@ -42,4 +42,9 @@ pnpm incident -- RND-A1B2C3D4  # recupera un informe de bloqueo desde Postgres
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
+Para probar **La Gran Ronda** en local, deja esos dos procesos abiertos y entra en
+`http://localhost:3000/juegos/granronda`. Crea una sala, añade dos IA para llegar al
+mínimo de tres jugadores y pulsa **Empezar partida**. La pantalla común está en
+`http://localhost:3000/mesa/<CÓDIGO>`.
+
 Gestor: **pnpm** · TypeScript **strict** · ESM en todo.

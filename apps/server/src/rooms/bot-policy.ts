@@ -10,3 +10,4 @@ export { decidePartyAction } from './bot-strategies/party.ts';
 export { decideRondaAction } from './bot-strategies/laronda.ts';
 export { decidePrecioJustoAction } from './bot-strategies/preciojusto.ts';
 export { decideRoadmapAction } from './bot-strategies/roadmap.ts';
+export { decideGranRondaAction } from './bot-strategies/granronda.ts';

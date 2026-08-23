@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.ts",
+    "dev": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local --watch src/index.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "start": "node src/index.ts",
+    "start": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local src/index.ts",
     "sim": "node src/sim/run.ts",
     "db:migrate": "node --env-file-if-exists=../../.env.local src/db/migrate-cli.ts",
     "report": "node src/scripts/report.ts",

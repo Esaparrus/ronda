@@ -150,6 +150,23 @@ export {
   type RondaCard,
 } from './games/laronda/index.ts';
 
+// Registro de La Gran Ronda: tablero, economía y minijuegos breves.
+import './games/granronda/index.ts';
+export {
+  granRondaModule,
+  createInitialState as createGranRondaState,
+  applyAction as applyGranRondaAction,
+  getPlayerView as getGranRondaPlayerView,
+  getTableView as getGranRondaTableView,
+  GRAN_RONDA_BOARD,
+  GRAN_RONDA_STAMP_TARGETS,
+  GRAN_RONDA_MINIGAMES,
+  type GranRondaState,
+  type GranRondaPlayer,
+  type GranRondaPhase,
+  type GranRondaStatus,
+} from './games/granronda/index.ts';
+
 // Registro del juego Musical.
 import './games/musical/index.ts';
 export {
@@ -214,6 +231,7 @@ export {
   type CifrasQuestion,
   type NumberQuestion,
   type OrderQuestion,
+  type CompareQuestion,
   type WhoQuestion,
   type SentenceQuestion,
 } from './games/roadmap/index.ts';

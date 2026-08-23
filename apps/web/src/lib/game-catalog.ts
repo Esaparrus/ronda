@@ -160,6 +160,13 @@ export const GAME_CATALOG = [
     duration: '10–20 min',
     kind: 'Palabras',
   },
+  {
+    slug: 'granronda',
+    name: 'La Gran Ronda',
+    players: '3–7 jugadores',
+    duration: '15–25 min',
+    kind: 'Tablero y minijuegos',
+  },
 ] as const satisfies readonly GameCatalogEntry[];
 
 export const GAME_CATEGORIES = [
@@ -199,6 +206,7 @@ export const GAME_CATEGORIES = [
       'cifras',
       'quienloharia',
       'completalafrase',
+      'granronda',
     ],
   },
 ] as const satisfies readonly GameCategory[];

@@ -137,6 +137,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     value: z.number().finite().min(0).max(1_000_000_000_000),
   }),
   z.object({ type: z.literal('submitOrder'), order: z.array(cardIdField).min(3).max(5) }),
+  z.object({ type: z.literal('submitChoice'), optionId: cardIdField }),
   z.object({ type: z.literal('finishCifras') }),
   z.object({ type: z.literal('submitWhoVote'), targetPlayerId: cardIdField }),
   z.object({ type: z.literal('finishWho') }),
@@ -159,6 +160,12 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('musicNextClip') }),
   z.object({ type: z.literal('musicNextRound') }),
+  // --- La Gran Ronda -------------------------------------------------------
+  z.object({ type: z.literal('rollGranRonda') }),
+  z.object({ type: z.literal('chooseGranRondaPath'), nextSpaceId: cardIdField }),
+  z.object({ type: z.literal('submitGranRondaAnswer'), optionId: cardIdField }),
+  /** El anfitrión puede cerrar el minijuego si alguien se desconecta. */
+  z.object({ type: z.literal('finishGranRondaMiniGame') }),
   // --- La Ronda ------------------------------------------------------------
   z.object({
     type: z.literal('playRondaCard'),

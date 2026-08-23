@@ -149,6 +149,15 @@ function GlyphPaths({ game }: { game: GameId }) {
           <circle cx="18" cy="12" r="2" />
         </>
       );
+    case 'granronda':
+      return (
+        <>
+          <path d="M5 5h14v14H5z" />
+          <path d="M9 5v4h5l2 3-2 3H9v4M12 9v6" />
+          <circle cx="9" cy="5" r="1.5" fill="currentColor" stroke="none" />
+          <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
+        </>
+      );
   }
 }
 

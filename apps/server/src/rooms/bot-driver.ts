@@ -13,6 +13,7 @@ import { GAMES, isRoadmapGame, type RoadmapState } from '@ronda/engine';
 import type {
   ChinchonPlayerView,
   ClassicPlayerView,
+  GranRondaPlayerView,
   MusPlayerView,
   PrecioJustoPlayerView,
   PartyPlayerView,
@@ -34,6 +35,7 @@ import {
   decidePochaAction,
   decideRondaAction,
   decideRoadmapAction,
+  decideGranRondaAction,
 } from './bot-policy.ts';
 
 const BOT_DELAY_MS = 700;
@@ -99,6 +101,24 @@ function nextBotTurn(room: Room): BotTurn | null {
   // En los modos sociales los bots pueden responder para facilitar pruebas.
   // En Mayoría, el bot anfitrión también confirma la agrupación automática
   // para que una sala de simulación no se quede bloqueada en la revisión.
+  if (
+    state.gameId === 'granronda'
+  ) {
+    if (room.status !== 'playing' || state.status !== 'playing') return null;
+    const bots = room.playersBySeat().filter((player) => player.isBot);
+    const module = GAMES.granronda;
+    if (!module) return null;
+    for (const bot of bots) {
+      const view = module.getPlayerView(state, bot.playerId);
+      if (view.kind !== 'player') continue;
+      const granView = view as GranRondaPlayerView;
+      if (granView.me.availableActions.length > 0) {
+        return { playerId: bot.playerId, kind: 'action' };
+      }
+    }
+    return null;
+  }
+
   if (
     state.gameId === 'orden' ||
     state.gameId === 'colores' ||
@@ -202,6 +222,7 @@ function nextBotTurn(room: Room): BotTurn | null {
           action === 'submitFlag' ||
           action === 'submitNumber' ||
           action === 'submitOrder' ||
+          action === 'submitChoice' ||
           action === 'submitWhoVote' ||
           action === 'submitSentence',
       );
@@ -329,6 +350,22 @@ function runBotTurn(deps: BotDriverDeps, roomCode: string, turn: BotTurn): void 
       if (!module) return;
       const view = module.getPlayerView(state, turn.playerId);
       if (view.kind !== 'player') return;
+      if (
+        view.gameId === 'granronda'
+      ) {
+        const action = decideGranRondaAction(view as GranRondaPlayerView);
+        if (!action) return;
+        const r = deps.mgr.applyAction({
+          roomCode,
+          playerId: turn.playerId,
+          clientActionId: randomUUID(),
+          expectedVersion: state.version,
+          action,
+          now: deps.now(),
+        });
+        if (r.ok) broadcastRoom(deps.io, room);
+        return;
+      }
       if (
         view.gameId === 'orden' ||
         view.gameId === 'colores' ||
