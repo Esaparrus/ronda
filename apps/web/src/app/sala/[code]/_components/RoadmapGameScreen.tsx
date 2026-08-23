@@ -136,32 +136,33 @@ function BanderasReveal({
   pending: boolean;
 }) {
   const correct = view.flags.correctOptionId;
+  const myAnswer = view.me.selectedOptionId;
   return (
     <section className="flex flex-col gap-3">
-      <div className="rounded-3xl border border-oro/60 bg-oro/10 px-4 py-3 text-center">
-        <p className="eyebrow">Respuesta</p>
-        <p className="mt-1 font-display text-30 text-hueso">{view.flags.entityName ?? '—'}</p>
-        <p className="mt-1 text-13 text-humo">{view.flags.explanation ?? 'Buen ojo.'}</p>
-      </div>
       <div className="grid grid-cols-2 gap-2">
-        {view.flags.options.map((option) => (
-          <div
-            key={option.id}
-            className={`rounded-2xl border px-3 py-2 text-13 ${
-              option.id === correct
-                ? 'border-equipo-turquesa/70 bg-equipo-turquesa/10 text-hueso'
-                : 'border-linea bg-mesa/70 text-humo'
-            }`}
-          >
-            <span className="font-semibold">{option.label}</span>
-            {view.flags.answers ? (
-              <span className="ml-2 text-12 text-humo">
-                {Object.values(view.flags.answers).filter((answer) => answer === option.id).length}{' '}
-                votos
-              </span>
-            ) : null}
-          </div>
-        ))}
+        {view.flags.options.map((option) => {
+          const isCorrect = option.id === correct;
+          const isMyWrongAnswer = option.id === myAnswer && !isCorrect;
+          const optionStyle = isCorrect
+            ? 'border-equipo-turquesa bg-equipo-turquesa/15 text-hueso ring-2 ring-equipo-turquesa/20'
+            : isMyWrongAnswer
+              ? 'border-brasa bg-brasa/15 text-hueso ring-2 ring-brasa/20'
+              : 'border-linea bg-mesa/70 text-humo';
+          return (
+            <div key={option.id} className={`rounded-2xl border px-3 py-2 text-13 ${optionStyle}`}>
+              <span className="font-semibold">{option.label}</span>
+              {view.flags.answers ? (
+                <span className="ml-2 text-12 text-humo">
+                  {
+                    Object.values(view.flags.answers).filter((answer) => answer === option.id)
+                      .length
+                  }{' '}
+                  votos
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
       <RevealNextAction canAdvance={canAdvance} pending={pending} />
     </section>

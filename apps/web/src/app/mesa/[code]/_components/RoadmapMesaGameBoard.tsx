@@ -36,32 +36,32 @@ function BanderasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'ban
         </section>
         {revealed ? (
           <section className="flex w-full max-w-4xl flex-col gap-5">
-            <div className="rounded-3xl border border-oro/60 bg-oro/10 px-6 py-6">
-              <p className="text-14 uppercase tracking-[0.16em] text-humo">Respuesta</p>
-              <p className="mt-1 font-display text-[clamp(2.5rem,7vw,5rem)] text-oro">
-                {view.flags.entityName ?? '—'}
-              </p>
-              <p className="mt-2 text-16 text-humo">{view.flags.explanation ?? 'Buen ojo.'}</p>
-            </div>
             <div className="grid gap-3 md:grid-cols-2">
-              {view.flags.options.map((option) => (
-                <div
-                  key={option.id}
-                  className={`rounded-2xl border px-5 py-4 text-left text-18 ${
-                    option.id === view.flags.correctOptionId
-                      ? 'border-equipo-turquesa/70 bg-equipo-turquesa/10 text-hueso'
-                      : 'border-linea bg-mesa/80 text-humo'
-                  }`}
-                >
-                  <span className="font-semibold">{option.label}</span>
-                  <span className="float-right font-mono text-oro">
-                    {
-                      Object.values(view.flags.answers ?? {}).filter((id) => id === option.id)
-                        .length
-                    }
-                  </span>
-                </div>
-              ))}
+              {view.flags.options.map((option) => {
+                const isCorrect = option.id === view.flags.correctOptionId;
+                const receivedWrongAnswer = Object.values(view.flags.answers ?? {}).some(
+                  (id) => id === option.id,
+                );
+                const optionStyle = isCorrect
+                  ? 'border-equipo-turquesa bg-equipo-turquesa/15 text-hueso ring-2 ring-equipo-turquesa/20'
+                  : receivedWrongAnswer
+                    ? 'border-brasa bg-brasa/15 text-hueso ring-2 ring-brasa/20'
+                    : 'border-linea bg-mesa/80 text-humo';
+                return (
+                  <div
+                    key={option.id}
+                    className={`rounded-2xl border px-5 py-4 text-left text-18 ${optionStyle}`}
+                  >
+                    <span className="font-semibold">{option.label}</span>
+                    <span className="float-right font-mono text-oro">
+                      {
+                        Object.values(view.flags.answers ?? {}).filter((id) => id === option.id)
+                          .length
+                      }
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </section>
         ) : (
