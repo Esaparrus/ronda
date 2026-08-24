@@ -10,6 +10,7 @@ import type {
 } from '@ronda/protocol';
 import { GranRondaBoard } from '@/components/granronda/GranRondaBoard';
 import { GranRondaSpaceIcon } from '@/components/granronda/GranRondaSpaceIcon';
+import { GranRondaTurnRollPrompt } from '@/components/granronda/GranRondaTurnRollPrompt';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
@@ -53,16 +54,22 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
     view.me.availableActions.includes(action);
   const final = view.status === 'gameEnd';
   const canAdvance = can('advanceGranRondaMovement');
+  const canRoll = can('rollGranRonda');
+  const canUsePowerup = can('useGranRondaPowerup');
+  const movementPathLength = view.movement?.path.length ?? 0;
   const embeddedGame = view.me.embeddedGame;
   const showEmbeddedGame = view.phase === 'minigameInput' && embeddedGame !== null;
 
   useEffect(() => {
     if (!canAdvance) return;
-    const timer = window.setTimeout(() => {
-      void useRondaStore.getState().sendAction({ type: 'advanceGranRondaMovement' });
-    }, 520);
+    const timer = window.setTimeout(
+      () => {
+        void useRondaStore.getState().sendAction({ type: 'advanceGranRondaMovement' });
+      },
+      movementPathLength <= 1 ? 1450 : 520,
+    );
     return () => window.clearTimeout(timer);
-  }, [canAdvance, view.me.playerId, view.movement?.path.length, view.movement?.remainingSteps]);
+  }, [canAdvance, movementPathLength, view.me.playerId, view.movement?.remainingSteps]);
 
   useEffect(() => {
     if (view.phase !== 'minigameInput' && view.phase !== 'minigameReveal') return;
@@ -163,6 +170,16 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
         />
       </section>
 
+      {!final && view.phase === 'movement' && canRoll ? (
+        <GranRondaTurnRollPrompt
+          disabled={actionBlocked}
+          rolling={pendingAction}
+          onRoll={() => send({ type: 'rollGranRonda' })}
+        >
+          {canUsePowerup ? <PowerupTray view={view} can={can} send={send} /> : null}
+        </GranRondaTurnRollPrompt>
+      ) : null}
+
       {showEmbeddedGame ? <EmbeddedMiniGamePanel view={view} /> : null}
       {view.phase === 'minigameReveal' ? (
         <MiniGamePanel
@@ -174,25 +191,15 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
         />
       ) : null}
 
-      {!final && view.phase === 'movement' ? (
+      {!final && view.phase === 'movement' && !canRoll ? (
         <section className="surface-panel flex flex-col gap-3 p-4 text-center">
           <p className="eyebrow">Turno de movimiento</p>
           <h2 className="text-20 font-semibold text-hueso">
-            {can('rollGranRonda')
-              ? 'Te toca tirar'
-              : `Tira ${currentTurn?.nick ?? 'la persona activa'}`}
+            Tira {currentTurn?.nick ?? 'la persona activa'}
           </h2>
           <p className="text-13 text-humo">
-            {can('rollGranRonda')
-              ? 'El resultado lo verá toda la mesa y después podrás elegir el camino.'
-              : 'El mapa permanece visible para todos mientras llega el siguiente movimiento.'}
+            El mapa permanece visible para todos mientras llega el siguiente movimiento.
           </p>
-          {can('rollGranRonda') ? (
-            <>
-              <Button onClick={() => send({ type: 'rollGranRonda' })}>Tirar dado</Button>
-              <PowerupTray view={view} can={can} send={send} />
-            </>
-          ) : null}
         </section>
       ) : null}
 

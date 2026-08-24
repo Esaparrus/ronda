@@ -2572,6 +2572,8 @@ summary {
 @media (prefers-reduced-motion: reduce) {
   .gran-ronda-dice-roll,
   .gran-ronda-die-roll,
+  .gran-ronda-turn-roll__panel,
+  .gran-ronda-turn-roll__die,
   .gran-ronda-roulette-dots,
   .gran-ronda-roulette-icon,
   .gran-ronda-roulette-track,
@@ -2595,34 +2597,198 @@ summary {
     opacity: 1;
     transform: translateY(0) scale(0.98) rotate(-1deg);
   }
+  88% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
   100% {
     opacity: 0;
     transform: translateY(-4px) scale(0.96) rotate(0deg);
   }
 }
 
-@keyframes gran-ronda-die-wobble {
-  0%,
+@keyframes gran-ronda-die-spin {
+  0% {
+    transform: translateY(1px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(0.92);
+  }
+  50% {
+    transform: translateY(-9px) rotateX(180deg) rotateY(135deg) rotateZ(12deg) scale(1.04);
+  }
   100% {
-    transform: rotate(0deg) translateY(0);
+    transform: translateY(1px) rotateX(360deg) rotateY(270deg) rotateZ(0deg) scale(0.92);
   }
-  22% {
-    transform: rotate(-10deg) translateY(-5px);
+}
+
+@keyframes gran-ronda-die-settle {
+  0% {
+    transform: translateY(-8px) scale(0.88) rotate(-8deg);
   }
-  48% {
-    transform: rotate(9deg) translateY(1px);
+  58% {
+    transform: translateY(2px) scale(1.08) rotate(3deg);
   }
-  72% {
-    transform: rotate(-4deg) translateY(-2px);
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
   }
 }
 
 .gran-ronda-dice-roll {
-  animation: gran-ronda-dice-roll-in 1600ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  color: #fffdf7;
+  animation: gran-ronda-dice-roll-in 1900ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.gran-ronda-dice-roll > p {
+  color: #ffd44f;
+}
+
+.gran-ronda-dice-roll > strong,
+.gran-ronda-dice-roll > div > span {
+  color: #fffdf7;
+}
+
+.gran-ronda-die {
+  border-color: rgb(255 255 255 / 0.9);
+  background: #fffaf0;
+  color: #18211b;
+}
+
+.gran-ronda-die > span {
+  background: #18211b;
+}
+
+.gran-ronda-die strong {
+  color: #18211b;
 }
 
 .gran-ronda-die-roll {
-  animation: gran-ronda-die-wobble 620ms ease-in-out both;
+  perspective: 320px;
+  transform-style: preserve-3d;
+}
+
+.gran-ronda-die-roll--spinning {
+  animation: gran-ronda-die-spin 360ms linear infinite;
+}
+
+.gran-ronda-die-roll--settled {
+  animation: gran-ronda-die-settle 380ms cubic-bezier(0.2, 0.9, 0.24, 1.18) both;
+}
+
+@keyframes gran-ronda-turn-roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gran-ronda-turn-die-idle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(4deg);
+  }
+}
+
+.gran-ronda-turn-roll {
+  position: fixed;
+  z-index: 85;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+}
+
+.gran-ronda-turn-roll__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 45%, rgb(255 205 64 / 0.14), transparent 18rem),
+    rgb(13 24 18 / 0.72);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+.gran-ronda-turn-roll__panel {
+  position: relative;
+  display: flex;
+  width: min(100%, 22rem);
+  max-height: calc(100dvh - 2rem);
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 30px;
+  background: rgb(25 40 31 / 0.94);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 24px 70px rgb(0 0 0 / 0.46);
+  padding: 22px 18px 18px;
+  text-align: center;
+  animation: gran-ronda-turn-roll-in 380ms cubic-bezier(0.2, 0.85, 0.25, 1.12) both;
+}
+
+.gran-ronda-turn-roll__panel h2 {
+  color: #fffdf7;
+}
+
+.gran-ronda-turn-roll__panel > .eyebrow,
+.gran-ronda-turn-roll__button {
+  color: #ffd44f;
+}
+
+.gran-ronda-turn-roll__button {
+  display: flex;
+  min-width: 9.5rem;
+  min-height: 8.5rem;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  border: 0;
+  border-radius: 26px;
+  margin-top: 4px;
+  background: radial-gradient(circle at 50% 35%, rgb(255 219 95 / 0.2), transparent 66%);
+  color: var(--color-oro);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.gran-ronda-turn-roll__button:hover:not(:disabled),
+.gran-ronda-turn-roll__button:focus-visible {
+  background: radial-gradient(circle at 50% 35%, rgb(255 219 95 / 0.3), transparent 68%);
+  outline: 2px solid var(--color-oro);
+  outline-offset: 2px;
+  transform: scale(1.025);
+}
+
+.gran-ronda-turn-roll__button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.gran-ronda-turn-roll__die {
+  display: block;
+  filter: drop-shadow(0 14px 16px rgb(0 0 0 / 0.32));
+  animation: gran-ronda-turn-die-idle 1.15s ease-in-out infinite;
+}
+
+.gran-ronda-turn-roll__die--rolling {
+  animation: gran-ronda-die-spin 320ms linear infinite;
+}
+
+.gran-ronda-turn-roll__powerups {
+  width: 100%;
+  margin-top: 6px;
 }
 
 @keyframes gran-ronda-roulette-pulse {
@@ -2731,6 +2897,70 @@ summary {
   transform-origin: 0 0;
   transition: transform 520ms cubic-bezier(0.2, 0.82, 0.24, 1);
   will-change: transform;
+}
+
+/* El zoom acerca el terreno y los caminos, pero no infla las casillas ni las
+ * fichas. Así el recorrido mantiene aire y sigue siendo legible de cerca. */
+.gran-ronda-board__camera--close {
+  --gran-ronda-space-size: clamp(0.96rem, 3.8vw, 1.2rem);
+}
+
+.gran-ronda-board__camera--close .gran-ronda-space__face {
+  border-width: 1px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.66),
+    0 1px 0 rgb(60 42 20 / 0.28),
+    0 2px 5px rgb(31 48 24 / 0.22);
+}
+
+.gran-ronda-board__camera--close .gran-ronda-space--option {
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
+.gran-ronda-board__camera--close .gran-ronda-space--option::before {
+  position: absolute;
+  inset: -7px;
+  border-radius: 999px;
+  content: '';
+}
+
+.gran-ronda-board__camera--close .gran-ronda-space--option .gran-ronda-space__face {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px rgb(255 202 45 / 0.86),
+    0 4px 10px rgb(90 60 5 / 0.34);
+}
+
+.gran-ronda-board__camera--close .gran-ronda-space--stamp .gran-ronda-space__face {
+  box-shadow:
+    0 0 0 2px #fff5b8,
+    0 0 0 4px rgb(255 199 54 / 0.72),
+    0 4px 10px rgb(40 86 38 / 0.34);
+}
+
+.gran-ronda-board__camera--close .gran-ronda-space__stamp-label,
+.gran-ronda-board__camera--close .gran-ronda-space__trap-label {
+  bottom: calc(100% + 2px);
+  border-width: 1px;
+  font-size: 5px;
+  padding: 2px 4px;
+}
+
+.gran-ronda-board__camera--close .gran-ronda-piece {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-width: 1.5px;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.82),
+    0 2px 5px rgb(18 47 24 / 0.34);
+  font-size: 0.52rem;
+}
+
+.gran-ronda-board__camera--close .gran-ronda-piece--active {
+  box-shadow:
+    0 0 0 1px #fff,
+    0 0 0 2.5px var(--piece-color),
+    0 3px 7px rgb(18 47 24 / 0.38);
 }
 
 .gran-ronda-board__art,

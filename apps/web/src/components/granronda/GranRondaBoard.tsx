@@ -127,10 +127,10 @@ function closeBoardFocus(
   };
 }
 
-function pieceOffset(index: number, total: number): { x: number; y: number } {
-  if (total <= 1) return { x: 0, y: -3.8 };
+function pieceOffset(index: number, total: number, spread = 1): { x: number; y: number } {
+  if (total <= 1) return { x: 0, y: -3.8 * spread };
   const angle = (-90 + (index * 360) / total) * (Math.PI / 180);
-  const radius = total > 4 ? 4.6 : 4.1;
+  const radius = (total > 4 ? 4.6 : 4.1) * spread;
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
 }
 
@@ -193,6 +193,7 @@ export function GranRondaBoard({
     [activePlayerId, board, boardPlayers, routeOptions],
   );
   const cameraScale = minimized || viewMode === 'overview' ? 1 : closeZoom;
+  const pieceSpread = cameraScale > 1 ? 1 / cameraScale : 1;
   const cameraOffsetX = clamp(0.5 - (closeFocus.x / 100) * cameraScale, 1 - cameraScale, 0);
   const cameraOffsetY = clamp(0.5 - (closeFocus.y / 100) * cameraScale, 1 - cameraScale, 0);
   const cameraStyle = {
@@ -245,7 +246,10 @@ export function GranRondaBoard({
       aria-label="Mapa de La Gran Ronda"
     >
       <div className="gran-ronda-board__stage">
-        <div className="gran-ronda-board__camera" style={cameraStyle}>
+        <div
+          className={`gran-ronda-board__camera ${viewMode === 'close' && !minimized ? 'gran-ronda-board__camera--close' : ''}`}
+          style={cameraStyle}
+        >
           <div className="gran-ronda-board__art" aria-hidden="true" />
           <div className="gran-ronda-board__shade" aria-hidden="true" />
 
@@ -323,7 +327,7 @@ export function GranRondaBoard({
                   (player) => player.playerId === occupant.playerId,
                 );
                 const player = playersById.get(occupant.playerId);
-                const offset = pieceOffset(occupantIndex, occupants.length);
+                const offset = pieceOffset(occupantIndex, occupants.length, pieceSpread);
                 const colorIndex = player?.colorIndex ?? 0;
                 const tokenIcon =
                   player?.tokenIcon ??
