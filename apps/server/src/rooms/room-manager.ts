@@ -4,11 +4,14 @@
 // empezada). Toda mutación actualiza lastActivityAt. applyAction delega en
 // GAMES[gameId].applyAction y NUNCA implementa reglas por su cuenta.
 import {
+  DEFAULT_PLAYER_TOKEN_ICON,
   REACTION_COOLDOWN_MS,
+  PLAYER_TOKEN_ICONS,
   type GameAction,
   type GameConfig,
   type GameId,
   type PlayerId,
+  type PlayerTokenIcon,
   type ReactionId,
   type ReactionPayload,
   type Result,
@@ -149,6 +152,7 @@ export class RoomManager {
     gameId: GameId;
     config: GameConfig;
     nick: string;
+    tokenIcon?: PlayerTokenIcon;
     now: number;
   }): Result<JoinResult> {
     // El intervalo periódico mantiene limpia una sala sin tráfico, pero esta
@@ -185,6 +189,10 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: false,
+      tokenIcon:
+        input.tokenIcon ??
+        PLAYER_TOKEN_ICONS[seat % PLAYER_TOKEN_ICONS.length] ??
+        DEFAULT_PLAYER_TOKEN_ICON,
       groupIndex: initialScaleGroupIndex(
         input.config,
         input.gameId,
@@ -205,7 +213,12 @@ export class RoomManager {
 
   // --- join ----------------------------------------------------------------
 
-  joinRoom(input: { roomCode: string; nick: string; now: number }): Result<JoinResult> {
+  joinRoom(input: {
+    roomCode: string;
+    nick: string;
+    tokenIcon?: PlayerTokenIcon;
+    now: number;
+  }): Result<JoinResult> {
     this.sweep(input.now);
     const room = this.rooms.get(input.roomCode);
     if (!room) return err('ROOM_NOT_FOUND');
@@ -230,6 +243,10 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: false,
+      tokenIcon:
+        input.tokenIcon ??
+        PLAYER_TOKEN_ICONS[seat % PLAYER_TOKEN_ICONS.length] ??
+        DEFAULT_PLAYER_TOKEN_ICON,
       groupIndex: initialScaleGroupIndex(
         room.config,
         room.gameId,
@@ -283,6 +300,7 @@ export class RoomManager {
       disconnectedAt: null,
       socketId: null,
       isBot: true,
+      tokenIcon: PLAYER_TOKEN_ICONS[seat % PLAYER_TOKEN_ICONS.length] ?? DEFAULT_PLAYER_TOKEN_ICON,
       groupIndex: initialScaleGroupIndex(
         room.config,
         room.gameId,
@@ -1012,12 +1030,10 @@ export class RoomManager {
   // --- presence ------------------------------------------------------------
 
   /** Registra un heartbeat de una pestaña que sigue mostrando la sala. */
-  touchPresence(input: {
-    roomCode: string;
-    playerId: PlayerId;
-    socketId: string;
-    now: number;
-  }): { accepted: boolean; changed: boolean } {
+  touchPresence(input: { roomCode: string; playerId: PlayerId; socketId: string; now: number }): {
+    accepted: boolean;
+    changed: boolean;
+  } {
     const room = this.rooms.get(input.roomCode);
     const player = room?.players.get(input.playerId);
     if (!room || !player || player.isBot) return { accepted: false, changed: false };
@@ -1103,11 +1119,7 @@ export class RoomManager {
       const roadmapState = state as RoadmapState;
       const previousRoadmapState =
         previous && isRoadmapGame(previous.gameId) ? (previous as RoadmapState) : null;
-      return withRoadmapDeadline(
-        previousRoadmapState,
-        roadmapState,
-        now,
-      );
+      return withRoadmapDeadline(previousRoadmapState, roadmapState, now);
     }
     if (state.gameId === 'preciojusto') {
       const seconds = state.config.answerTimeSeconds;
@@ -1339,7 +1351,8 @@ export class RoomManager {
       return;
     }
     const roadmapState = state as RoadmapState;
-    if (roadmapState.phase !== 'input' || roadmapDeadlineAt(roadmapState) !== expectedDeadlineAt) return;
+    if (roadmapState.phase !== 'input' || roadmapDeadlineAt(roadmapState) !== expectedDeadlineAt)
+      return;
     if (expectedDeadlineAt > now) {
       this.clearRoadmapTimer(room.code);
       this.syncRoadmapTimer(room);
@@ -1765,9 +1778,19 @@ function withRoadmapDeadline(
   if (state.status !== 'playing' || state.phase !== 'input' || seconds === 0) {
     return setRoadmapDeadlineAt(state, null);
   }
-  const previousDeadline = previous && previous.gameId === state.gameId ? roadmapDeadlineAt(previous) : null;
-  const sameRound = previous?.gameId === state.gameId && previous.status === 'playing' && previous.phase === 'input' && previous.round === state.round;
-  return setRoadmapDeadlineAt(state, sameRound ? (roadmapDeadlineAt(state) ?? previousDeadline ?? now + seconds * 1000) : now + seconds * 1000);
+  const previousDeadline =
+    previous && previous.gameId === state.gameId ? roadmapDeadlineAt(previous) : null;
+  const sameRound =
+    previous?.gameId === state.gameId &&
+    previous.status === 'playing' &&
+    previous.phase === 'input' &&
+    previous.round === state.round;
+  return setRoadmapDeadlineAt(
+    state,
+    sameRound
+      ? (roadmapDeadlineAt(state) ?? previousDeadline ?? now + seconds * 1000)
+      : now + seconds * 1000,
+  );
 }
 
 function randomSeed(): string {
@@ -1850,6 +1873,7 @@ function dealInput(room: Room, precioJustoQuestions?: readonly PriceQuestion[]) 
       nick: p.nick,
       seat: p.seat,
       isBot: p.isBot,
+      tokenIcon: p.tokenIcon,
       groupIndex: p.groupIndex ?? null,
     })),
     seed: room.seed,

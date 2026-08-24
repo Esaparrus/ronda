@@ -5,7 +5,12 @@
 
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
-import { messageFor, ROOM_CODE_LENGTH } from '@ronda/protocol';
+import {
+  DEFAULT_PLAYER_TOKEN_ICON,
+  messageFor,
+  ROOM_CODE_LENGTH,
+  type PlayerTokenIcon,
+} from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { isValidNick, normalizeNick } from '@/lib/nick';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +19,7 @@ import { RoomCodeInput } from '@/components/ui/RoomCodeInput';
 import { NickLegalNote } from '@/components/ui/NickLegalNote';
 import { CardStylePicker } from '@/components/cards/CardStylePicker';
 import { Icon } from '@/components/ui/Icon';
+import { PlayerTokenPicker } from '@/components/ui/PlayerTokenPicker';
 
 export interface JoinFormProps {
   /** Si llega (enlace/QR, /unirse/[code]), el código va bloqueado. */
@@ -26,6 +32,7 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
 
   const [code, setCode] = useState('');
   const [nick, setNick] = useState('');
+  const [tokenIcon, setTokenIcon] = useState<PlayerTokenIcon>(DEFAULT_PLAYER_TOKEN_ICON);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [nickError, setNickError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +61,7 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
     if (hasError) return;
 
     setSubmitting(true);
-    const joined = await useRondaStore.getState().joinRoom(effectiveCode, normalized);
+    const joined = await useRondaStore.getState().joinRoom(effectiveCode, normalized, tokenIcon);
     setSubmitting(false);
     if (joined) router.push(`/sala/${effectiveCode}`);
   }
@@ -98,6 +105,8 @@ export function JoinForm({ lockedCode }: JoinFormProps) {
         <NickLegalNote />
         {nickError ? <p className="text-14 text-brasa">{nickError}</p> : null}
       </div>
+
+      <PlayerTokenPicker value={tokenIcon} onChange={setTokenIcon} />
 
       <CardStylePicker />
 

@@ -67,6 +67,7 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
       gameId: payload.gameId,
       config,
       nick: payload.nick,
+      tokenIcon: payload.tokenIcon,
       now: deps.now(),
     });
     if (r.ok) bindAndBroadcast(deps, sid, r.value.roomCode, r.value.playerId);
@@ -80,6 +81,7 @@ export function registerHandlers(socket: ServerSocket, deps: HandlerDeps): void 
     const r = deps.mgr.joinRoom({
       roomCode: payload.roomCode,
       nick: payload.nick,
+      tokenIcon: payload.tokenIcon,
       now: deps.now(),
     });
     if (r.ok) bindAndBroadcast(deps, sid, r.value.roomCode, r.value.playerId);

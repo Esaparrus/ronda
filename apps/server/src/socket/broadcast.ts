@@ -65,6 +65,7 @@ function buildLobbyPlayers(room: Room): PublicPlayer[] {
     connected: p.connected,
     isHost: p.isHost,
     isBot: p.isBot,
+    tokenIcon: p.tokenIcon,
     eliminated: false,
     groupIndex: room.gameId === 'escala' ? (p.groupIndex ?? null) : null,
     // Parejas: solo Mus las tiene (§12.12). El motor las deriva de

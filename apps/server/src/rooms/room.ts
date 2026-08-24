@@ -10,6 +10,7 @@ import type {
   GameEvent,
   GameId,
   PlayerId,
+  PlayerTokenIcon,
   RoomCode,
   RoomStats,
   RoomStatsRow,
@@ -71,6 +72,8 @@ export interface PlayerRuntime {
   socketId: string | null;
   /** Jugador robot (modo "contra la máquina"): lo mueve bot-driver.ts, nunca un socket. */
   isBot: boolean;
+  /** Objeto que representa al jugador en los tableros. */
+  tokenIcon: PlayerTokenIcon;
   /** Grupo de Escala elegido en el lobby, si la sala usa equipos. */
   groupIndex?: number | null;
   /** Retraso elegido para este bot (principalmente útil en Musical). */
@@ -299,7 +302,7 @@ export class Room {
         const score =
           p.groupIndex === null || !state.scale
             ? 0
-            : state.scale.groupScores[String(p.groupIndex)] ?? 0;
+            : (state.scale.groupScores[String(p.groupIndex)] ?? 0);
         const won = state.scale?.winnerGroupIndex === p.groupIndex;
         this.addStatsRow(p, { won, rounds: state.round, score });
       }

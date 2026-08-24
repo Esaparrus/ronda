@@ -1,6 +1,7 @@
 // Eventos de Socket.IO (cliente↔servidor) y esquemas zod de los payloads de
 // entrada (los que el servidor valida ANTES de tocar nada). Contrato §2.3, §2.4.
 import { z } from 'zod';
+import { PLAYER_TOKEN_ICONS, type PlayerTokenIcon } from './brand.ts';
 import { GameActionSchema } from './actions.ts';
 import {
   ChinchonConfigSchema,
@@ -141,11 +142,11 @@ export interface DiagnosticAck {
 
 export interface ClientToServerEvents {
   'room:create': (
-    payload: { gameId: GameId; config: GameConfig; nick: string },
+    payload: { gameId: GameId; config: GameConfig; nick: string; tokenIcon?: PlayerTokenIcon },
     ack: (res: Result<JoinAck>) => void,
   ) => void;
   'room:join': (
-    payload: { roomCode: RoomCode; nick: string },
+    payload: { roomCode: RoomCode; nick: string; tokenIcon?: PlayerTokenIcon },
     ack: (res: Result<JoinAck>) => void,
   ) => void;
   'room:resume': (
@@ -296,11 +297,13 @@ const roomCreateSchema = z.object({
   ]),
   config: GameConfigSchema,
   nick: z.string(),
+  tokenIcon: z.enum(PLAYER_TOKEN_ICONS).optional(),
 });
 
 const roomJoinSchema = z.object({
   roomCode: z.string(),
   nick: z.string(),
+  tokenIcon: z.enum(PLAYER_TOKEN_ICONS).optional(),
 });
 
 const roomResumeSchema = z.object({

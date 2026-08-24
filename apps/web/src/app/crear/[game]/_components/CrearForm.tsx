@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import {
   DEFAULT_CONFIG,
+  DEFAULT_PLAYER_TOKEN_ICON,
   DEFAULT_BANDERAS_CONFIG,
   DEFAULT_BRISCA_CONFIG,
   DEFAULT_CINQUILLO_CONFIG,
@@ -43,6 +44,7 @@ import {
   type PartyConfig,
   type PrecioJustoConfig,
   type PriceCategory,
+  type PlayerTokenIcon,
   type PochaConfig,
   type QuienLoHariaConfig,
 } from '@ronda/protocol';
@@ -66,6 +68,7 @@ import { Icon } from '@/components/ui/Icon';
 import { MatizChallengeSelector } from '@/components/matiz/MatizChallengeSelector';
 import { readMatizEnabledChallengeIds } from '@/lib/matiz-catalog';
 import { CreateRoomLoading } from './CreateRoomLoading';
+import { PlayerTokenPicker } from '@/components/ui/PlayerTokenPicker';
 
 export interface CrearFormProps {
   gameId: GameId;
@@ -76,15 +79,15 @@ export function CrearForm({ gameId }: CrearFormProps) {
   const lastError = useRondaStore((s) => s.lastError);
 
   const [nick, setNick] = useState('');
+  const [tokenIcon, setTokenIcon] = useState<PlayerTokenIcon>(DEFAULT_PLAYER_TOKEN_ICON);
   const [nickError, setNickError] = useState<string | null>(null);
   const [chinchonConfig, setChinchonConfig] = useState<ChinchonConfig>(DEFAULT_CONFIG);
   const [pochaConfig, setPochaConfig] = useState<PochaConfig>(DEFAULT_POCHA_CONFIG);
   const [musConfig, setMusConfig] = useState<MusConfig>(DEFAULT_MUS_CONFIG);
   const [musicalConfig, setMusicalConfig] = useState<MusicalConfig>(DEFAULT_MUSICAL_CONFIG);
   const [rondaConfig, setRondaConfig] = useState<LaRondaConfig>(DEFAULT_LA_RONDA_CONFIG);
-  const [granRondaConfig, setGranRondaConfig] = useState<GranRondaConfig>(
-    DEFAULT_GRAN_RONDA_CONFIG,
-  );
+  const [granRondaConfig, setGranRondaConfig] =
+    useState<GranRondaConfig>(DEFAULT_GRAN_RONDA_CONFIG);
   const [classicConfig, setClassicConfig] = useState<ClassicConfig>(() => classicDefaults(gameId));
   const [partyConfig, setPartyConfig] = useState<PartyConfig>(() => partyDefaults(gameId));
   const [precioJustoConfig, setPrecioJustoConfig] = useState<PrecioJustoConfig>(
@@ -132,28 +135,30 @@ export function CrearForm({ gameId }: CrearFormProps) {
         ? rondaConfig
         : gameId === 'granronda'
           ? granRondaConfig
-        : gameId === 'mus'
-          ? musConfig
-          : gameId === 'pocha'
-            ? pochaConfig
-            : gameId === 'musical'
-              ? musicalConfig
-              : gameId === 'preciojusto'
-                ? precioJustoConfig
-                : gameId === 'banderas'
-                  ? banderasConfig
-                  : gameId === 'cifras'
-                    ? cifrasConfig
-                    : gameId === 'quienloharia'
-                      ? quienLoHariaConfig
-                      : gameId === 'completalafrase'
-                        ? completaLaFraseConfig
-                        : isClassicGame(gameId)
-                          ? classicConfig
-                          : isPartyGame(gameId)
-                            ? partyConfig
-                            : chinchonConfig;
-    const created = await useRondaStore.getState().createRoom(gameId, config, normalized);
+          : gameId === 'mus'
+            ? musConfig
+            : gameId === 'pocha'
+              ? pochaConfig
+              : gameId === 'musical'
+                ? musicalConfig
+                : gameId === 'preciojusto'
+                  ? precioJustoConfig
+                  : gameId === 'banderas'
+                    ? banderasConfig
+                    : gameId === 'cifras'
+                      ? cifrasConfig
+                      : gameId === 'quienloharia'
+                        ? quienLoHariaConfig
+                        : gameId === 'completalafrase'
+                          ? completaLaFraseConfig
+                          : isClassicGame(gameId)
+                            ? classicConfig
+                            : isPartyGame(gameId)
+                              ? partyConfig
+                              : chinchonConfig;
+    const created = await useRondaStore
+      .getState()
+      .createRoom(gameId, config, normalized, tokenIcon);
     if (created) {
       const code = useRondaStore.getState().roomCode;
       if (code) {
@@ -213,6 +218,10 @@ export function CrearForm({ gameId }: CrearFormProps) {
             placeholder="Cómo te van a ver los demás"
           />
           <NickLegalNote />
+        </div>
+
+        <div className="surface-panel p-4">
+          <PlayerTokenPicker value={tokenIcon} onChange={setTokenIcon} />
         </div>
 
         {!isPartyGame(gameId) &&
@@ -1154,7 +1163,10 @@ function GranRondaVariants({ config, setConfig }: GranRondaVariantsProps) {
         helperText="La partida empieza desde tres personas y admite hasta siete."
         value={config.maxPlayers}
         onChange={(value) =>
-          setConfig((previous) => ({ ...previous, maxPlayers: value as GranRondaConfig['maxPlayers'] }))
+          setConfig((previous) => ({
+            ...previous,
+            maxPlayers: value as GranRondaConfig['maxPlayers'],
+          }))
         }
         options={[3, 4, 5, 6, 7].map((value) => ({ value, label: String(value) }))}
         valueSuffix="personas"

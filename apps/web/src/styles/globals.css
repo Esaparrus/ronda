@@ -122,10 +122,10 @@
 
   /* Las pilas del sistema hacen que Ronda se sienta nativa en Apple sin
    * descargar una imitación de SF Pro. */
-  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial,
-    sans-serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial,
-    sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'SFMono-Regular', ui-monospace, Menlo, Monaco, Consolas, monospace;
 
   /* Escala completa. Los tamaños pequeños sostienen datos densos de mesa;
@@ -413,11 +413,7 @@ summary {
       color-mix(in srgb, var(--color-oro) 9%, transparent),
       transparent 26rem
     ),
-    radial-gradient(
-      circle at 90% 82%,
-      rgb(175 82 222 / 0.07),
-      transparent 28rem
-    );
+    radial-gradient(circle at 90% 82%, rgb(175 82 222 / 0.07), transparent 28rem);
   content: '';
   pointer-events: none;
 }
@@ -2641,6 +2637,849 @@ summary {
   }
 }
 
+/* Selector de ficha: objetos, no caras. Se comparte entre crear y unirse para
+ * que la identidad del tablero exista antes de abrir la sala. */
+.player-token-picker {
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.player-token-picker__option {
+  display: grid;
+  min-width: 0;
+  min-height: 62px;
+  place-items: center;
+  gap: 1px;
+  border: 1px solid var(--color-linea);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.68);
+  color: var(--color-hueso);
+  box-shadow: 0 3px 10px rgb(47 61 89 / 0.06);
+  padding: 5px 3px;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.player-token-picker__option > span {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.player-token-picker__option small {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--color-humo);
+  font-size: 9px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-token-picker__option:not(.player-token-picker__option--selected):active {
+  transform: scale(0.96);
+}
+
+.player-token-picker__option--selected {
+  border-color: var(--color-oro);
+  background: color-mix(in srgb, var(--color-oro) 10%, white);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-oro) 16%, transparent),
+    0 5px 14px rgb(0 122 255 / 0.13);
+  transform: translateY(-1px);
+}
+
+/* Tablero ilustrado de La Gran Ronda. El escenario es una imagen y toda la
+ * información jugable (rutas, casillas y fichas) permanece vectorial/HTML. */
+.gran-ronda-board {
+  --gran-ronda-space-size: clamp(2.15rem, 4.4vw, 2.8rem);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gran-ronda-board--compact {
+  --gran-ronda-space-size: clamp(1.7rem, 7.4vw, 2.15rem);
+}
+
+.gran-ronda-board__stage {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border: 1px solid rgb(255 255 255 / 0.82);
+  border-radius: 27px;
+  background: #6fa64f;
+  box-shadow:
+    inset 0 0 0 1px rgb(20 44 25 / 0.14),
+    inset 0 -30px 70px rgb(19 51 25 / 0.12),
+    0 16px 40px rgb(36 73 41 / 0.16);
+}
+
+.gran-ronda-board__art,
+.gran-ronda-board__shade,
+.gran-ronda-board__routes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gran-ronda-board__art {
+  z-index: -3;
+  background-image: url('/games/granronda/mapa-jardin-v1.webp');
+  background-position: center;
+  background-size: cover;
+  filter: saturate(0.92) brightness(0.94);
+  transform: scale(1.012);
+}
+
+.gran-ronda-board__shade {
+  z-index: -2;
+  background:
+    radial-gradient(
+      circle at 50% 52%,
+      transparent 34%,
+      rgb(27 60 26 / 0.08) 78%,
+      rgb(18 40 21 / 0.2) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(22 48 25 / 0.08),
+      transparent 24%,
+      transparent 72%,
+      rgb(22 48 25 / 0.1)
+    );
+  pointer-events: none;
+}
+
+.gran-ronda-board__routes {
+  z-index: 3;
+  overflow: visible;
+}
+
+.gran-ronda-route path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    stroke 180ms ease,
+    stroke-width 180ms ease,
+    filter 180ms ease;
+}
+
+.gran-ronda-route__edge {
+  stroke: rgb(66 48 25 / 0.84);
+  stroke-width: 5.7;
+}
+
+.gran-ronda-route__road {
+  stroke: #f6d58e;
+  stroke-width: 4.25;
+}
+
+.gran-ronda-route__stitch {
+  stroke: rgb(255 249 217 / 0.92);
+  stroke-width: 1.1;
+  stroke-dasharray: 0.4 1.55;
+}
+
+.gran-ronda-route--travelled .gran-ronda-route__road {
+  stroke: #ffd44f;
+}
+
+.gran-ronda-route--travelled .gran-ronda-route__stitch {
+  stroke: rgb(109 72 8 / 0.62);
+}
+
+.gran-ronda-route--choice {
+  filter: drop-shadow(0 0 1.4px rgb(255 222 91 / 0.95));
+}
+
+.gran-ronda-route--choice .gran-ronda-route__edge {
+  stroke: #8a5c06;
+  stroke-width: 6.4;
+}
+
+.gran-ronda-route--choice .gran-ronda-route__road {
+  stroke: #ffe16d;
+  stroke-width: 4.85;
+}
+
+.gran-ronda-board__map-label,
+.gran-ronda-board__stamp-status {
+  position: absolute;
+  z-index: 40;
+  top: 2.5%;
+  display: flex;
+  align-items: center;
+  border: 1px solid rgb(255 255 255 / 0.34);
+  border-radius: 999px;
+  background: rgb(24 45 27 / 0.66);
+  color: white;
+  box-shadow: 0 5px 14px rgb(16 38 21 / 0.18);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.gran-ronda-board__map-label {
+  left: 2.5%;
+  gap: 5px;
+  padding: 5px 9px;
+  font-size: 9px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.gran-ronda-board__map-label span {
+  opacity: 0.72;
+}
+
+.gran-ronda-board__map-label strong {
+  font-size: 10px;
+}
+
+.gran-ronda-board__stamp-status {
+  right: 2.5%;
+  gap: 5px;
+  padding: 5px 9px 5px 7px;
+  color: #dfffe5;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.gran-ronda-space {
+  position: absolute;
+  z-index: 10;
+  display: grid;
+  width: var(--gran-ronda-space-size);
+  height: var(--gran-ronda-space-size);
+  place-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0;
+  opacity: 1 !important;
+  transform: translate(-50%, -50%);
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.gran-ronda-space:disabled {
+  cursor: default;
+}
+
+.gran-ronda-space__face {
+  --space-bg: #fffdf7;
+  --space-highlight: #fff;
+  --space-edge: #4b4435;
+  --space-ink: #29271f;
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border: max(2px, calc(var(--gran-ronda-space-size) * 0.075)) solid var(--space-edge);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 28%, var(--space-highlight), var(--space-bg) 68%);
+  color: var(--space-ink);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.72),
+    0 2px 0 rgb(60 42 20 / 0.32),
+    0 5px 10px rgb(31 48 24 / 0.28);
+}
+
+.gran-ronda-space__face > svg {
+  width: 56%;
+  height: 56%;
+}
+
+.gran-ronda-space--start .gran-ronda-space__face {
+  --space-bg: #fff8e7;
+  --space-highlight: #fff;
+  --space-edge: #514a3d;
+  --space-ink: #343029;
+}
+
+.gran-ronda-space--oros .gran-ronda-space__face {
+  --space-bg: #efb52e;
+  --space-highlight: #ffe88a;
+  --space-edge: #9d6509;
+  --space-ink: #654105;
+}
+
+.gran-ronda-space--perdida .gran-ronda-space__face {
+  --space-bg: #e9433d;
+  --space-highlight: #ff7b6f;
+  --space-edge: #8e201c;
+  --space-ink: #fff;
+}
+
+.gran-ronda-space--sello .gran-ronda-space__face {
+  --space-bg: #59bd70;
+  --space-highlight: #a4ec9c;
+  --space-edge: #23763d;
+  --space-ink: #103c20;
+}
+
+.gran-ronda-space--evento .gran-ronda-space__face {
+  --space-bg: #55bfe9;
+  --space-highlight: #a9e9ff;
+  --space-edge: #14678c;
+  --space-ink: #0a425b;
+}
+
+.gran-ronda-space--atajo .gran-ronda-space__face {
+  --space-bg: #a858ce;
+  --space-highlight: #dc9af4;
+  --space-edge: #633080;
+  --space-ink: #fff;
+}
+
+.gran-ronda-space--doble .gran-ronda-space__face {
+  --space-bg: #ff75ad;
+  --space-highlight: #ffb4d3;
+  --space-edge: #9f2859;
+  --space-ink: #5c1331;
+}
+
+.gran-ronda-space--penalizacion .gran-ronda-space__face {
+  --space-bg: #ef5a3c;
+  --space-highlight: #ff9d72;
+  --space-edge: #8e2a16;
+  --space-ink: #fff;
+}
+
+.gran-ronda-space--tienda .gran-ronda-space__face {
+  --space-bg: #7659da;
+  --space-highlight: #b7a6ff;
+  --space-edge: #3f2b91;
+  --space-ink: #fff;
+}
+
+.gran-ronda-space__number {
+  position: absolute;
+  right: -16%;
+  bottom: -14%;
+  display: grid;
+  min-width: 1.2em;
+  height: 1.2em;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 0.72);
+  border-radius: 999px;
+  background: #29312d;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: max(7px, calc(var(--gran-ronda-space-size) * 0.21));
+  font-weight: 750;
+  line-height: 1;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.26);
+  padding-inline: 0.15em;
+}
+
+.gran-ronda-space__stamp-label {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(100% + 4px);
+  border: 1px solid rgb(255 255 255 / 0.65);
+  border-radius: 999px;
+  background: #16723b;
+  color: white;
+  font-size: clamp(6px, 1.8vw, 9px);
+  font-weight: 850;
+  line-height: 1;
+  padding: 3px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: 0 3px 8px rgb(18 76 37 / 0.32);
+  white-space: nowrap;
+}
+
+.gran-ronda-space--stamp {
+  z-index: 17;
+}
+
+.gran-ronda-space--stamp .gran-ronda-space__face {
+  box-shadow:
+    0 0 0 3px #fff5b8,
+    0 0 0 6px rgb(255 199 54 / 0.72),
+    0 7px 18px rgb(40 86 38 / 0.38);
+  animation: gran-ronda-stamp-breathe 1.8s ease-in-out infinite;
+}
+
+.gran-ronda-space--option {
+  z-index: 21;
+  cursor: pointer;
+  filter: drop-shadow(0 0 6px rgb(255 220 79 / 0.9));
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.gran-ronda-space--option .gran-ronda-space__face {
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 7px rgb(255 202 45 / 0.86),
+    0 8px 20px rgb(90 60 5 / 0.38);
+  animation: gran-ronda-option-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes gran-ronda-stamp-breathe {
+  50% {
+    transform: translateY(-2px) scale(1.04);
+    filter: brightness(1.08);
+  }
+}
+
+@keyframes gran-ronda-option-pulse {
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.gran-ronda-piece {
+  --piece-color: var(--seat-0);
+  position: absolute;
+  z-index: 32;
+  display: grid;
+  width: clamp(1.35rem, 4.8vw, 1.75rem);
+  height: clamp(1.35rem, 4.8vw, 1.75rem);
+  place-items: center;
+  border: 3px solid var(--piece-color);
+  border-radius: 50% 50% 46% 46%;
+  background: #fffdf8;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.88),
+    0 5px 9px rgb(18 47 24 / 0.38);
+  color: #1e241f;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  font-size: clamp(0.72rem, 3.1vw, 1rem);
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  transition:
+    left 480ms cubic-bezier(0.2, 0.8, 0.25, 1),
+    top 480ms cubic-bezier(0.2, 0.8, 0.25, 1),
+    transform 180ms ease;
+}
+
+.gran-ronda-piece::after {
+  position: absolute;
+  right: 18%;
+  bottom: -19%;
+  left: 18%;
+  height: 4px;
+  border-radius: 50%;
+  background: rgb(24 53 29 / 0.34);
+  content: '';
+  filter: blur(1px);
+}
+
+.gran-ronda-piece--active {
+  z-index: 35;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 5px var(--piece-color),
+    0 7px 14px rgb(18 47 24 / 0.42);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.gran-ronda-board__key {
+  overflow: hidden;
+  border: 1px solid var(--color-linea);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.62);
+}
+
+.gran-ronda-board__key summary {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--color-humo);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  list-style: none;
+  padding: 8px 11px;
+}
+
+.gran-ronda-board__key summary::-webkit-details-marker {
+  display: none;
+}
+
+.gran-ronda-board__key-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gran-ronda-board__key-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #8b929d;
+}
+
+.gran-ronda-board__key-dot--oros {
+  background: #efb52e;
+}
+
+.gran-ronda-board__key-dot--perdida {
+  background: #e9433d;
+}
+
+.gran-ronda-board__key-dot--evento {
+  background: #55bfe9;
+}
+
+.gran-ronda-board__key-dot--atajo {
+  background: #a858ce;
+}
+
+.gran-ronda-board__key-dot--doble {
+  background: #ff75ad;
+}
+
+.gran-ronda-board__key-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  border-top: 1px solid var(--color-linea);
+  padding: 9px;
+}
+
+.gran-ronda-board__key-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.66);
+  padding: 6px;
+}
+
+.gran-ronda-board__key-icon {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #eceff3;
+  color: #3d4652;
+}
+
+.gran-ronda-board__key-item--oros .gran-ronda-board__key-icon {
+  background: #ffe59a;
+  color: #74500b;
+}
+
+.gran-ronda-board__key-item--perdida .gran-ronda-board__key-icon,
+.gran-ronda-board__key-item--penalizacion .gran-ronda-board__key-icon {
+  background: #ffe0dc;
+  color: #b5322b;
+}
+
+.gran-ronda-board__key-item--evento .gran-ronda-board__key-icon {
+  background: #d8f3ff;
+  color: #166b8f;
+}
+
+.gran-ronda-board__key-item--atajo .gran-ronda-board__key-icon,
+.gran-ronda-board__key-item--tienda .gran-ronda-board__key-icon {
+  background: #f0ddf8;
+  color: #7c3c9b;
+}
+
+.gran-ronda-board__key-item--doble .gran-ronda-board__key-icon {
+  background: #ffe0ed;
+  color: #a42f60;
+}
+
+.gran-ronda-board__key-item--sello .gran-ronda-board__key-icon {
+  background: #dff4df;
+  color: #20713a;
+}
+
+.gran-ronda-board__key-item strong,
+.gran-ronda-board__key-item small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gran-ronda-board__key-item strong {
+  color: var(--color-hueso);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.gran-ronda-board__key-item small {
+  margin-top: 1px;
+  color: var(--color-humo);
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.gran-ronda-board__choice-hint {
+  border: 1px solid rgb(185 129 11 / 0.28);
+  border-radius: 999px;
+  background: #fff8d8;
+  color: #7b5708;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.3;
+  margin: 0 auto;
+  padding: 6px 11px;
+  text-align: center;
+}
+
+.gran-ronda-board--minimized {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  animation: gran-ronda-map-minimize 360ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.gran-ronda-board--minimized .gran-ronda-board__stage {
+  --gran-ronda-space-size: 0.68rem;
+  width: 9rem;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgb(36 73 41 / 0.15);
+}
+
+.gran-ronda-board--minimized .gran-ronda-space__number,
+.gran-ronda-board--minimized .gran-ronda-space__stamp-label,
+.gran-ronda-board--minimized .gran-ronda-board__map-label,
+.gran-ronda-board--minimized .gran-ronda-board__stamp-status {
+  display: none;
+}
+
+.gran-ronda-board--minimized .gran-ronda-space__face {
+  border-width: 1px;
+  box-shadow: 0 1px 3px rgb(31 48 24 / 0.3);
+}
+
+.gran-ronda-board--minimized .gran-ronda-piece {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-width: 1px;
+  font-size: 0.52rem;
+  box-shadow: 0 2px 4px rgb(18 47 24 / 0.35);
+}
+
+.gran-ronda-board__mini-summary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gran-ronda-board__mini-summary p {
+  color: var(--color-oro);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.2;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+}
+
+.gran-ronda-board__mini-summary strong {
+  overflow: hidden;
+  color: var(--color-hueso);
+  font-size: 14px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gran-ronda-board__mini-summary span {
+  color: var(--color-humo);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@keyframes gran-ronda-map-minimize {
+  from {
+    opacity: 0.65;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (min-width: 700px) {
+  .gran-ronda-board__key-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 390px) {
+  .gran-ronda-board--minimized {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .gran-ronda-board--minimized .gran-ronda-board__stage {
+    width: 7.5rem;
+  }
+
+  .gran-ronda-board__map-label span {
+    display: none;
+  }
+}
+
+.gran-ronda-resource-card {
+  min-width: 0;
+  transition:
+    min-height 240ms ease,
+    padding 240ms ease,
+    opacity 240ms ease;
+}
+
+.gran-ronda-resource-card__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+}
+
+.gran-ronda-resource-card--coins .gran-ronda-resource-card__icon {
+  background: #fff0b6;
+  color: #80560b;
+}
+
+.gran-ronda-resource-card--coins strong {
+  color: #a66c00;
+}
+
+.gran-ronda-resource-card--seals .gran-ronda-resource-card__icon {
+  background: #e2f7e6;
+  color: #24723b;
+}
+
+.gran-ronda-resource-card--seals strong {
+  color: #258142;
+}
+
+.gran-ronda-resolution-icon {
+  position: relative;
+  display: grid;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 17px;
+  background: #edf0f4;
+  color: #3f4752;
+}
+
+.gran-ronda-resolution-icon small {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  min-width: 24px;
+  height: 20px;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: #27302d;
+  color: white;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding-inline: 4px;
+}
+
+.gran-ronda-resolution-icon--oros {
+  background: #fff0b6;
+  color: #80560b;
+}
+
+.gran-ronda-resolution-icon--perdida,
+.gran-ronda-resolution-icon--penalizacion {
+  background: #ffe1dd;
+  color: #b2352e;
+}
+
+.gran-ronda-resolution-icon--sello {
+  background: #e1f7e5;
+  color: #23723b;
+}
+
+.gran-ronda-resolution-icon--evento {
+  background: #dcf5ff;
+  color: #17688b;
+}
+
+.gran-ronda-resolution-icon--atajo,
+.gran-ronda-resolution-icon--tienda {
+  background: #f0e2f8;
+  color: #7b3b9a;
+}
+
+.gran-ronda-resolution-icon--doble {
+  background: #ffe3ee;
+  color: #a53160;
+}
+
+.gran-ronda-shop-item__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.78);
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  font-size: 19px;
+  box-shadow: 0 3px 8px rgb(65 41 97 / 0.12);
+}
+
+.gran-ronda-game-header,
+.gran-ronda-resource-strip {
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease;
+}
+
+@media (max-width: 640px) {
+  .gran-ronda-game-screen--minigame .gran-ronda-game-header {
+    min-height: 34px;
+  }
+
+  .gran-ronda-game-screen--minigame .gran-ronda-game-header .eyebrow {
+    display: none;
+  }
+
+  .gran-ronda-game-screen--minigame .gran-ronda-game-header h1 {
+    font-size: 18px;
+  }
+
+  .gran-ronda-game-screen--minigame .gran-ronda-resource-strip {
+    display: none;
+  }
+}
+
 .gran-ronda-map-shell {
   scroll-margin-top: 0.75rem;
   transform-origin: top center;
@@ -2651,11 +3490,18 @@ summary {
     padding 360ms ease;
 }
 
+/* En la pantalla pública el tablero debe caber completo en una televisión o
+ * portátil. El ancho se limita también por el alto disponible, no solo por
+ * el viewport horizontal. */
+.gran-ronda-map-shell--table {
+  width: min(100%, clamp(18rem, calc(100dvh - 16rem), 72rem));
+}
+
 .gran-ronda-map-shell--minigame {
-  transform: scale(0.965);
-  opacity: 0.82;
-  filter: saturate(0.82);
-  padding-block: 0.35rem;
+  transform: none;
+  opacity: 1;
+  filter: none;
+  padding: 0.55rem;
 }
 
 .gran-ronda-embedded-game {

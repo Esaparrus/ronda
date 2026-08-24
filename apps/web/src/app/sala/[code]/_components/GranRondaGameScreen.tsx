@@ -9,6 +9,7 @@ import type {
   GranRondaPowerupType,
 } from '@ronda/protocol';
 import { GranRondaBoard } from '@/components/granronda/GranRondaBoard';
+import { GranRondaSpaceIcon } from '@/components/granronda/GranRondaSpaceIcon';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
@@ -30,6 +31,11 @@ const POWERUP_COSTS: Record<GranRondaPowerupType, number> = {
 const POWERUP_LABELS: Record<GranRondaPowerupType, string> = {
   doubleRoll: 'Doble dado',
   rivalPenalty: 'Penalización',
+};
+
+const POWERUP_DESCRIPTIONS: Record<GranRondaPowerupType, string> = {
+  doubleRoll: 'Tira dos dados antes de moverte.',
+  rivalPenalty: 'Quita 2 Oros a un rival.',
 };
 
 export interface GranRondaGameScreenProps {
@@ -58,9 +64,12 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
   useEffect(() => {
     if (view.phase !== 'minigameInput' && view.phase !== 'minigameReveal') return;
     const targetId = showEmbeddedGame ? 'gran-ronda-minigame' : 'gran-ronda-map';
-    const timer = window.setTimeout(() => {
-      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, showEmbeddedGame ? 180 : 80);
+    const timer = window.setTimeout(
+      () => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+      showEmbeddedGame ? 180 : 80,
+    );
     return () => window.clearTimeout(timer);
   }, [showEmbeddedGame, view.phase, view.miniGame.gameId]);
 
@@ -83,27 +92,46 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
   });
 
   return (
-    <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 overflow-y-auto px-3 pb-[max(0.8rem,env(safe-area-inset-bottom))] pt-3">
-      <header className="flex items-center justify-between gap-3">
+    <main
+      className={`gran-ronda-game-screen mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 overflow-y-auto px-3 pb-[max(0.8rem,env(safe-area-inset-bottom))] pt-3 ${showEmbeddedGame ? 'gran-ronda-game-screen--minigame' : ''}`}
+    >
+      <header className="gran-ronda-game-header flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="eyebrow">Mapa y turnos</p>
           <h1 className="truncate font-display text-24 text-hueso">
             La Gran Ronda <span className="font-sans text-12 text-oro">R{view.round}</span>
           </h1>
         </div>
-        <button type="button" onClick={onRequestLeave} className="glass-button min-h-10 px-3 text-12 text-humo">
+        <button
+          type="button"
+          onClick={onRequestLeave}
+          className="glass-button min-h-10 px-3 text-12 text-humo"
+        >
           Salir
         </button>
       </header>
 
-      <section className="grid grid-cols-2 gap-2" aria-label="Tus recursos">
-        <div className="surface-panel flex items-center justify-between px-4 py-3">
-          <span className="text-13 text-humo">Oros</span>
-          <strong className="font-mono text-22 text-oro">{view.me.coins}</strong>
+      <section
+        className="gran-ronda-resource-strip grid grid-cols-2 gap-2"
+        aria-label="Tus recursos"
+      >
+        <div className="gran-ronda-resource-card gran-ronda-resource-card--coins surface-panel flex items-center justify-between px-3 py-2.5">
+          <span className="flex items-center gap-2 text-13 text-humo">
+            <span className="gran-ronda-resource-card__icon">
+              <GranRondaSpaceIcon type="oros" size={17} />
+            </span>
+            Oros
+          </span>
+          <strong className="font-mono text-22">{view.me.coins}</strong>
         </div>
-        <div className="surface-panel flex items-center justify-between px-4 py-3">
-          <span className="text-13 text-humo">Sellos</span>
-          <strong className="font-mono text-22 text-verde">{view.me.seals}</strong>
+        <div className="gran-ronda-resource-card gran-ronda-resource-card--seals surface-panel flex items-center justify-between px-3 py-2.5">
+          <span className="flex items-center gap-2 text-13 text-humo">
+            <span className="gran-ronda-resource-card__icon">
+              <GranRondaSpaceIcon type="sello" size={17} />
+            </span>
+            Sellos
+          </span>
+          <strong className="font-mono text-22">{view.me.seals}</strong>
         </div>
       </section>
 
@@ -120,20 +148,25 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
           activePlayerId={view.turnPlayerId}
           movement={view.movement}
           compact
-          onSpaceSelect={can('chooseGranRondaPath') ? (spaceId) => send({ type: 'chooseGranRondaPath', nextSpaceId: spaceId }) : undefined}
+          minimized={showEmbeddedGame}
+          onSpaceSelect={
+            can('chooseGranRondaPath')
+              ? (spaceId) => send({ type: 'chooseGranRondaPath', nextSpaceId: spaceId })
+              : undefined
+          }
         />
       </section>
 
       {showEmbeddedGame ? <EmbeddedMiniGamePanel view={view} /> : null}
-      {view.phase === 'minigameReveal' ? (
-        <MiniGamePanel view={view} can={can} send={send} />
-      ) : null}
+      {view.phase === 'minigameReveal' ? <MiniGamePanel view={view} can={can} send={send} /> : null}
 
       {!final && view.phase === 'movement' ? (
         <section className="surface-panel flex flex-col gap-3 p-4 text-center">
           <p className="eyebrow">Turno de movimiento</p>
           <h2 className="text-20 font-semibold text-hueso">
-            {can('rollGranRonda') ? 'Te toca tirar' : `Tira ${currentTurn?.nick ?? 'la persona activa'}`}
+            {can('rollGranRonda')
+              ? 'Te toca tirar'
+              : `Tira ${currentTurn?.nick ?? 'la persona activa'}`}
           </h2>
           <p className="text-13 text-humo">
             {can('rollGranRonda')
@@ -164,12 +197,17 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
           </div>
           <div className="min-w-0 flex-1">
             <p className="eyebrow">La ficha está avanzando</p>
-            <h2 className="mt-1 truncate text-18 font-semibold text-hueso">{currentTurn?.nick ?? 'Jugador activo'}</h2>
+            <h2 className="mt-1 truncate text-18 font-semibold text-hueso">
+              {currentTurn?.nick ?? 'Jugador activo'}
+            </h2>
             <p className="mt-1 text-13 text-humo">
               Casillas restantes: {view.movement?.remainingSteps ?? 0}. Todos ven cada paso.
             </p>
           </div>
-          <span className="size-3 animate-pulse rounded-full bg-oro" aria-label="Movimiento en curso" />
+          <span
+            className="size-3 animate-pulse rounded-full bg-oro"
+            aria-label="Movimiento en curso"
+          />
         </section>
       ) : null}
 
@@ -181,8 +219,14 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
         <section className="surface-panel flex flex-col gap-3 p-4 text-center">
           <p className="eyebrow">Ronda completada</p>
           <h2 className="text-20 font-semibold text-hueso">Todas las fichas han llegado</h2>
-          <p className="text-13 text-humo">El mapa queda congelado hasta que el anfitrión empiece la siguiente ronda.</p>
-          {can('nextRound') ? <Button onClick={() => send({ type: 'nextRound' })}>Empezar ronda {view.round + 1}</Button> : null}
+          <p className="text-13 text-humo">
+            El mapa queda congelado hasta que el anfitrión empiece la siguiente ronda.
+          </p>
+          {can('nextRound') ? (
+            <Button onClick={() => send({ type: 'nextRound' })}>
+              Empezar ronda {view.round + 1}
+            </Button>
+          ) : null}
         </section>
       ) : null}
 
@@ -191,28 +235,40 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
           <div className="text-center">
             <p className="eyebrow">Partida terminada</p>
             <h2 className="mt-2 font-display text-32 text-hueso">
-              Gana {view.players.find((player) => player.playerId === view.winnerId)?.nick ?? 'la mesa'}
+              Gana{' '}
+              {view.players.find((player) => player.playerId === view.winnerId)?.nick ?? 'la mesa'}
             </h2>
             <p className="mt-1 text-13 text-humo">Más Sellos; los Oros desempatan.</p>
           </div>
           <ol className="flex flex-col gap-2">
             {standings.map((player, index) => {
-              const boardPlayer = view.boardPlayers.find((candidate) => candidate.playerId === player.playerId);
+              const boardPlayer = view.boardPlayers.find(
+                (candidate) => candidate.playerId === player.playerId,
+              );
               return (
-                <li key={player.playerId} className="interactive-surface flex items-center gap-3 px-3 py-2">
+                <li
+                  key={player.playerId}
+                  className="interactive-surface flex items-center gap-3 px-3 py-2"
+                >
                   <span className="w-5 text-center font-mono text-14 text-humo">{index + 1}</span>
                   <Avatar name={player.nick} colorIndex={player.colorIndex} size={32} />
                   <span className="min-w-0 flex-1 truncate text-15 text-hueso">{player.nick}</span>
                   {player.playerId === view.winnerId ? <Pill>Ganador</Pill> : null}
-                  <span className="font-mono text-13 text-verde">{boardPlayer?.seals ?? 0} sellos</span>
+                  <span className="font-mono text-13 text-verde">
+                    {boardPlayer?.seals ?? 0} sellos
+                  </span>
                   <span className="font-mono text-13 text-oro">{boardPlayer?.coins ?? 0} oros</span>
                 </li>
               );
             })}
           </ol>
           <div className="flex flex-col gap-2">
-            <Button onClick={() => void useRondaStore.getState().voteRematch(true)}>Revancha</Button>
-            <Button variant="ghost" onClick={handleExit}>Salir</Button>
+            <Button onClick={() => void useRondaStore.getState().voteRematch(true)}>
+              Revancha
+            </Button>
+            <Button variant="ghost" onClick={handleExit}>
+              Salir
+            </Button>
           </div>
         </section>
       ) : null}
@@ -251,7 +307,12 @@ function EmbeddedMiniGamePanel({ view }: { view: GranRondaPlayerView }) {
         ) : embedded.gameId === 'pocha' ? (
           <PochaGameScreen view={embedded} onAction={sendEmbeddedAction} />
         ) : embedded.gameId === 'laronda' ? (
-          <RondaGameScreen view={embedded} onRequestLeave={() => undefined} onAction={sendEmbeddedAction} embedded />
+          <RondaGameScreen
+            view={embedded}
+            onRequestLeave={() => undefined}
+            onAction={sendEmbeddedAction}
+            embedded
+          />
         ) : embedded.gameId === 'preciojusto' ? (
           <PrecioJustoGameScreen view={embedded} onAction={sendEmbeddedAction} />
         ) : embedded.gameId === 'banderas' ||
@@ -278,7 +339,9 @@ function EmbeddedMiniGamePanel({ view }: { view: GranRondaPlayerView }) {
       {view.me.availableActions.includes('finishGranRondaMiniGame') ? (
         <Button
           variant="ghost"
-          onClick={() => void useRondaStore.getState().sendAction({ type: 'finishGranRondaMiniGame' })}
+          onClick={() =>
+            void useRondaStore.getState().sendAction({ type: 'finishGranRondaMiniGame' })
+          }
         >
           Revelar resultados
         </Button>
@@ -345,7 +408,8 @@ function ResolutionPanel({
 }) {
   const resolution = view.resolution;
   if (!resolution) return null;
-  const deltaLabel = resolution.coinsDelta > 0 ? `+${resolution.coinsDelta}` : `${resolution.coinsDelta}`;
+  const deltaLabel =
+    resolution.coinsDelta > 0 ? `+${resolution.coinsDelta}` : `${resolution.coinsDelta}`;
   return (
     <section className="surface-panel flex flex-col gap-3 border-oro/35 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -353,22 +417,27 @@ function ResolutionPanel({
           <p className="eyebrow text-oro">Llegada a la casilla</p>
           <h2 className="mt-1 text-22 font-semibold text-hueso">{resolution.title}</h2>
         </div>
-        <div className="grid size-12 place-items-center rounded-2xl bg-oro/15 font-mono text-18 text-oro">
-          {resolution.coinsDelta === 0 ? '·' : deltaLabel}
+        <div
+          className={`gran-ronda-resolution-icon gran-ronda-resolution-icon--${resolution.kind}`}
+        >
+          <GranRondaSpaceIcon type={resolution.kind} size={25} />
+          {resolution.coinsDelta !== 0 ? <small>{deltaLabel}</small> : null}
         </div>
       </div>
       <p className="text-14 leading-relaxed text-humo">{resolution.message}</p>
-      {resolution.sealsDelta > 0 ? <p className="font-mono text-13 text-verde">+{resolution.sealsDelta} Sello</p> : null}
+      {resolution.sealsDelta > 0 ? (
+        <p className="font-mono text-13 text-verde">+{resolution.sealsDelta} Sello</p>
+      ) : null}
       {can('buyGranRondaSeal') ? (
-        <Button onClick={() => send({ type: 'buyGranRondaSeal' })}>
-          Comprar Sello · 8 Oros
-        </Button>
+        <Button onClick={() => send({ type: 'buyGranRondaSeal' })}>Comprar Sello · 8 Oros</Button>
       ) : null}
       {can('buyGranRondaPowerup') ? <PowerupShop view={view} send={send} /> : null}
       {can('continueGranRondaResolution') ? (
         <Button onClick={() => send({ type: 'continueGranRondaResolution' })}>Continuar</Button>
       ) : (
-        <p className="text-13 text-humo">{currentTurnNick ?? 'La persona activa'} confirma la llegada.</p>
+        <p className="text-13 text-humo">
+          {currentTurnNick ?? 'La persona activa'} confirma la llegada.
+        </p>
       )}
     </section>
   );
@@ -392,7 +461,9 @@ function MiniGamePanel({
       <MiniGameRoulette gameId={view.miniGame.gameId} title={view.miniGame.title} />
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="eyebrow text-oro">{revealed ? 'Resultados del minijuego' : 'Sorteo de la ronda'}</p>
+          <p className="eyebrow text-oro">
+            {revealed ? 'Resultados del minijuego' : 'Sorteo de la ronda'}
+          </p>
           <h2 className="mt-1 text-22 font-semibold text-hueso">
             {revealed ? 'Reparto de Oros' : view.miniGame.title}
           </h2>
@@ -401,9 +472,13 @@ function MiniGamePanel({
               ? 'La partida original ha terminado. Este es el resultado de la ronda.'
               : view.miniGame.prompt}
           </p>
-          {!revealed ? <p className="mt-2 text-12 leading-relaxed text-humo">{view.miniGame.instructions}</p> : null}
+          {!revealed ? (
+            <p className="mt-2 text-12 leading-relaxed text-humo">{view.miniGame.instructions}</p>
+          ) : null}
         </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-20 text-oro">✦</span>
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-20 text-oro">
+          ✦
+        </span>
       </div>
       {!revealed ? (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -431,23 +506,36 @@ function MiniGamePanel({
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-linea bg-tinta/30 px-3 py-2 text-12">
         <span className="text-humo">
-          Tu marcador: <strong className="font-mono text-hueso">{personal ? personal.score : '—'}</strong>
-          {personal?.lastCard !== null && personal?.lastCard !== undefined ? ` · última carta ${personal.lastCard}` : ''}
+          Tu marcador:{' '}
+          <strong className="font-mono text-hueso">{personal ? personal.score : '—'}</strong>
+          {personal?.lastCard !== null && personal?.lastCard !== undefined
+            ? ` · última carta ${personal.lastCard}`
+            : ''}
         </span>
-        <span className="text-humo">{view.miniGame.completedPlayerIds.length}/{view.players.length} terminados</span>
+        <span className="text-humo">
+          {view.miniGame.completedPlayerIds.length}/{view.players.length} terminados
+        </span>
       </div>
       {revealed ? (
         <div className="flex flex-col gap-2 rounded-2xl border border-linea bg-tinta/35 p-3">
-          <p className="text-12 font-semibold uppercase tracking-[0.12em] text-humo">Clasificación y premios</p>
+          <p className="text-12 font-semibold uppercase tracking-[0.12em] text-humo">
+            Clasificación y premios
+          </p>
           <div className="grid gap-1.5 sm:grid-cols-2">
             {view.players.map((player) => {
               const result = view.miniGame.results?.[player.playerId];
               const delta = result?.reward ?? view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
               return (
-                <div key={player.playerId} className="flex items-center justify-between gap-2 text-12">
+                <div
+                  key={player.playerId}
+                  className="flex items-center justify-between gap-2 text-12"
+                >
                   <span className="min-w-0 truncate text-hueso">
-                    {result ? `${result.rank}. ` : ''}{player.nick}
-                    {result?.outcome === 'bust' ? <span className="ml-1 text-brasa">· Se pasó</span> : null}
+                    {result ? `${result.rank}. ` : ''}
+                    {player.nick}
+                    {result?.outcome === 'bust' ? (
+                      <span className="ml-1 text-brasa">· Se pasó</span>
+                    ) : null}
                   </span>
                   <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
                     {result?.score ?? '—'} · {delta > 0 ? `+${delta}` : '±0'} Oros
@@ -459,7 +547,9 @@ function MiniGamePanel({
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 text-12 text-humo">
-          <span>{view.miniGame.submittedPlayerIds.length}/{view.players.length} acciones registradas</span>
+          <span>
+            {view.miniGame.submittedPlayerIds.length}/{view.players.length} acciones registradas
+          </span>
           <span>1.º +6 · 2.º +3 · resto +1</span>
         </div>
       )}
@@ -478,11 +568,22 @@ function MiniGamePanel({
 function MiniGameRoulette({ gameId, title }: { gameId: string; title: string }) {
   return (
     <div className="gran-ronda-roulette flex items-center gap-3 rounded-2xl border border-white/15 bg-tinta/45 px-3 py-2">
-      <span className="gran-ronda-roulette-icon grid size-9 shrink-0 place-items-center rounded-xl bg-oro text-tinta" aria-hidden="true">
-        {gameId === 'musical' ? '♫' : gameId === 'sieteymedia' ? '7½' : gameId === 'cinquillo' ? '♣' : '✦'}
+      <span
+        className="gran-ronda-roulette-icon grid size-9 shrink-0 place-items-center rounded-xl bg-oro text-tinta"
+        aria-hidden="true"
+      >
+        {gameId === 'musical'
+          ? '♫'
+          : gameId === 'sieteymedia'
+            ? '7½'
+            : gameId === 'cinquillo'
+              ? '♣'
+              : '✦'}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-9 uppercase tracking-[0.16em] text-oro">La ruleta ha elegido</p>
+        <p className="font-mono text-9 uppercase tracking-[0.16em] text-oro">
+          La ruleta ha elegido
+        </p>
         <div className="gran-ronda-roulette-reel mt-0.5" aria-hidden="true">
           <div className="gran-ronda-roulette-track">
             <span>Siete y media</span>
@@ -527,11 +628,23 @@ function PowerupShop({
             onClick={() => send({ type: 'buyGranRondaPowerup', powerup })}
             className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-violeta/40 bg-tinta/35 px-3 py-2 text-left text-12 text-hueso transition-colors hover:border-violeta disabled:cursor-not-allowed disabled:opacity-45"
           >
-            <span>
-              <strong className="block text-13">{POWERUP_LABELS[powerup]}</strong>
-              <span className="text-humo">Tienes {view.me.powerups[powerup]}</span>
+            <span className="flex min-w-0 items-center gap-2.5">
+              <span className="gran-ronda-shop-item__icon" aria-hidden="true">
+                {powerup === 'doubleRoll' ? '🎲' : '⚡'}
+              </span>
+              <span className="min-w-0">
+                <strong className="block text-13">{POWERUP_LABELS[powerup]}</strong>
+                <span className="block text-10 leading-snug text-humo">
+                  {POWERUP_DESCRIPTIONS[powerup]}
+                </span>
+                <span className="block text-10 text-humo">
+                  En mochila: {view.me.powerups[powerup]}
+                </span>
+              </span>
             </span>
-            <span className="font-mono text-oro">{POWERUP_COSTS[powerup]} O</span>
+            <span className="shrink-0 rounded-full bg-oro/10 px-2 py-1 font-mono text-oro">
+              {POWERUP_COSTS[powerup]} O
+            </span>
           </button>
         ))}
       </div>
@@ -548,7 +661,9 @@ function PowerupTray({
   can: (action: GranRondaPlayerView['me']['availableActions'][number]) => boolean;
   send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
 }) {
-  const rivals = view.players.filter((player) => player.playerId !== view.me.playerId && !player.eliminated);
+  const rivals = view.players.filter(
+    (player) => player.playerId !== view.me.playerId && !player.eliminated,
+  );
   if (!can('useGranRondaPowerup')) return null;
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-violeta/35 bg-violeta/10 p-3 text-left">
@@ -574,7 +689,13 @@ function PowerupTray({
               <button
                 key={rival.playerId}
                 type="button"
-                onClick={() => send({ type: 'useGranRondaPowerup', powerup: 'rivalPenalty', targetPlayerId: rival.playerId })}
+                onClick={() =>
+                  send({
+                    type: 'useGranRondaPowerup',
+                    powerup: 'rivalPenalty',
+                    targetPlayerId: rival.playerId,
+                  })
+                }
                 className="min-h-10 rounded-xl border border-brasa/45 bg-brasa/10 px-3 py-2 text-left text-12 text-hueso"
               >
                 {rival.nick}

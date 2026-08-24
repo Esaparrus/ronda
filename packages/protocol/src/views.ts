@@ -17,6 +17,7 @@
 //   CardId de la mano de otro jugador, salvo dentro de roundResult cuando
 //   status !== 'playing'.
 import { z } from 'zod';
+import { PLAYER_TOKEN_ICONS, type PlayerTokenIcon } from './brand.ts';
 import type { CardId, PlayerId, RoomCode } from './ids.ts';
 import type { Suit } from './cards.ts';
 import type { MusPartnerSignal } from './actions.ts';
@@ -70,6 +71,8 @@ export interface PublicPlayer {
   isHost: boolean;
   /** Solo se rellena cuando la sala conoce que el jugador es un robot. */
   isBot?: boolean;
+  /** Ficha visual elegida para los juegos con tablero. */
+  tokenIcon?: PlayerTokenIcon;
   eliminated: boolean;
   /**
    * Pareja a la que pertenece (§12.12, P28). `null` en los juegos sin
@@ -540,11 +543,7 @@ export interface MatizCommonView extends PartyCommonViewBase {
 }
 
 export type PartyCommonView =
-  | OrdenCommonView
-  | ColoresCommonView
-  | MayoriaCommonView
-  | EscalaCommonView
-  | MatizCommonView;
+  OrdenCommonView | ColoresCommonView | MayoriaCommonView | EscalaCommonView | MatizCommonView;
 
 export interface OrdenPlayerView extends OrdenCommonView {
   kind: 'player';
@@ -572,11 +571,7 @@ export interface MatizPlayerView extends MatizCommonView {
 }
 
 export type PartyPlayerView =
-  | OrdenPlayerView
-  | ColoresPlayerView
-  | MayoriaPlayerView
-  | EscalaPlayerView
-  | MatizPlayerView;
+  OrdenPlayerView | ColoresPlayerView | MayoriaPlayerView | EscalaPlayerView | MatizPlayerView;
 
 export interface OrdenTableView extends OrdenCommonView {
   kind: 'table';
@@ -599,20 +594,13 @@ export interface MatizTableView extends MatizCommonView {
 }
 
 export type PartyTableView =
-  | OrdenTableView
-  | ColoresTableView
-  | MayoriaTableView
-  | EscalaTableView
-  | MatizTableView;
+  OrdenTableView | ColoresTableView | MayoriaTableView | EscalaTableView | MatizTableView;
 
 // --- Precio justo ----------------------------------------------------------
 
 export type PrecioJustoPhase = 'input' | 'reveal';
 export type PrecioJustoAvailableAction =
-  | 'submitPrice'
-  | 'finishPrice'
-  | 'nextRound'
-  | 'showPriceResults';
+  'submitPrice' | 'finishPrice' | 'nextRound' | 'showPriceResults';
 
 /** Ficha pública del producto; el precio de referencia no vive aquí. */
 export interface PrecioJustoProductPublic {
@@ -871,15 +859,7 @@ export type GranRondaPhase =
   | 'minigameInput'
   | 'minigameReveal';
 export type GranRondaSpaceType =
-  | 'start'
-  | 'oros'
-  | 'perdida'
-  | 'sello'
-  | 'evento'
-  | 'atajo'
-  | 'doble'
-  | 'penalizacion'
-  | 'tienda';
+  'start' | 'oros' | 'perdida' | 'sello' | 'evento' | 'atajo' | 'doble' | 'penalizacion' | 'tienda';
 export type GranRondaResolutionKind = GranRondaSpaceType;
 export type GranRondaAvailableAction =
   | 'rollGranRonda'
@@ -1098,6 +1078,7 @@ export const PublicPlayerSchema = z.object({
   handCount: z.number().int().min(0),
   connected: z.boolean(),
   isHost: z.boolean(),
+  tokenIcon: z.enum(PLAYER_TOKEN_ICONS).optional(),
   eliminated: z.boolean(),
   teamIndex: z.union([z.literal(0), z.literal(1)]).nullable(),
   groupIndex: z.number().int().min(0).nullable().optional(),

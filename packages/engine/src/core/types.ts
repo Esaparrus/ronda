@@ -6,7 +6,7 @@
 //
 // El servidor (RoomManager) llama a GAMES[gameId].applyAction(...). El motor
 // NUNCA ve red, ni base de datos, ni reloj: el tiempo se pasa como `now`.
-import type { GameId, PlayerId } from '@ronda/protocol';
+import type { GameId, PlayerId, PlayerTokenIcon } from '@ronda/protocol';
 import type { GameConfig } from '@ronda/protocol';
 import type { PlayerView, TableView } from '@ronda/protocol';
 import type { GameEvent } from '@ronda/protocol';
@@ -19,6 +19,8 @@ export interface CreateInitialStateInput {
     playerId: PlayerId;
     nick: string;
     seat: number;
+    /** Identidad visual usada por los juegos de tablero. */
+    tokenIcon?: PlayerTokenIcon;
     /** Solo lo usa Escala en su variante por grupos. */
     groupIndex?: number | null;
   }[];

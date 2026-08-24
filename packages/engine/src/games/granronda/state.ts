@@ -5,6 +5,7 @@ import type {
   GranRondaPowerupType,
   GranRondaMiniGameId,
   PlayerId,
+  PlayerTokenIcon,
   RoomCode,
 } from '@ronda/protocol';
 import type { ClassicState } from '../classics/state.ts';
@@ -36,6 +37,7 @@ export interface GranRondaPlayer {
   nick: string;
   seat: number;
   isBot: boolean;
+  tokenIcon: PlayerTokenIcon;
   /** Campo vacío para mantener la forma común de los estados de sala. */
   hand: string[];
   position: string;

@@ -30,7 +30,9 @@ function makeState(): GranRondaState {
 function play(action: GameAction, state: GranRondaState, playerId: string): GranRondaState {
   const result = applyAction(state, playerId, action, 0);
   if (!result.ok) {
-    throw new Error(`${result.code} action=${JSON.stringify(action)} phase=${state.phase} turn=${state.turnSeat} player=${playerId}`);
+    throw new Error(
+      `${result.code} action=${JSON.stringify(action)} phase=${state.phase} turn=${state.turnSeat} player=${playerId}`,
+    );
   }
   return result.value.state;
 }
@@ -92,10 +94,25 @@ function playEmbedded(
 }
 
 describe('La Gran Ronda', () => {
+  it('conserva la ficha elegida y la publica en el mapa', () => {
+    const [ana, bruno, cris] = players;
+    if (!ana || !bruno || !cris) throw new Error('Faltan jugadores de prueba');
+    const state = createInitialState({
+      config: { ...DEFAULT_GRAN_RONDA_CONFIG, rounds: 4 },
+      players: [{ ...ana, tokenIcon: '🧭' as const }, bruno, cris],
+      seed: 'granronda-token-test',
+      roomCode: 'TEST',
+    });
+
+    expect(getPlayerView(state, 'p1').players[0]?.tokenIcon).toBe('🧭');
+  });
+
   it('crea un mapa con coordenadas, economía y turnos', () => {
     const state = makeState();
     expect(state.board.length).toBeGreaterThan(15);
-    expect(state.board.every((space) => space.x > 0 && space.x < 100 && space.y > 0 && space.y < 100)).toBe(true);
+    expect(
+      state.board.every((space) => space.x > 0 && space.x < 100 && space.y > 0 && space.y < 100),
+    ).toBe(true);
     expect(state.phase).toBe('movement');
     expect(state.turnSeat).toBe(0);
     expect(state.players.every((player) => player.coins === 5)).toBe(true);
@@ -109,7 +126,11 @@ describe('La Gran Ronda', () => {
     expect(['moving', 'routeChoice']).toContain(state.phase);
 
     if (state.phase === 'routeChoice') {
-      state = play({ type: 'chooseGranRondaPath', nextSpaceId: firstRoute('p1', state) }, state, 'p1');
+      state = play(
+        { type: 'chooseGranRondaPath', nextSpaceId: firstRoute('p1', state) },
+        state,
+        'p1',
+      );
     }
     const startPathLength = state.movement?.path.length ?? 0;
     state = play({ type: 'advanceGranRondaMovement' }, state, 'p1');
@@ -117,7 +138,11 @@ describe('La Gran Ronda', () => {
 
     while (state.phase === 'moving' || state.phase === 'routeChoice') {
       if (state.phase === 'routeChoice') {
-        state = play({ type: 'chooseGranRondaPath', nextSpaceId: firstRoute('p1', state) }, state, 'p1');
+        state = play(
+          { type: 'chooseGranRondaPath', nextSpaceId: firstRoute('p1', state) },
+          state,
+          'p1',
+        );
       } else {
         state = play({ type: 'advanceGranRondaMovement' }, state, 'p1');
       }
@@ -418,7 +443,9 @@ describe('La Gran Ronda', () => {
     if (!afterUse) throw new Error('falta p1 tras usar el poder');
     expect(afterUse.powerups.doubleRoll).toBe(0);
     expect(state.movement?.dice).toHaveLength(2);
-    expect(state.movement?.roll).toBe((state.movement?.dice[0] ?? 0) + (state.movement?.dice[1] ?? 0));
+    expect(state.movement?.roll).toBe(
+      (state.movement?.dice[0] ?? 0) + (state.movement?.dice[1] ?? 0),
+    );
 
     let penaltyState = makeState();
     penaltyState.phase = 'movement';
@@ -435,7 +462,8 @@ describe('La Gran Ronda', () => {
     );
     const afterPenaltyP1 = penaltyState.players[0];
     const afterPenaltyP2 = penaltyState.players[1];
-    if (!afterPenaltyP1 || !afterPenaltyP2) throw new Error('faltan jugadores tras la penalización');
+    if (!afterPenaltyP1 || !afterPenaltyP2)
+      throw new Error('faltan jugadores tras la penalización');
     expect(afterPenaltyP1.powerups.rivalPenalty).toBe(0);
     expect(afterPenaltyP2.coins).toBe(1);
   });

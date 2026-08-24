@@ -22,6 +22,26 @@ describe('esquemas de socket de La Ronda', () => {
   });
 });
 
+describe('fichas de jugador', () => {
+  it('acepta objetos del catálogo y rechaza caras o texto libre', () => {
+    expect(
+      clientPayloadSchemas['room:join'].safeParse({
+        roomCode: 'ABCD',
+        nick: 'Unai',
+        tokenIcon: '🧭',
+      }).success,
+    ).toBe(true);
+
+    expect(
+      clientPayloadSchemas['room:join'].safeParse({
+        roomCode: 'ABCD',
+        nick: 'Unai',
+        tokenIcon: '😀',
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe('acciones de consulta de Mus', () => {
   it('acepta únicamente las frases privadas cerradas', () => {
     const base = { clientActionId: 'mus-signal-1', expectedVersion: 3 };

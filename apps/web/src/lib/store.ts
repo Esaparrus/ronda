@@ -9,6 +9,7 @@ import type {
   GameConfig,
   GameEvent,
   GameId,
+  PlayerTokenIcon,
   PlayerId,
   PlayerView,
   RoomCode,
@@ -65,8 +66,13 @@ export interface RondaState {
   /** Motivo del último `room:closed` recibido, o null. Se resetea igual que `kickedOut`. */
   closedReason: ClosedReason | null;
 
-  createRoom: (gameId: GameId, config: GameConfig, nick: string) => Promise<boolean>;
-  joinRoom: (roomCode: RoomCode, nick: string) => Promise<boolean>;
+  createRoom: (
+    gameId: GameId,
+    config: GameConfig,
+    nick: string,
+    tokenIcon?: PlayerTokenIcon,
+  ) => Promise<boolean>;
+  joinRoom: (roomCode: RoomCode, nick: string, tokenIcon?: PlayerTokenIcon) => Promise<boolean>;
   /** Retoma una sesión con el token guardado para `roomCode`. */
   resume: (roomCode: RoomCode) => Promise<boolean>;
   sendAction: (action: GameAction) => Promise<void>;
@@ -262,9 +268,9 @@ export const useRondaStore = create<RondaState>((set, get) => {
     kickedOut: false,
     closedReason: null,
 
-    async createRoom(gameId, config, nick) {
+    async createRoom(gameId, config, nick, tokenIcon) {
       connectIfNeeded(socket);
-      const res = await emitWithAck(socket, 'room:create', { gameId, config, nick });
+      const res = await emitWithAck(socket, 'room:create', { gameId, config, nick, tokenIcon });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
         return false;
@@ -280,9 +286,9 @@ export const useRondaStore = create<RondaState>((set, get) => {
       return true;
     },
 
-    async joinRoom(roomCode, nick) {
+    async joinRoom(roomCode, nick, tokenIcon) {
       connectIfNeeded(socket);
-      const res = await emitWithAck(socket, 'room:join', { roomCode, nick });
+      const res = await emitWithAck(socket, 'room:join', { roomCode, nick, tokenIcon });
       if (!res.ok) {
         set({ lastError: messageFor(res.code) });
         return false;

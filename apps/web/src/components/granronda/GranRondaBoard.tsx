@@ -1,12 +1,16 @@
-import type {
-  GranRondaBoardPlayer,
-  GranRondaBoardSpace,
-  GranRondaMovementPublic,
-  GranRondaSpaceType,
-  PlayerId,
-  PublicPlayer,
+import type { CSSProperties } from 'react';
+import {
+  DEFAULT_PLAYER_TOKEN_ICON,
+  PLAYER_TOKEN_ICONS,
+  type GranRondaBoardPlayer,
+  type GranRondaBoardSpace,
+  type GranRondaMovementPublic,
+  type GranRondaSpaceType,
+  type PlayerId,
+  type PublicPlayer,
 } from '@ronda/protocol';
 import { GranRondaDiceOverlay } from './GranRondaDiceOverlay';
+import { GranRondaSpaceIcon } from './GranRondaSpaceIcon';
 
 export interface GranRondaBoardProps {
   board: GranRondaBoardSpace[];
@@ -17,47 +21,87 @@ export interface GranRondaBoardProps {
   activePlayerId?: PlayerId | null;
   movement?: GranRondaMovementPublic | null;
   compact?: boolean;
+  minimized?: boolean;
   onSpaceSelect?: (spaceId: string) => void;
 }
 
-const SPACE_STYLES: Record<GranRondaSpaceType, string> = {
-  start: 'border-white/60 bg-white text-tinta',
-  oros: 'border-oro bg-oro text-tinta',
-  perdida: 'border-brasa bg-brasa text-hueso',
-  sello: 'border-verde bg-verde text-tinta',
-  evento: 'border-azul bg-azul text-hueso',
-  atajo: 'border-violeta bg-violeta text-hueso',
-  doble: 'border-rosa bg-rosa text-tinta',
-  penalizacion: 'border-brasa/80 bg-brasa/90 text-hueso',
-  tienda: 'border-violeta/80 bg-violeta/90 text-hueso',
+interface SpaceMeta {
+  label: string;
+  effect: string;
+}
+
+const SPACE_META: Record<GranRondaSpaceType, SpaceMeta> = {
+  start: { label: 'Salida', effect: 'Punto de vuelta' },
+  oros: { label: 'Oros', effect: '+3 Oros' },
+  perdida: { label: 'Pérdida', effect: '−2 Oros' },
+  sello: { label: 'Plaza de Sello', effect: 'Compra por 8 Oros' },
+  evento: { label: 'Suerte', effect: '+1 Oro' },
+  atajo: { label: 'Atajo', effect: '+2 Oros' },
+  doble: { label: 'Dado doble', effect: 'Guarda 2 dados' },
+  penalizacion: { label: 'Penalización', effect: 'Rival −2 Oros' },
+  tienda: { label: 'Tienda', effect: 'Compra poderes' },
 };
 
-const SPACE_GLYPHS: Record<GranRondaSpaceType, string> = {
-  start: 'S',
-  oros: 'O',
-  perdida: '−',
-  sello: '✦',
-  evento: '?',
-  atajo: '↗',
-  doble: '2×',
-  penalizacion: '!',
-  tienda: '$',
-};
-
-const PLAYER_STYLES = [
-  'bg-azul text-hueso ring-azul/50',
-  'bg-brasa text-hueso ring-brasa/50',
-  'bg-verde text-tinta ring-verde/50',
-  'bg-violeta text-hueso ring-violeta/50',
-  'bg-oro text-tinta ring-oro/50',
-  'bg-gris text-hueso ring-gris/50',
-  'bg-rosa text-tinta ring-rosa/50',
-  'bg-hueso text-tinta ring-hueso/50',
+const LEGEND_ORDER: GranRondaSpaceType[] = [
+  'oros',
+  'perdida',
+  'evento',
+  'atajo',
+  'doble',
+  'penalizacion',
+  'tienda',
+  'sello',
 ];
 
+const PLAYER_COLORS = [
+  'var(--seat-0)',
+  'var(--seat-1)',
+  'var(--seat-2)',
+  'var(--seat-3)',
+  'var(--seat-4)',
+  'var(--seat-5)',
+  'var(--seat-6)',
+  'var(--seat-7)',
+];
+
+/** Curvas suaves solo en los desvíos; mantienen cada ramal en su carril. */
+const EDGE_CURVES: Record<string, number> = {
+  'plaza-oros-senda-bastos': 2.5,
+  'mercado-bastos-union-bastos': -2,
+  'bifurcacion-azul-camino-riesgo': 2.5,
+  'desvio-riesgo-puente-comun': -3,
+  'plaza-espadas-sendero-copas': -2.5,
+  'fuente-sello-curva-bastos': 2,
+};
+
 function pieceOffset(index: number, total: number): { x: number; y: number } {
-  const spread = Math.min(2.8, total > 1 ? 2 : 0);
-  return { x: (index - (total - 1) / 2) * spread, y: index % 2 === 0 ? 2.5 : -2.5 };
+  if (total <= 1) return { x: 0, y: -3.8 };
+  const angle = (-90 + (index * 360) / total) * (Math.PI / 180);
+  const radius = total > 4 ? 4.6 : 4.1;
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+}
+
+function edgePath(from: GranRondaBoardSpace, to: GranRondaBoardSpace): string {
+  const curve = EDGE_CURVES[`${from.id}-${to.id}`] ?? 0;
+  if (curve === 0) return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const middleX = (from.x + to.x) / 2 + (-dy / length) * curve;
+  const middleY = (from.y + to.y) / 2 + (dx / length) * curve;
+  return `M ${from.x} ${from.y} Q ${middleX} ${middleY} ${to.x} ${to.y}`;
+}
+
+function edgeWasTravelled(
+  movement: GranRondaMovementPublic | null,
+  fromId: string,
+  toId: string,
+): boolean {
+  if (!movement) return false;
+  return movement.path.some((spaceId, index) => {
+    const nextId = movement.path[index + 1];
+    return (spaceId === fromId && nextId === toId) || (spaceId === toId && nextId === fromId);
+  });
 }
 
 export function GranRondaBoard({
@@ -69,104 +113,91 @@ export function GranRondaBoard({
   activePlayerId = null,
   movement = null,
   compact = false,
+  minimized = false,
   onSpaceSelect,
 }: GranRondaBoardProps) {
   const positions = new Map(board.map((space) => [space.id, space]));
   const routeSet = new Set(routeOptions);
   const activePlayer = players.find((player) => player.playerId === activePlayerId);
   const interactive = routeOptions.length > 0 && onSpaceSelect !== undefined;
+  const choiceOrigin = movement?.path[movement.path.length - 1] ?? null;
+  const stampSpace = positions.get(stampSpaceId);
+  const occupantsByPosition = new Map<string, GranRondaBoardPlayer[]>();
+  for (const occupant of boardPlayers) {
+    const occupants = occupantsByPosition.get(occupant.position) ?? [];
+    occupants.push(occupant);
+    occupantsByPosition.set(occupant.position, occupants);
+  }
 
   return (
-    <section className="flex flex-col gap-2" aria-label="Mapa de La Gran Ronda">
-      <div
-        className={`relative isolate overflow-hidden rounded-[26px] border border-white/20 bg-gradient-to-br from-azul/25 via-tinta to-verde/10 shadow-[0_20px_60px_rgba(0,0,0,0.22)] ${compact ? 'aspect-[0.96] sm:aspect-[1.12]' : 'aspect-[1.04]'}`}
-      >
+    <section
+      className={`gran-ronda-board ${compact ? 'gran-ronda-board--compact' : ''} ${minimized ? 'gran-ronda-board--minimized' : ''}`}
+      aria-label="Mapa de La Gran Ronda"
+    >
+      <div className="gran-ronda-board__stage">
+        <div className="gran-ronda-board__art" aria-hidden="true" />
+        <div className="gran-ronda-board__shade" aria-hidden="true" />
+
         <svg
-          className="absolute inset-0 size-full"
+          className="gran-ronda-board__routes"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          <defs>
-            <linearGradient id="gran-ronda-field" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="rgba(91, 144, 131, 0.28)" />
-              <stop offset="0.5" stopColor="rgba(23, 32, 43, 0.28)" />
-              <stop offset="1" stopColor="rgba(78, 143, 116, 0.24)" />
-            </linearGradient>
-          </defs>
-          <rect width="100" height="100" fill="url(#gran-ronda-field)" />
-          <path d="M-5 15 C 20 4, 34 24, 52 13 S 84 4, 108 18" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="9" />
-          <path d="M-8 94 C 18 76, 31 93, 52 84 S 80 76, 110 91" fill="none" stroke="rgba(18,30,38,0.28)" strokeWidth="10" />
-          <path d="M10 20 C 29 30, 25 52, 39 55 S 61 40, 91 21" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.2" strokeDasharray="1 3" />
-          <circle cx="12" cy="20" r="8" fill="rgba(255,255,255,0.06)" />
-          <circle cx="91" cy="83" r="10" fill="rgba(255,255,255,0.05)" />
-          <path d="M68 8 l3 7 7 3 -7 3 -3 7 -3-7 -7-3 7-3z" fill="rgba(255,255,255,0.16)" />
-
           {board.flatMap((space) =>
             space.nextIds.flatMap((nextId) => {
               const next = positions.get(nextId);
-              if (!next || space.index > next.index && next.nextIds.includes(space.id)) return [];
-              const highlighted = routeSet.has(space.id) || routeSet.has(next.id);
+              if (!next) return [];
+              const choice =
+                choiceOrigin !== null &&
+                ((space.id === choiceOrigin && routeSet.has(next.id)) ||
+                  (next.id === choiceOrigin && routeSet.has(space.id)));
+              const travelled = edgeWasTravelled(movement, space.id, next.id);
+              const path = edgePath(space, next);
               return (
-                <g key={`${space.id}-${next.id}`}>
-                  <line
-                    x1={space.x}
-                    y1={space.y}
-                    x2={next.x}
-                    y2={next.y}
-                    stroke="rgba(17, 27, 35, 0.58)"
-                    strokeWidth={highlighted ? 5.4 : 4.8}
-                    strokeLinecap="round"
-                  />
-                  <line
-                    x1={space.x}
-                    y1={space.y}
-                    x2={next.x}
-                    y2={next.y}
-                    stroke={highlighted ? 'rgba(246, 195, 76, 0.92)' : 'rgba(246, 237, 211, 0.88)'}
-                    strokeWidth={highlighted ? 2.4 : 1.8}
-                    strokeLinecap="round"
-                    strokeDasharray={highlighted ? '0' : '0.4 1.7'}
-                  />
+                <g
+                  key={`${space.id}-${next.id}`}
+                  className={`gran-ronda-route ${choice ? 'gran-ronda-route--choice' : ''} ${travelled ? 'gran-ronda-route--travelled' : ''}`}
+                >
+                  <path d={path} className="gran-ronda-route__edge" />
+                  <path d={path} className="gran-ronda-route__road" />
+                  <path d={path} className="gran-ronda-route__stitch" />
                 </g>
               );
             }),
           )}
         </svg>
 
-        <div className="absolute inset-0">
-          <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-tinta/35 px-2.5 py-1 backdrop-blur-sm">
-            <p className="font-mono text-9 uppercase tracking-[0.18em] text-hueso/75">Mapa de la Ronda</p>
-          </div>
-          {movement && activePlayer ? (
-            <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-2 rounded-full border border-oro/40 bg-tinta/60 px-2.5 py-1 backdrop-blur-sm">
-              <span className="font-mono text-9 uppercase tracking-[0.16em] text-humo">Dado</span>
-              <strong className="grid size-6 place-items-center rounded-lg bg-hueso font-mono text-13 text-tinta">{movement.roll}</strong>
-              <span className="max-w-24 truncate text-11 text-hueso">{activePlayer.nick}</span>
-            </div>
-          ) : null}
+        <div className="gran-ronda-board__map-label">
+          <span>La Gran Ronda</span>
+          <strong>Mapa</strong>
+        </div>
+        <div className="gran-ronda-board__stamp-status">
+          <GranRondaSpaceIcon type="sello" size={15} />
+          <span>Sello · 8 Oros</span>
+        </div>
 
+        <div className="absolute inset-0">
           {board.map((space) => {
             const isOption = routeSet.has(space.id);
             const stamp = space.id === stampSpaceId;
+            const occupied = occupantsByPosition.has(space.id);
+            const meta = SPACE_META[space.type];
             return (
               <button
                 key={space.id}
                 type="button"
                 disabled={!interactive || !isOption}
                 onClick={() => onSpaceSelect?.(space.id)}
-                title={`${space.label} · ${space.type}`}
-                aria-label={`${space.label}, casilla ${space.index + 1}${isOption ? ', elegir este camino' : ''}`}
-                className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full transition-transform duration-200 ${isOption ? 'z-20 scale-110 cursor-pointer' : 'z-10'} ${interactive && !isOption ? 'cursor-default' : ''}`}
+                title={`${space.label} · ${meta.effect}`}
+                aria-label={`${space.label}, casilla ${space.index + 1}, ${meta.effect}${isOption ? ', elegir este camino' : ''}`}
+                className={`gran-ronda-space gran-ronda-space--${space.type} ${stamp ? 'gran-ronda-space--stamp' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
                 style={{ left: `${space.x}%`, top: `${space.y}%` }}
               >
-                <span
-                  className={`relative grid ${compact ? 'size-[1.8rem] sm:size-9' : 'size-9 sm:size-10'} place-items-center rounded-full border-2 shadow-[0_4px_12px_rgba(0,0,0,0.25)] ${SPACE_STYLES[space.type]} ${
-                    stamp ? 'ring-2 ring-oro ring-offset-2 ring-offset-transparent' : ''
-                  } ${isOption ? 'animate-pulse ring-4 ring-oro/65 ring-offset-2 ring-offset-tinta/20' : ''}`}
-                >
-                  <span className="font-display text-10 sm:text-12">{SPACE_GLYPHS[space.type]}</span>
-                  <span className="absolute -bottom-1 -right-1 grid min-w-3.5 place-items-center rounded-full border border-tinta/15 bg-hueso px-0.5 font-mono text-[7px] leading-3 text-tinta shadow-sm">
+                {stamp ? <span className="gran-ronda-space__stamp-label">Sello</span> : null}
+                <span className="gran-ronda-space__face">
+                  <GranRondaSpaceIcon type={space.type} />
+                  <span className="gran-ronda-space__number">
                     {String(space.index + 1).padStart(2, '0')}
                   </span>
                 </span>
@@ -174,61 +205,94 @@ export function GranRondaBoard({
             );
           })}
 
-          <div className="pointer-events-none absolute inset-0 z-30" role="group" aria-label="Fichas de jugadores">
+          <div
+            className="pointer-events-none absolute inset-0 z-30"
+            role="group"
+            aria-label="Fichas de jugadores"
+          >
             {boardPlayers.map((occupant) => {
               const space = positions.get(occupant.position);
               if (!space) return null;
-              const occupants = boardPlayers.filter((player) => player.position === occupant.position);
-              const occupantIndex = occupants.findIndex((player) => player.playerId === occupant.playerId);
+              const occupants = occupantsByPosition.get(occupant.position) ?? [];
+              const occupantIndex = occupants.findIndex(
+                (player) => player.playerId === occupant.playerId,
+              );
               const player = players.find((candidate) => candidate.playerId === occupant.playerId);
               const offset = pieceOffset(occupantIndex, occupants.length);
-              const color = PLAYER_STYLES[player?.colorIndex ?? 0];
+              const colorIndex = player?.colorIndex ?? 0;
+              const tokenIcon =
+                player?.tokenIcon ??
+                PLAYER_TOKEN_ICONS[colorIndex % PLAYER_TOKEN_ICONS.length] ??
+                DEFAULT_PLAYER_TOKEN_ICON;
               const active = occupant.playerId === activePlayerId;
               return (
                 <span
                   key={occupant.playerId}
-                  title={player?.nick ?? 'Jugador'}
-                  className={`absolute grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-hueso text-8 font-bold shadow-lg transition-[left,top] duration-500 ease-out ${color} ${active ? 'ring-2 ring-oro ring-offset-1 ring-offset-tinta' : ''}`}
-                  style={{ left: `${space.x + offset.x}%`, top: `${space.y + offset.y}%` }}
+                  title={`${player?.nick ?? 'Jugador'} · ${tokenIcon}`}
+                  aria-label={player?.nick ?? 'Jugador'}
+                  className={`gran-ronda-piece ${active ? 'gran-ronda-piece--active' : ''}`}
+                  style={
+                    {
+                      left: `${space.x + offset.x}%`,
+                      top: `${space.y + offset.y}%`,
+                      '--piece-color': PLAYER_COLORS[colorIndex],
+                    } as CSSProperties
+                  }
                 >
-                  {(player?.nick ?? '?').slice(0, 1).toUpperCase()}
+                  <span aria-hidden="true">{tokenIcon}</span>
                 </span>
               );
             })}
           </div>
-          {movement && activePlayer ? (
+          {movement && activePlayer && !minimized ? (
             <GranRondaDiceOverlay movement={movement} playerName={activePlayer.nick} />
           ) : null}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tipos de casilla">
-          {(Object.keys(SPACE_STYLES) as GranRondaSpaceType[]).map((type) => (
-            <span key={type} className="flex items-center gap-1 text-10 text-humo">
-              <span className={`size-2 rounded-full ${SPACE_STYLES[type].split(' ')[1]}`} />
-              {type === 'perdida'
-                ? 'Pérdida'
-                : type === 'evento'
-                  ? 'Evento'
-                  : type === 'atajo'
-                    ? 'Atajo'
-                    : type === 'sello'
-                      ? 'Sello'
-                      : type === 'oros'
-                        ? 'Oros'
-                        : type === 'doble'
-                          ? 'Dado doble'
-                          : type === 'penalizacion'
-                            ? 'Penalización'
-                            : type === 'tienda'
-                              ? 'Tienda'
-                              : 'Salida'}
-            </span>
-          ))}
+      {minimized ? (
+        <div className="gran-ronda-board__mini-summary">
+          <p>Mapa en pausa</p>
+          <strong>{stampSpace?.label ?? 'El Sello sigue en el tablero'}</strong>
+          <span>Volverá a ocupar toda la pantalla al terminar el minijuego.</span>
         </div>
-        {routeOptions.length > 0 ? <span className="font-mono text-10 uppercase tracking-[0.13em] text-oro">Elige una casilla iluminada</span> : null}
-      </div>
+      ) : (
+        <details className="gran-ronda-board__key" open={!compact}>
+          <summary>
+            <span>Qué hace cada casilla</span>
+            <span className="gran-ronda-board__key-dots" aria-hidden="true">
+              {LEGEND_ORDER.slice(0, 5).map((type) => (
+                <i
+                  key={type}
+                  className={`gran-ronda-board__key-dot gran-ronda-board__key-dot--${type}`}
+                />
+              ))}
+            </span>
+          </summary>
+          <div className="gran-ronda-board__key-grid">
+            {LEGEND_ORDER.map((type) => (
+              <span
+                key={type}
+                className={`gran-ronda-board__key-item gran-ronda-board__key-item--${type}`}
+              >
+                <span className="gran-ronda-board__key-icon">
+                  <GranRondaSpaceIcon type={type} size={16} />
+                </span>
+                <span>
+                  <strong>{SPACE_META[type].label}</strong>
+                  <small>{SPACE_META[type].effect}</small>
+                </span>
+              </span>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {routeOptions.length > 0 && !minimized ? (
+        <p className="gran-ronda-board__choice-hint">
+          Elige una de las casillas que laten en dorado
+        </p>
+      ) : null}
     </section>
   );
 }
