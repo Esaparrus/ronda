@@ -160,6 +160,7 @@ export {
   getTableView as getGranRondaTableView,
   GRAN_RONDA_BOARD,
   GRAN_RONDA_STAMP_TARGETS,
+  GRAN_RONDA_TRAP_TARGETS,
   GRAN_RONDA_MINIGAMES,
   type GranRondaState,
   type GranRondaPlayer,

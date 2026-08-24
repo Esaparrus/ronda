@@ -121,6 +121,7 @@ export interface GranRondaState {
   players: GranRondaPlayer[];
   board: GranRondaBoardSpace[];
   stampSpaceId: string;
+  trapSpaceIds: string[];
   movedPlayerIds: PlayerId[];
   movement: GranRondaMovementState | null;
   resolution: GranRondaResolutionState | null;

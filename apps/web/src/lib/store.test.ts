@@ -107,6 +107,7 @@ interface FakeServer {
   io: IoServer;
   port: number;
   actionCount: () => number;
+  actionTypes: () => string[];
   /** Cierra el socket del último cliente conectado con reason 'io server
    * disconnect' (contrato P17: simula al servidor expulsando a alguien). */
   disconnectClient: () => void;
@@ -120,6 +121,7 @@ interface FakeServer {
  */
 function startFakeServer(opts: {
   staleOnFirstAction: boolean;
+  actionDelayMs?: number;
   notHost?: boolean;
   notEnoughPlayers?: boolean;
   attachFails?: boolean;
@@ -130,6 +132,7 @@ function startFakeServer(opts: {
     const httpServer = createServer();
     const io = new IoServer(httpServer, { cors: { origin: '*' } });
     let actionCount = 0;
+    const actionTypes: string[] = [];
     const tokensByRoom = new Map<string, string>();
     let nextToken = 1;
     let lastSocket: ServerSocket | null = null;
@@ -176,14 +179,22 @@ function startFakeServer(opts: {
 
       socket.on(
         'game:action',
-        (_payload: unknown, ack: (res: Result<{ version: number }>) => void) => {
+        (
+          payload: { action?: { type?: string } },
+          ack: (res: Result<{ version: number }>) => void,
+        ) => {
           actionCount += 1;
-          if (opts.staleOnFirstAction && actionCount === 1) {
-            ack(err('STALE_VERSION'));
-            setTimeout(() => socket.emit('state:view', { version: 2, view: makeView(2) }), 0);
-            return;
-          }
-          ack(ok({ version: actionCount + 1 }));
+          actionTypes.push(payload.action?.type ?? 'unknown');
+          const respond = () => {
+            if (opts.staleOnFirstAction && actionCount === 1) {
+              ack(err('STALE_VERSION'));
+              setTimeout(() => socket.emit('state:view', { version: 2, view: makeView(2) }), 0);
+              return;
+            }
+            ack(ok({ version: actionCount + 1 }));
+          };
+          if (opts.actionDelayMs) setTimeout(respond, opts.actionDelayMs);
+          else respond();
         },
       );
 
@@ -249,6 +260,7 @@ function startFakeServer(opts: {
         io,
         port,
         actionCount: () => actionCount,
+        actionTypes: () => [...actionTypes],
         disconnectClient: () => lastSocket?.disconnect(true),
         closeRoom: (reason) => lastSocket?.emit('room:closed', { reason }),
       });
@@ -307,6 +319,24 @@ describe('store.ts', () => {
     await Promise.all([p1, p2]);
 
     expect(server.actionCount()).toBe(1);
+
+    await stopFakeServer(server);
+  }, 15000);
+
+  it('conserva nextRound si la vista de resultados llega antes que el ack anterior', async () => {
+    const server = await startFakeServer({ staleOnFirstAction: false, actionDelayMs: 40 });
+    process.env.NEXT_PUBLIC_SERVER_URL = `http://localhost:${server.port}`;
+    vi.resetModules();
+    const { useRondaStore } = await import('./store.ts');
+
+    await useRondaStore.getState().createRoom('chinchon', DEFAULT_CONFIG, 'Ana');
+
+    const finishing = useRondaStore.getState().sendAction({ type: 'discard', cardId: 'oros-1' });
+    const advancing = useRondaStore.getState().sendAction({ type: 'nextRound' });
+    await Promise.all([finishing, advancing]);
+
+    expect(server.actionTypes()).toEqual(['discard', 'nextRound']);
+    expect(useRondaStore.getState().pendingAction).toBe(false);
 
     await stopFakeServer(server);
   }, 15000);

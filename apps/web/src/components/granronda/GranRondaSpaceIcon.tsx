@@ -75,6 +75,16 @@ function SpaceIconPaths({ type }: { type: GranRondaSpaceType }) {
           <path d="M9 13h6" />
         </>
       );
+    case 'trampa':
+      return (
+        <>
+          <path d="M7 8 4 4c3 0 5 1 6 3M17 8l3-4c-3 0-5 1-6 3" />
+          <path d="M5 13c0-5 3-8 7-8s7 3 7 8-3 8-7 8-7-3-7-8Z" />
+          <path d="m8 12 3 1M16 12l-3 1" />
+          <path d="M8.5 16c2.2 2 4.8 2 7 0" />
+          <path d="m10 17 1 2 1-2 1 2 1-2" />
+        </>
+      );
   }
 }
 

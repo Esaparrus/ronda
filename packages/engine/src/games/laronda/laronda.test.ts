@@ -13,7 +13,12 @@ const PLAYERS = [
 ];
 
 function create(seed = 'ronda-test'): RondaState {
-  return createRondaState({ config: DEFAULT_LA_RONDA_CONFIG, players: PLAYERS, seed, roomCode: 'TEST' });
+  return createRondaState({
+    config: DEFAULT_LA_RONDA_CONFIG,
+    players: PLAYERS,
+    seed,
+    roomCode: 'TEST',
+  });
 }
 
 function apply(state: RondaState, playerId: PlayerId, action: GameAction): RondaState {
@@ -31,20 +36,32 @@ describe('La Ronda', () => {
     expect(RONDA_CARDS.filter((card) => card.kind === 'servicio')).toHaveLength(6);
   });
 
-  it('admite de 3 a 8 personas, reparte cinco cartas y escala el ahorro inicial', () => {
-    for (let count = 3; count <= 8; count += 1) {
+  it('admite de 2 a 8 personas, reparte cinco cartas y escala el ahorro inicial', () => {
+    for (let count = 2; count <= 8; count += 1) {
       const players = Array.from({ length: count }, (_, seat) => ({
         playerId: `p${seat}` as PlayerId,
         nick: `P${seat}`,
         seat,
       }));
-      const state = createRondaState({ config: DEFAULT_LA_RONDA_CONFIG, players, seed: `count-${count}` });
+      const state = createRondaState({
+        config: DEFAULT_LA_RONDA_CONFIG,
+        players,
+        seed: `count-${count}`,
+      });
       expect(state.players.every((player) => player.hand.length === 5)).toBe(true);
-      expect(state.players.every((player) => player.score === (600 + count * 100) * 100)).toBe(true);
+      expect(state.players.every((player) => player.score === (600 + count * 100) * 100)).toBe(
+        true,
+      );
       const dealt = state.players.flatMap((player) => player.hand);
       expect(new Set(dealt).size).toBe(dealt.length);
     }
-    expect(() => createRondaState({ config: DEFAULT_LA_RONDA_CONFIG, players: PLAYERS.slice(0, 2), seed: 'too-few' })).toThrow();
+    expect(() =>
+      createRondaState({
+        config: DEFAULT_LA_RONDA_CONFIG,
+        players: PLAYERS.slice(0, 1),
+        seed: 'too-few',
+      }),
+    ).toThrow();
   });
 
   it('mantiene las manos ajenas fuera de las vistas pública y privada', () => {
@@ -72,7 +89,9 @@ describe('La Ronda', () => {
   });
 
   it('calcula el vino por grupos de cinco', () => {
-    expect([0, 1, 2, 3, 4, 5, 6].map(wineCostCents)).toEqual([0, 3000, 6000, 12000, 18000, 24000, 27000]);
+    expect([0, 1, 2, 3, 4, 5, 6].map(wineCostCents)).toEqual([
+      0, 3000, 6000, 12000, 18000, 24000, 27000,
+    ]);
   });
 
   it('resuelve una cuenta individual tras una vuelta completa de pases', () => {
@@ -82,7 +101,14 @@ describe('La Ronda', () => {
       orderingCardCount: 3,
       tapas: {
         ...state.tapas,
-        carne: [{ cardId: 'tapa-carne-pincho-moruno-1', priceCents: 1000, effectivePriceCents: 1000, premiumCardId: null }],
+        carne: [
+          {
+            cardId: 'tapa-carne-pincho-moruno-1',
+            priceCents: 1000,
+            effectivePriceCents: 1000,
+            premiumCardId: null,
+          },
+        ],
       },
       playedCardIds: ['tapa-carne-pincho-moruno-1'],
     };

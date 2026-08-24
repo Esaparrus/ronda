@@ -102,8 +102,8 @@ export function createRondaState(input: {
   roomCode?: string;
 }): RondaState {
   if (input.config.gameId !== 'laronda') throw new Error('Config incorrecta para La Ronda');
-  if (input.players.length < 3 || input.players.length > 8) {
-    throw new Error(`La Ronda necesita de 3 a 8 jugadores, llegaron ${input.players.length}`);
+  if (input.players.length < 2 || input.players.length > 8) {
+    throw new Error(`La Ronda necesita de 2 a 8 jugadores, llegaron ${input.players.length}`);
   }
 
   const state: RondaState = {
@@ -527,9 +527,7 @@ function ensureStarterCanPlay(state: RondaState, starter: RondaPlayer): void {
   }
 }
 
-function nextRound(
-  state: RondaState,
-): Result<{ state: RondaState; events: GameEvent[] }> {
+function nextRound(state: RondaState): Result<{ state: RondaState; events: GameEvent[] }> {
   if (state.status !== 'roundEnd' || !state.roundResult) return err('INVALID_ACTION');
   const next = cloneState(state);
   const requester = next.players.find(

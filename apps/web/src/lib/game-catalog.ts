@@ -23,7 +23,7 @@ export const GAME_CATALOG = [
   {
     slug: 'laronda',
     name: 'La Ronda',
-    players: '3–8 jugadores',
+    players: '2–8 jugadores',
     duration: '10–20 min',
     kind: 'Cartas y pique',
   },
@@ -163,7 +163,7 @@ export const GAME_CATALOG = [
   {
     slug: 'granronda',
     name: 'La Gran Ronda',
-    players: '3–7 jugadores',
+    players: '2–7 jugadores',
     duration: '15–25 min',
     kind: 'Tablero y minijuegos',
   },

@@ -11,6 +11,7 @@ import type { GranRondaState } from './state.ts';
 import { getClassicPlayerView } from '../classics/views.ts';
 import { getPlayerView as getMusicalPlayerView } from '../musical/views.ts';
 import { colorQuestionById } from '../party/content.ts';
+import { granRondaMiniGameById, granRondaMiniGamesForPlayerCount } from './content.ts';
 
 const players = [
   { playerId: 'p1', nick: 'Ana', seat: 0, isBot: false },
@@ -18,10 +19,10 @@ const players = [
   { playerId: 'p3', nick: 'Cris', seat: 2, isBot: false },
 ];
 
-function makeState(): GranRondaState {
+function makeState(playerCount = 3): GranRondaState {
   return createInitialState({
     config: { ...DEFAULT_GRAN_RONDA_CONFIG, rounds: 4 },
-    players,
+    players: players.slice(0, playerCount),
     seed: 'granronda-test',
     roomCode: 'TEST',
   });
@@ -76,8 +77,8 @@ function resolveCurrentTurn(state: GranRondaState): GranRondaState {
   return next;
 }
 
-function makeMiniGameState(gameId: GranRondaMiniGameId): GranRondaState {
-  let state = makeState();
+function makeMiniGameState(gameId: GranRondaMiniGameId, playerCount = 3): GranRondaState {
+  let state = makeState(playerCount);
   state.miniGame.questionOrder = [gameId];
   state.miniGame.questionIndex = 0;
   state.miniGame.questionId = gameId;
@@ -116,6 +117,29 @@ describe('La Gran Ronda', () => {
     expect(state.phase).toBe('movement');
     expect(state.turnSeat).toBe(0);
     expect(state.players.every((player) => player.coins === 5)).toBe(true);
+  });
+
+  it('inicia con dos personas y sortea solo minijuegos compatibles con esa mesa', () => {
+    const state = makeState(2);
+    const compatibleIds = granRondaMiniGamesForPlayerCount(2).map((game) => game.id);
+    expect(state.players).toHaveLength(2);
+    expect(compatibleIds).toContain('tute');
+    expect(compatibleIds).toContain('laronda');
+    expect(state.miniGame.questionOrder.every((id) => compatibleIds.includes(id))).toBe(true);
+  });
+
+  it('filtra la ruleta por el rango real de cada juego', () => {
+    const forTwo = granRondaMiniGamesForPlayerCount(2).map((game) => game.id);
+    const forFive = granRondaMiniGamesForPlayerCount(5).map((game) => game.id);
+    const forSeven = granRondaMiniGamesForPlayerCount(7).map((game) => game.id);
+
+    expect(forTwo).toContain('tute');
+    expect(forFive).not.toContain('tute');
+    expect(forFive).not.toContain('chinchon');
+    expect(forFive).not.toContain('brisca');
+    expect(forSeven).not.toContain('pocha');
+    expect(forSeven).not.toContain('cinquillo');
+    expect(forSeven).toContain('musical');
   });
 
   it('publica la tirada, anima pasos y resuelve la casilla antes de cambiar turno', () => {
@@ -213,6 +237,36 @@ describe('La Gran Ronda', () => {
     expect(state.players[0]?.powerups.rivalPenalty).toBe(1);
   });
 
+  it('el monstruo roba Oros, muestra el golpe y mueve su trampa a otra casilla', () => {
+    let state = makeState(2);
+    const player = state.players[0];
+    if (!player) throw new Error('falta jugador para probar la trampa');
+    player.position = 'salida';
+    player.coins = 5;
+    state.turnSeat = player.seat;
+    state.trapSpaceIds = ['plaza-oros'];
+    state.movement = {
+      playerId: player.playerId,
+      roll: 1,
+      dice: [1],
+      path: ['salida'],
+      remainingSteps: 1,
+      routeOptions: [],
+      forcedNextSpaceId: 'plaza-oros',
+    };
+    state.phase = 'moving';
+
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+
+    expect(state.phase).toBe('resolving');
+    expect(state.resolution?.kind).toBe('trampa');
+    expect(state.resolution?.coinsDelta).toBe(-3);
+    expect(state.players[0]?.coins).toBe(2);
+    expect(state.trapSpaceIds).toHaveLength(1);
+    expect(state.trapSpaceIds).not.toContain('plaza-oros');
+    expect(getPlayerView(state, player.playerId).trapSpaceIds).toEqual(state.trapSpaceIds);
+  });
+
   it('termina el movimiento, abre el juego de la ronda y deja avanzar al anfitrión', () => {
     let state = makeState();
     while (state.phase !== 'minigameInput') state = resolveCurrentTurn(state);
@@ -225,15 +279,16 @@ describe('La Gran Ronda', () => {
     state = play({ type: 'finishGranRondaMiniGame' }, state, 'p1');
     expect(state.phase).toBe('minigameReveal');
     expect(state.miniGame.scoreDeltas).not.toBeNull();
+    const previousTrapSpaceIds = [...state.trapSpaceIds];
     state = play({ type: 'nextRound' }, state, 'p1');
     expect(state.round).toBe(2);
     expect(state.phase).toBe('movement');
     expect(state.turnSeat).toBe(1);
+    expect(state.trapSpaceIds).not.toEqual(previousTrapSpaceIds);
   });
 
   it('resuelve un minijuego competitivo con acciones y clasificación de Oros', () => {
-    let state = makeState();
-    while (state.phase !== 'minigameInput') state = resolveCurrentTurn(state);
+    let state = makeMiniGameState('sieteymedia');
     let guard = 0;
     while (state.phase === 'minigameInput' && guard < 160) {
       guard += 1;
@@ -377,7 +432,9 @@ describe('La Gran Ronda', () => {
     ] as const satisfies readonly GranRondaMiniGameId[];
 
     for (const gameId of miniGames) {
-      let state = makeMiniGameState(gameId);
+      const definition = granRondaMiniGameById(gameId);
+      const playerCount = Math.min(3, definition.maxPlayers);
+      let state = makeMiniGameState(gameId, playerCount);
       expect(state.miniGame.embeddedGame?.gameId).toBe(gameId);
       state = play({ type: 'finishGranRondaMiniGame' }, state, 'p1');
       expect(state.phase, `${gameId} debe revelar resultados`).toBe('minigameReveal');

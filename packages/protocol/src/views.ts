@@ -859,7 +859,16 @@ export type GranRondaPhase =
   | 'minigameInput'
   | 'minigameReveal';
 export type GranRondaSpaceType =
-  'start' | 'oros' | 'perdida' | 'sello' | 'evento' | 'atajo' | 'doble' | 'penalizacion' | 'tienda';
+  | 'start'
+  | 'oros'
+  | 'perdida'
+  | 'sello'
+  | 'evento'
+  | 'atajo'
+  | 'doble'
+  | 'penalizacion'
+  | 'tienda'
+  | 'trampa';
 export type GranRondaResolutionKind = GranRondaSpaceType;
 export type GranRondaAvailableAction =
   | 'rollGranRonda'
@@ -986,6 +995,7 @@ export interface GranRondaCommonView extends CommonViewBase {
   board: GranRondaBoardSpace[];
   boardPlayers: GranRondaBoardPlayer[];
   stampSpaceId: string;
+  trapSpaceIds: string[];
   routeOptions: string[];
   movement: GranRondaMovementPublic | null;
   resolution: GranRondaResolutionPublic | null;

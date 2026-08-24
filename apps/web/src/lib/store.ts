@@ -25,6 +25,21 @@ import { recordDiagnostic } from './diagnostic-recorder.ts';
 import { diagnosticContextFromState, reportClientIssue } from './diagnostics.ts';
 import { waitForVersionChange } from './state-sync.ts';
 
+const NEXT_ROUND_QUEUE_TIMEOUT_MS = 5_000;
+let queuedNextRound = false;
+
+async function waitForPendingActionToFinish(
+  isPending: () => boolean,
+  timeoutMs = NEXT_ROUND_QUEUE_TIMEOUT_MS,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (isPending()) {
+    if (Date.now() >= deadline) return false;
+    await new Promise<void>((resolve) => setTimeout(resolve, 16));
+  }
+  return true;
+}
+
 export type ConnectionStatus = 'online' | 'reconnecting' | 'offline';
 
 /** Motivo del cierre de sala, tal cual llega en `room:closed` (contrato §2.4). */
@@ -337,11 +352,26 @@ export const useRondaStore = create<RondaState>((set, get) => {
     },
 
     async sendAction(action) {
-      // Nunca dos acciones a la vez: si ya hay una en vuelo, se ignora.
+      // Nunca dos acciones a la vez. `nextRound` es la excepción segura:
+      // la vista de resultados puede llegar unas milésimas antes que el ack
+      // de la acción que la produjo. Si el anfitrión pulsa en esa ventana,
+      // conservamos una única intención y la enviamos con la versión fresca.
       // Contrato P17: "acciones bloqueadas" mientras no haya conexión sana
-      // -- igual de silencioso que el bloqueo por pendingAction: la señal
-      // visible ya la da el Banner (banda + cartel) y los botones
-      // deshabilitados, no hace falta un lastError adicional aquí.
+      // -- la señal visible la dan el Banner y los botones deshabilitados.
+      if (get().pendingAction && action.type === 'nextRound' && !queuedNextRound) {
+        queuedNextRound = true;
+        recordDiagnostic('action:queued', { actionType: action.type });
+        try {
+          const ready = await waitForPendingActionToFinish(() => get().pendingAction);
+          if (!ready) {
+            recordDiagnostic('action:queue_timeout', { actionType: action.type });
+            return;
+          }
+        } finally {
+          queuedNextRound = false;
+        }
+      }
+
       if (get().pendingAction || get().connection !== 'online') {
         recordDiagnostic('action:ignored', {
           actionType: action.type,

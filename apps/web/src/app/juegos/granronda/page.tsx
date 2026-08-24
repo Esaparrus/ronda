@@ -6,7 +6,7 @@ export default function GranRondaPage() {
       slug="granronda"
       title="La Gran Ronda"
       kind="Tablero y rutas"
-      players="3–7 jugadores"
+      players="2–7 jugadores"
       duration="15–25 min"
       mark="✦"
       summary="Recorre un tablero de rutas, administra tus Oros, compra Sellos y decide en cada bifurcación."

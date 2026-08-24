@@ -11,7 +11,12 @@
 import type { Server as IoServerType } from 'socket.io';
 import type { TypedIoServer } from '../io.ts';
 import type { Room } from '../rooms/room.ts';
-import { GAMES, GRAN_RONDA_BOARD, GRAN_RONDA_MINIGAMES } from '@ronda/engine';
+import {
+  GAMES,
+  GRAN_RONDA_BOARD,
+  GRAN_RONDA_MINIGAMES,
+  GRAN_RONDA_TRAP_TARGETS,
+} from '@ronda/engine';
 import type {
   ChinchonCommonView,
   ChinchonPlayerView,
@@ -572,6 +577,7 @@ function buildGranRondaLobbyCommon(room: Room): GranRondaCommonView {
       lastSpaceId: null,
     })),
     stampSpaceId: 'plaza-copas',
+    trapSpaceIds: GRAN_RONDA_TRAP_TARGETS.slice(0, 1),
     routeOptions: [],
     movement: null,
     resolution: null,

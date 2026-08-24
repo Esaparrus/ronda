@@ -249,6 +249,11 @@ export const GRAN_RONDA_STAMP_TARGETS = [
   'terraza-sello',
 ] as const;
 
+/** Casillas positivas que el monstruo puede convertir temporalmente en trampa. */
+export const GRAN_RONDA_TRAP_TARGETS = GRAN_RONDA_BOARD.filter(
+  (space) => space.type === 'oros' || space.type === 'evento' || space.type === 'atajo',
+).map((space) => space.id);
+
 export function granRondaSpaceById(id: string): GranRondaBoardSpace | undefined {
   return GRAN_RONDA_BOARD.find((space) => space.id === id);
 }
@@ -299,6 +304,8 @@ export function granRondaSpaceLabel(type: GranRondaSpaceType): string {
       return 'Penalización';
     case 'tienda':
       return 'Tienda';
+    case 'trampa':
+      return 'Trampa';
     case 'start':
       return 'Salida';
   }

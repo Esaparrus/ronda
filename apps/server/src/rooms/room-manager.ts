@@ -43,7 +43,6 @@ import { decideChinchonTimeoutDiscard } from './bot-policy.ts';
  * §10.6, no el de un juego concreto). */
 export function minPlayersFor(gameId: GameId): number {
   if (gameId === 'mus') return 4;
-  if (gameId === 'laronda' || gameId === 'granronda') return 3;
   return 2;
 }
 

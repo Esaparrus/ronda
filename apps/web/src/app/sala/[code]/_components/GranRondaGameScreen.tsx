@@ -45,6 +45,9 @@ export interface GranRondaGameScreenProps {
 
 export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScreenProps) {
   const router = useRouter();
+  const pendingAction = useRondaStore((state) => state.pendingAction);
+  const connection = useRondaStore((state) => state.connection);
+  const actionBlocked = pendingAction || connection !== 'online';
   const currentTurn = view.players.find((player) => player.playerId === view.turnPlayerId);
   const can = (action: GranRondaPlayerView['me']['availableActions'][number]) =>
     view.me.availableActions.includes(action);
@@ -144,9 +147,11 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
           boardPlayers={view.boardPlayers}
           players={view.players}
           stampSpaceId={view.stampSpaceId}
+          trapSpaceIds={view.trapSpaceIds}
           routeOptions={view.routeOptions}
           activePlayerId={view.turnPlayerId}
           movement={view.movement}
+          resolution={view.resolution}
           compact
           minimized={showEmbeddedGame}
           onSpaceSelect={
@@ -158,7 +163,15 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
       </section>
 
       {showEmbeddedGame ? <EmbeddedMiniGamePanel view={view} /> : null}
-      {view.phase === 'minigameReveal' ? <MiniGamePanel view={view} can={can} send={send} /> : null}
+      {view.phase === 'minigameReveal' ? (
+        <MiniGamePanel
+          view={view}
+          can={can}
+          send={send}
+          pending={pendingAction}
+          blocked={actionBlocked}
+        />
+      ) : null}
 
       {!final && view.phase === 'movement' ? (
         <section className="surface-panel flex flex-col gap-3 p-4 text-center">
@@ -223,8 +236,12 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
             El mapa queda congelado hasta que el anfitrión empiece la siguiente ronda.
           </p>
           {can('nextRound') ? (
-            <Button onClick={() => send({ type: 'nextRound' })}>
-              Empezar ronda {view.round + 1}
+            <Button
+              loading={pendingAction}
+              disabled={actionBlocked}
+              onClick={() => send({ type: 'nextRound' })}
+            >
+              {pendingAction ? 'Preparando la ronda…' : `Empezar ronda ${view.round + 1}`}
             </Button>
           ) : null}
         </section>
@@ -447,10 +464,14 @@ function MiniGamePanel({
   view,
   can,
   send,
+  pending,
+  blocked,
 }: {
   view: GranRondaPlayerView;
   can: (action: GranRondaPlayerView['me']['availableActions'][number]) => boolean;
   send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
+  pending: boolean;
+  blocked: boolean;
 }) {
   const revealed = view.phase === 'minigameReveal';
   const selected = view.me.selectedOptionId;
@@ -559,7 +580,9 @@ function MiniGamePanel({
         </Button>
       ) : null}
       {can('nextRound') ? (
-        <Button onClick={() => send({ type: 'nextRound' })}>Empezar ronda {view.round + 1}</Button>
+        <Button loading={pending} disabled={blocked} onClick={() => send({ type: 'nextRound' })}>
+          {pending ? 'Preparando la ronda…' : `Empezar ronda ${view.round + 1}`}
+        </Button>
       ) : null}
     </section>
   );

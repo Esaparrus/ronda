@@ -53,7 +53,7 @@ describe('La Ronda en RoomManager', () => {
       now: NOW,
     });
     if (!created.ok) throw new Error(created.code);
-    for (let count = 0; count < 2; count += 1) {
+    for (let count = 0; count < 1; count += 1) {
       const added = manager.addBot({
         roomCode: created.value.roomCode,
         playerId: created.value.playerId,
@@ -62,7 +62,7 @@ describe('La Ronda en RoomManager', () => {
       expect(added.ok).toBe(true);
     }
     const room = manager.getRoomByCode(created.value.roomCode);
-    expect(room?.playersBySeat().filter((runtime) => runtime.isBot)).toHaveLength(2);
+    expect(room?.playersBySeat().filter((runtime) => runtime.isBot)).toHaveLength(1);
     expect(
       manager.start({
         roomCode: created.value.roomCode,
@@ -102,7 +102,7 @@ describe('La Ronda en RoomManager', () => {
     expect(next.bill?.responderIndex).toBe(0);
   });
 
-  it('con menos de tres personas termina y publica el ganador con más ahorro', () => {
+  it('mantiene la partida con dos personas y termina al quedar solo una', () => {
     const { manager, code, ids } = startedRoom(['Ana', 'Beto', 'Carla']);
     const room = manager.getRoomByCode(code);
     if (!room) throw new Error('sin sala');
@@ -117,9 +117,18 @@ describe('La Ronda en RoomManager', () => {
 
     const left = manager.leave({ roomCode: code, playerId: idOf(ids, 'Beto'), now: NOW });
     expect(left.ok).toBe(true);
+    expect(room.status).toBe('playing');
+    expect(rondaState(manager, code).status).toBe('playing');
+
+    const secondLeft = manager.leave({
+      roomCode: code,
+      playerId: idOf(ids, 'Carla'),
+      now: NOW,
+    });
+    expect(secondLeft.ok).toBe(true);
     const ended = rondaState(manager, code);
     expect(room.status).toBe('gameEnd');
-    expect(ended.winnerId).toBe(idOf(ids, 'Carla'));
-    expect(ended.winnerIds).toEqual([idOf(ids, 'Carla')]);
+    expect(ended.winnerId).toBe(idOf(ids, 'Ana'));
+    expect(ended.winnerIds).toEqual([idOf(ids, 'Ana')]);
   });
 });

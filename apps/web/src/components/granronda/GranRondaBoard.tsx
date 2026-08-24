@@ -5,21 +5,25 @@ import {
   type GranRondaBoardPlayer,
   type GranRondaBoardSpace,
   type GranRondaMovementPublic,
+  type GranRondaResolutionPublic,
   type GranRondaSpaceType,
   type PlayerId,
   type PublicPlayer,
 } from '@ronda/protocol';
 import { GranRondaDiceOverlay } from './GranRondaDiceOverlay';
 import { GranRondaSpaceIcon } from './GranRondaSpaceIcon';
+import { GranRondaTrapEncounter } from './GranRondaTrapEncounter';
 
 export interface GranRondaBoardProps {
   board: GranRondaBoardSpace[];
   boardPlayers: GranRondaBoardPlayer[];
   players: PublicPlayer[];
   stampSpaceId: string;
+  trapSpaceIds?: string[];
   routeOptions?: string[];
   activePlayerId?: PlayerId | null;
   movement?: GranRondaMovementPublic | null;
+  resolution?: GranRondaResolutionPublic | null;
   compact?: boolean;
   minimized?: boolean;
   onSpaceSelect?: (spaceId: string) => void;
@@ -40,11 +44,13 @@ const SPACE_META: Record<GranRondaSpaceType, SpaceMeta> = {
   doble: { label: 'Dado doble', effect: 'Guarda 2 dados' },
   penalizacion: { label: 'Penalización', effect: 'Rival −2 Oros' },
   tienda: { label: 'Tienda', effect: 'Compra poderes' },
+  trampa: { label: 'Trampa monstruo', effect: 'Pierdes hasta 3 Oros' },
 };
 
 const LEGEND_ORDER: GranRondaSpaceType[] = [
   'oros',
   'perdida',
+  'trampa',
   'evento',
   'atajo',
   'doble',
@@ -109,19 +115,24 @@ export function GranRondaBoard({
   boardPlayers,
   players,
   stampSpaceId,
+  trapSpaceIds = [],
   routeOptions = [],
   activePlayerId = null,
   movement = null,
+  resolution = null,
   compact = false,
   minimized = false,
   onSpaceSelect,
 }: GranRondaBoardProps) {
   const positions = new Map(board.map((space) => [space.id, space]));
   const routeSet = new Set(routeOptions);
+  const trapSet = new Set(trapSpaceIds);
   const activePlayer = players.find((player) => player.playerId === activePlayerId);
   const interactive = routeOptions.length > 0 && onSpaceSelect !== undefined;
   const choiceOrigin = movement?.path[movement.path.length - 1] ?? null;
   const stampSpace = positions.get(stampSpaceId);
+  const trapHitSpace =
+    resolution?.kind === 'trampa' ? positions.get(resolution.spaceId) : undefined;
   const occupantsByPosition = new Map<string, GranRondaBoardPlayer[]>();
   for (const occupant of boardPlayers) {
     const occupants = occupantsByPosition.get(occupant.position) ?? [];
@@ -181,8 +192,10 @@ export function GranRondaBoard({
           {board.map((space) => {
             const isOption = routeSet.has(space.id);
             const stamp = space.id === stampSpaceId;
+            const trap = trapSet.has(space.id);
             const occupied = occupantsByPosition.has(space.id);
-            const meta = SPACE_META[space.type];
+            const visibleType: GranRondaSpaceType = trap ? 'trampa' : space.type;
+            const meta = SPACE_META[visibleType];
             return (
               <button
                 key={space.id}
@@ -191,12 +204,13 @@ export function GranRondaBoard({
                 onClick={() => onSpaceSelect?.(space.id)}
                 title={`${space.label} · ${meta.effect}`}
                 aria-label={`${space.label}, casilla ${space.index + 1}, ${meta.effect}${isOption ? ', elegir este camino' : ''}`}
-                className={`gran-ronda-space gran-ronda-space--${space.type} ${stamp ? 'gran-ronda-space--stamp' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
+                className={`gran-ronda-space gran-ronda-space--${visibleType} ${stamp ? 'gran-ronda-space--stamp' : ''} ${trap ? 'gran-ronda-space--trap' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
                 style={{ left: `${space.x}%`, top: `${space.y}%` }}
               >
                 {stamp ? <span className="gran-ronda-space__stamp-label">Sello</span> : null}
+                {trap ? <span className="gran-ronda-space__trap-label">¡Trampa!</span> : null}
                 <span className="gran-ronda-space__face">
-                  <GranRondaSpaceIcon type={space.type} />
+                  <GranRondaSpaceIcon type={visibleType} />
                   <span className="gran-ronda-space__number">
                     {String(space.index + 1).padStart(2, '0')}
                   </span>
@@ -225,12 +239,13 @@ export function GranRondaBoard({
                 PLAYER_TOKEN_ICONS[colorIndex % PLAYER_TOKEN_ICONS.length] ??
                 DEFAULT_PLAYER_TOKEN_ICON;
               const active = occupant.playerId === activePlayerId;
+              const hit = resolution?.kind === 'trampa' && occupant.position === resolution.spaceId;
               return (
                 <span
                   key={occupant.playerId}
                   title={`${player?.nick ?? 'Jugador'} · ${tokenIcon}`}
                   aria-label={player?.nick ?? 'Jugador'}
-                  className={`gran-ronda-piece ${active ? 'gran-ronda-piece--active' : ''}`}
+                  className={`gran-ronda-piece ${active ? 'gran-ronda-piece--active' : ''} ${hit ? 'gran-ronda-piece--hit' : ''}`}
                   style={
                     {
                       left: `${space.x + offset.x}%`,
@@ -244,6 +259,13 @@ export function GranRondaBoard({
               );
             })}
           </div>
+          {trapHitSpace && resolution ? (
+            <GranRondaTrapEncounter
+              x={trapHitSpace.x}
+              y={trapHitSpace.y}
+              coinsDelta={resolution.coinsDelta}
+            />
+          ) : null}
           {movement && activePlayer && !minimized ? (
             <GranRondaDiceOverlay movement={movement} playerName={activePlayer.nick} />
           ) : null}

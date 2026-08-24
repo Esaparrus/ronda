@@ -183,6 +183,7 @@ function common(state: GranRondaState): GranRondaCommonView {
     board: state.board.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
     boardPlayers: boardPlayers(state),
     stampSpaceId: state.stampSpaceId,
+    trapSpaceIds: [...state.trapSpaceIds],
     routeOptions: state.phase === 'routeChoice' ? [...(state.movement?.routeOptions ?? [])] : [],
     movement: movement(state),
     resolution: resolution(state),

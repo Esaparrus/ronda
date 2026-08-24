@@ -2734,10 +2734,10 @@ summary {
 
 .gran-ronda-board__art {
   z-index: -3;
-  background-image: url('/games/granronda/mapa-jardin-v1.webp');
+  background-image: url('/games/granronda/mapa-cartoon-v2.webp');
   background-position: center;
   background-size: cover;
-  filter: saturate(0.92) brightness(0.94);
+  filter: saturate(1.04) brightness(0.98);
   transform: scale(1.012);
 }
 
@@ -2968,6 +2968,18 @@ summary {
   --space-ink: #fff;
 }
 
+.gran-ronda-space--trampa .gran-ronda-space__face {
+  --space-bg: #6d38a8;
+  --space-highlight: #f07b52;
+  --space-edge: #321442;
+  --space-ink: #fff8d9;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.42),
+    0 0 0 3px rgb(255 196 65 / 0.82),
+    0 5px 13px rgb(59 18 65 / 0.48);
+  animation: gran-ronda-trap-breathe 1.15s ease-in-out infinite alternate;
+}
+
 .gran-ronda-space__number {
   position: absolute;
   right: -16%;
@@ -3003,6 +3015,24 @@ summary {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   box-shadow: 0 3px 8px rgb(18 76 37 / 0.32);
+  white-space: nowrap;
+}
+
+.gran-ronda-space__trap-label {
+  position: absolute;
+  z-index: 4;
+  bottom: calc(100% + 4px);
+  border: 2px solid #fff4a9;
+  border-radius: 999px;
+  background: #50206e;
+  color: white;
+  font-size: clamp(6px, 1.8vw, 9px);
+  font-weight: 900;
+  line-height: 1;
+  padding: 3px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  box-shadow: 0 3px 8px rgb(45 15 60 / 0.42);
   white-space: nowrap;
 }
 
@@ -3043,6 +3073,13 @@ summary {
 @keyframes gran-ronda-option-pulse {
   to {
     transform: scale(1.06);
+  }
+}
+
+@keyframes gran-ronda-trap-breathe {
+  to {
+    filter: brightness(1.12) drop-shadow(0 0 5px rgb(255 184 55 / 0.8));
+    transform: rotate(-3deg) scale(1.04);
   }
 }
 
@@ -3092,6 +3129,167 @@ summary {
   transform: translate(-50%, -50%) scale(1.08);
 }
 
+.gran-ronda-piece--hit {
+  animation: gran-ronda-piece-hit 620ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes gran-ronda-piece-hit {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0);
+  }
+  22% {
+    transform: translate(-65%, -58%) rotate(-13deg) scale(0.9);
+  }
+  42% {
+    transform: translate(-39%, -43%) rotate(11deg) scale(1.08);
+  }
+  64% {
+    transform: translate(-56%, -54%) rotate(-7deg);
+  }
+  82% {
+    transform: translate(-46%, -48%) rotate(4deg);
+  }
+}
+
+.gran-ronda-trap-encounter {
+  position: absolute;
+  z-index: 58;
+  width: clamp(5.6rem, 24vw, 8rem);
+  height: clamp(5.6rem, 24vw, 8rem);
+  pointer-events: none;
+  transform: translate(-48%, -72%);
+  animation: gran-ronda-trap-encounter-in 680ms cubic-bezier(0.18, 0.86, 0.25, 1.2) both;
+}
+
+.gran-ronda-trap-encounter__monster {
+  position: absolute;
+  inset: 0;
+  display: block;
+  filter: drop-shadow(0 8px 8px rgb(39 14 48 / 0.42));
+  animation: gran-ronda-monster-swing 900ms 180ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+.gran-ronda-trap-encounter__monster svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.gran-ronda-trap-encounter .monster-shadow {
+  fill: rgb(33 17 39 / 0.28);
+}
+
+.gran-ronda-trap-encounter .monster-body {
+  fill: #713bb1;
+  stroke: #321348;
+  stroke-width: 4;
+}
+
+.gran-ronda-trap-encounter .monster-belly {
+  fill: #a866d4;
+}
+
+.gran-ronda-trap-encounter .monster-horn {
+  fill: #ffd55b;
+  stroke: #5e3510;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.gran-ronda-trap-encounter .monster-brow,
+.gran-ronda-trap-encounter .monster-mouth,
+.gran-ronda-trap-encounter .monster-tooth,
+.gran-ronda-trap-encounter .monster-arm {
+  fill: none;
+  stroke: #271133;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.gran-ronda-trap-encounter .monster-eye {
+  fill: #fff8d8;
+  stroke: #271133;
+  stroke-width: 2;
+}
+
+.gran-ronda-trap-encounter .monster-fist {
+  fill: #8c4bc5;
+  stroke: #321348;
+  stroke-width: 4;
+}
+
+.gran-ronda-trap-encounter__impact,
+.gran-ronda-trap-encounter__loss {
+  position: absolute;
+  display: block;
+  border: 2px solid #40204f;
+  color: white;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgb(76 22 27 / 0.42);
+  box-shadow: 0 4px 9px rgb(50 19 56 / 0.28);
+}
+
+.gran-ronda-trap-encounter__impact {
+  top: 4%;
+  right: -8%;
+  border-radius: 45% 55% 48% 52%;
+  background: #ff5b3f;
+  font-size: clamp(0.62rem, 2.6vw, 0.95rem);
+  padding: 0.42em 0.5em;
+  transform: rotate(9deg);
+  animation: gran-ronda-impact-pop 520ms 360ms cubic-bezier(0.18, 0.9, 0.25, 1.35) both;
+}
+
+.gran-ronda-trap-encounter__loss {
+  right: -5%;
+  bottom: 3%;
+  border-color: #8b260e;
+  border-radius: 999px;
+  background: #f04432;
+  font-family: var(--font-mono);
+  font-size: clamp(0.58rem, 2.4vw, 0.85rem);
+  padding: 0.42em 0.6em;
+  animation: gran-ronda-impact-pop 520ms 520ms cubic-bezier(0.18, 0.9, 0.25, 1.35) both;
+}
+
+@keyframes gran-ronda-trap-encounter-in {
+  from {
+    opacity: 0;
+    transform: translate(-72%, -62%) scale(0.35) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-48%, -72%) scale(1) rotate(0);
+  }
+}
+
+@keyframes gran-ronda-monster-swing {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  38% {
+    transform: translateX(-5%) rotate(-8deg) scale(1.04);
+  }
+  58% {
+    transform: translateX(7%) rotate(7deg) scale(1.08);
+  }
+}
+
+@keyframes gran-ronda-impact-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.25) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(4deg);
+  }
+}
+
 .gran-ronda-board__key {
   overflow: hidden;
   border: 1px solid var(--color-linea);
@@ -3136,6 +3334,11 @@ summary {
 
 .gran-ronda-board__key-dot--perdida {
   background: #e9433d;
+}
+
+.gran-ronda-board__key-dot--trampa {
+  background: #713bb1;
+  box-shadow: 0 0 0 1px #ffbd43;
 }
 
 .gran-ronda-board__key-dot--evento {
@@ -3188,6 +3391,12 @@ summary {
 .gran-ronda-board__key-item--penalizacion .gran-ronda-board__key-icon {
   background: #ffe0dc;
   color: #b5322b;
+}
+
+.gran-ronda-board__key-item--trampa .gran-ronda-board__key-icon {
+  background: #ead6f7;
+  color: #60268b;
+  box-shadow: inset 0 0 0 1px #f5bc4a;
 }
 
 .gran-ronda-board__key-item--evento .gran-ronda-board__key-icon {
@@ -3262,6 +3471,7 @@ summary {
 
 .gran-ronda-board--minimized .gran-ronda-space__number,
 .gran-ronda-board--minimized .gran-ronda-space__stamp-label,
+.gran-ronda-board--minimized .gran-ronda-space__trap-label,
 .gran-ronda-board--minimized .gran-ronda-board__map-label,
 .gran-ronda-board--minimized .gran-ronda-board__stamp-status {
   display: none;
@@ -3416,7 +3626,8 @@ summary {
 }
 
 .gran-ronda-resolution-icon--perdida,
-.gran-ronda-resolution-icon--penalizacion {
+.gran-ronda-resolution-icon--penalizacion,
+.gran-ronda-resolution-icon--trampa {
   background: #ffe1dd;
   color: #b2352e;
 }

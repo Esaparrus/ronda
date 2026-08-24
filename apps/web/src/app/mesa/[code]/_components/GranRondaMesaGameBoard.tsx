@@ -122,9 +122,11 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
           boardPlayers={view.boardPlayers}
           players={view.players}
           stampSpaceId={view.stampSpaceId}
+          trapSpaceIds={view.trapSpaceIds}
           routeOptions={view.routeOptions}
           activePlayerId={view.turnPlayerId}
           movement={view.movement}
+          resolution={view.resolution}
           compact
           minimized={showEmbeddedGame}
         />

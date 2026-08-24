@@ -68,6 +68,7 @@ import {
   GRAN_RONDA_START_COINS,
   GRAN_RONDA_STAMP_COST,
   GRAN_RONDA_STAMP_TARGETS,
+  GRAN_RONDA_TRAP_TARGETS,
   GRAN_RONDA_POWERUP_COSTS,
   granRondaSpaceById,
   granRondaMovementOptions,
@@ -106,6 +107,7 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
     input.seed,
     0,
   );
+  const trapOrderResult = shuffle(GRAN_RONDA_TRAP_TARGETS, input.seed, questionOrderResult.calls);
   const firstQuestion = availableMiniGames[0] ?? GRAN_RONDA_MINIGAMES[0];
   if (!firstQuestion) throw new Error('Falta contenido de La Gran Ronda');
   const players = [...input.players]
@@ -154,12 +156,13 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
     config: input.config,
     gameId: 'granronda',
     roomCode: input.roomCode ?? '',
-    rng: { seed: input.seed, calls: questionOrderResult.calls },
+    rng: { seed: input.seed, calls: trapOrderResult.calls },
     round: 1,
     turnSeat: firstPlayer?.seat ?? null,
     players,
     board: GRAN_RONDA_BOARD.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
     stampSpaceId: GRAN_RONDA_STAMP_TARGETS[0],
+    trapSpaceIds: trapOrderResult.items.slice(0, trapCountForPlayerCount(players.length)),
     movedPlayerIds: [],
     movement: null,
     resolution: null,
@@ -540,6 +543,7 @@ function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionRe
   next.turnSeat = firstSeatForRound(next);
   next.movement = null;
   next.resolution = null;
+  refreshTrapSpaces(next);
   next.miniGame.questionIndex =
     (next.miniGame.questionIndex + 1) % next.miniGame.questionOrder.length;
   next.miniGame.questionId =
@@ -558,6 +562,28 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
   const space = granRondaSpaceById(player.position);
   if (!space) return;
   player.lastSpaceId = space.id;
+
+  if (state.trapSpaceIds.includes(space.id)) {
+    const lostCoins = Math.min(3, player.coins);
+    const coinsDelta = lostCoins === 0 ? 0 : -lostCoins;
+    player.coins -= lostCoins;
+    const nextTrapSpaceId = relocateTriggeredTrap(state, space.id);
+    const nextTrapLabel = nextTrapSpaceId
+      ? (granRondaSpaceById(nextTrapSpaceId)?.label ?? 'otra casilla')
+      : 'otra casilla';
+    state.resolution = {
+      kind: 'trampa',
+      spaceId: space.id,
+      title: '¡Emboscada del monstruo!',
+      message:
+        lostCoins > 0
+          ? `El monstruo te golpea y te roba ${lostCoins} Oros. Después huye y coloca su trampa en ${nextTrapLabel}.`
+          : `El monstruo intenta robarte, pero no llevas Oros. Después huye y coloca su trampa en ${nextTrapLabel}.`,
+      coinsDelta,
+      sealsDelta: 0,
+    };
+    return;
+  }
 
   let coinsDelta = 0;
   let title = space.label;
@@ -1061,6 +1087,62 @@ function nextRandomStampTarget(state: GranRondaState, currentId: string): string
   return candidates[nextRandomInt(state, 0, candidates.length - 1)] ?? candidates[0] ?? currentId;
 }
 
+function trapCountForPlayerCount(playerCount: number): number {
+  return playerCount >= 5 ? 2 : 1;
+}
+
+function refreshTrapSpaces(state: GranRondaState): void {
+  const previous = new Set(state.trapSpaceIds);
+  let candidates = GRAN_RONDA_TRAP_TARGETS.filter(
+    (spaceId) => spaceId !== state.stampSpaceId && !previous.has(spaceId),
+  );
+  const selected: string[] = [];
+  const desired = Math.min(
+    trapCountForPlayerCount(activeGranRondaPlayers(state).length),
+    GRAN_RONDA_TRAP_TARGETS.length,
+  );
+  if (candidates.length < desired) {
+    candidates = [
+      ...candidates,
+      ...GRAN_RONDA_TRAP_TARGETS.filter(
+        (spaceId) => spaceId !== state.stampSpaceId && !candidates.includes(spaceId),
+      ),
+    ];
+  }
+  while (selected.length < desired && candidates.length > 0) {
+    const index = nextRandomInt(state, 0, candidates.length - 1);
+    const [spaceId] = candidates.splice(index, 1);
+    if (spaceId) selected.push(spaceId);
+  }
+  state.trapSpaceIds = selected;
+}
+
+function relocateTriggeredTrap(state: GranRondaState, triggeredSpaceId: string): string | null {
+  const retained = state.trapSpaceIds.filter((spaceId) => spaceId !== triggeredSpaceId);
+  const occupied = new Set(activeGranRondaPlayers(state).map((player) => player.position));
+  let candidates = GRAN_RONDA_TRAP_TARGETS.filter(
+    (spaceId) =>
+      spaceId !== triggeredSpaceId &&
+      spaceId !== state.stampSpaceId &&
+      !retained.includes(spaceId) &&
+      !occupied.has(spaceId),
+  );
+  if (candidates.length === 0) {
+    candidates = GRAN_RONDA_TRAP_TARGETS.filter(
+      (spaceId) =>
+        spaceId !== triggeredSpaceId &&
+        spaceId !== state.stampSpaceId &&
+        !retained.includes(spaceId),
+    );
+  }
+  const nextSpaceId =
+    candidates.length > 0
+      ? (candidates[nextRandomInt(state, 0, candidates.length - 1)] ?? null)
+      : null;
+  state.trapSpaceIds = nextSpaceId ? [...retained, nextSpaceId] : retained;
+  return nextSpaceId;
+}
+
 function bump(state: GranRondaState): GranRondaState {
   const movement: GranRondaMovementState | null = state.movement
     ? {
@@ -1082,6 +1164,7 @@ function bump(state: GranRondaState): GranRondaState {
       powerups: { ...player.powerups },
     })),
     board: state.board.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
+    trapSpaceIds: [...state.trapSpaceIds],
     movedPlayerIds: [...state.movedPlayerIds],
     movement,
     resolution,

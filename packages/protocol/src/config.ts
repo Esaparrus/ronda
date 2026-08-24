@@ -455,6 +455,7 @@ export type CompletaLaFraseConfig = z.infer<typeof CompletaLaFraseConfigSchema>;
 // --- La Ronda --------------------------------------------------------------
 
 const LA_RONDA_MAX_PLAYERS = z.union([
+  z.literal(2),
   z.literal(3),
   z.literal(4),
   z.literal(5),
@@ -474,6 +475,7 @@ export type LaRondaConfig = z.infer<typeof LaRondaConfigSchema>;
 // --- La Gran Ronda --------------------------------------------------------
 
 const GRAN_RONDA_MAX_PLAYERS = z.union([
+  z.literal(2),
   z.literal(3),
   z.literal(4),
   z.literal(5),

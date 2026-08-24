@@ -8,6 +8,8 @@ import {
   ROOM_CODE_LENGTH,
   DEFAULT_CONFIG,
   DEFAULT_COLORES_CONFIG,
+  DEFAULT_GRAN_RONDA_CONFIG,
+  DEFAULT_LA_RONDA_CONFIG,
   DEFAULT_POCHA_CONFIG,
 } from '@ronda/protocol';
 import { colorQuestionById } from '@ronda/engine';
@@ -214,6 +216,38 @@ describe('RoomManager start/resume', () => {
     expect(rm.status).toBe('playing');
     expect(rm.state).not.toBeNull();
     for (const p of stateOf(rm).players) expect(p.hand.length).toBe(7);
+  });
+
+  it('La Ronda y La Gran Ronda empiezan con dos personas', () => {
+    const cases = [
+      { gameId: 'laronda' as const, config: DEFAULT_LA_RONDA_CONFIG },
+      { gameId: 'granronda' as const, config: DEFAULT_GRAN_RONDA_CONFIG },
+    ];
+
+    for (const entry of cases) {
+      const m = mgr();
+      const created = m.createRoom({
+        gameId: entry.gameId,
+        config: entry.config,
+        nick: 'A1',
+        now: NOW,
+      });
+      if (!created.ok) throw new Error();
+      const joined = m.joinRoom({
+        roomCode: created.value.roomCode,
+        nick: 'A2',
+        now: NOW,
+      });
+      if (!joined.ok) throw new Error();
+
+      const started = m.start({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        now: NOW,
+      });
+      expect(started.ok, entry.gameId).toBe(true);
+      expect(room(m, created.value.roomCode).status).toBe('playing');
+    }
   });
 
   it('resumeByToken con token válido devuelve mismo playerId y asiento', () => {

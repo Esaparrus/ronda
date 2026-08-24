@@ -6,7 +6,7 @@ export default function LaRondaPage() {
       slug="laronda"
       title="La Ronda"
       kind="Cartas y pique"
-      players="3–8 jugadores"
+      players="2–8 jugadores"
       duration="10–20 min"
       mark="€"
       summary="Una sobremesa de tapas, vino y cuentas cruzadas. Pide sin quedarte atrás y elige el momento exacto para pasarle la cuenta a otra persona."

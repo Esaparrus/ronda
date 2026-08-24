@@ -82,8 +82,7 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
     }
   }
 
-  const minimumPlayers =
-    view.gameId === 'mus' ? 4 : view.gameId === 'laronda' || view.gameId === 'granronda' ? 3 : 2;
+  const minimumPlayers = view.gameId === 'mus' ? 4 : 2;
   const scaleGroups =
     view.gameId === 'escala' && view.config.groupMode === 'groups' ? view.config.groupCount : null;
   const groupSizes = scaleGroups
@@ -99,7 +98,7 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
     : [];
   const groupsReady = scaleGroups === null || groupSizes.every((size) => size >= 2);
   const canStart = view.players.length >= minimumPlayers && groupsReady;
-  const minimumLabel = minimumPlayers === 4 ? 'cuatro' : minimumPlayers === 3 ? 'tres' : 'dos';
+  const minimumLabel = minimumPlayers === 4 ? 'cuatro' : 'dos';
   const hasFreeSeat = view.players.length < view.config.maxPlayers;
 
   function handleDrop(groupIndex: number, event: DragEvent<HTMLDivElement>) {

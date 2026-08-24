@@ -1121,12 +1121,12 @@ function LaRondaVariants({ config, setConfig }: LaRondaVariantsProps) {
     <>
       <QuantityStepper
         legend="Jugadores"
-        helperText="La mesa funciona desde tres personas y admite hasta ocho."
+        helperText="La mesa funciona desde dos personas y admite hasta ocho."
         value={config.maxPlayers}
         onChange={(value) =>
           updateConfig(setConfig, 'maxPlayers', value as LaRondaConfig['maxPlayers'])
         }
-        options={[3, 4, 5, 6, 7, 8].map((value) => ({ value, label: String(value) }))}
+        options={[2, 3, 4, 5, 6, 7, 8].map((value) => ({ value, label: String(value) }))}
         valueSuffix="personas"
       />
       <SegmentedControl
@@ -1155,12 +1155,12 @@ function GranRondaVariants({ config, setConfig }: GranRondaVariantsProps) {
         <p className="text-16 font-semibold text-hueso">Tablero, rutas y decisiones</p>
         <p className="text-14 leading-relaxed text-humo">
           Todos movéis por el mismo mapa. Los Oros sirven para comprar Sellos. Cada llegada muestra
-          su resultado en el mapa; las actividades especiales se añadirán después.
+          su resultado en el mapa y las trampas cambian de sitio durante la partida.
         </p>
       </div>
       <QuantityStepper
         legend="Jugadores"
-        helperText="La partida empieza desde tres personas y admite hasta siete."
+        helperText="La partida empieza desde dos personas y admite hasta siete."
         value={config.maxPlayers}
         onChange={(value) =>
           setConfig((previous) => ({
@@ -1168,7 +1168,7 @@ function GranRondaVariants({ config, setConfig }: GranRondaVariantsProps) {
             maxPlayers: value as GranRondaConfig['maxPlayers'],
           }))
         }
-        options={[3, 4, 5, 6, 7].map((value) => ({ value, label: String(value) }))}
+        options={[2, 3, 4, 5, 6, 7].map((value) => ({ value, label: String(value) }))}
         valueSuffix="personas"
       />
       <QuantityStepper

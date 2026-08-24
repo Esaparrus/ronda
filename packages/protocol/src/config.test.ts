@@ -6,6 +6,7 @@ import {
   PochaConfigSchema,
   MusConfigSchema,
   LaRondaConfigSchema,
+  GranRondaConfigSchema,
   DEFAULT_CONFIG,
   DEFAULT_COLORES_CONFIG,
   DEFAULT_LA_RONDA_CONFIG,
@@ -94,11 +95,16 @@ describe('GameConfigSchema', () => {
     expect(() => MusConfigSchema.parse({ modo: 'hibrido' })).toThrow();
   });
 
-  it('configura La Ronda para mesas de 3 a 8 personas', () => {
+  it('configura La Ronda para mesas de 2 a 8 personas', () => {
     expect(GameConfigSchema.parse({ gameId: 'laronda' })).toEqual(DEFAULT_LA_RONDA_CONFIG);
+    expect(LaRondaConfigSchema.parse({ maxPlayers: 2 }).maxPlayers).toBe(2);
     expect(LaRondaConfigSchema.parse({ maxPlayers: 3 }).maxPlayers).toBe(3);
     expect(LaRondaConfigSchema.parse({ maxPlayers: 8 }).maxPlayers).toBe(8);
-    expect(() => LaRondaConfigSchema.parse({ maxPlayers: 2 })).toThrow();
+  });
+
+  it('configura La Gran Ronda desde dos personas', () => {
+    expect(GranRondaConfigSchema.parse({ maxPlayers: 2 }).maxPlayers).toBe(2);
+    expect(GranRondaConfigSchema.parse({ maxPlayers: 7 }).maxPlayers).toBe(7);
   });
 
   it('configura el tema de Colores y usa todo el banco por defecto', () => {
