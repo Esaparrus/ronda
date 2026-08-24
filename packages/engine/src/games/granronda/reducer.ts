@@ -14,7 +14,9 @@ import {
   activeGranRondaPlayers,
   granRondaPlayer,
   type GranRondaMiniGameState,
+  type GranRondaMovementState,
   type GranRondaPlayer,
+  type GranRondaResolutionState,
   type GranRondaState,
 } from './state.ts';
 
@@ -76,6 +78,8 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
     board: GRAN_RONDA_BOARD.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
     stampSpaceId: GRAN_RONDA_STAMP_TARGETS[0],
     movedPlayerIds: [],
+    movement: null,
+    resolution: null,
     miniGame,
     winnerId: null,
     rematchVotes: [],
@@ -92,8 +96,12 @@ export function applyAction(
   switch (action.type) {
     case 'rollGranRonda':
       return rollDie(state, playerId);
+    case 'advanceGranRondaMovement':
+      return advanceMovement(state, playerId);
     case 'chooseGranRondaPath':
       return choosePath(state, playerId, action.nextSpaceId);
+    case 'continueGranRondaResolution':
+      return continueResolution(state, playerId);
     case 'submitGranRondaAnswer':
       return submitAnswer(state, playerId, action.optionId);
     case 'finishGranRondaMiniGame':
@@ -117,24 +125,62 @@ function rollDie(state: GranRondaState, playerId: PlayerId): GranRondaActionResu
   const nextPlayer = granRondaPlayer(next, playerId);
   if (!nextPlayer) return err('PLAYER_NOT_IN_ROOM');
   nextPlayer.lastRoll = rolled;
+  next.movement = {
+    playerId,
+    roll: rolled,
+    path: [nextPlayer.position],
+    remainingSteps: rolled,
+    routeOptions: [],
+    forcedNextSpaceId: null,
+  };
+  next.phase = 'moving';
 
-  let position = nextPlayer.position;
-  for (let step = 0; step < rolled; step += 1) {
-    const space = granRondaSpaceById(position);
-    const nextId = space?.nextIds[0];
-    if (!nextId) break;
-    position = nextId;
-  }
-  nextPlayer.position = position;
-
-  const landingSpace = granRondaSpaceById(position);
-  if (landingSpace && landingSpace.nextIds.length > 1) {
+  const currentSpace = granRondaSpaceById(nextPlayer.position);
+  if (currentSpace && currentSpace.nextIds.length > 1) {
     next.phase = 'routeChoice';
+    next.movement.routeOptions = [...currentSpace.nextIds];
+  }
+  return ok({ state: next, events: [] });
+}
+
+function advanceMovement(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
+  if (state.status !== 'playing' || state.phase !== 'moving') return err('INVALID_ACTION');
+  const movement = state.movement;
+  if (!movement || movement.playerId !== playerId || movement.remainingSteps <= 0) {
+    return err('INVALID_ACTION');
+  }
+  const player = granRondaPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+
+  const next = bump(state);
+  const nextMovement = next.movement;
+  const nextPlayer = granRondaPlayer(next, playerId);
+  if (!nextMovement || !nextPlayer) return err('PLAYER_NOT_IN_ROOM');
+
+  const currentSpace = granRondaSpaceById(nextPlayer.position);
+  const nextSpaceId = nextMovement.forcedNextSpaceId ?? currentSpace?.nextIds[0];
+  if (!nextSpaceId) return err('INVALID_ACTION');
+
+  nextMovement.forcedNextSpaceId = null;
+  nextMovement.routeOptions = [];
+  nextPlayer.position = nextSpaceId;
+  nextMovement.path.push(nextSpaceId);
+  nextMovement.remainingSteps -= 1;
+
+  if (nextMovement.remainingSteps <= 0) {
+    resolveLanding(next, nextPlayer);
+    next.phase = 'resolving';
     return ok({ state: next, events: [] });
   }
 
-  resolveLanding(next, nextPlayer);
-  finishMovement(next, playerId);
+  const landedSpace = granRondaSpaceById(nextSpaceId);
+  if (landedSpace && landedSpace.nextIds.length > 1) {
+    next.phase = 'routeChoice';
+    nextMovement.routeOptions = [...landedSpace.nextIds];
+  } else {
+    next.phase = 'moving';
+  }
   return ok({ state: next, events: [] });
 }
 
@@ -144,7 +190,9 @@ function choosePath(
   nextSpaceId: string,
 ): GranRondaActionResult {
   if (state.status !== 'playing' || state.phase !== 'routeChoice') return err('INVALID_ACTION');
+  const movement = state.movement;
   const player = granRondaPlayer(state, playerId);
+  if (!movement || movement.playerId !== playerId) return err('INVALID_ACTION');
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (player.left) return err('PLAYER_ELIMINATED');
   if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
@@ -153,10 +201,25 @@ function choosePath(
   if (!currentSpace || !currentSpace.nextIds.includes(nextSpaceId)) return err('INVALID_ACTION');
 
   const next = bump(state);
-  const nextPlayer = granRondaPlayer(next, playerId);
-  if (!nextPlayer) return err('PLAYER_NOT_IN_ROOM');
-  nextPlayer.position = nextSpaceId;
-  resolveLanding(next, nextPlayer);
+  if (!next.movement) return err('INVALID_ACTION');
+  next.movement.routeOptions = [];
+  next.movement.forcedNextSpaceId = nextSpaceId;
+  next.phase = 'moving';
+  return ok({ state: next, events: [] });
+}
+
+function continueResolution(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
+  if (state.status !== 'playing' || state.phase !== 'resolving') return err('INVALID_ACTION');
+  const movement = state.movement;
+  const player = granRondaPlayer(state, playerId);
+  if (!movement || movement.playerId !== playerId) return err('INVALID_ACTION');
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
+
+  const next = bump(state);
+  next.resolution = null;
+  next.movement = null;
   finishMovement(next, playerId);
   return ok({ state: next, events: [] });
 }
@@ -189,7 +252,12 @@ function finishMiniGame(state: GranRondaState, playerId: PlayerId): GranRondaAct
 }
 
 function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
-  if (state.status !== 'playing' || state.phase !== 'minigameReveal') return err('INVALID_ACTION');
+  if (
+    state.status !== 'playing' ||
+    (state.phase !== 'roundEnd' && state.phase !== 'minigameReveal')
+  ) {
+    return err('INVALID_ACTION');
+  }
   if (!isHost(state, playerId)) return err('NOT_HOST');
   if (state.round >= state.config.rounds) return err('INVALID_ACTION');
 
@@ -198,6 +266,8 @@ function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionRe
   next.phase = 'movement';
   next.movedPlayerIds = [];
   next.turnSeat = firstSeatForRound(next);
+  next.movement = null;
+  next.resolution = null;
   next.miniGame.questionIndex =
     (next.miniGame.questionIndex + 1) % next.miniGame.questionOrder.length;
   next.miniGame.questionId =
@@ -213,35 +283,83 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
   if (!space) return;
   player.lastSpaceId = space.id;
 
-  if (space.type === 'oros') player.coins += 3;
-  if (space.type === 'perdida') player.coins = Math.max(0, player.coins - 2);
-  if (space.type === 'evento') player.coins += 1;
-  if (space.type === 'atajo') player.coins += 2;
+  let coinsDelta = 0;
+  let sealsDelta = 0;
+  let title = space.label;
+  let message = 'La ficha ha llegado a esta casilla.';
 
-  if (space.type === 'sello' && space.id === state.stampSpaceId && player.coins >= GRAN_RONDA_STAMP_COST) {
-    player.coins -= GRAN_RONDA_STAMP_COST;
-    player.seals += 1;
-    player.score = player.seals;
-    const targetIndex = GRAN_RONDA_STAMP_TARGETS.indexOf(
-      state.stampSpaceId as (typeof GRAN_RONDA_STAMP_TARGETS)[number],
-    );
-    state.stampSpaceId =
-      GRAN_RONDA_STAMP_TARGETS[(targetIndex + 1) % GRAN_RONDA_STAMP_TARGETS.length] ??
-      GRAN_RONDA_STAMP_TARGETS[0];
+  if (space.type === 'oros') {
+    coinsDelta = 3;
+    player.coins += coinsDelta;
+    title = 'Has encontrado Oros';
+    message = 'La casilla te entrega 3 Oros.';
   }
+  if (space.type === 'perdida') {
+    coinsDelta = Math.max(-2, -player.coins);
+    player.coins = Math.max(0, player.coins - 2);
+    title = 'Senda de Pérdida';
+    message = 'La casilla resta 2 Oros, sin bajar de cero.';
+  }
+  if (space.type === 'evento') {
+    coinsDelta = 1;
+    player.coins += coinsDelta;
+    title = 'Cruce de la Ronda';
+    message = 'Por ahora, el cruce te concede 1 Oro. Aquí podremos conectar una actividad.';
+  }
+  if (space.type === 'atajo') {
+    coinsDelta = 2;
+    player.coins += coinsDelta;
+    title = 'Atajo';
+    message = 'El atajo premia la decisión con 2 Oros.';
+  }
+
+  if (space.type === 'sello' && space.id === state.stampSpaceId) {
+    if (player.coins >= GRAN_RONDA_STAMP_COST) {
+      coinsDelta = -GRAN_RONDA_STAMP_COST;
+      sealsDelta = 1;
+      player.coins -= GRAN_RONDA_STAMP_COST;
+      player.seals += sealsDelta;
+      player.score = player.seals;
+      title = 'Sello conseguido';
+      message = `Has gastado ${GRAN_RONDA_STAMP_COST} Oros y consigues un Sello.`;
+      const targetIndex = GRAN_RONDA_STAMP_TARGETS.indexOf(
+        state.stampSpaceId as (typeof GRAN_RONDA_STAMP_TARGETS)[number],
+      );
+      state.stampSpaceId =
+        GRAN_RONDA_STAMP_TARGETS[(targetIndex + 1) % GRAN_RONDA_STAMP_TARGETS.length] ??
+        GRAN_RONDA_STAMP_TARGETS[0];
+    } else {
+      title = 'Sello fuera de alcance';
+      message = `Necesitas ${GRAN_RONDA_STAMP_COST} Oros para comprarlo.`;
+    }
+  }
+
+  state.resolution = {
+    kind: space.type,
+    spaceId: space.id,
+    title,
+    message,
+    coinsDelta,
+    sealsDelta,
+  };
 }
 
 function finishMovement(state: GranRondaState, playerId: PlayerId): void {
   if (!state.movedPlayerIds.includes(playerId)) state.movedPlayerIds.push(playerId);
   const active = activeGranRondaPlayers(state).sort((left, right) => left.seat - right.seat);
   if (state.movedPlayerIds.length >= active.length) {
-    state.phase = 'minigameInput';
+    state.phase = 'roundEnd';
     state.turnSeat = null;
+    if (state.round >= state.config.rounds) {
+      state.status = 'gameEnd';
+      state.winnerId = decideWinner(state);
+    }
     return;
   }
 
   const nextPlayer = active.find((player) => !state.movedPlayerIds.includes(player.playerId));
   state.turnSeat = nextPlayer?.seat ?? null;
+  state.phase = 'movement';
 }
 
 function revealMiniGame(state: GranRondaState): void {
@@ -293,12 +411,24 @@ function nextRandomInt(state: GranRondaState, min: number, max: number): number 
 }
 
 function bump(state: GranRondaState): GranRondaState {
+  const movement: GranRondaMovementState | null = state.movement
+    ? {
+        ...state.movement,
+        path: [...state.movement.path],
+        routeOptions: [...state.movement.routeOptions],
+      }
+    : null;
+  const resolution: GranRondaResolutionState | null = state.resolution
+    ? { ...state.resolution }
+    : null;
   return {
     ...state,
     rng: { ...state.rng },
     players: state.players.map((player) => ({ ...player, hand: [...player.hand] })),
     board: state.board.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
     movedPlayerIds: [...state.movedPlayerIds],
+    movement,
+    resolution,
     miniGame: {
       ...state.miniGame,
       questionOrder: [...state.miniGame.questionOrder],

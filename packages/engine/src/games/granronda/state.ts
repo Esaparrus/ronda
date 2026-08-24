@@ -1,7 +1,20 @@
-import type { GranRondaConfig, GranRondaBoardSpace, PlayerId, RoomCode } from '@ronda/protocol';
+import type {
+  GranRondaBoardSpace,
+  GranRondaConfig,
+  GranRondaResolutionKind,
+  PlayerId,
+  RoomCode,
+} from '@ronda/protocol';
 
 export type GranRondaStatus = 'playing' | 'gameEnd';
-export type GranRondaPhase = 'movement' | 'routeChoice' | 'minigameInput' | 'minigameReveal';
+export type GranRondaPhase =
+  | 'movement'
+  | 'routeChoice'
+  | 'moving'
+  | 'resolving'
+  | 'roundEnd'
+  | 'minigameInput'
+  | 'minigameReveal';
 
 export interface GranRondaRngState {
   seed: string;
@@ -33,6 +46,24 @@ export interface GranRondaMiniGameState {
   scoreDeltas: Record<PlayerId, number> | null;
 }
 
+export interface GranRondaMovementState {
+  playerId: PlayerId;
+  roll: number;
+  path: string[];
+  remainingSteps: number;
+  routeOptions: string[];
+  forcedNextSpaceId: string | null;
+}
+
+export interface GranRondaResolutionState {
+  kind: GranRondaResolutionKind;
+  spaceId: string;
+  title: string;
+  message: string;
+  coinsDelta: number;
+  sealsDelta: number;
+}
+
 export interface GranRondaState {
   version: number;
   status: GranRondaStatus;
@@ -47,6 +78,8 @@ export interface GranRondaState {
   board: GranRondaBoardSpace[];
   stampSpaceId: string;
   movedPlayerIds: PlayerId[];
+  movement: GranRondaMovementState | null;
+  resolution: GranRondaResolutionState | null;
   miniGame: GranRondaMiniGameState;
   winnerId: PlayerId | null;
   rematchVotes: PlayerId[];

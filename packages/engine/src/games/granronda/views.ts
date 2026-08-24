@@ -2,8 +2,10 @@ import type {
   GranRondaBoardPlayer,
   GranRondaCommonView,
   GranRondaMiniGamePublic,
+  GranRondaMovementPublic,
   GranRondaPlayerView,
   GranRondaPlayerViewMe,
+  GranRondaResolutionPublic,
   GranRondaTableView,
   GranRondaAvailableAction,
   PlayerId,
@@ -40,6 +42,14 @@ function boardPlayers(state: GranRondaState): GranRondaBoardPlayer[] {
   }));
 }
 
+function movement(state: GranRondaState): GranRondaMovementPublic | null {
+  return state.movement ? { ...state.movement, path: [...state.movement.path], routeOptions: [...state.movement.routeOptions] } : null;
+}
+
+function resolution(state: GranRondaState): GranRondaResolutionPublic | null {
+  return state.resolution ? { ...state.resolution } : null;
+}
+
 function miniGame(state: GranRondaState): GranRondaMiniGamePublic {
   const question = granRondaMiniGameById(state.miniGame.questionId);
   const revealed = state.phase === 'minigameReveal' || state.status === 'gameEnd';
@@ -74,6 +84,8 @@ function common(state: GranRondaState): GranRondaCommonView {
     boardPlayers: boardPlayers(state),
     stampSpaceId: state.stampSpaceId,
     routeOptions: state.phase === 'routeChoice' ? [...(currentSpace?.nextIds ?? [])] : [],
+    movement: movement(state),
+    resolution: resolution(state),
     miniGame: miniGame(state),
   };
 }
@@ -96,8 +108,14 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     if (state.phase === 'movement' && state.turnSeat === player.seat) {
       availableActions.push('rollGranRonda');
     }
+    if (state.phase === 'moving' && state.movement?.playerId === playerId) {
+      availableActions.push('advanceGranRondaMovement');
+    }
     if (state.phase === 'routeChoice' && state.turnSeat === player.seat) {
       availableActions.push('chooseGranRondaPath');
+    }
+    if (state.phase === 'resolving' && state.movement?.playerId === playerId) {
+      availableActions.push('continueGranRondaResolution');
     }
     if (state.phase === 'minigameInput' && state.miniGame.submissions[playerId] === undefined) {
       availableActions.push('submitGranRondaAnswer');
@@ -105,7 +123,7 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     if (state.phase === 'minigameInput' && player.seat === 0) {
       availableActions.push('finishGranRondaMiniGame');
     }
-    if (state.phase === 'minigameReveal' && player.seat === 0 && state.round < state.config.rounds) {
+    if (state.phase === 'roundEnd' && state.status === 'playing' && player.seat === 0) {
       availableActions.push('nextRound');
     }
   }

@@ -82,7 +82,8 @@ export function Lobby({ view, onReviewRules }: LobbyProps) {
     }
   }
 
-  const minimumPlayers = view.gameId === 'mus' ? 4 : view.gameId === 'laronda' ? 3 : 2;
+  const minimumPlayers =
+    view.gameId === 'mus' ? 4 : view.gameId === 'laronda' || view.gameId === 'granronda' ? 3 : 2;
   const scaleGroups =
     view.gameId === 'escala' && view.config.groupMode === 'groups' ? view.config.groupCount : null;
   const groupSizes = scaleGroups

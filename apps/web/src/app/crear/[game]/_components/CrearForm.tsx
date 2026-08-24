@@ -1143,10 +1143,10 @@ function GranRondaVariants({ config, setConfig }: GranRondaVariantsProps) {
   return (
     <>
       <div className="surface-panel flex flex-col gap-1 p-4">
-        <p className="text-16 font-semibold text-hueso">Tablero, rutas y pulsos rápidos</p>
+        <p className="text-16 font-semibold text-hueso">Tablero, rutas y decisiones</p>
         <p className="text-14 leading-relaxed text-humo">
-          Todos movéis por el mismo mapa. Los Oros sirven para comprar Sellos; los minijuegos dan
-          una pequeña recompensa y no dependen de la velocidad del móvil.
+          Todos movéis por el mismo mapa. Los Oros sirven para comprar Sellos. Cada llegada muestra
+          su resultado en el mapa; las actividades especiales se añadirán después.
         </p>
       </div>
       <QuantityStepper

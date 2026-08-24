@@ -503,7 +503,7 @@ export const GAME_GUIDES = {
   },
   granronda: {
     title: 'La Gran Ronda',
-    kind: 'Tablero y minijuegos',
+    kind: 'Tablero y rutas',
     mark: '✦',
     objective:
       'Consigue más Sellos de Ronda que el resto moviéndote por un tablero de rutas y administrando tus Oros.',
@@ -521,8 +521,8 @@ export const GAME_GUIDES = {
         body: 'Si llegas al destino y tienes 8 Oros, se descuentan automáticamente y ganas un Sello. Después el destino cambia.',
       },
       {
-        title: 'Responde al pulso final',
-        body: 'Al terminar el movimiento de todos, contestad una pregunta rápida. Cada acierto añade Oros sin premiar la velocidad.',
+        title: 'Resuelve la casilla',
+        body: 'Al llegar, el mapa muestra el resultado aquí mismo: ganas o pierdes Oros, consigues un atajo o intentas comprar el Sello.',
       },
     ],
     victory:

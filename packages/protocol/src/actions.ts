@@ -162,7 +162,9 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('musicNextRound') }),
   // --- La Gran Ronda -------------------------------------------------------
   z.object({ type: z.literal('rollGranRonda') }),
+  z.object({ type: z.literal('advanceGranRondaMovement') }),
   z.object({ type: z.literal('chooseGranRondaPath'), nextSpaceId: cardIdField }),
+  z.object({ type: z.literal('continueGranRondaResolution') }),
   z.object({ type: z.literal('submitGranRondaAnswer'), optionId: cardIdField }),
   /** El anfitrión puede cerrar el minijuego si alguien se desconecta. */
   z.object({ type: z.literal('finishGranRondaMiniGame') }),

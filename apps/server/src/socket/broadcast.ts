@@ -571,6 +571,8 @@ function buildGranRondaLobbyCommon(room: Room): GranRondaCommonView {
     })),
     stampSpaceId: 'plaza-copas',
     routeOptions: [],
+    movement: null,
+    resolution: null,
     miniGame: {
       id: question.id,
       title: question.title,

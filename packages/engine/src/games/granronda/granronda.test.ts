@@ -12,7 +12,7 @@ const players = [
 
 function makeState(): GranRondaState {
   return createInitialState({
-    config: DEFAULT_GRAN_RONDA_CONFIG,
+    config: { ...DEFAULT_GRAN_RONDA_CONFIG, rounds: 4 },
     players,
     seed: 'granronda-test',
     roomCode: 'TEST',
@@ -27,55 +27,97 @@ function play(action: GameAction, state: GranRondaState, playerId: string): Gran
   return result.value.state;
 }
 
-function moveCurrentPlayer(state: GranRondaState): GranRondaState {
+function currentPlayer(state: GranRondaState) {
   const player = state.players.find((candidate) => candidate.seat === state.turnSeat);
   if (!player) throw new Error('No hay jugador activo');
-  if (state.phase === 'routeChoice') {
-    const view = getPlayerView(state, player.playerId);
+  return player;
+}
+
+function firstRoute(playerId: string, state: GranRondaState): string {
+  const option = getPlayerView(state, playerId).routeOptions[0];
+  if (!option) throw new Error('Falta una ruta');
+  return option;
+}
+
+function resolveCurrentTurn(state: GranRondaState): GranRondaState {
+  const player = currentPlayer(state);
+  let next = state;
+  if (next.phase === 'movement') {
+    next = play({ type: 'rollGranRonda' }, next, player.playerId);
+  }
+  if (next.phase === 'routeChoice') {
+    const view = getPlayerView(next, player.playerId);
     const option = view.routeOptions[0];
     if (!option) throw new Error('Falta una ruta');
-    return play({ type: 'chooseGranRondaPath', nextSpaceId: option }, state, player.playerId);
+    next = play({ type: 'chooseGranRondaPath', nextSpaceId: option }, next, player.playerId);
   }
-  return play({ type: 'rollGranRonda' }, state, player.playerId);
+  while (next.phase === 'moving') {
+    next = play({ type: 'advanceGranRondaMovement' }, next, player.playerId);
+    if (next.phase === 'routeChoice') {
+      const view = getPlayerView(next, player.playerId);
+      const option = view.routeOptions[0];
+      if (!option) throw new Error('Falta una ruta intermedia');
+      next = play({ type: 'chooseGranRondaPath', nextSpaceId: option }, next, player.playerId);
+    }
+  }
+  if (next.phase === 'resolving') {
+    next = play({ type: 'continueGranRondaResolution' }, next, player.playerId);
+  }
+  return next;
 }
 
 describe('La Gran Ronda', () => {
-  it('crea un tablero con economía y turnos', () => {
+  it('crea un mapa con coordenadas, economía y turnos', () => {
     const state = makeState();
     expect(state.board.length).toBeGreaterThan(15);
+    expect(state.board.every((space) => space.x > 0 && space.x < 100 && space.y > 0 && space.y < 100)).toBe(true);
     expect(state.phase).toBe('movement');
     expect(state.turnSeat).toBe(0);
     expect(state.players.every((player) => player.coins === 5)).toBe(true);
   });
 
-  it('avanza a minijuego después de mover a toda la mesa y revela respuestas', () => {
+  it('publica la tirada, anima pasos y resuelve la casilla antes de cambiar turno', () => {
     let state = makeState();
-    while (state.phase === 'movement' || state.phase === 'routeChoice') {
-      state = moveCurrentPlayer(state);
-    }
-    expect(state.phase).toBe('minigameInput');
-    expect(state.turnSeat).toBeNull();
+    state = play({ type: 'rollGranRonda' }, state, 'p1');
+    expect(state.movement?.roll).toBeGreaterThanOrEqual(1);
+    expect(state.movement?.roll).toBeLessThanOrEqual(6);
+    expect(['moving', 'routeChoice']).toContain(state.phase);
 
-    for (const player of players) {
-      state = play({ type: 'submitGranRondaAnswer', optionId: 'a' }, state, player.playerId);
+    if (state.phase === 'routeChoice') {
+      state = play({ type: 'chooseGranRondaPath', nextSpaceId: firstRoute('p1', state) }, state, 'p1');
     }
-    expect(state.phase).toBe('minigameReveal');
-    expect(state.miniGame.scoreDeltas).not.toBeNull();
+    const startPathLength = state.movement?.path.length ?? 0;
+    state = play({ type: 'advanceGranRondaMovement' }, state, 'p1');
+    expect(state.movement?.path.length).toBeGreaterThan(startPathLength);
+
+    while (state.phase === 'moving' || state.phase === 'routeChoice') {
+      if (state.phase === 'routeChoice') {
+        state = play({ type: 'chooseGranRondaPath', nextSpaceId: firstRoute('p1', state) }, state, 'p1');
+      } else {
+        state = play({ type: 'advanceGranRondaMovement' }, state, 'p1');
+      }
+    }
+    expect(state.phase).toBe('resolving');
+    expect(state.resolution).not.toBeNull();
+    expect(state.turnSeat).toBe(0);
+
+    state = play({ type: 'continueGranRondaResolution' }, state, 'p1');
+    expect(state.turnSeat).toBe(1);
+    expect(state.movement).toBeNull();
   });
 
-  it('solo permite cerrar el minijuego al anfitrión y mantiene el secreto', () => {
+  it('termina la ronda sin lanzar preguntas genéricas y deja avanzar al anfitrión', () => {
     let state = makeState();
-    while (state.phase === 'movement' || state.phase === 'routeChoice') {
-      state = moveCurrentPlayer(state);
-    }
-    state = play({ type: 'submitGranRondaAnswer', optionId: 'b' }, state, 'p1');
-    const beforeReveal = getPlayerView(state, 'p2');
-    expect(beforeReveal.miniGame.answers).toBeNull();
-    expect(beforeReveal.me.selectedOptionId).toBeNull();
+    while (state.phase !== 'roundEnd') state = resolveCurrentTurn(state);
+    expect(state.status).toBe('playing');
+    expect(state.phase).toBe('roundEnd');
+    expect(state.miniGame.submissions).toEqual({});
 
-    const rejected = applyAction(state, 'p2', { type: 'finishGranRondaMiniGame' }, 0);
+    const rejected = applyAction(state, 'p2', { type: 'nextRound' }, 0);
     expect(rejected.ok).toBe(false);
-    state = play({ type: 'finishGranRondaMiniGame' }, state, 'p1');
-    expect(state.phase).toBe('minigameReveal');
+    state = play({ type: 'nextRound' }, state, 'p1');
+    expect(state.round).toBe(2);
+    expect(state.phase).toBe('movement');
+    expect(state.turnSeat).toBe(1);
   });
 });

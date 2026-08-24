@@ -862,11 +862,21 @@ export interface RondaTableView extends RondaCommonView {
 
 // --- La Gran Ronda --------------------------------------------------------
 
-export type GranRondaPhase = 'movement' | 'routeChoice' | 'minigameInput' | 'minigameReveal';
+export type GranRondaPhase =
+  | 'movement'
+  | 'routeChoice'
+  | 'moving'
+  | 'resolving'
+  | 'roundEnd'
+  | 'minigameInput'
+  | 'minigameReveal';
 export type GranRondaSpaceType = 'start' | 'oros' | 'perdida' | 'sello' | 'evento' | 'atajo';
+export type GranRondaResolutionKind = GranRondaSpaceType;
 export type GranRondaAvailableAction =
   | 'rollGranRonda'
+  | 'advanceGranRondaMovement'
   | 'chooseGranRondaPath'
+  | 'continueGranRondaResolution'
   | 'submitGranRondaAnswer'
   | 'finishGranRondaMiniGame'
   | 'nextRound';
@@ -877,6 +887,8 @@ export interface GranRondaBoardSpace {
   label: string;
   type: GranRondaSpaceType;
   nextIds: string[];
+  x: number;
+  y: number;
 }
 
 export interface GranRondaBoardPlayer {
@@ -904,6 +916,23 @@ export interface GranRondaMiniGamePublic {
   scoreDeltas: Record<PlayerId, number> | null;
 }
 
+export interface GranRondaMovementPublic {
+  playerId: PlayerId;
+  roll: number;
+  path: string[];
+  remainingSteps: number;
+  routeOptions: string[];
+}
+
+export interface GranRondaResolutionPublic {
+  kind: GranRondaResolutionKind;
+  spaceId: string;
+  title: string;
+  message: string;
+  coinsDelta: number;
+  sealsDelta: number;
+}
+
 export interface GranRondaCommonView extends CommonViewBase {
   gameId: 'granronda';
   config: GranRondaConfig;
@@ -912,6 +941,8 @@ export interface GranRondaCommonView extends CommonViewBase {
   boardPlayers: GranRondaBoardPlayer[];
   stampSpaceId: string;
   routeOptions: string[];
+  movement: GranRondaMovementPublic | null;
+  resolution: GranRondaResolutionPublic | null;
   miniGame: GranRondaMiniGamePublic;
 }
 
