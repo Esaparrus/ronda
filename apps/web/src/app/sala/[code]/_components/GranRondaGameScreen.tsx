@@ -14,7 +14,13 @@ import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
 import { useRondaStore } from '@/lib/store';
 import { ClassicGameScreen } from './ClassicGameScreen';
+import { GameScreen } from './GameScreen';
 import { MusicalGameScreen } from './MusicalGameScreen';
+import { PartyGameScreen } from './PartyGameScreen';
+import { PochaGameScreen } from './PochaGameScreen';
+import { PrecioJustoGameScreen } from './PrecioJustoGameScreen';
+import { RoadmapGameScreen } from './RoadmapGameScreen';
+import { RondaGameScreen } from './RondaGameScreen';
 
 const POWERUP_COSTS: Record<GranRondaPowerupType, number> = {
   doubleRoll: 5,
@@ -236,18 +242,94 @@ function EmbeddedMiniGamePanel({ view }: { view: GranRondaPlayerView }) {
           <p className="mt-1 text-13 text-humo">Desplázate dentro de esta pantalla para jugar.</p>
         </div>
         <span className="rounded-full border border-oro/40 bg-oro/10 px-2.5 py-1 font-mono text-10 uppercase tracking-wider text-oro">
-          {embedded.gameId === 'musical' ? 'Musical' : embedded.gameId === 'sieteymedia' ? 'Siete y media' : 'Cinquillo'}
+          {embeddedGameLabel(embedded.gameId)}
         </span>
       </div>
       <div className="gran-ronda-embedded-game__frame">
-        {embedded.gameId === 'musical' ? (
+        {embedded.gameId === 'chinchon' ? (
+          <GameScreen view={embedded} onAction={sendEmbeddedAction} />
+        ) : embedded.gameId === 'pocha' ? (
+          <PochaGameScreen view={embedded} onAction={sendEmbeddedAction} />
+        ) : embedded.gameId === 'laronda' ? (
+          <RondaGameScreen view={embedded} onRequestLeave={() => undefined} onAction={sendEmbeddedAction} embedded />
+        ) : embedded.gameId === 'preciojusto' ? (
+          <PrecioJustoGameScreen view={embedded} onAction={sendEmbeddedAction} />
+        ) : embedded.gameId === 'banderas' ||
+          embedded.gameId === 'cifras' ||
+          embedded.gameId === 'quienloharia' ||
+          embedded.gameId === 'completalafrase' ? (
+          <RoadmapGameScreen view={embedded} onAction={sendEmbeddedAction} embedded />
+        ) : embedded.gameId === 'musical' ? (
           <MusicalGameScreen view={embedded} onAction={sendEmbeddedAction} />
-        ) : (
+        ) : embedded.gameId === 'brisca' ||
+          embedded.gameId === 'escoba' ||
+          embedded.gameId === 'sieteymedia' ||
+          embedded.gameId === 'tute' ||
+          embedded.gameId === 'cinquillo' ? (
           <ClassicGameScreen view={embedded} onAction={sendEmbeddedAction} />
-        )}
+        ) : embedded.gameId === 'orden' ||
+          embedded.gameId === 'colores' ||
+          embedded.gameId === 'mayoria' ||
+          embedded.gameId === 'escala' ||
+          embedded.gameId === 'matiz' ? (
+          <PartyGameScreen view={embedded} onAction={sendEmbeddedAction} embedded />
+        ) : null}
       </div>
+      {view.me.availableActions.includes('finishGranRondaMiniGame') ? (
+        <Button
+          variant="ghost"
+          onClick={() => void useRondaStore.getState().sendAction({ type: 'finishGranRondaMiniGame' })}
+        >
+          Revelar resultados
+        </Button>
+      ) : null}
     </section>
   );
+}
+
+function embeddedGameLabel(gameId: string): string {
+  switch (gameId) {
+    case 'musical':
+      return 'Musical';
+    case 'chinchon':
+      return 'Chinchón';
+    case 'pocha':
+      return 'Pocha';
+    case 'laronda':
+      return 'La Ronda';
+    case 'preciojusto':
+      return 'Precio justo';
+    case 'banderas':
+      return 'Banderas';
+    case 'cifras':
+      return 'Cifras';
+    case 'quienloharia':
+      return 'Quién lo haría';
+    case 'completalafrase':
+      return 'Completa la frase';
+    case 'brisca':
+      return 'Brisca';
+    case 'escoba':
+      return 'Escoba';
+    case 'tute':
+      return 'Tute';
+    case 'sieteymedia':
+      return 'Siete y media';
+    case 'cinquillo':
+      return 'Cinquillo';
+    case 'orden':
+      return 'Orden';
+    case 'colores':
+      return 'Colores';
+    case 'mayoria':
+      return 'Mayoría';
+    case 'escala':
+      return 'Escala';
+    case 'matiz':
+      return 'Matiz';
+    default:
+      return 'Minijuego';
+  }
 }
 
 function ResolutionPanel({
@@ -397,7 +479,7 @@ function MiniGameRoulette({ gameId, title }: { gameId: string; title: string }) 
   return (
     <div className="gran-ronda-roulette flex items-center gap-3 rounded-2xl border border-white/15 bg-tinta/45 px-3 py-2">
       <span className="gran-ronda-roulette-icon grid size-9 shrink-0 place-items-center rounded-xl bg-oro text-tinta" aria-hidden="true">
-        {gameId === 'musical' ? '♫' : gameId === 'sieteymedia' ? '7½' : '♣'}
+        {gameId === 'musical' ? '♫' : gameId === 'sieteymedia' ? '7½' : gameId === 'cinquillo' ? '♣' : '✦'}
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-mono text-9 uppercase tracking-[0.16em] text-oro">La ruleta ha elegido</p>
@@ -405,7 +487,10 @@ function MiniGameRoulette({ gameId, title }: { gameId: string; title: string }) 
           <div className="gran-ronda-roulette-track">
             <span>Siete y media</span>
             <span>Musical</span>
-            <span>Cinquillo</span>
+            <span>Colores</span>
+            <span>Mayoría</span>
+            <span>Escala</span>
+            <span>Matiz</span>
             <span>{title}</span>
           </div>
         </div>

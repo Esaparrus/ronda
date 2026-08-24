@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { RondaBillMode, RondaCardView, RondaPlayerView, RondaTapaType } from '@ronda/protocol';
+import type { GameAction, RondaBillMode, RondaCardView, RondaPlayerView, RondaTapaType } from '@ronda/protocol';
 import { RondaCardFan } from '@/components/ronda/RondaCardFan';
 import { RondaTableOverview } from '@/components/ronda/RondaTableOverview';
 import { Button } from '@/components/ui/Button';
@@ -27,9 +27,11 @@ function firstCard(hand: RondaCardView[], kind: RondaCardView['kind']): RondaCar
 export interface RondaGameScreenProps {
   view: RondaPlayerView;
   onRequestLeave: () => void;
+  onAction?: (action: GameAction) => void;
+  embedded?: boolean;
 }
 
-export function RondaGameScreen({ view, onRequestLeave }: RondaGameScreenProps) {
+export function RondaGameScreen({ view, onRequestLeave, onAction, embedded = false }: RondaGameScreenProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [targetType, setTargetType] = useState<RondaTapaType | null>(null);
   const [premiumId, setPremiumId] = useState<string | null>(null);
@@ -53,6 +55,10 @@ export function RondaGameScreen({ view, onRequestLeave }: RondaGameScreenProps) 
   const resolvedTargetType = targetType ?? view.me.legalTargetTypes[0] ?? null;
 
   function send(action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) {
+    if (onAction) {
+      onAction(action);
+      return;
+    }
     void useRondaStore.getState().sendAction(action);
   }
 
@@ -115,14 +121,14 @@ export function RondaGameScreen({ view, onRequestLeave }: RondaGameScreenProps) 
             {view.direction === 1 ? 'Sentido horario' : 'Sentido inverso'}
           </span>
         </p>
-        <button
+        {!embedded ? <button
           type="button"
           onClick={onRequestLeave}
           className="glass-button !min-h-10 px-2.5 text-12 font-semibold text-humo"
         >
           <Icon name="arrow-left" size={16} />
           Salir
-        </button>
+        </button> : <span aria-hidden="true" />}
       </header>
 
       <section className="min-h-0 overflow-hidden rounded-[20px] border border-linea bg-tinta/35 p-2">

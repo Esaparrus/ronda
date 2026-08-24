@@ -894,9 +894,44 @@ export type GranRondaAvailableAction =
   | 'finishGranRondaMiniGame'
   | 'nextRound';
 export type GranRondaPowerupType = 'doubleRoll' | 'rivalPenalty';
-export type GranRondaMiniGameId = 'sieteymedia' | 'musical' | 'cinquillo';
-export type GranRondaEmbeddedGameCommonView = ClassicTableView | MusicalTableView;
-export type GranRondaEmbeddedGamePlayerView = ClassicPlayerView | MusicalPlayerView;
+export type GranRondaMiniGameId =
+  | 'chinchon'
+  | 'pocha'
+  | 'brisca'
+  | 'escoba'
+  | 'sieteymedia'
+  | 'tute'
+  | 'cinquillo'
+  | 'orden'
+  | 'colores'
+  | 'mayoria'
+  | 'escala'
+  | 'matiz'
+  | 'preciojusto'
+  | 'banderas'
+  | 'cifras'
+  | 'quienloharia'
+  | 'completalafrase'
+  | 'laronda'
+  | 'musical';
+export type GranRondaEmbeddedGameCommonView =
+  | ChinchonTableView
+  | PochaTableView
+  | ClassicTableView
+  | PartyTableView
+  | PrecioJustoTableView
+  | RoadmapTableView
+  | RondaTableView
+  | MusicalTableView;
+export type GranRondaEmbeddedGamePlayerView =
+  | ChinchonPlayerView
+  | PochaPlayerView
+  | ClassicPlayerView
+  | PartyPlayerView
+  | PrecioJustoPlayerView
+  | RoadmapPlayerView
+  | RondaPlayerView
+  | MusicalPlayerView;
 
 export interface GranRondaBoardSpace {
   id: string;

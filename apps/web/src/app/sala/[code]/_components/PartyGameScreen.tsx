@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import type {
   ColoresPlayerView,
   EscalaPlayerView,
+  GameAction,
   MajorityGroup,
   MayoriaPlayerView,
   OrdenPlayerView,
@@ -22,17 +23,26 @@ import { ColorCountdownHeader } from './ColorCountdownHeader';
 
 export interface PartyGameScreenProps {
   view: PartyPlayerView;
+  onAction?: PartyGameActionSender;
+  embedded?: boolean;
 }
 
-export function PartyGameScreen({ view }: PartyGameScreenProps) {
-  if (view.gameId === 'orden') return <OrdenGame view={view} />;
-  if (view.gameId === 'colores') return <ColoresGame view={view} />;
-  if (view.gameId === 'mayoria') return <MayoriaGame view={view} />;
-  if (view.gameId === 'matiz') return <MatizPlayerRound view={view} />;
-  return <EscalaGame view={view} />;
+export type PartyGameActionSender = (action: GameAction) => void;
+
+function defaultPartyAction(action: GameAction): void {
+  void useRondaStore.getState().sendAction(action);
 }
 
-function OrdenGame({ view }: { view: OrdenPlayerView }) {
+export function PartyGameScreen({ view, onAction, embedded = false }: PartyGameScreenProps) {
+  const dispatch = onAction ?? defaultPartyAction;
+  if (view.gameId === 'orden') return <OrdenGame view={view} onAction={dispatch} />;
+  if (view.gameId === 'colores') return <ColoresGame view={view} onAction={dispatch} embedded={embedded} />;
+  if (view.gameId === 'mayoria') return <MayoriaGame view={view} onAction={dispatch} embedded={embedded} />;
+  if (view.gameId === 'matiz') return <MatizPlayerRound view={view} onAction={dispatch} embedded={embedded} />;
+  return <EscalaGame view={view} onAction={dispatch} embedded={embedded} />;
+}
+
+function OrdenGame({ view, onAction }: { view: OrdenPlayerView; onAction: PartyGameActionSender }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const { party, me } = view;
@@ -40,15 +50,15 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
   const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
 
   function playNumber(value: number) {
-    void useRondaStore.getState().sendAction({ type: 'playNumber', value });
+    onAction({ type: 'playNumber', value });
   }
 
   function nextLevel() {
-    void useRondaStore.getState().sendAction({ type: 'nextRound' });
+    onAction({ type: 'nextRound' });
   }
 
   function endOrder() {
-    void useRondaStore.getState().sendAction({ type: 'endOrder' });
+    onAction({ type: 'endOrder' });
   }
 
   return (
@@ -145,7 +155,7 @@ function OrdenGame({ view }: { view: OrdenPlayerView }) {
               value={party.nextCardsPerPlayer}
               disabled={pendingAction}
               onChange={(count) =>
-                void useRondaStore.getState().sendAction({
+                onAction({
                   type: 'setOrderCards',
                   count,
                 })
@@ -202,7 +212,15 @@ const COLOR_OPTIONS = [
 
 const COLOR_OPTION_BY_NAME = new Map(COLOR_OPTIONS.map((color) => [color.name, color]));
 
-function ColoresGame({ view }: { view: ColoresPlayerView }) {
+function ColoresGame({
+  view,
+  onAction,
+  embedded,
+}: {
+  view: ColoresPlayerView;
+  onAction: PartyGameActionSender;
+  embedded: boolean;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const [selected, setSelected] = useState<string[]>([]);
   const { party, me } = view;
@@ -223,13 +241,13 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
 
   function submit() {
     if (selected.length !== party.answerCount) return;
-    void useRondaStore.getState().sendAction({ type: 'submitColors', colors: selected });
+    onAction({ type: 'submitColors', colors: selected });
   }
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <ColorCountdownHeader
-        left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
+        left={embedded ? 'Minijuego · Colores' : `Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
         deadlineAt={party.deadlineAt}
       />
       <PlayerStrip
@@ -307,7 +325,7 @@ function ColoresGame({ view }: { view: ColoresPlayerView }) {
         )}
         {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
           <Button
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            onClick={() => onAction({ type: 'nextRound' })}
             loading={pendingAction}
           >
             Siguiente ronda
@@ -410,7 +428,15 @@ function isExactColorAnswer(
   );
 }
 
-function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
+function MayoriaGame({
+  view,
+  onAction,
+  embedded,
+}: {
+  view: MayoriaPlayerView;
+  onAction: PartyGameActionSender;
+  embedded: boolean;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const [answer, setAnswer] = useState('');
   const { party, me } = view;
@@ -422,13 +448,13 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
 
   function submit() {
     if (!answer.trim()) return;
-    void useRondaStore.getState().sendAction({ type: 'submitMajority', answer: answer.trim() });
+    onAction({ type: 'submitMajority', answer: answer.trim() });
   }
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <TableHeader
-        left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} vacas`}
+        left={embedded ? 'Minijuego · Mayoría' : `Ronda ${view.round} · primero a ${view.config.pointsToWin} vacas`}
         turnNick={null}
       />
       <PlayerStrip
@@ -485,11 +511,11 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
         ) : party.phase === 'input' ? (
           <p className="text-16 text-oro">Respuesta guardada. Espera a los demás.</p>
         ) : (
-          <MajorityReveal view={view} />
+          <MajorityReveal view={view} onAction={onAction} />
         )}
         {party.phase === 'reveal' && view.status === 'playing' && party.groups && isHost ? (
           <Button
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            onClick={() => onAction({ type: 'nextRound' })}
             loading={pendingAction}
           >
             Siguiente ronda
@@ -508,7 +534,13 @@ function MayoriaGame({ view }: { view: MayoriaPlayerView }) {
   );
 }
 
-function MajorityReveal({ view }: { view: MayoriaPlayerView }) {
+function MajorityReveal({
+  view,
+  onAction,
+}: {
+  view: MayoriaPlayerView;
+  onAction: PartyGameActionSender;
+}) {
   const answers = view.party.answers;
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const isHost =
@@ -537,7 +569,7 @@ function MajorityReveal({ view }: { view: MayoriaPlayerView }) {
   }
 
   function resolve() {
-    void useRondaStore.getState().sendAction({
+    onAction({
       type: 'resolveMajority',
       groups: draftGroups.map((group) => group.playerIds),
     });
@@ -639,7 +671,15 @@ function normalizeMajorityText(value: string): string {
     .trim();
 }
 
-function EscalaGame({ view }: { view: EscalaPlayerView }) {
+function EscalaGame({
+  view,
+  onAction,
+  embedded,
+}: {
+  view: EscalaPlayerView;
+  onAction: PartyGameActionSender;
+  embedded: boolean;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const [guess, setGuess] = useState(50);
   const [clue, setClue] = useState('');
@@ -665,17 +705,17 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
 
   function submitClue() {
     if (!clue.trim()) return;
-    void useRondaStore.getState().sendAction({ type: 'submitScaleClue', clue: clue.trim() });
+    onAction({ type: 'submitScaleClue', clue: clue.trim() });
   }
 
   function submitGuess() {
-    void useRondaStore.getState().sendAction({ type: 'submitScale', value: guess });
+    onAction({ type: 'submitScale', value: guess });
   }
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
       <ColorCountdownHeader
-        left={`Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
+        left={embedded ? 'Minijuego · Escala' : `Ronda ${view.round} · primero a ${view.config.pointsToWin} puntos`}
         deadlineAt={party.phase === 'input' ? party.deadlineAt : null}
         durationSeconds={view.config.answerTimeSeconds}
       />
@@ -793,7 +833,7 @@ function EscalaGame({ view }: { view: EscalaPlayerView }) {
         {party.phase === 'reveal' ? <ScaleReveal view={view} /> : null}
         {party.phase === 'reveal' && view.status === 'playing' ? (
           <Button
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            onClick={() => onAction({ type: 'nextRound' })}
             loading={pendingAction}
             className="!min-h-12 rounded-2xl px-5 text-14"
           >

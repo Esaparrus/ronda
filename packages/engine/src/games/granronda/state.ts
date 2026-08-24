@@ -8,7 +8,13 @@ import type {
   RoomCode,
 } from '@ronda/protocol';
 import type { ClassicState } from '../classics/state.ts';
+import type { ChinchonState } from '../chinchon/state.ts';
+import type { PochaState } from '../pocha/state.ts';
 import type { MusicalState } from '../musical/state.ts';
+import type { PartyState } from '../party/state.ts';
+import type { PrecioJustoState } from '../preciojusto/state.ts';
+import type { RoadmapState } from '../roadmap/state.ts';
+import type { RondaState } from '../laronda/state.ts';
 
 export type GranRondaStatus = 'playing' | 'gameEnd';
 export type GranRondaPhase =
@@ -55,7 +61,15 @@ export interface GranRondaMiniGameState {
   embeddedGame: GranRondaEmbeddedGameState | null;
 }
 
-export type GranRondaEmbeddedGameState = ClassicState | MusicalState;
+export type GranRondaEmbeddedGameState =
+  | ChinchonState
+  | PochaState
+  | ClassicState
+  | MusicalState
+  | PartyState
+  | PrecioJustoState
+  | RoadmapState
+  | RondaState;
 
 export interface GranRondaMiniPlayerState {
   score: number;

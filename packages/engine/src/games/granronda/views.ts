@@ -12,13 +12,21 @@ import type {
   PublicPlayer,
 } from '@ronda/protocol';
 import { granRondaMiniGameById } from './content.ts';
+import { getPlayerView as getChinchonPlayerView, getTableView as getChinchonTableView } from '../chinchon/views.ts';
 import { getClassicPlayerView, getClassicTableView } from '../classics/views.ts';
 import { getPlayerView as getMusicalPlayerView, getTableView as getMusicalTableView } from '../musical/views.ts';
+import { getPlayerView as getPartyPlayerView, getTableView as getPartyTableView } from '../party/views.ts';
+import { getPlayerView as getPochaPlayerView, getTableView as getPochaTableView } from '../pocha/views.ts';
+import { getPlayerView as getPrecioJustoPlayerView, getTableView as getPrecioJustoTableView } from '../preciojusto/views.ts';
+import { getPlayerView as getRoadmapPlayerView, getTableView as getRoadmapTableView } from '../roadmap/views.ts';
+import { getRondaPlayerView, getRondaTableView } from '../laronda/views.ts';
 import {
   GRAN_RONDA_POWERUP_COSTS,
   GRAN_RONDA_STAMP_COST,
 } from './rules.ts';
 import { activeGranRondaPlayers, granRondaPlayer, type GranRondaState } from './state.ts';
+import type { PartyState } from '../party/state.ts';
+import type { RoadmapState } from '../roadmap/state.ts';
 
 function publicPlayers(state: GranRondaState): PublicPlayer[] {
   return state.players.map((player) => ({
@@ -66,15 +74,50 @@ function resolution(state: GranRondaState): GranRondaResolutionPublic | null {
 function embeddedGameCommonView(state: GranRondaState) {
   const embedded = state.miniGame.embeddedGame;
   if (!embedded) return null;
-  return embedded.gameId === 'musical' ? getMusicalTableView(embedded) : getClassicTableView(embedded);
+  if (embedded.gameId === 'chinchon') return getChinchonTableView(embedded);
+  if (embedded.gameId === 'pocha') return getPochaTableView(embedded);
+  if (embedded.gameId === 'musical') return getMusicalTableView(embedded);
+  if (isPartyEmbeddedGame(embedded)) return getPartyTableView(embedded);
+  if (isRoadmapEmbeddedGame(embedded)) return getRoadmapTableView(embedded);
+  if (embedded.gameId === 'preciojusto') return getPrecioJustoTableView(embedded);
+  if (embedded.gameId === 'laronda') return getRondaTableView(embedded);
+  return getClassicTableView(embedded);
 }
 
 function embeddedGamePlayerView(state: GranRondaState, playerId: PlayerId) {
   const embedded = state.miniGame.embeddedGame;
   if (!embedded) return null;
-  return embedded.gameId === 'musical'
-    ? getMusicalPlayerView(embedded, playerId)
-    : getClassicPlayerView(embedded, playerId);
+  if (embedded.gameId === 'chinchon') return getChinchonPlayerView(embedded, playerId);
+  if (embedded.gameId === 'pocha') return getPochaPlayerView(embedded, playerId);
+  if (embedded.gameId === 'musical') return getMusicalPlayerView(embedded, playerId);
+  if (isPartyEmbeddedGame(embedded)) return getPartyPlayerView(embedded, playerId);
+  if (isRoadmapEmbeddedGame(embedded)) return getRoadmapPlayerView(embedded, playerId);
+  if (embedded.gameId === 'preciojusto') return getPrecioJustoPlayerView(embedded, playerId);
+  if (embedded.gameId === 'laronda') return getRondaPlayerView(embedded, playerId);
+  return getClassicPlayerView(embedded, playerId);
+}
+
+function isPartyEmbeddedGame(
+  game: NonNullable<GranRondaState['miniGame']['embeddedGame']>,
+): game is PartyState {
+  return (
+    game.gameId === 'orden' ||
+    game.gameId === 'colores' ||
+    game.gameId === 'mayoria' ||
+    game.gameId === 'escala' ||
+    game.gameId === 'matiz'
+  );
+}
+
+function isRoadmapEmbeddedGame(
+  game: NonNullable<GranRondaState['miniGame']['embeddedGame']>,
+): game is RoadmapState {
+  return (
+    game.gameId === 'banderas' ||
+    game.gameId === 'cifras' ||
+    game.gameId === 'quienloharia' ||
+    game.gameId === 'completalafrase'
+  );
 }
 
 function miniGame(state: GranRondaState): GranRondaMiniGamePublic {
@@ -105,7 +148,6 @@ function miniGame(state: GranRondaState): GranRondaMiniGamePublic {
 
 function common(state: GranRondaState): GranRondaCommonView {
   const turnPlayerId = state.turnSeat === null ? null : state.players[state.turnSeat]?.playerId ?? null;
-  const turnPlayer = turnPlayerId ? granRondaPlayer(state, turnPlayerId) : undefined;
   return {
     roomCode: state.roomCode,
     status: state.status,
@@ -173,8 +215,10 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
       }
     }
     const embeddedView = state.phase === 'minigameInput' ? embeddedGamePlayerView(state, playerId) : null;
-    if (embeddedView && embeddedView.me.availableActions.length > 0) {
-      availableActions.push('submitGranRondaMiniGameAction');
+    if (embeddedView) {
+      if (embeddedView.me.availableActions.length > 0) {
+        availableActions.push('submitGranRondaMiniGameAction');
+      }
     } else if (state.phase === 'minigameInput' && !state.miniGame.playerStates[playerId]?.finished) {
       availableActions.push('submitGranRondaAnswer');
     }

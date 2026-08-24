@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useState, type FormEvent } from 'react';
-import type { PrecioJustoPlayerView, PublicPlayer } from '@ronda/protocol';
+import type { GameAction, PrecioJustoPlayerView, PublicPlayer } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
@@ -11,6 +11,7 @@ import { ColorCountdownHeader } from './ColorCountdownHeader';
 
 export interface PrecioJustoGameScreenProps {
   view: PrecioJustoPlayerView;
+  onAction?: (action: GameAction) => void;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -30,13 +31,14 @@ const DECIMAL = new Intl.NumberFormat('es-ES', {
   maximumFractionDigits: 1,
 });
 
-export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
+export function PrecioJustoGameScreen({ view, onAction }: PrecioJustoGameScreenProps) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [input, setInput] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
   const canSubmit = view.me.availableActions.includes('submitPrice');
   const canFinish = view.me.availableActions.includes('finishPrice');
+  const dispatch = onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
 
   function submitPrice(event: FormEvent) {
     event.preventDefault();
@@ -46,15 +48,11 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
       return;
     }
     setInputError(null);
-    void useRondaStore.getState().sendAction({ type: 'submitPrice', priceCents: parsed });
+    dispatch({ type: 'submitPrice', priceCents: parsed });
   }
 
   function advanceFromReveal() {
-    void useRondaStore
-      .getState()
-      .sendAction({
-        type: view.round >= view.config.rounds ? 'showPriceResults' : 'nextRound',
-      });
+    dispatch({ type: view.round >= view.config.rounds ? 'showPriceResults' : 'nextRound' });
   }
 
   return (
@@ -179,7 +177,7 @@ export function PrecioJustoGameScreen({ view }: PrecioJustoGameScreenProps) {
               <Button
                 variant="ghost"
                 onClick={() =>
-                  void useRondaStore.getState().sendAction({ type: 'finishPrice' })
+                  dispatch({ type: 'finishPrice' })
                 }
                 loading={pendingAction}
               >

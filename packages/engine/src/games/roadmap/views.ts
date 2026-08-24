@@ -109,15 +109,22 @@ function cifrasCommon(state: CifrasState): CifrasCommonView {
       unit: question.unit,
       definition: question.definition,
       category: question.category,
-      items: question.kind === 'order' ? question.items.map((item) => ({ id: item.id, label: item.label })) : [],
+      direction: question.kind === 'order' ? question.direction : null,
+      items: 'items' in question ? question.items.map((item) => ({ id: item.id, label: item.label })) : [],
       referenceValue: revealed && question.kind === 'estimate' ? question.referenceValue : null,
-      itemValues: revealed && question.kind === 'order' ? Object.fromEntries(question.items.map((item) => [item.id, item.value])) : null,
+      itemValues: revealed && 'items' in question ? Object.fromEntries(question.items.map((item) => [item.id, item.value])) : null,
       source: revealed ? question.source : null,
       updatedAt: revealed ? question.updatedAt : null,
       deadlineAt: state.cifras.deadlineAt,
-      submittedPlayerIds: question.kind === 'estimate' ? Object.keys(state.cifras.submissions) : Object.keys(state.cifras.orderSubmissions),
+      submittedPlayerIds:
+        question.kind === 'estimate'
+          ? Object.keys(state.cifras.submissions)
+          : question.kind === 'order'
+            ? Object.keys(state.cifras.orderSubmissions)
+            : Object.keys(state.cifras.choiceSubmissions),
       estimates: revealed && state.cifras.estimateResults ? Object.fromEntries(Object.entries(state.cifras.estimateResults).map(([id, result]) => [id, { ...result }])) : null,
       orders: revealed && state.cifras.orderResults ? Object.fromEntries(Object.entries(state.cifras.orderResults).map(([id, result]) => [id, { ...result, order: result.order ? [...result.order] : null, correctOrder: [...result.correctOrder] }])) : null,
+      choices: revealed && state.cifras.choiceResults ? Object.fromEntries(Object.entries(state.cifras.choiceResults).map(([id, result]) => [id, { ...result }])) : null,
       scoreDeltas: revealed && state.cifras.scoreDeltas ? { ...state.cifras.scoreDeltas } : null,
     },
   };
@@ -185,6 +192,8 @@ function sentenceCommon(state: CompletaLaFraseState, playerId?: PlayerId): Compl
       questionId: question.id,
       prompt: question.prompt,
       category: question.category,
+      author: revealed ? question.author ?? null : null,
+      source: revealed ? question.source ?? null : null,
       hint: revealed || (playerId !== undefined && state.sentence.hintUsed[playerId]) ? question.hint ?? null : null,
       deadlineAt: state.sentence.deadlineAt,
       canonicalAnswer: revealed ? question.canonicalAnswer : null,
@@ -204,8 +213,21 @@ function buildActions(state: RoadmapState, playerId: PlayerId): RoadmapAvailable
     if (state.gameId === 'banderas' && state.flags.submissions[playerId] === undefined) actions.push('submitFlag');
     if (state.gameId === 'cifras') {
       const question = cifrasQuestionById(state.cifras.questionId, state.questions);
-      const submitted = question.kind === 'estimate' ? state.cifras.submissions[playerId] !== undefined : state.cifras.orderSubmissions[playerId] !== undefined;
-      if (!submitted) actions.push(question.kind === 'estimate' ? 'submitNumber' : 'submitOrder');
+      const submitted =
+        question.kind === 'estimate'
+          ? state.cifras.submissions[playerId] !== undefined
+          : question.kind === 'order'
+            ? state.cifras.orderSubmissions[playerId] !== undefined
+            : state.cifras.choiceSubmissions[playerId] !== undefined;
+      if (!submitted) {
+        actions.push(
+          question.kind === 'estimate'
+            ? 'submitNumber'
+            : question.kind === 'order'
+              ? 'submitOrder'
+              : 'submitChoice',
+        );
+      }
     }
     if (state.gameId === 'quienloharia' && state.who.submissions[playerId] === undefined) actions.push('submitWhoVote');
     if (state.gameId === 'completalafrase') {
@@ -236,7 +258,19 @@ export function getPlayerView(state: RoadmapState, playerId: PlayerId): RoadmapP
   }
   if (state.gameId === 'cifras') {
     const common = cifrasCommon(state);
-    return { kind: 'player', ...common, me: { playerId, submitted: common.cifras.submittedPlayerIds.includes(playerId), selectedOrder: state.cifras.orderSubmissions[playerId] ? [...state.cifras.orderSubmissions[playerId]] : [], availableActions } };
+    return {
+      kind: 'player',
+      ...common,
+      me: {
+        playerId,
+        submitted: common.cifras.submittedPlayerIds.includes(playerId),
+        selectedOrder: state.cifras.orderSubmissions[playerId]
+          ? [...state.cifras.orderSubmissions[playerId]]
+          : [],
+        selectedChoiceId: state.cifras.choiceSubmissions[playerId] ?? null,
+        availableActions,
+      },
+    };
   }
   if (state.gameId === 'quienloharia') {
     const common = whoCommon(state);

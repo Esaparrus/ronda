@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GRAN_RONDA_CONFIG, type GameAction } from '@ronda/protocol';
+import {
+  DEFAULT_GRAN_RONDA_CONFIG,
+  type GameAction,
+  type GranRondaEmbeddedGameAction,
+  type GranRondaMiniGameId,
+} from '@ronda/protocol';
 import { createInitialState, applyAction } from './reducer.ts';
 import { getPlayerView } from './views.ts';
 import type { GranRondaState } from './state.ts';
 import { getClassicPlayerView } from '../classics/views.ts';
 import { getPlayerView as getMusicalPlayerView } from '../musical/views.ts';
+import { colorQuestionById } from '../party/content.ts';
 
 const players = [
   { playerId: 'p1', nick: 'Ana', seat: 0, isBot: false },
@@ -66,6 +72,23 @@ function resolveCurrentTurn(state: GranRondaState): GranRondaState {
     next = play({ type: 'continueGranRondaResolution' }, next, player.playerId);
   }
   return next;
+}
+
+function makeMiniGameState(gameId: GranRondaMiniGameId): GranRondaState {
+  let state = makeState();
+  state.miniGame.questionOrder = [gameId];
+  state.miniGame.questionIndex = 0;
+  state.miniGame.questionId = gameId;
+  while (state.phase !== 'minigameInput') state = resolveCurrentTurn(state);
+  return state;
+}
+
+function playEmbedded(
+  state: GranRondaState,
+  playerId: string,
+  action: GranRondaEmbeddedGameAction,
+): GranRondaState {
+  return play({ type: 'submitGranRondaMiniGameAction', action }, state, playerId);
 }
 
 describe('La Gran Ronda', () => {
@@ -248,6 +271,94 @@ describe('La Gran Ronda', () => {
     expect(state.miniGame.embeddedGame).not.toBeNull();
     expect(state.miniGame.results).not.toBeNull();
     expect(Object.values(state.miniGame.scoreDeltas ?? {}).some((delta) => delta > 0)).toBe(true);
+  });
+
+  it('aloja los juegos sociales exprés y termina tras una sola prueba', () => {
+    const socialMiniGames = ['colores', 'mayoria', 'escala', 'matiz'] as const;
+
+    for (const gameId of socialMiniGames) {
+      let state = makeMiniGameState(gameId);
+      const embedded = state.miniGame.embeddedGame;
+      if (!embedded || embedded.gameId !== gameId) {
+        throw new Error(`falta el juego social alojado: ${gameId}`);
+      }
+
+      if (embedded.gameId === 'colores') {
+        const correctColors = colorQuestionById(embedded.colors?.questionId ?? '').correctColors;
+        for (const player of state.players) {
+          state = playEmbedded(state, player.playerId, {
+            type: 'submitColors',
+            colors: correctColors,
+          });
+        }
+      } else if (embedded.gameId === 'mayoria') {
+        for (const player of state.players) {
+          state = playEmbedded(state, player.playerId, {
+            type: 'submitMajority',
+            answer: 'pizza',
+          });
+        }
+        state = playEmbedded(state, 'p1', {
+          type: 'resolveMajority',
+          groups: [state.players.map((player) => player.playerId)],
+        });
+      } else if (embedded.gameId === 'escala') {
+        const cluePlayerId = embedded.scale?.cluePlayerId;
+        if (!cluePlayerId) throw new Error('falta la guía de Escala');
+        state = playEmbedded(state, cluePlayerId, {
+          type: 'submitScaleClue',
+          clue: 'Una prueba corta',
+        });
+        for (const player of state.players) {
+          if (player.playerId === cluePlayerId) continue;
+          state = playEmbedded(state, player.playerId, { type: 'submitScale', value: 50 });
+        }
+      } else {
+        for (const player of state.players) {
+          state = playEmbedded(state, player.playerId, {
+            type: 'submitMatiz',
+            hex: '#808080',
+          });
+        }
+      }
+
+      expect(state.phase).toBe('minigameReveal');
+      expect(state.miniGame.results).not.toBeNull();
+      expect(Object.keys(state.miniGame.scoreDeltas ?? {})).toHaveLength(state.players.length);
+    }
+  });
+
+  it('devuelve el control al mapa al cerrar cualquiera de los minijuegos alojados', () => {
+    const miniGames = [
+      'chinchon',
+      'pocha',
+      'brisca',
+      'escoba',
+      'sieteymedia',
+      'tute',
+      'cinquillo',
+      'orden',
+      'colores',
+      'mayoria',
+      'escala',
+      'matiz',
+      'preciojusto',
+      'banderas',
+      'cifras',
+      'quienloharia',
+      'completalafrase',
+      'laronda',
+      'musical',
+    ] as const satisfies readonly GranRondaMiniGameId[];
+
+    for (const gameId of miniGames) {
+      let state = makeMiniGameState(gameId);
+      expect(state.miniGame.embeddedGame?.gameId).toBe(gameId);
+      state = play({ type: 'finishGranRondaMiniGame' }, state, 'p1');
+      expect(state.phase, `${gameId} debe revelar resultados`).toBe('minigameReveal');
+      state = play({ type: 'nextRound' }, state, 'p1');
+      expect(state.phase, `${gameId} debe volver al mapa`).toBe('movement');
+    }
   });
 
   it('permite comprar sellos y potenciadores y aplicar sus efectos', () => {

@@ -10,7 +10,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { PochaPlayerView } from '@ronda/protocol';
+import type { GameAction, PochaPlayerView } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { PlayerStrip } from './PlayerStrip';
 import { PochaBidRow } from './PochaBidRow';
@@ -23,11 +23,13 @@ import { BarTable } from '@/components/ui/BarTable';
 
 export interface PochaGameScreenProps {
   view: PochaPlayerView;
+  onAction?: (action: GameAction) => void;
 }
 
-export function PochaGameScreen({ view }: PochaGameScreenProps) {
+export function PochaGameScreen({ view, onAction }: PochaGameScreenProps) {
   const [cardOverTable, setCardOverTable] = useState(false);
   const { me } = view;
+  const dispatch = onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
   const isMyTurn = view.turnPlayerId === me.playerId;
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
@@ -42,11 +44,11 @@ export function PochaGameScreen({ view }: PochaGameScreenProps) {
   const canPlay = isMyTurn && me.availableActions.includes('playCard');
 
   function handleBid(amount: number) {
-    void useRondaStore.getState().sendAction({ type: 'bid', amount });
+    dispatch({ type: 'bid', amount });
   }
 
   function handlePlay(cardId: string) {
-    void useRondaStore.getState().sendAction({ type: 'playCard', cardId });
+    dispatch({ type: 'playCard', cardId });
   }
 
   return (

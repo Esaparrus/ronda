@@ -14,7 +14,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { CardId, ChinchonPlayerView } from '@ronda/protocol';
+import type { CardId, ChinchonPlayerView, GameAction } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { CommonArea } from './CommonArea';
 import type { DropTarget } from './CommonArea';
@@ -29,6 +29,7 @@ import { Sheet } from '@/components/ui/Sheet';
 // dispatcher (SalaClient.tsx) ya estrecha `PlayerView` antes de llegar aquí.
 export interface GameScreenProps {
   view: ChinchonPlayerView;
+  onAction?: (action: GameAction) => void;
 }
 
 interface TurnTimerHeaderProps {
@@ -78,12 +79,13 @@ function TurnTimerHeader({ left, turnNick, deadlineAt, durationSeconds }: TurnTi
   );
 }
 
-export function GameScreen({ view }: GameScreenProps) {
+export function GameScreen({ view, onAction }: GameScreenProps) {
   const [selected, setSelected] = useState<CardId | null>(null);
   const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
   const [pendingCloseCard, setPendingCloseCard] = useState<CardId | null>(null);
 
   const { me } = view;
+  const dispatch = onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
   const isMyTurn = view.turnPlayerId === me.playerId;
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
@@ -101,11 +103,11 @@ export function GameScreen({ view }: GameScreenProps) {
   }
 
   function handleDrawDeck() {
-    void useRondaStore.getState().sendAction({ type: 'drawDeck' });
+    dispatch({ type: 'drawDeck' });
   }
 
   function handleDrawDiscard() {
-    void useRondaStore.getState().sendAction({ type: 'drawDiscard' });
+    dispatch({ type: 'drawDiscard' });
   }
 
   // Segundo toque sobre la carta ya seleccionada, o arrastrarla al montón.
@@ -119,7 +121,7 @@ export function GameScreen({ view }: GameScreenProps) {
       return;
     }
     setSelected(null);
-    void useRondaStore.getState().sendAction({
+    dispatch({
       type: 'discard',
       cardId,
     });
@@ -130,7 +132,7 @@ export function GameScreen({ view }: GameScreenProps) {
     const cardId = pendingCloseCard;
     setPendingCloseCard(null);
     setSelected(null);
-    void useRondaStore.getState().sendAction({
+    dispatch({
       type: closeRound ? 'close' : 'discard',
       cardId,
     });

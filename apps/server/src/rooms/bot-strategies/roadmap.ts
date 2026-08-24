@@ -18,6 +18,12 @@ export function decideRoadmapAction(view: RoadmapPlayerView): GameAction | null 
         ? { type: 'submitNumber', value: 0 }
         : null;
     }
+    if (view.cifras.kind === 'compare') {
+      const option = view.cifras.items[0];
+      return option && view.me.availableActions.includes('submitChoice')
+        ? { type: 'submitChoice', optionId: option.id }
+        : null;
+    }
     return view.me.availableActions.includes('submitOrder')
       ? { type: 'submitOrder', order: view.cifras.items.map((item) => item.id) }
       : null;

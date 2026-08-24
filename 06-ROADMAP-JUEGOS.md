@@ -1,4 +1,4 @@
-# RONDA — Roadmap de juegos independientes
+# RONDA — Roadmap de juegos independientes y modo meta
 
 > Documento de producto para los juegos que se incorporarán después de los
 > juegos de cartas actuales. No es todavía un contrato de implementación. Antes
@@ -8,9 +8,10 @@
 ## Decisión principal
 
 Los juegos de **Banderas**, **Cifras**, **Precio justo**, **Quién lo haría** y
-**Completa la frase**
-son juegos independientes. No forman un juego mixto ni una ronda común dentro de
-la misma partida.
+**Completa la frase** son juegos independientes. Cada uno conserva su propia
+partida completa, sus reglas y su puntuación. No se convertirán automáticamente
+en un juego mixto ni se mezclará cualquier juego arbitrariamente dentro de una
+sala normal.
 
 Cada uno tendrá:
 
@@ -25,8 +26,15 @@ Solo compartirán la infraestructura de Ronda: sala, código o QR, anfitrión,
 temporizador, reconexión, pantalla /mesa, estado autoritativo del servidor y
 revancha.
 
-La sala se crea eligiendo **un solo juego**. No habrá un selector «mezcla estos
-cinco juegos» en esta fase.
+La sala normal se crea eligiendo **un solo juego**. No habrá un selector
+«mezcla estos cinco juegos» dentro del flujo de partidas independientes.
+
+Además se planifica un modo de juego nuevo y separado: **La Gran Ronda**. No es
+un selector genérico ni una segunda pantalla para jugar las partidas completas.
+Es una partida de tablero con economía, movimiento por casillas y minijuegos
+breves. Reutilizará contenido y variantes competitivas de algunos juegos
+existentes mediante un contrato específico, sin alterar las reglas de sus
+versiones independientes.
 
 ## Orden de construcción
 
@@ -42,9 +50,17 @@ El orden previsto es deliberado:
    respuestas y control de derechos sobre los textos.
 6. **Playtest y pulido común** — revisar temporizadores, resultados, contenido,
    accesibilidad y comportamiento con móviles reales.
+7. **La Gran Ronda** — primero un prototipo vertical con un tablero y un grupo
+   pequeño de minijuegos breves; después se ampliarán los mapas, los eventos y
+   las variantes compatibles.
 
 No se implementará el siguiente juego hasta que el anterior tenga preguntas
 reales, tests del motor y una partida completa jugable en una sala.
+
+La Gran Ronda se empezará cuando exista un primer conjunto estable de
+minijuegos competitivos cortos. No bloqueará ni sustituirá la entrega de los
+juegos independientes: será un modo adicional con su propio contrato y su
+propia definición de terminado.
 
 ## Flujo común de los juegos de preguntas
 
@@ -508,6 +524,223 @@ pero no será parte de la primera versión.
 
 ---
 
+## Modo meta — La Gran Ronda
+
+### Idea y posición dentro del producto
+
+**La Gran Ronda** es una partida nueva inspirada en los juegos de tablero de
+fiesta. El grupo entra en una sala, conserva los nombres que ya ha introducido
+y recorre un mapa tirando dados. Las casillas producen recursos o cambian la
+ruta. Al terminar el movimiento de todos los jugadores se juega un minijuego
+breve y se reparten oros.
+
+No se jugarán partidas completas de Chinchón, Mus, Pocha, Brisca o Tute dentro
+del tablero. La Gran Ronda tendrá versiones cortas y competitivas de juegos
+adecuados para durar segundos, no otra capa que intente controlar todos los
+turnos y reglas de una partida clásica.
+
+La primera versión será individual. Los equipos y las reglas especiales se
+añadirán solo después de comprobar que el bucle básico funciona con un grupo
+real.
+
+### Identidad provisional
+
+El mapa representará una ruta por cuatro zonas inspiradas en los palos de la
+baraja: **Oros**, **Copas**, **Espadas** y **Bastos**.
+
+- **Oros**: moneda que se gana en minijuegos y casillas y se gasta en el mapa.
+- **Sellos de Ronda**: objetivo principal de la partida.
+- **La Gran Ronda**: nombre provisional del modo completo.
+
+Los nombres son provisionales y se validarán con el diseño visual y el primer
+playtest. Se buscará una identidad propia de Ronda, sin copiar personajes,
+tableros, nombres ni recursos visuales de otros juegos.
+
+### Objetivo y duración
+
+- 3–7 jugadores.
+- 15–25 minutos como objetivo inicial.
+- 6–8 rondas configuradas por la partida.
+- Un solo tablero inicial de aproximadamente 25–30 casillas.
+- Gana quien consigue más **Sellos de Ronda**.
+- Los oros sirven como desempate y como recurso durante la partida.
+
+En cada tablero habrá una casilla o destino de sello. Cuando un jugador llega a
+ella y puede pagar el coste configurado, obtiene el sello. Después, el destino
+se mueve a otra posición para obligar a elegir entre el camino más corto y los
+caminos que proporcionan más oros. El número de sellos disponibles, el coste y
+la posición inicial serán datos de configuración del tablero, no reglas
+dispersas por la interfaz.
+
+### Flujo de una ronda
+
+~~~text
+lobby → preparar tablero → turno de movimiento de cada jugador
+      → resolver casillas → seleccionar minijuego compatible
+      → jugar variante corta → revelar clasificación
+      → repartir oros → siguiente ronda → resultado final
+~~~
+
+1. El servidor fija el orden de movimiento y el jugador activo.
+2. El jugador tira un dado de seis caras desde su móvil.
+3. Si llega a una bifurcación, elige el camino desde su móvil; el tablero
+   público muestra el movimiento confirmado.
+4. El servidor resuelve la casilla: oros, pérdida de oros, sello, tienda,
+   atajo, tirada extra o evento sencillo.
+5. Cuando todos han movido, el servidor filtra los minijuegos válidos por
+   número de jugadores, modo y contenido disponible.
+6. Se elige un minijuego sin repetir innecesariamente el anterior. La ruleta o
+   carrusel que ve el grupo es una animación de presentación: no decide el
+   resultado ni puede seleccionar un juego incompatible.
+7. Se juega una variante de una tarea o de pocas preguntas, con una duración
+   máxima inicial de 90 segundos.
+8. El servidor revela el resultado y convierte la clasificación propia del
+   minijuego en una recompensa común de oros.
+
+### Casillas del primer tablero
+
+La primera versión solo tendrá un conjunto pequeño y legible:
+
+- **Oros**: añade una cantidad pequeña de monedas.
+- **Pérdida**: resta una cantidad limitada de monedas.
+- **Sello**: permite comprar o reclamar el sello si se cumplen sus condiciones.
+- **Tienda**: ofrece una cantidad muy pequeña de objetos sencillos.
+- **Bifurcación**: permite elegir entre dos rutas con riesgos y recompensas
+  diferentes.
+- **Atajo o tirada extra**: modifica el movimiento sin crear una cadena de
+  reglas complejas.
+- **Evento**: aplica una regla breve y visible, siempre resuelta por el
+  servidor.
+
+No habrá robos de monedas, teletransportes frecuentes ni una gran colección de
+objetos en el MVP. Esas mecánicas se reservarán para una expansión posterior,
+si el tablero básico demuestra que las decisiones de ruta son divertidas.
+
+### Minijuegos compatibles
+
+Cada juego independiente mantendrá su puntuación normal. La Gran Ronda usará
+una variante corta que devuelva una clasificación y una recompensa normalizada.
+
+#### Primera selección
+
+- **Banderas**: tres preguntas rápidas y clasificación por aciertos.
+- **Cifras**: una estimación o una prueba de ordenar.
+- **Precio justo**: un producto y una estimación.
+- **Mayoría**: una pregunta social y revelación agrupada.
+- **Matiz**: un reto de color de una sola ronda.
+- **Ordena**: variante competitiva de Orden en la que todos ordenan los mismos
+  elementos. El modo Orden cooperativo seguirá existiendo por separado y no se
+  puntuará como si fuese competitivo.
+
+#### Incorporación posterior
+
+**Escala**, **Quién lo haría**, **Completa la frase** y **Musical** podrán entrar
+cuando tengan una variante que respete el límite de tiempo, la privacidad de las
+respuestas y la claridad de la clasificación. Los juegos de cartas podrán
+aportar micro-retos específicos —por ejemplo, una prueba rápida de suma,
+parejas o captura—, pero no se incrustarán partidas completas de Chinchón,
+Mus, Pocha, Brisca, Tute o similares.
+
+Un minijuego solo será elegible si declara explícitamente:
+
+- número mínimo y máximo de jugadores;
+- si admite juego individual o por equipos;
+- duración máxima;
+- tipo de respuesta y fase de revelación;
+- forma de desempatar sin premiar la velocidad del dispositivo;
+- función que transforma su resultado en clasificación y recompensa.
+
+### Recompensas y equilibrio
+
+La primera tabla de recompensas será parametrizable. Como referencia para una
+partida individual:
+
+| Clasificación | Oros |
+|---:|---:|
+| 1.º | 8 |
+| 2.º | 5 |
+| 3.º | 3 |
+| Resto | 1 |
+
+La tabla se adaptará a dos, tres o más jugadores y a los empates. Dos jugadores
+empatados recibirán la misma recompensa de posición; no se usará el tiempo de
+respuesta como desempate por defecto.
+
+Las casillas darán cantidades pequeñas frente a los minijuegos, para que ganar
+sea importante sin que una tirada de dado decida por sí sola la partida. Se
+mantendrá una posibilidad razonable de remontada: el líder no debe acumular una
+ventaja irreversible durante las primeras rondas y quien va último no debe
+quedar sin capacidad de decisión.
+
+### Equipos
+
+El modo predeterminado será todos contra todos. Un modo por equipos posterior
+creará los equipos en el lobby y solo elegirá minijuegos que declaren
+`supportsTeams`. No se forzará a un minijuego cooperativo a producir un ganador
+individual: si aparece un reto cooperativo, será un evento común con una
+recompensa compartida o una variante específica, no una clasificación falsa.
+
+### Decisiones explícitamente fuera del MVP
+
+- No usar los oros como única condición de victoria.
+- No incluir todos los juegos del catálogo desde el primer día.
+- No seleccionar minijuegos solo con azar visual.
+- No convertir un juego cooperativo en competitivo sin una regla nueva.
+- No dar bonus por responder antes.
+- No incluir más de una tarea principal o unas pocas preguntas por minijuego.
+- No añadir robos, tiendas complejas, muchos objetos ni eventos difíciles de
+  explicar.
+- No hacer que una partida de cartas completa interrumpa el ritmo del tablero.
+
+### MVP de La Gran Ronda
+
+La primera entrega jugable tendrá:
+
+1. un tablero fijo;
+2. dado de seis caras y movimiento por turnos;
+3. bifurcaciones sencillas;
+4. oros, casillas de sello y resultado final por sellos;
+5. seis rondas configurables;
+6. los minijuegos Banderas, Cifras, Precio justo, Mayoría y Matiz, más la
+   variante Ordena cuando esté validada;
+7. una tabla de recompensas común;
+8. pantalla pública `/mesa` con tablero, posiciones, ronda, ruleta y
+   resultados;
+9. móvil privado para tirar, escoger ruta y responder;
+10. reconexión, temporizadores y estado autoritativo del servidor.
+
+El MVP se considerará una experiencia separada de las partidas independientes,
+aunque reutilice sala, QR, nombres, componentes de /mesa, temporizadores y
+primitivas de reconexión.
+
+### Modelo técnico de alto nivel
+
+La Gran Ronda tendrá una identidad de modo propia y no cambiará el significado
+del `gameId` de los juegos independientes. Su estado incluirá, como mínimo:
+
+- configuración del tablero y semilla de aleatoriedad del servidor;
+- grafo de casillas y rutas disponibles;
+- posición, oros, sellos y objetos de cada jugador;
+- orden de turnos y jugador activo;
+- fase actual de la ronda;
+- minijuego seleccionado y variante corta;
+- respuestas privadas, resultado revelado y recompensa;
+- historial suficiente para reconexión, auditoría y resultado final.
+
+El minijuego se conectará mediante un adaptador, con una forma conceptual
+similar a:
+
+~~~text
+seleccionar → crear ronda corta → recibir respuestas → resolver
+           → producir clasificación → convertir a recompensa de La Gran Ronda
+~~~
+
+Así se podrán añadir minijuegos sin meter reglas de Banderas, Cifras o Precio
+justo dentro del motor del tablero ni dentro de los motores de Chinchón, Pocha
+o Mus.
+
+---
+
 ## Roadmap técnico para generar los juegos
 
 ### P33 — Contrato común de juegos de preguntas
@@ -600,6 +833,82 @@ Probar los cinco juegos con grupos reales. Medir comprensión sin explicación,
 tiempo hasta la primera respuesta, preguntas descartadas, empates, errores de
 contenido y si los jugadores quieren repetir.
 
+### P45 — La Gran Ronda: contrato de partida y fases
+
+Definir el contrato propio del modo meta: configuración del tablero, casillas,
+rutas, posiciones, dado, turnos, oros, sellos, objetos, fases, minijuego activo,
+recompensas, reconexión y resultado final. El servidor será la autoridad sobre
+el dado, el movimiento, la resolución de casillas, la selección del minijuego y
+la puntuación.
+
+Las fases iniciales serán `lobby`, `movement`, `spaceResolution`,
+`minigameSelection`, `minigame`, `payout`, `nextRound` y `gameEnd`. El contrato
+deberá impedir que una respuesta privada del minijuego se filtre antes de la
+revelación.
+
+### P46 — La Gran Ronda: tablero, movimiento y casillas
+
+Crear el primer mapa como un grafo de casillas con bifurcaciones, coste de
+movimiento y destino de sello. Implementar dado de seis caras, orden de turnos,
+elección de ruta, casillas de oros, pérdida, sello, tienda, atajo, tirada extra
+y evento sencillo. Añadir tests de movimiento, límites, reconexión, resolución
+determinista y cambio de ubicación del sello.
+
+### P47 — La Gran Ronda: adaptador de minijuegos
+
+Definir el contrato `PartyMiniGameAdapter` o equivalente para que cada variante
+declare compatibilidad por número de jugadores, duración, equipos, tipo de
+respuesta, estado privado, resolución y recompensa. Crear primero los modos
+cortos de Banderas, Cifras, Precio justo, Mayoría y Matiz. Añadir la variante
+competitiva de Ordena sin cambiar el modo cooperativo de Orden.
+
+El adaptador debe impedir que se seleccione un juego sin contenido, incompatible
+con el número de jugadores o sin una función de clasificación válida. La ruleta
+será una presentación cliente del resultado ya elegido por el servidor.
+
+### P48 — La Gran Ronda: economía y equilibrio
+
+Implementar oros, sellos, costes, recompensas y tabla parametrizable por número
+de jugadores. Crear reglas para empates, participación mínima, cantidades de
+casillas y coste del sello. Probar que los oros sirven para tomar decisiones,
+pero no sustituyen el objetivo de sellos ni convierten la partida en una carrera
+decidida por una sola tirada.
+
+Los objetos de la primera versión se limitarán a uno o dos efectos sencillos,
+como repetir el dado o modificar ligeramente el movimiento. La tienda y los
+eventos más complejos quedan fuera hasta el primer playtest.
+
+### P49 — La Gran Ronda: sala y servidor
+
+Añadir la creación de una sala con el modo meta, lobby con nombres y QR,
+transiciones entre movimiento y minijuego, temporizadores, acciones privadas,
+reconexión, cierre de ronda, reparto de oros y resultado final. Reutilizar la
+infraestructura común de Ronda sin hacer que una sala independiente pueda entrar
+accidentalmente en el estado del tablero.
+
+### P50 — La Gran Ronda: interfaz pública y móvil
+
+Crear el lobby del modo, tablero público en `/mesa`, ficha del jugador activo,
+animación del dado, selección de bifurcación, indicador de oros y sellos,
+animación de selección de minijuego, briefing corto, revelación de resultados y
+marcador final. En el móvil se mostrarán únicamente las acciones del jugador:
+tirar, elegir ruta, comprar o responder.
+
+La animación de ruleta deberá ser corta, omitir juegos no disponibles y no
+bloquear el flujo si un jugador se desconecta. Los textos de cada minijuego
+deberán explicar en pocos segundos qué hay que hacer y cuánto dura.
+
+### P51 — La Gran Ronda: playtest y control de calidad
+
+Probar primero con 3–6 personas y después con el máximo configurado. Medir
+duración de movimiento, espera entre turnos, tiempo de cada minijuego,
+frecuencia de repetición, ventaja del primer jugador, capacidad de remontada,
+claridad del objetivo, uso de las bifurcaciones, valor percibido de los oros y
+si el grupo quiere volver a jugar.
+
+No ampliar el catálogo de minijuegos ni añadir objetos hasta que un tablero
+completo sea jugable, comprensible y estable en móviles reales.
+
 ## Definición de terminado
 
 Cada juego estará terminado solo cuando:
@@ -613,3 +922,22 @@ Cada juego estará terminado solo cuando:
 7. tenga modo competitivo claramente explicado;
 8. no copie textos, ilustraciones, marcas ni interfaces de otros juegos;
 9. pnpm typecheck, pnpm lint y pnpm test pasen en verde.
+
+### Definición adicional de terminado para La Gran Ronda
+
+La Gran Ronda estará terminada para una primera publicación solo cuando:
+
+1. se pueda crear y terminar una partida completa con 3–7 jugadores;
+2. el servidor controle dado, movimiento, rutas, casillas, minijuego y
+   recompensas;
+3. exista un tablero inicial con rutas que ofrezcan decisiones reales;
+4. haya al menos cuatro minijuegos cortos compatibles y uno de ellos pueda ser
+   Ordena sin romper el Orden cooperativo;
+5. cada minijuego tenga reglas de empate y una recompensa normalizada;
+6. se entienda que los oros son recursos y los sellos son el objetivo;
+7. la pantalla `/mesa` y los móviles muestren siempre la misma fase pública;
+8. una desconexión o reconexión no duplique movimientos, respuestas ni pagos;
+9. la partida objetivo dure entre 15 y 25 minutos en el playtest;
+10. existan tests de fases, movimiento, economía, compatibilidad y transición
+    entre minijuegos;
+11. `pnpm typecheck`, `pnpm lint` y `pnpm test` pasen en verde.

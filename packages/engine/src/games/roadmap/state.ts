@@ -63,10 +63,12 @@ export interface CifrasRoundState {
   questionId: string;
   submissions: Record<PlayerId, number>;
   orderSubmissions: Record<PlayerId, string[]>;
+  choiceSubmissions: Record<PlayerId, string>;
   deadlineAt: number | null;
   scoreDeltas: Record<PlayerId, number> | null;
   estimateResults: Record<PlayerId, { value: number | null; errorPercent: number | null; points: number }> | null;
   orderResults: Record<PlayerId, { order: string[] | null; correctOrder: string[]; correctPositions: number; points: number }> | null;
+  choiceResults: Record<PlayerId, { selectedOptionId: string | null; correctOptionId: string; correct: boolean; points: number }> | null;
 }
 
 export interface CifrasState extends RoadmapBaseState {

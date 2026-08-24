@@ -86,11 +86,28 @@ function CifrasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'cifra
       <div className="flex flex-1 flex-col items-center gap-7 overflow-y-auto px-8 py-8 text-center">
         <section className="surface-panel flex w-full max-w-4xl flex-col gap-3 px-8 py-8">
           <p className="text-14 uppercase tracking-[0.16em] text-oro">
-            {view.cifras.kind === 'estimate' ? 'Estima' : 'Ordena'}
+            {view.cifras.kind === 'estimate'
+              ? 'Estima'
+              : view.cifras.kind === 'order'
+                ? 'Ordena'
+                : 'Elige una'}
           </p>
-          <h1 className="text-[clamp(2rem,5vw,4.5rem)] font-semibold leading-tight text-hueso">
+          <h1 className="text-[clamp(1.8rem,5vw,4.5rem)] font-normal leading-tight text-hueso">
             {view.cifras.prompt}
           </h1>
+          {view.cifras.kind === 'order' ? (
+            <div className="mx-auto inline-flex items-center gap-2 rounded-2xl border border-oro/45 bg-oro/10 px-4 py-2 text-left text-16 text-humo">
+              <span className="text-24 font-bold text-oro" aria-hidden="true">
+                {view.cifras.direction === 'asc' ? '↑' : '↓'}
+              </span>
+              <span>
+                de{' '}
+                <strong className="font-extrabold text-oro">
+                  {view.cifras.direction === 'asc' ? 'MENOR A MAYOR' : 'MAYOR A MENOR'}
+                </strong>
+              </span>
+            </div>
+          ) : null}
           <p className="text-18 text-humo">{view.cifras.definition}</p>
           <p className="font-mono text-20 text-oro">{view.cifras.unit}</p>
         </section>
@@ -104,6 +121,22 @@ function CifrasMesa({ view }: { view: Extract<RoadmapTableView, { gameId: 'cifra
                 <p className="text-18 font-semibold text-hueso">{item.label}</p>
                 {revealed ? (
                   <p className="mt-1 font-mono text-16 text-oro">
+                    {formatNumber(view.cifras.itemValues?.[item.id])} {view.cifras.unit}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : view.cifras.kind === 'compare' ? (
+          <div className="grid w-full max-w-4xl gap-3 md:grid-cols-2">
+            {view.cifras.items.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-2xl border border-linea bg-mesa/80 px-5 py-6 text-center"
+              >
+                <p className="text-22 font-semibold text-hueso">{item.label}</p>
+                {revealed ? (
+                  <p className="mt-2 font-mono text-18 text-oro">
                     {formatNumber(view.cifras.itemValues?.[item.id])} {view.cifras.unit}
                   </p>
                 ) : null}
@@ -197,7 +230,9 @@ function CompletaLaFraseMesa({
       />
       <div className="flex flex-1 flex-col items-center gap-7 overflow-y-auto px-8 py-8 text-center">
         <section className="surface-panel w-full max-w-5xl px-8 py-10">
-          <p className="text-14 uppercase tracking-[0.16em] text-oro">{view.sentence.category}</p>
+          <p className="text-14 uppercase tracking-[0.16em] text-oro">
+            {sentenceCategoryLabel(view.sentence.category)}
+          </p>
           <h1 className="mt-3 text-[clamp(2rem,5vw,4.8rem)] font-semibold leading-tight text-hueso">
             {view.sentence.prompt}
           </h1>
@@ -209,6 +244,12 @@ function CompletaLaFraseMesa({
               <p className="mt-1 font-display text-[clamp(2.5rem,7vw,5rem)] text-oro">
                 {view.sentence.canonicalAnswer ?? '—'}
               </p>
+              {view.sentence.author || view.sentence.source ? (
+                <p className="mt-3 text-13 text-humo">
+                  {view.sentence.author ?? 'Frase popular'}
+                  {view.sentence.source ? ` · ${view.sentence.source}` : ''}
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {view.players.map((player) => {
@@ -238,6 +279,25 @@ function CompletaLaFraseMesa({
       </div>
     </main>
   );
+}
+
+function sentenceCategoryLabel(category: string): string {
+  switch (category) {
+    case 'refran':
+      return 'Refrán';
+    case 'expresion':
+      return 'Expresión';
+    case 'cita':
+      return 'Cita célebre';
+    case 'historica':
+      return 'Frase histórica';
+    case 'humor':
+      return 'Humor';
+    case 'meme':
+      return 'Meme / cultura popular';
+    default:
+      return category;
+  }
 }
 
 function formatNumber(value: number | null | undefined): string {

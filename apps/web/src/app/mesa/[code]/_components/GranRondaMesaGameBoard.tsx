@@ -2,7 +2,73 @@ import type { GranRondaTableView } from '@ronda/protocol';
 import { GranRondaBoard } from '@/components/granronda/GranRondaBoard';
 import { Pill } from '@/components/ui/Pill';
 import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
+import { MesaGameBoard } from './MesaGameBoard';
 import { MusicalMesaGameBoard } from './MusicalMesaGameBoard';
+import { PartyMesaGameBoard } from './PartyMesaGameBoard';
+import { PochaMesaGameBoard } from './PochaMesaGameBoard';
+import { PrecioJustoMesaGameBoard } from './PrecioJustoMesaGameBoard';
+import { RoadmapMesaGameBoard } from './RoadmapMesaGameBoard';
+import { RondaMesaScreen } from './RondaMesaScreen';
+
+function embeddedGameLabel(gameId: GranRondaTableView['miniGame']['gameId']): string {
+  switch (gameId) {
+    case 'musical':
+      return 'Musical';
+    case 'chinchon':
+      return 'Chinchón';
+    case 'pocha':
+      return 'Pocha';
+    case 'laronda':
+      return 'La Ronda';
+    case 'preciojusto':
+      return 'Precio justo';
+    case 'banderas':
+      return 'Banderas';
+    case 'cifras':
+      return 'Cifras';
+    case 'quienloharia':
+      return 'Quién lo haría';
+    case 'completalafrase':
+      return 'Completa la frase';
+    case 'brisca':
+      return 'Brisca';
+    case 'escoba':
+      return 'Escoba';
+    case 'tute':
+      return 'Tute';
+    case 'sieteymedia':
+      return 'Siete y media';
+    case 'cinquillo':
+      return 'Cinquillo';
+    case 'orden':
+      return 'Orden';
+    case 'colores':
+      return 'Colores';
+    case 'mayoria':
+      return 'Mayoría';
+    case 'escala':
+      return 'Escala';
+    case 'matiz':
+      return 'Matiz';
+    default:
+      return 'Minijuego';
+  }
+}
+
+function miniGameIcon(gameId: GranRondaTableView['miniGame']['gameId']): string {
+  if (gameId === 'musical') return '♫';
+  if (gameId === 'chinchon') return '♧';
+  if (gameId === 'pocha') return '♠';
+  if (gameId === 'laronda') return '🍽';
+  if (gameId === 'preciojusto') return '€';
+  if (gameId === 'banderas') return '⚑';
+  if (gameId === 'cifras') return '#';
+  if (gameId === 'quienloharia') return '☻';
+  if (gameId === 'completalafrase') return '…';
+  if (gameId === 'sieteymedia') return '7½';
+  if (gameId === 'cinquillo') return '♣';
+  return '✦';
+}
 
 export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
   const final = view.status === 'gameEnd';
@@ -64,14 +130,37 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
               <p className="eyebrow text-oro">Minijuego de la ronda</p>
               <p className="mt-1 text-14 text-humo">La mesa muestra la interfaz original del juego seleccionado.</p>
             </div>
-            <Pill>{view.miniGame.gameId === 'musical' ? 'Musical' : view.miniGame.gameId === 'sieteymedia' ? 'Siete y media' : 'Cinquillo'}</Pill>
+            <Pill>{embeddedGameLabel(view.miniGame.gameId)}</Pill>
           </div>
           <div className="gran-ronda-embedded-game__table-frame">
-            {view.miniGame.embeddedGame.gameId === 'musical' ? (
+            {view.miniGame.embeddedGame.gameId === 'chinchon' ? (
+              <MesaGameBoard view={view.miniGame.embeddedGame} />
+            ) : view.miniGame.embeddedGame.gameId === 'pocha' ? (
+              <PochaMesaGameBoard view={view.miniGame.embeddedGame} />
+            ) : view.miniGame.embeddedGame.gameId === 'laronda' ? (
+              <RondaMesaScreen view={view.miniGame.embeddedGame} />
+            ) : view.miniGame.embeddedGame.gameId === 'preciojusto' ? (
+              <PrecioJustoMesaGameBoard view={view.miniGame.embeddedGame} />
+            ) : view.miniGame.embeddedGame.gameId === 'banderas' ||
+              view.miniGame.embeddedGame.gameId === 'cifras' ||
+              view.miniGame.embeddedGame.gameId === 'quienloharia' ||
+              view.miniGame.embeddedGame.gameId === 'completalafrase' ? (
+              <RoadmapMesaGameBoard view={view.miniGame.embeddedGame} />
+            ) : view.miniGame.embeddedGame.gameId === 'musical' ? (
               <MusicalMesaGameBoard view={view.miniGame.embeddedGame} embedded />
-            ) : (
+            ) : view.miniGame.embeddedGame.gameId === 'brisca' ||
+              view.miniGame.embeddedGame.gameId === 'escoba' ||
+              view.miniGame.embeddedGame.gameId === 'sieteymedia' ||
+              view.miniGame.embeddedGame.gameId === 'tute' ||
+              view.miniGame.embeddedGame.gameId === 'cinquillo' ? (
               <ClassicMesaGameBoard view={view.miniGame.embeddedGame} embedded />
-            )}
+            ) : view.miniGame.embeddedGame.gameId === 'orden' ||
+              view.miniGame.embeddedGame.gameId === 'colores' ||
+              view.miniGame.embeddedGame.gameId === 'mayoria' ||
+              view.miniGame.embeddedGame.gameId === 'escala' ||
+              view.miniGame.embeddedGame.gameId === 'matiz' ? (
+              <PartyMesaGameBoard view={view.miniGame.embeddedGame} />
+            ) : null}
           </div>
         </section>
       ) : view.phase === 'minigameInput' || view.phase === 'minigameReveal' ? (
@@ -84,7 +173,7 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
               <p className="mt-2 text-13 text-humo">{view.miniGame.instructions}</p>
             </div>
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-24 text-oro">
-              {view.miniGame.gameId === 'musical' ? '♫' : view.miniGame.gameId === 'sieteymedia' ? '7½' : '♣'}
+              {miniGameIcon(view.miniGame.gameId)}
             </span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">

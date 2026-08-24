@@ -5,10 +5,10 @@ export default function CompletaLaFrasePage() {
     <GameIntro
       slug="completalafrase"
       title="Completa la frase"
-      kind="Palabras y memoria"
+      kind="Citas, refranes y cultura popular"
       players="2–7 jugadores"
       duration="10–20 min"
-      summary="Terminad refranes, expresiones y frases originales con una respuesta corta antes de que se acabe el tiempo."
+      summary="Completad refranes, expresiones, citas, frases históricas, humor y cultura popular antes de que se acabe el tiempo."
       primaryAction={{
         href: '/crear/completalafrase',
         label: 'Jugar en grupo',

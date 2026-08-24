@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { MatizPlayerView } from '@ronda/protocol';
+import type { GameAction, MatizPlayerView } from '@ronda/protocol';
 import { MATIZ_CHALLENGES } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { COLOR_TOKENS, MATIZ_COLOR_TOKENS, MATIZ_HUE_GRADIENT } from '@/lib/tokens';
@@ -152,24 +152,36 @@ function SliderRow({
   );
 }
 
-export function MatizPlayerRound({ view }: { view: MatizPlayerView }) {
+export function MatizPlayerRound({
+  view,
+  onAction,
+  embedded = false,
+}: {
+  view: MatizPlayerView;
+  onAction?: (action: GameAction) => void;
+  embedded?: boolean;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const [color, setColor] = useState<string>(MATIZ_COLOR_TOKENS.neutral);
   const { party, me } = view;
   const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
   const submitted = me.submitted;
+  const dispatch = onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
 
   useEffect(() => {
     setColor(MATIZ_COLOR_TOKENS.neutral);
   }, [party.challengeId]);
 
   function submit() {
-    void useRondaStore.getState().sendAction({ type: 'submitMatiz', hex: color });
+    dispatch({ type: 'submitMatiz', hex: color });
   }
 
   return (
     <div className="game-shell flex min-h-0 flex-1 flex-col overflow-hidden">
-      <TableHeader left={`Matiz · ronda ${view.round}/${view.config.rounds}`} turnNick={null} />
+      <TableHeader
+        left={embedded ? 'Minijuego · Matiz' : `Matiz · ronda ${view.round}/${view.config.rounds}`}
+        turnNick={null}
+      />
       <PlayerStrip
         players={view.players}
         turnPlayerId={null}
@@ -198,7 +210,7 @@ export function MatizPlayerRound({ view }: { view: MatizPlayerView }) {
         {party.phase === 'input' && isHost && party.submittedPlayerIds.length > 0 ? (
           <Button
             variant="ghost"
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'finishMatiz' })}
+            onClick={() => dispatch({ type: 'finishMatiz' })}
             loading={pendingAction}
             className="w-full max-w-xl"
           >
@@ -207,7 +219,7 @@ export function MatizPlayerRound({ view }: { view: MatizPlayerView }) {
         ) : null}
         {party.phase === 'reveal' && view.status === 'playing' && isHost ? (
           <Button
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+            onClick={() => dispatch({ type: 'nextRound' })}
             loading={pendingAction}
             className="w-full max-w-xl"
           >

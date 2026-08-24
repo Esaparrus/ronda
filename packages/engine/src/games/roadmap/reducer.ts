@@ -121,7 +121,7 @@ export function createCifrasState(input: RoadmapInitialInput): CifrasState {
     config: input.config,
     questions: CIFRAS_QUESTIONS.map((question) => ({
       ...question,
-      ...(question.kind === 'order' ? { items: question.items.map((item) => ({ ...item })) } : {}),
+      ...('items' in question ? { items: question.items.map((item) => ({ ...item })) } : {}),
     })) as CifrasQuestion[],
     cifras: {
       questionOrder: order.items,
@@ -129,10 +129,12 @@ export function createCifrasState(input: RoadmapInitialInput): CifrasState {
       questionId: order.items[0] ?? '',
       submissions: {},
       orderSubmissions: {},
+      choiceSubmissions: {},
       deadlineAt: null,
       scoreDeltas: null,
       estimateResults: null,
       orderResults: null,
+      choiceResults: null,
     },
     rng: { seed: input.seed, calls: order.calls },
   };
@@ -234,7 +236,7 @@ function cloneBase<T extends RoadmapState>(state: T): T {
       ...base,
       questions: state.questions.map((question) => ({
         ...question,
-        ...(question.kind === 'order'
+        ...('items' in question
           ? { items: question.items.map((item) => ({ ...item })) }
           : {}),
       })) as CifrasQuestion[],
@@ -245,6 +247,7 @@ function cloneBase<T extends RoadmapState>(state: T): T {
         orderSubmissions: Object.fromEntries(
           Object.entries(state.cifras.orderSubmissions).map(([id, order]) => [id, [...order]]),
         ),
+        choiceSubmissions: { ...state.cifras.choiceSubmissions },
         scoreDeltas: state.cifras.scoreDeltas ? { ...state.cifras.scoreDeltas } : null,
         estimateResults: state.cifras.estimateResults ? { ...state.cifras.estimateResults } : null,
         orderResults: state.cifras.orderResults
@@ -259,6 +262,7 @@ function cloneBase<T extends RoadmapState>(state: T): T {
               ]),
             )
           : null,
+        choiceResults: state.cifras.choiceResults ? { ...state.cifras.choiceResults } : null,
       },
     } as T;
   }
@@ -448,6 +452,30 @@ function applyCifrasAction(
     if (allSubmitted(next, next.cifras.orderSubmissions)) revealCifras(next, events);
     return ok({ state: next, events });
   }
+  if (action.type === 'submitChoice') {
+    const player = requireInputPlayer(state, playerId);
+    if (!player.ok) return player;
+    const question = cifrasQuestionById(state.cifras.questionId, state.questions);
+    const ids = question.kind === 'compare' ? question.items.map((item) => item.id) : [];
+    if (
+      question.kind !== 'compare' ||
+      state.cifras.choiceSubmissions[playerId] !== undefined ||
+      !ids.includes(action.optionId)
+    )
+      return err('INVALID_ACTION');
+    if (state.cifras.deadlineAt !== null && now >= state.cifras.deadlineAt)
+      return err('INVALID_ACTION');
+    const next = bump(state);
+    next.cifras.choiceSubmissions[playerId] = action.optionId;
+    next.cifras.deadlineAt = answerDeadline(
+      next.config.answerTimeSeconds,
+      next.cifras.deadlineAt,
+      now,
+    );
+    const events: GameEvent[] = [{ t: 'roadmapAnswerSubmitted', playerId, gameId: 'cifras' }];
+    if (allSubmitted(next, next.cifras.choiceSubmissions)) revealCifras(next, events);
+    return ok({ state: next, events });
+  }
   if (action.type === 'finishCifras') {
     if (!isHost(state, playerId) || state.status !== 'playing' || state.phase !== 'input')
       return err(isHost(state, playerId) ? 'INVALID_ACTION' : 'NOT_HOST');
@@ -484,6 +512,25 @@ function revealCifras(state: CifrasState, events: GameEvent[]): void {
     }
     state.cifras.estimateResults = results;
     state.cifras.orderResults = null;
+    state.cifras.choiceResults = null;
+  } else if (question.kind === 'compare') {
+    const results: NonNullable<CifrasState['cifras']['choiceResults']> = {};
+    for (const player of activePlayers(state)) {
+      const selectedOptionId = state.cifras.choiceSubmissions[player.playerId] ?? null;
+      const correct = selectedOptionId === question.correctOptionId;
+      const points = correct ? 1 : 0;
+      results[player.playerId] = {
+        selectedOptionId,
+        correctOptionId: question.correctOptionId,
+        correct,
+        points,
+      };
+      player.score += points;
+      deltas[player.playerId] = points;
+    }
+    state.cifras.choiceResults = results;
+    state.cifras.estimateResults = null;
+    state.cifras.orderResults = null;
   } else {
     const correctOrder = [...question.items]
       .sort((a, b) =>
@@ -517,6 +564,7 @@ function revealCifras(state: CifrasState, events: GameEvent[]): void {
     }
     state.cifras.orderResults = results;
     state.cifras.estimateResults = null;
+    state.cifras.choiceResults = null;
   }
   state.cifras.deadlineAt = null;
   state.cifras.scoreDeltas = deltas;
@@ -760,10 +808,12 @@ function nextRoadmapRound(state: RoadmapState, playerId: PlayerId): RoadmapActio
       questionId: nextId(current.questionOrder, index),
       submissions: {},
       orderSubmissions: {},
+      choiceSubmissions: {},
       deadlineAt: null,
       scoreDeltas: null,
       estimateResults: null,
       orderResults: null,
+      choiceResults: null,
     };
   } else if (next.gameId === 'quienloharia') {
     const current = next.who;

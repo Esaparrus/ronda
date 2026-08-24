@@ -18,11 +18,15 @@ import {
   normalizeAnswer,
 } from './reducer.ts';
 import {
+  CIFRAS_QUESTIONS,
   FLAG_QUESTIONS,
+  SENTENCE_QUESTIONS,
   cifrasQuestionById,
+  cifrasQuestionIdsFor,
   flagQuestionById,
   flagQuestionIdsFor,
   sentenceQuestionById,
+  sentenceQuestionIdsFor,
 } from './content.ts';
 import { getPlayerView, getTableView } from './views.ts';
 import type {
@@ -179,6 +183,50 @@ describe('juegos independientes del roadmap', () => {
     );
   });
 
+  it('Cifras permite comparar dos opciones y puntúa el acierto', () => {
+    const state = createCifrasState({
+      config: { ...DEFAULT_CIFRAS_CONFIG, mode: 'comparar', rounds: 5, answerTimeSeconds: 0 },
+      seed: 'compare-test',
+      players: PLAYERS,
+      roomCode: 'COMP',
+    });
+    const question = cifrasQuestionById(state.cifras.questionId, state.questions);
+    if (question.kind !== 'compare') throw new Error('La pregunta de test no es comparativa');
+    const afterFirst = applyRoadmap(state, 'p1', {
+      type: 'submitChoice',
+      optionId: question.correctOptionId,
+    });
+    const wrongOption = question.items.find((item) => item.id !== question.correctOptionId);
+    if (!wrongOption) throw new Error('La pregunta comparativa no tiene distractor');
+    const revealed = applyRoadmap(afterFirst, 'p2', {
+      type: 'submitChoice',
+      optionId: wrongOption.id,
+    }) as CifrasState;
+    expect(revealed.phase).toBe('reveal');
+    expect(getTableView(revealed).cifras.choices?.p1?.correct).toBe(true);
+    expect(getTableView(revealed).cifras.choices?.p1?.points).toBe(1);
+    expect(getTableView(revealed).cifras.choices?.p2?.correct).toBe(false);
+  });
+
+  it('Cifras tiene un banco amplio, único y sin repeticiones dentro de una partida larga', () => {
+    expect(CIFRAS_QUESTIONS.length).toBeGreaterThanOrEqual(200);
+    expect(new Set(CIFRAS_QUESTIONS.map((question) => question.id)).size).toBe(CIFRAS_QUESTIONS.length);
+    expect(cifrasQuestionIdsFor('deporte', 'mixto').length).toBeGreaterThan(0);
+    expect(cifrasQuestionIdsFor('historia', 'mixto').length).toBeGreaterThan(0);
+    expect(cifrasQuestionIdsFor('tecnologia', 'mixto').length).toBeGreaterThan(0);
+    expect(cifrasQuestionIdsFor('cultura', 'mixto').length).toBeGreaterThan(0);
+
+    const state = createCifrasState({
+      config: { ...DEFAULT_CIFRAS_CONFIG, mode: 'mixto', rounds: 20, answerTimeSeconds: 0 },
+      seed: 'large-question-bank-test',
+      players: PLAYERS,
+      roomCode: 'BANK',
+    });
+    const questionsForMatch = state.cifras.questionOrder.slice(0, state.config.rounds);
+    expect(questionsForMatch).toHaveLength(20);
+    expect(new Set(questionsForMatch).size).toBe(20);
+  });
+
   it('Quién lo haría oculta votos individuales antes de la revelación', () => {
     const state = createQuienLoHariaState({
       config: { ...DEFAULT_QUIEN_LO_HARIA_CONFIG, rounds: 5, answerTimeSeconds: 0 },
@@ -205,6 +253,8 @@ describe('juegos independientes del roadmap', () => {
       roomCode: 'SENT',
     });
     const question = sentenceQuestionById(state.sentence.questionId, state.questions);
+    expect(getPlayerView(state, 'p1').sentence.author).toBeNull();
+    expect(getPlayerView(state, 'p1').sentence.source).toBeNull();
     const afterHint = applyRoadmap(state, 'p1', { type: 'useSentenceHint' });
     const afterFirst = applyRoadmap(afterHint, 'p1', {
       type: 'submitSentence',
@@ -217,5 +267,28 @@ describe('juegos independientes del roadmap', () => {
     expect(getTableView(revealed).sentence.answers?.p1?.correct).toBe(true);
     expect(getTableView(revealed).sentence.answers?.p1?.points).toBe(0);
     expect(getTableView(revealed).sentence.answers?.p2?.points).toBe(1);
+    expect(getTableView(revealed).sentence.source).toBe(question.source ?? null);
+  });
+
+  it('Completa la frase mezcla un catálogo atribuible cuando se elige De todo', () => {
+    expect(SENTENCE_QUESTIONS.length).toBeGreaterThanOrEqual(200);
+    expect(new Set(SENTENCE_QUESTIONS.map((question) => question.id)).size).toBe(
+      SENTENCE_QUESTIONS.length,
+    );
+    expect(SENTENCE_QUESTIONS.every((question) => !['original'].includes(question.category))).toBe(true);
+    expect(SENTENCE_QUESTIONS.some((question) => question.author)).toBe(true);
+    expect(sentenceQuestionIdsFor('todo')).toHaveLength(SENTENCE_QUESTIONS.length);
+    expect(sentenceQuestionIdsFor('originales')).toHaveLength(SENTENCE_QUESTIONS.length);
+
+    const state = createCompletaLaFraseState({
+      config: { ...DEFAULT_COMPLETA_LA_FRASE_CONFIG, rounds: 20, answerTimeSeconds: 0 },
+      seed: 'sentence-bank-test',
+      players: PLAYERS,
+      roomCode: 'SBNK',
+    });
+    const questionsForMatch = state.sentence.questionOrder.slice(0, state.config.rounds);
+    expect(state.config.pack).toBe('todo');
+    expect(questionsForMatch).toHaveLength(20);
+    expect(new Set(questionsForMatch).size).toBe(20);
   });
 });

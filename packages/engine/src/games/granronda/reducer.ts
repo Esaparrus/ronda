@@ -9,15 +9,50 @@ import type {
   Result,
 } from '@ronda/protocol';
 import {
+  DEFAULT_BANDERAS_CONFIG,
+  DEFAULT_BRISCA_CONFIG,
+  DEFAULT_CIFRAS_CONFIG,
   DEFAULT_CINQUILLO_CONFIG,
+  DEFAULT_COMPLETA_LA_FRASE_CONFIG,
+  DEFAULT_COLORES_CONFIG,
+  DEFAULT_CONFIG,
+  DEFAULT_ESCOBA_CONFIG,
+  DEFAULT_ESCALA_CONFIG,
+  DEFAULT_LA_RONDA_CONFIG,
+  DEFAULT_MATIZ_CONFIG,
+  DEFAULT_MAYORIA_CONFIG,
   DEFAULT_MUSICAL_CONFIG,
+  DEFAULT_ORDEN_CONFIG,
+  DEFAULT_POCHA_CONFIG,
+  DEFAULT_PRECIO_JUSTO_CONFIG,
   DEFAULT_SIETE_Y_MEDIA_CONFIG,
+  DEFAULT_TUTE_CONFIG,
+  DEFAULT_QUIEN_LO_HARIA_CONFIG,
   err,
   ok,
 } from '@ronda/protocol';
 import { applyClassicAction, createClassicState } from '../classics/reducer.ts';
+import { applyAction as applyChinchonAction, createInitialState as createChinchonState } from '../chinchon/reducer.ts';
+import { applyAction as applyPochaAction, createInitialState as createPochaState } from '../pocha/reducer.ts';
 import { applyAction as applyMusicalAction, createInitialState as createMusicalState } from '../musical/reducer.ts';
-import { GRAN_RONDA_MINIGAMES, granRondaMiniGameById } from './content.ts';
+import { applyAction as applyPartyAction, createPartyState } from '../party/reducer.ts';
+import {
+  applyAction as applyPrecioJustoAction,
+  createInitialState as createPrecioJustoState,
+} from '../preciojusto/reducer.ts';
+import {
+  applyAction as applyRoadmapAction,
+  createBanderasState,
+  createCifrasState,
+  createCompletaLaFraseState,
+  createQuienLoHariaState,
+} from '../roadmap/reducer.ts';
+import { applyRondaAction, createRondaState } from '../laronda/reducer.ts';
+import {
+  GRAN_RONDA_MINIGAMES,
+  granRondaMiniGameById,
+  granRondaMiniGamesForPlayerCount,
+} from './content.ts';
 import {
   GRAN_RONDA_BOARD,
   GRAN_RONDA_START_COINS,
@@ -40,6 +75,8 @@ import {
   type GranRondaResolutionState,
   type GranRondaState,
 } from './state.ts';
+import type { PartyState } from '../party/state.ts';
+import type { RoadmapState } from '../roadmap/state.ts';
 
 export type GranRondaActionResult = Result<{ state: GranRondaState; events: GameEvent[] }>;
 
@@ -53,12 +90,13 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
     throw new Error('Configuración inválida para La Gran Ronda');
   }
 
+  const availableMiniGames = granRondaMiniGamesForPlayerCount(input.players.length);
   const questionOrderResult = shuffle(
-    GRAN_RONDA_MINIGAMES.map((question) => question.id),
+    availableMiniGames.map((question) => question.id),
     input.seed,
     0,
   );
-  const firstQuestion = GRAN_RONDA_MINIGAMES[0];
+  const firstQuestion = availableMiniGames[0] ?? GRAN_RONDA_MINIGAMES[0];
   if (!firstQuestion) throw new Error('Falta contenido de La Gran Ronda');
   const players = [...input.players]
     .sort((left, right) => left.seat - right.seat)
@@ -433,7 +471,19 @@ function submitEmbeddedGameAction(
   const result =
     embedded.gameId === 'musical'
       ? applyMusicalAction(embedded, playerId, action, now)
-      : applyClassicAction(embedded, playerId, action, now);
+      : isPartyEmbeddedGame(embedded)
+        ? applyPartyAction(embedded, playerId, action, now)
+        : isRoadmapEmbeddedGame(embedded)
+          ? applyRoadmapAction(embedded, playerId, action, now)
+          : embedded.gameId === 'preciojusto'
+            ? applyPrecioJustoAction(embedded, playerId, action, now)
+            : embedded.gameId === 'laronda'
+              ? applyRondaAction(embedded, playerId, action, now)
+              : embedded.gameId === 'chinchon'
+                ? applyChinchonAction(embedded, playerId, action, now)
+                : embedded.gameId === 'pocha'
+                  ? applyPochaAction(embedded, playerId, action, now)
+                  : applyClassicAction(embedded, playerId, action, now);
   if (!result.ok) return err(result.code);
 
   next.miniGame.embeddedGame = result.value.state;
@@ -489,7 +539,6 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
   player.lastSpaceId = space.id;
 
   let coinsDelta = 0;
-  let sealsDelta = 0;
   let title = space.label;
   let message = 'La ficha ha llegado a esta casilla.';
 
@@ -554,7 +603,7 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
     title,
     message,
     coinsDelta,
-    sealsDelta,
+    sealsDelta: 0,
   };
 }
 
@@ -652,29 +701,92 @@ function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
     seat: player.seat,
     isBot: player.isBot,
   }));
+  const playerInputs = players.map(({ playerId, nick, seat }) => ({ playerId, nick, seat }));
+  const partyPlayers = playerInputs;
   const seed = `${state.rng.seed}:granronda:${state.round}:${state.miniGame.questionId}`;
-  if (state.miniGame.questionId === 'sieteymedia') {
+  const id = state.miniGame.questionId;
+
+  if (id === 'chinchon') {
+    return createChinchonState({
+      config: DEFAULT_CONFIG,
+      players: playerInputs,
+      seed,
+      roomCode: state.roomCode,
+    });
+  }
+
+  const classicConfigs = {
+    brisca: DEFAULT_BRISCA_CONFIG,
+    escoba: DEFAULT_ESCOBA_CONFIG,
+    sieteymedia: DEFAULT_SIETE_Y_MEDIA_CONFIG,
+    tute: DEFAULT_TUTE_CONFIG,
+    cinquillo: DEFAULT_CINQUILLO_CONFIG,
+  } as const;
+  if (id in classicConfigs) {
+    const classicId = id as keyof typeof classicConfigs;
     return createClassicState(
-      {
-        config: DEFAULT_SIETE_Y_MEDIA_CONFIG,
-        players: players.map(({ playerId, nick, seat }) => ({ playerId, nick, seat })),
-        seed,
-        roomCode: state.roomCode,
-      },
-      'sieteymedia',
+      { config: classicConfigs[classicId], players: playerInputs, seed, roomCode: state.roomCode },
+      classicId,
     );
   }
-  if (state.miniGame.questionId === 'cinquillo') {
-    return createClassicState(
-      {
-        config: DEFAULT_CINQUILLO_CONFIG,
-        players: players.map(({ playerId, nick, seat }) => ({ playerId, nick, seat })),
-        seed,
-        roomCode: state.roomCode,
-      },
-      'cinquillo',
+
+  if (id === 'pocha') {
+    return createPochaState({
+      config: DEFAULT_POCHA_CONFIG,
+      players: playerInputs,
+      seed,
+      roomCode: state.roomCode,
+    });
+  }
+
+  if (id === 'laronda') {
+    return createRondaState({
+      config: DEFAULT_LA_RONDA_CONFIG,
+      players: playerInputs,
+      seed,
+      roomCode: state.roomCode,
+    });
+  }
+
+  const partyConfigs = {
+    orden: DEFAULT_ORDEN_CONFIG,
+    colores: DEFAULT_COLORES_CONFIG,
+    mayoria: DEFAULT_MAYORIA_CONFIG,
+    escala: { ...DEFAULT_ESCALA_CONFIG, modo: 'online' as const, answerTimeSeconds: 10 as const },
+    matiz: DEFAULT_MATIZ_CONFIG,
+  } as const;
+  if (id in partyConfigs) {
+    const partyId = id as keyof typeof partyConfigs;
+    return createPartyState(
+      { config: partyConfigs[partyId], players: partyPlayers, seed, roomCode: state.roomCode },
+      partyId,
     );
   }
+
+  if (id === 'preciojusto') {
+    return createPrecioJustoState({
+      config: { ...DEFAULT_PRECIO_JUSTO_CONFIG, rounds: 5, answerTimeSeconds: 0 },
+      players,
+      seed,
+      roomCode: state.roomCode,
+    });
+  }
+
+  const roadmapConfigs = {
+    banderas: { ...DEFAULT_BANDERAS_CONFIG, rounds: 5, answerTimeSeconds: 0 },
+    cifras: { ...DEFAULT_CIFRAS_CONFIG, rounds: 5, answerTimeSeconds: 0 },
+    quienloharia: { ...DEFAULT_QUIEN_LO_HARIA_CONFIG, rounds: 5, answerTimeSeconds: 0, competitive: true },
+    completalafrase: { ...DEFAULT_COMPLETA_LA_FRASE_CONFIG, rounds: 5, answerTimeSeconds: 0 },
+  } as const;
+  if (id in roadmapConfigs) {
+    const roadmapId = id as keyof typeof roadmapConfigs;
+    const roadmapInput = { config: roadmapConfigs[roadmapId], players, seed, roomCode: state.roomCode };
+    if (roadmapId === 'banderas') return createBanderasState(roadmapInput);
+    if (roadmapId === 'cifras') return createCifrasState(roadmapInput);
+    if (roadmapId === 'quienloharia') return createQuienLoHariaState(roadmapInput);
+    return createCompletaLaFraseState(roadmapInput);
+  }
+
   return createMusicalState({
     config: { ...DEFAULT_MUSICAL_CONFIG, rounds: 3 },
     players,
@@ -684,7 +796,35 @@ function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
 }
 
 function embeddedGameIsFinished(game: GranRondaEmbeddedGameState): boolean {
-  return game.gameId === 'musical' ? game.status === 'gameEnd' : game.status !== 'playing';
+  if (game.gameId === 'musical') return game.status === 'gameEnd';
+  if (isPartyEmbeddedGame(game)) {
+    return game.phase === 'reveal' && (game.gameId !== 'mayoria' || game.majority?.groups !== null);
+  }
+  if (isRoadmapEmbeddedGame(game)) return game.phase === 'reveal';
+  if (game.gameId === 'preciojusto') return game.phase === 'reveal';
+  if (game.gameId === 'laronda') return game.status === 'roundEnd' || game.status === 'gameEnd';
+  if (game.gameId === 'chinchon') return game.status === 'roundEnd' || game.status === 'gameEnd';
+  if (game.gameId === 'pocha') return game.status === 'roundEnd' || game.status === 'gameEnd';
+  return game.status !== 'playing';
+}
+
+function isPartyEmbeddedGame(game: GranRondaEmbeddedGameState): game is PartyState {
+  return (
+    game.gameId === 'orden' ||
+    game.gameId === 'colores' ||
+    game.gameId === 'mayoria' ||
+    game.gameId === 'escala' ||
+    game.gameId === 'matiz'
+  );
+}
+
+function isRoadmapEmbeddedGame(game: GranRondaEmbeddedGameState): game is RoadmapState {
+  return (
+    game.gameId === 'banderas' ||
+    game.gameId === 'cifras' ||
+    game.gameId === 'quienloharia' ||
+    game.gameId === 'completalafrase'
+  );
 }
 
 function syncMiniPlayerStatesFromEmbedded(state: GranRondaState): void {
@@ -703,6 +843,111 @@ function syncMiniPlayerStatesFromEmbedded(state: GranRondaState): void {
         finished: completed,
         busted: false,
         actions: guesses.length,
+        completedAt: completed ? player.seat : null,
+      };
+    }
+    return;
+  }
+
+  if (isPartyEmbeddedGame(embedded)) {
+    for (const player of activeGranRondaPlayers(state)) {
+      const embeddedPlayer = embedded.players.find((candidate) => candidate.playerId === player.playerId);
+      if (!embeddedPlayer) continue;
+      const submitted =
+        embedded.gameId === 'orden'
+          ? embedded.order?.played.some((played) => played.playerId === player.playerId) ?? false
+          : embedded.gameId === 'colores'
+            ? embedded.colors?.submissions[player.playerId] !== undefined
+          : embedded.gameId === 'mayoria'
+            ? embedded.majority?.submissions[player.playerId] !== undefined
+            : embedded.gameId === 'escala'
+              ? embedded.scale?.guesses[player.playerId] !== undefined || embedded.scale?.cluePlayerId === player.playerId
+              : embedded.matiz?.submissions[player.playerId] !== undefined;
+      state.miniGame.playerStates[player.playerId] = {
+        score: embeddedPlayer.score,
+        lastCard: null,
+        finished: embedded.phase === 'reveal' || submitted,
+        busted: false,
+        actions: submitted ? 1 : 0,
+        completedAt: embedded.phase === 'reveal' ? player.seat : null,
+      };
+    }
+    return;
+  }
+
+  if (isRoadmapEmbeddedGame(embedded)) {
+    for (const player of activeGranRondaPlayers(state)) {
+      const embeddedPlayer = embedded.players.find((candidate) => candidate.playerId === player.playerId);
+      if (!embeddedPlayer) continue;
+      const submitted =
+        embedded.gameId === 'banderas'
+          ? embedded.flags.submissions[player.playerId] !== undefined
+          : embedded.gameId === 'cifras'
+            ? embedded.cifras.submissions[player.playerId] !== undefined ||
+              embedded.cifras.orderSubmissions[player.playerId] !== undefined ||
+              embedded.cifras.choiceSubmissions[player.playerId] !== undefined
+            : embedded.gameId === 'quienloharia'
+              ? embedded.who.submissions[player.playerId] !== undefined
+              : embedded.sentence.submissions[player.playerId] !== undefined;
+      const completed = embedded.phase === 'reveal' || submitted;
+      state.miniGame.playerStates[player.playerId] = {
+        score: embeddedPlayer.score,
+        lastCard: null,
+        finished: completed,
+        busted: false,
+        actions: submitted ? 1 : 0,
+        completedAt: completed ? player.seat : null,
+      };
+    }
+    return;
+  }
+
+  if (embedded.gameId === 'preciojusto') {
+    for (const player of activeGranRondaPlayers(state)) {
+      const embeddedPlayer = embedded.players.find((candidate) => candidate.playerId === player.playerId);
+      if (!embeddedPlayer) continue;
+      const submitted = embedded.price.submissions[player.playerId] !== undefined;
+      const completed = embedded.phase === 'reveal' || submitted;
+      state.miniGame.playerStates[player.playerId] = {
+        score: embeddedPlayer.score,
+        lastCard: null,
+        finished: completed,
+        busted: false,
+        actions: submitted ? 1 : 0,
+        completedAt: completed ? player.seat : null,
+      };
+    }
+    return;
+  }
+
+  if (embedded.gameId === 'laronda') {
+    for (const player of activeGranRondaPlayers(state)) {
+      const embeddedPlayer = embedded.players.find((candidate) => candidate.playerId === player.playerId);
+      if (!embeddedPlayer) continue;
+      const completed = embedded.status !== 'playing';
+      state.miniGame.playerStates[player.playerId] = {
+        score: embeddedPlayer.score,
+        lastCard: null,
+        finished: completed,
+        busted: false,
+        actions: embeddedPlayer.hand.length,
+        completedAt: completed ? player.seat : null,
+      };
+    }
+    return;
+  }
+
+  if (embedded.gameId === 'chinchon' || embedded.gameId === 'pocha') {
+    for (const player of activeGranRondaPlayers(state)) {
+      const embeddedPlayer = embedded.players.find((candidate) => candidate.playerId === player.playerId);
+      if (!embeddedPlayer) continue;
+      const completed = embedded.status !== 'playing';
+      state.miniGame.playerStates[player.playerId] = {
+        score: embeddedPlayer.score,
+        lastCard: null,
+        finished: completed,
+        busted: false,
+        actions: embeddedPlayer.hand.length,
         completedAt: completed ? player.seat : null,
       };
     }
@@ -837,6 +1082,16 @@ function cloneEmbeddedGame(game: GranRondaEmbeddedGameState): GranRondaEmbeddedG
         : null,
       rematchVotes: [...game.rematchVotes],
     };
+  }
+  if (
+    isPartyEmbeddedGame(game) ||
+    isRoadmapEmbeddedGame(game) ||
+    game.gameId === 'preciojusto' ||
+    game.gameId === 'laronda' ||
+    game.gameId === 'chinchon' ||
+    game.gameId === 'pocha'
+  ) {
+    return JSON.parse(JSON.stringify(game)) as GranRondaEmbeddedGameState;
   }
   return {
     ...game,

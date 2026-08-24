@@ -16,6 +16,7 @@ export type RoadmapAvailableAction =
   | 'finishFlags'
   | 'submitNumber'
   | 'submitOrder'
+  | 'submitChoice'
   | 'finishCifras'
   | 'submitWhoVote'
   | 'finishWho'
@@ -98,15 +99,23 @@ export interface CifrasOrderReveal {
   points: number;
 }
 
+export interface CifrasChoiceReveal {
+  selectedOptionId: string | null;
+  correctOptionId: string;
+  correct: boolean;
+  points: number;
+}
+
 export interface CifrasPublic {
   gameId: 'cifras';
   phase: RoadmapPhase;
   questionId: string;
-  kind: 'estimate' | 'order';
+  kind: 'estimate' | 'order' | 'compare';
   prompt: string;
   unit: string;
   definition: string;
   category: string;
+  direction: 'asc' | 'desc' | null;
   items: CifrasItemPublic[];
   referenceValue: number | null;
   itemValues: Record<string, number> | null;
@@ -116,6 +125,7 @@ export interface CifrasPublic {
   submittedPlayerIds: PlayerId[];
   estimates: Record<PlayerId, CifrasEstimateReveal> | null;
   orders: Record<PlayerId, CifrasOrderReveal> | null;
+  choices: Record<PlayerId, CifrasChoiceReveal> | null;
   scoreDeltas: Record<PlayerId, number> | null;
 }
 
@@ -130,6 +140,7 @@ export interface CifrasPlayerViewMe {
   playerId: PlayerId;
   submitted: boolean;
   selectedOrder: string[];
+  selectedChoiceId: string | null;
   availableActions: RoadmapAvailableAction[];
 }
 
@@ -202,6 +213,8 @@ export interface CompletaLaFrasePublic {
   questionId: string;
   prompt: string;
   category: string;
+  author: string | null;
+  source: string | null;
   hint: string | null;
   deadlineAt: number | null;
   canonicalAnswer: string | null;

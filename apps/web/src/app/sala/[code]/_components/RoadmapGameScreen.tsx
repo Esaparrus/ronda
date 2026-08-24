@@ -1,10 +1,18 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from 'react';
 import type {
   BanderasPlayerView,
   CifrasPlayerView,
   CompletaLaFrasePlayerView,
+  GameAction,
   QuienLoHariaPlayerView,
   RoadmapPlayerView,
 } from '@ronda/protocol';
@@ -16,16 +24,28 @@ import { ColorCountdownHeader } from './ColorCountdownHeader';
 
 export interface RoadmapGameScreenProps {
   view: RoadmapPlayerView;
+  onAction?: (action: GameAction) => void;
+  embedded?: boolean;
 }
 
-export function RoadmapGameScreen({ view }: RoadmapGameScreenProps) {
-  if (view.gameId === 'banderas') return <BanderasScreen view={view} />;
-  if (view.gameId === 'cifras') return <CifrasScreen view={view} />;
-  if (view.gameId === 'quienloharia') return <QuienLoHariaScreen view={view} />;
-  return <CompletaLaFraseScreen view={view} />;
+type RoadmapActionSender = (action: GameAction) => void;
+
+function sendRoadmapAction(onAction: RoadmapActionSender | undefined, action: GameAction): void {
+  if (onAction) {
+    onAction(action);
+    return;
+  }
+  void useRondaStore.getState().sendAction(action);
 }
 
-function BanderasScreen({ view }: { view: BanderasPlayerView }) {
+export function RoadmapGameScreen({ view, onAction }: RoadmapGameScreenProps) {
+  if (view.gameId === 'banderas') return <BanderasScreen view={view} onAction={onAction} />;
+  if (view.gameId === 'cifras') return <CifrasScreen view={view} onAction={onAction} />;
+  if (view.gameId === 'quienloharia') return <QuienLoHariaScreen view={view} onAction={onAction} />;
+  return <CompletaLaFraseScreen view={view} onAction={onAction} />;
+}
+
+function BanderasScreen({ view, onAction }: { view: BanderasPlayerView; onAction?: RoadmapActionSender }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const canSubmit = view.me.availableActions.includes('submitFlag');
@@ -43,7 +63,7 @@ function BanderasScreen({ view }: { view: BanderasPlayerView }) {
 
   function confirmAnswer() {
     if (!selectedOptionId || !canSubmit || pendingAction) return;
-    void useRondaStore.getState().sendAction({
+    sendRoadmapAction(onAction, {
       type: 'submitFlag',
       optionId: selectedOptionId,
     });
@@ -109,12 +129,12 @@ function BanderasScreen({ view }: { view: BanderasPlayerView }) {
             ) : null}
           </div>
         ) : (
-          <BanderasReveal view={view} canAdvance={canAdvance} pending={pendingAction} />
+          <BanderasReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
         )}
         {canFinish ? (
           <Button
             variant="ghost"
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'finishFlags' })}
+            onClick={() => sendRoadmapAction(onAction, { type: 'finishFlags' })}
             loading={pendingAction}
           >
             Revelar ahora
@@ -130,10 +150,12 @@ function BanderasReveal({
   view,
   canAdvance,
   pending,
+  onAction,
 }: {
   view: BanderasPlayerView;
   canAdvance: boolean;
   pending: boolean;
+  onAction?: RoadmapActionSender;
 }) {
   const correct = view.flags.correctOptionId;
   const myAnswer = view.me.selectedOptionId;
@@ -164,38 +186,53 @@ function BanderasReveal({
           );
         })}
       </div>
-      <RevealNextAction canAdvance={canAdvance} pending={pending} />
+      <RevealNextAction canAdvance={canAdvance} pending={pending} onAction={onAction} />
     </section>
   );
 }
 
-function CifrasScreen({ view }: { view: CifrasPlayerView }) {
+function CifrasScreen({ view, onAction }: { view: CifrasPlayerView; onAction?: RoadmapActionSender }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [numberInput, setNumberInput] = useState('');
   const [order, setOrder] = useState<string[]>([]);
+  const [choiceId, setChoiceId] = useState<string | null>(null);
   const questionId = view.cifras.questionId;
-  const canSubmit = view.me.availableActions.includes(
-    view.cifras.kind === 'estimate' ? 'submitNumber' : 'submitOrder',
-  );
+  const canSubmit =
+    view.cifras.kind === 'estimate'
+      ? view.me.availableActions.includes('submitNumber')
+      : view.cifras.kind === 'order'
+        ? view.me.availableActions.includes('submitOrder')
+        : view.me.availableActions.includes('submitChoice');
   const canFinish = view.me.availableActions.includes('finishCifras');
   const canAdvance = view.me.availableActions.includes('nextRound');
 
   useEffect(() => {
     setNumberInput('');
-    setOrder(view.me.selectedOrder);
-  }, [questionId, view.me.selectedOrder]);
+    setOrder(
+      view.me.selectedOrder.length > 0
+        ? view.me.selectedOrder
+        : initialOrderFor(view.cifras.items, questionId),
+    );
+    setChoiceId(view.me.selectedChoiceId);
+  }, [questionId, view.me.selectedChoiceId, view.me.selectedOrder, view.cifras.items]);
 
   function submitEstimate(event: FormEvent) {
     event.preventDefault();
     const value = Number(numberInput.replace(',', '.'));
     if (!Number.isFinite(value) || value < 0 || !canSubmit) return;
-    void useRondaStore.getState().sendAction({ type: 'submitNumber', value });
+    sendRoadmapAction(onAction, { type: 'submitNumber', value });
   }
 
   function submitOrder() {
     if (!canSubmit || order.length !== view.cifras.items.length) return;
-    void useRondaStore.getState().sendAction({ type: 'submitOrder', order });
+    sendRoadmapAction(onAction, { type: 'submitOrder', order });
+  }
+
+  function submitChoice(optionId: string) {
+    if (!canSubmit || pendingAction) return;
+    setChoiceId(optionId);
+    sendRoadmapAction(onAction, { type: 'submitChoice', optionId });
   }
 
   return (
@@ -206,13 +243,33 @@ function CifrasScreen({ view }: { view: CifrasPlayerView }) {
       players={view.players}
       myPlayerId={view.me.playerId}
       submittedPlayerIds={view.cifras.submittedPlayerIds}
+      mainClassName={
+        view.cifras.kind === 'order'
+          ? 'w-full gap-2 overflow-hidden px-3 py-2 sm:gap-3 sm:px-4 sm:py-3'
+          : 'gap-5 overflow-y-auto px-4 py-5'
+      }
     >
-      <section className="flex w-full max-w-2xl flex-col gap-5">
-        <div className="surface-panel flex flex-col gap-2 p-5 text-center">
-          <p className="eyebrow">{view.cifras.kind === 'estimate' ? 'Estima' : 'Ordena'}</p>
-          <h1 className="font-display text-32 leading-tight text-hueso">{view.cifras.prompt}</h1>
-          <p className="text-14 text-humo">{view.cifras.definition}</p>
-          <p className="font-mono text-16 text-oro">{view.cifras.unit}</p>
+      <section
+        className={`flex w-full max-w-2xl min-h-0 flex-col ${view.cifras.kind === 'order' ? 'gap-2' : 'gap-5'}`}
+      >
+        <div
+          className={`surface-panel flex shrink-0 flex-col gap-1.5 p-4 text-center sm:p-5 ${view.cifras.kind === 'order' ? 'gap-1.5' : 'gap-2'}`}
+        >
+          <p className="eyebrow">
+            {view.cifras.kind === 'estimate'
+              ? 'Estima'
+              : view.cifras.kind === 'order'
+                ? 'Ordena'
+                : 'Elige una'}
+          </p>
+          <h1 className="font-display text-[clamp(1.35rem,4.8vw,2rem)] font-normal leading-tight text-hueso">
+            {view.cifras.prompt}
+          </h1>
+          {view.cifras.kind === 'order' ? (
+            <OrderDirectionBadge direction={view.cifras.direction ?? 'asc'} />
+          ) : null}
+          <p className="text-13 text-humo sm:text-14">{view.cifras.definition}</p>
+          <p className="font-mono text-14 text-oro sm:text-16">{view.cifras.unit}</p>
         </div>
         {view.phase === 'input' && view.cifras.kind === 'estimate' ? (
           <form className="flex flex-col gap-3" onSubmit={submitEstimate}>
@@ -246,13 +303,21 @@ function CifrasScreen({ view }: { view: CifrasPlayerView }) {
             onSubmit={submitOrder}
           />
         ) : null}
+        {view.phase === 'input' && view.cifras.kind === 'compare' ? (
+          <ChoicePicker
+            items={view.cifras.items}
+            selectedOptionId={choiceId}
+            disabled={!canSubmit || pendingAction}
+            onSelect={submitChoice}
+          />
+        ) : null}
         {view.phase === 'reveal' ? (
-          <CifrasReveal view={view} canAdvance={canAdvance} pending={pendingAction} />
+          <CifrasReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
         ) : null}
         {canFinish ? (
           <Button
             variant="ghost"
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'finishCifras' })}
+            onClick={() => sendRoadmapAction(onAction, { type: 'finishCifras' })}
             loading={pendingAction}
           >
             Revelar ahora
@@ -273,62 +338,242 @@ function OrderPicker({
 }: {
   items: CifrasPlayerView['cifras']['items'];
   order: string[];
-  setOrder: (value: string[]) => void;
+  setOrder: Dispatch<SetStateAction<string[]>>;
   disabled: boolean;
   onSubmit: () => void;
 }) {
   const byId = new Map(items.map((item) => [item.id, item.label]));
-  const remaining = items.filter((item) => !order.includes(item.id));
+  const listRef = useRef<HTMLDivElement>(null);
+  const orderRef = useRef(order);
+  const draggingIdRef = useRef<string | null>(null);
+  const lastTargetRef = useRef<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
+
+  function moveItem(itemId: string, targetId: string, after: boolean) {
+    if (itemId === targetId) return;
+    setOrder((current) => reorderAround(current, itemId, targetId, after));
+  }
+
+  function moveBy(itemId: string, offset: -1 | 1) {
+    setOrder((current) => {
+      const index = current.indexOf(itemId);
+      const targetIndex = index + offset;
+      if (index < 0 || targetIndex < 0 || targetIndex >= current.length) return current;
+      const next = [...current];
+      const currentItem = next[index];
+      const targetItem = next[targetIndex];
+      if (currentItem === undefined || targetItem === undefined) return current;
+      next[index] = targetItem;
+      next[targetIndex] = currentItem;
+      return next;
+    });
+  }
+
+  function stopDragging() {
+    draggingIdRef.current = null;
+    lastTargetRef.current = null;
+    setDraggingId(null);
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const itemId = draggingIdRef.current;
+    if (!itemId || disabled) return;
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-order-card]');
+    const targetId = target?.dataset.orderCard;
+    if (!targetId || targetId === itemId || targetId === lastTargetRef.current) return;
+    const rect = target.getBoundingClientRect();
+    lastTargetRef.current = targetId;
+    moveItem(itemId, targetId, event.clientY > rect.top + rect.height / 2);
+  }
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="rounded-2xl border border-linea bg-mesa/70 p-3">
-        <p className="mb-2 text-12 uppercase tracking-wider text-humo">Tu orden</p>
-        <div className="flex flex-col gap-2">
-          {order.length === 0 ? (
-            <p className="px-2 py-3 text-14 text-humo">Toca las tarjetas de abajo.</p>
-          ) : null}
-          {order.map((id, index) => (
-            <button
-              key={id}
-              type="button"
-              disabled={disabled}
-              onClick={() => setOrder(order.filter((item) => item !== id))}
-              className="flex items-center gap-3 rounded-xl border border-oro/50 bg-oro/10 px-3 py-3 text-left text-14 text-hueso"
-            >
-              <span className="font-mono text-oro">{index + 1}</span>
-              <span>{byId.get(id) ?? id}</span>
-            </button>
-          ))}
-        </div>
+    <div className="order-picker flex min-h-0 flex-1 flex-col gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-3 px-1 text-11 text-humo sm:text-12">
+        <span className="font-semibold uppercase tracking-[0.14em] text-oro">Tu orden</span>
+        <span>Arrastra · desliza · usa ↑ ↓</span>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {remaining.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            disabled={disabled}
-            onClick={() => setOrder([...order, item.id])}
-            className="min-h-14 rounded-2xl border border-linea bg-mesa/80 px-4 text-left text-14 font-semibold text-hueso hover:border-oro/60 disabled:opacity-50"
+      <div
+        ref={listRef}
+        className="order-picker__list flex min-h-0 flex-1 flex-col gap-1.5"
+        role="list"
+        aria-label="Tarjetas para ordenar"
+      >
+        {order.map((id, index) => (
+          <div
+            key={id}
+            data-order-card={id}
+            role="listitem"
+            tabIndex={disabled ? -1 : 0}
+            draggable={!disabled}
+            aria-roledescription="tarjeta reordenable"
+            aria-label={`${byId.get(id) ?? id}. Posición ${index + 1} de ${order.length}. Usa las flechas o arrastra para moverla.`}
+            className={`order-card flex min-h-0 flex-1 items-center gap-2 rounded-2xl border px-2.5 py-1.5 text-left transition-[transform,box-shadow,border-color,background-color] sm:gap-3 sm:px-3 ${draggingId === id ? 'order-card--dragging' : ''}`}
+            onDragStart={(event) => {
+              draggingIdRef.current = id;
+              setDraggingId(id);
+              event.dataTransfer.effectAllowed = 'move';
+              event.dataTransfer.setData('text/plain', id);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const sourceId = event.dataTransfer.getData('text/plain') || draggingIdRef.current;
+              const target = event.currentTarget.getBoundingClientRect();
+              if (sourceId) moveItem(sourceId, id, event.clientY > target.top + target.height / 2);
+              stopDragging();
+            }}
+            onDragEnd={stopDragging}
+            onPointerDown={(event) => {
+              if (disabled || event.pointerType === 'mouse') return;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              draggingIdRef.current = id;
+              setDraggingId(id);
+              event.preventDefault();
+            }}
+            onPointerMove={handlePointerMove}
+            onPointerUp={stopDragging}
+            onPointerCancel={stopDragging}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                event.preventDefault();
+                moveBy(id, event.key === 'ArrowUp' ? -1 : 1);
+              }
+            }}
           >
-            {item.label}
-          </button>
+            <span className="order-card__rank flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono text-13 font-bold sm:h-8 sm:w-8 sm:text-14">
+              {index + 1}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-13 font-semibold text-hueso sm:text-14">
+              {byId.get(id) ?? id}
+            </span>
+            <span className="order-card__grip shrink-0 text-17 leading-none" aria-hidden="true">
+              ⠿
+            </span>
+            <span className="flex shrink-0 gap-1">
+              <button
+                type="button"
+                className="order-card__move"
+                disabled={disabled || index === 0}
+                aria-label={`Subir ${byId.get(id) ?? id}`}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => moveBy(id, -1)}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="order-card__move"
+                disabled={disabled || index === order.length - 1}
+                aria-label={`Bajar ${byId.get(id) ?? id}`}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => moveBy(id, 1)}
+              >
+                ↓
+              </button>
+            </span>
+          </div>
         ))}
       </div>
-      <Button onClick={onSubmit} disabled={disabled || order.length !== items.length}>
+      <Button
+        className="shrink-0"
+        onClick={onSubmit}
+        disabled={disabled || order.length !== items.length}
+      >
         Bloquear este orden
       </Button>
     </div>
   );
 }
 
+function ChoicePicker({
+  items,
+  selectedOptionId,
+  disabled,
+  onSelect,
+}: {
+  items: CifrasPlayerView['cifras']['items'];
+  selectedOptionId: string | null;
+  disabled: boolean;
+  onSelect: (optionId: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-center text-12 text-humo">Toca una tarjeta para bloquear tu respuesta.</p>
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            disabled={disabled}
+            aria-pressed={selectedOptionId === item.id}
+            onClick={() => onSelect(item.id)}
+            className={`flex min-h-28 flex-col items-center justify-center rounded-3xl border px-3 py-4 text-center text-16 font-semibold transition-[transform,background-color,border-color,box-shadow] active:scale-[0.985] disabled:opacity-55 sm:min-h-32 sm:text-18 ${selectedOptionId === item.id ? 'border-oro bg-oro/15 text-oro shadow-[0_0_0_3px_rgb(241_183_74_/_0.18)]' : 'border-linea bg-mesa/80 text-hueso hover:border-oro/60'}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {selectedOptionId ? (
+        <p className="text-center text-13 font-semibold text-equipo-turquesa">✓ Respuesta bloqueada</p>
+      ) : null}
+    </div>
+  );
+}
+
+function OrderDirectionBadge({ direction }: { direction: 'asc' | 'desc' }) {
+  const ascending = direction === 'asc';
+  return (
+    <div className="order-direction mx-auto inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-left">
+      <span className="order-direction__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-20 font-bold" aria-hidden="true">
+        {ascending ? '↑' : '↓'}
+      </span>
+      <span className="text-12 leading-tight text-humo sm:text-13">
+        de <strong className="font-extrabold text-oro">{ascending ? 'MENOR A MAYOR' : 'MAYOR A MENOR'}</strong>
+      </span>
+    </div>
+  );
+}
+
+function initialOrderFor(items: CifrasPlayerView['cifras']['items'], seed: string): string[] {
+  const next = items.map((item) => item.id);
+  let hash = 0;
+  for (const character of seed) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    const target = hash % (index + 1);
+    const currentItem = next[index];
+    const targetItem = next[target];
+    if (currentItem === undefined || targetItem === undefined) continue;
+    next[index] = targetItem;
+    next[target] = currentItem;
+  }
+  return next;
+}
+
+function reorderAround(order: string[], itemId: string, targetId: string, after: boolean): string[] {
+  const next = order.filter((id) => id !== itemId);
+  const targetIndex = next.indexOf(targetId);
+  if (targetIndex < 0) return order;
+  next.splice(targetIndex + (after ? 1 : 0), 0, itemId);
+  return next;
+}
+
 function CifrasReveal({
   view,
   canAdvance,
   pending,
+  onAction,
 }: {
   view: CifrasPlayerView;
   canAdvance: boolean;
   pending: boolean;
+  onAction?: RoadmapActionSender;
 }) {
   if (view.cifras.kind === 'estimate') {
     return (
@@ -364,7 +609,58 @@ function CifrasReveal({
             );
           })}
         </div>
-        <RevealNextAction canAdvance={canAdvance} pending={pending} />
+        <RevealNextAction canAdvance={canAdvance} pending={pending} onAction={onAction} />
+      </section>
+    );
+  }
+
+  if (view.cifras.kind === 'compare') {
+    const result = view.cifras.choices?.[view.me.playerId] ?? Object.values(view.cifras.choices ?? {})[0];
+    const correctOptionId = result?.correctOptionId;
+    const correctLabel = view.cifras.items.find((item) => item.id === correctOptionId)?.label ?? '—';
+    return (
+      <section className="flex flex-col gap-4">
+        <div className="rounded-3xl border border-oro/60 bg-oro/10 px-5 py-4 text-center">
+          <p className="eyebrow">La respuesta era</p>
+          <p className="mt-1 font-display text-28 text-oro">{correctLabel}</p>
+          <p className="mt-1 text-13 text-humo">Cada acierto suma 1 punto.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {view.cifras.items.map((item) => (
+            <div
+              key={item.id}
+              className={`rounded-2xl border px-3 py-3 text-center ${item.id === correctOptionId ? 'border-equipo-turquesa bg-equipo-turquesa/15' : 'border-linea bg-mesa/75'}`}
+            >
+              <p className="text-13 font-semibold text-hueso">{item.label}</p>
+              <p className="mt-1 font-mono text-13 text-oro">
+                {formatNumber(view.cifras.itemValues?.[item.id])} {view.cifras.unit}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const playerResult = view.cifras.choices?.[player.playerId];
+            const selectedLabel = view.cifras.items.find(
+              (item) => item.id === playerResult?.selectedOptionId,
+            )?.label;
+            return (
+              <div
+                key={player.playerId}
+                className="rounded-2xl border border-linea bg-mesa/75 px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate text-14 font-semibold text-hueso">{player.nick}</span>
+                  <span className="font-mono text-20 text-oro">+{playerResult?.points ?? 0}</span>
+                </div>
+                <p className="mt-1 text-12 text-humo">
+                  {selectedLabel ? `Eligió ${selectedLabel}` : 'Sin respuesta'}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        <RevealNextAction canAdvance={canAdvance} pending={pending} onAction={onAction} />
       </section>
     );
   }
@@ -415,12 +711,12 @@ function CifrasReveal({
           );
         })}
       </div>
-      <RevealNextAction canAdvance={canAdvance} pending={pending} />
+      <RevealNextAction canAdvance={canAdvance} pending={pending} onAction={onAction} />
     </section>
   );
 }
 
-function QuienLoHariaScreen({ view }: { view: QuienLoHariaPlayerView }) {
+function QuienLoHariaScreen({ view, onAction }: { view: QuienLoHariaPlayerView; onAction?: RoadmapActionSender }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const canSubmit = view.me.availableActions.includes('submitWhoVote');
@@ -451,7 +747,7 @@ function QuienLoHariaScreen({ view }: { view: QuienLoHariaPlayerView }) {
                   disabled={!canSubmit || pendingAction}
                   aria-pressed={view.me.selectedPlayerId === player.playerId}
                   onClick={() =>
-                    void useRondaStore.getState().sendAction({
+                    sendRoadmapAction(onAction, {
                       type: 'submitWhoVote',
                       targetPlayerId: player.playerId,
                     })
@@ -467,12 +763,12 @@ function QuienLoHariaScreen({ view }: { view: QuienLoHariaPlayerView }) {
               ))}
           </div>
         ) : (
-          <WhoReveal view={view} canAdvance={canAdvance} pending={pendingAction} />
+          <WhoReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
         )}
         {canFinish ? (
           <Button
             variant="ghost"
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'finishWho' })}
+            onClick={() => sendRoadmapAction(onAction, { type: 'finishWho' })}
             loading={pendingAction}
           >
             Revelar ahora
@@ -488,10 +784,12 @@ function WhoReveal({
   view,
   canAdvance,
   pending,
+  onAction,
 }: {
   view: QuienLoHariaPlayerView;
   canAdvance: boolean;
   pending: boolean;
+  onAction?: RoadmapActionSender;
 }) {
   return (
     <section className="flex flex-col gap-4">
@@ -514,12 +812,12 @@ function WhoReveal({
           Los votos quedan guardados hasta la clasificación final.
         </div>
       )}
-      <RevealNextAction canAdvance={canAdvance} pending={pending} />
+      <RevealNextAction canAdvance={canAdvance} pending={pending} onAction={onAction} />
     </section>
   );
 }
 
-function CompletaLaFraseScreen({ view }: { view: CompletaLaFrasePlayerView }) {
+function CompletaLaFraseScreen({ view, onAction }: { view: CompletaLaFrasePlayerView; onAction?: RoadmapActionSender }) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [answer, setAnswer] = useState('');
@@ -533,7 +831,7 @@ function CompletaLaFraseScreen({ view }: { view: CompletaLaFrasePlayerView }) {
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!answer.trim() || !canSubmit) return;
-    void useRondaStore.getState().sendAction({ type: 'submitSentence', answer: answer.trim() });
+    sendRoadmapAction(onAction, { type: 'submitSentence', answer: answer.trim() });
   }
 
   return (
@@ -547,7 +845,7 @@ function CompletaLaFraseScreen({ view }: { view: CompletaLaFrasePlayerView }) {
     >
       <section className="flex w-full max-w-2xl flex-col gap-5">
         <div className="surface-panel px-5 py-7 text-center">
-          <p className="eyebrow">{view.sentence.category}</p>
+          <p className="eyebrow">{sentenceCategoryLabel(view.sentence.category)}</p>
           <h1 className="mt-2 font-display text-32 leading-tight text-hueso">
             {view.sentence.prompt}
           </h1>
@@ -572,7 +870,7 @@ function CompletaLaFraseScreen({ view }: { view: CompletaLaFrasePlayerView }) {
                 type="button"
                 variant="ghost"
                 onClick={() =>
-                  void useRondaStore.getState().sendAction({ type: 'useSentenceHint' })
+                  sendRoadmapAction(onAction, { type: 'useSentenceHint' })
                 }
                 loading={pendingAction}
               >
@@ -586,12 +884,12 @@ function CompletaLaFraseScreen({ view }: { view: CompletaLaFrasePlayerView }) {
             ) : null}
           </form>
         ) : (
-          <SentenceReveal view={view} canAdvance={canAdvance} pending={pendingAction} />
+          <SentenceReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
         )}
         {canFinish ? (
           <Button
             variant="ghost"
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'finishSentence' })}
+            onClick={() => sendRoadmapAction(onAction, { type: 'finishSentence' })}
             loading={pendingAction}
           >
             Revelar ahora
@@ -607,10 +905,12 @@ function SentenceReveal({
   view,
   canAdvance,
   pending,
+  onAction,
 }: {
   view: CompletaLaFrasePlayerView;
   canAdvance: boolean;
   pending: boolean;
+  onAction?: RoadmapActionSender;
 }) {
   return (
     <section className="flex flex-col gap-4">
@@ -621,6 +921,12 @@ function SentenceReveal({
         </p>
         {view.sentence.hint ? (
           <p className="mt-1 text-13 text-humo">Pista: {view.sentence.hint}</p>
+        ) : null}
+        {view.sentence.author || view.sentence.source ? (
+          <p className="mt-3 text-12 text-humo">
+            {view.sentence.author ?? 'Frase popular'}
+            {view.sentence.source ? ` · ${view.sentence.source}` : ''}
+          </p>
         ) : null}
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -643,15 +949,23 @@ function SentenceReveal({
           );
         })}
       </div>
-      <RevealNextAction canAdvance={canAdvance} pending={pending} />
+      <RevealNextAction canAdvance={canAdvance} pending={pending} onAction={onAction} />
     </section>
   );
 }
 
-function RevealNextAction({ canAdvance, pending }: { canAdvance: boolean; pending: boolean }) {
+function RevealNextAction({
+  canAdvance,
+  pending,
+  onAction,
+}: {
+  canAdvance: boolean;
+  pending: boolean;
+  onAction?: RoadmapActionSender;
+}) {
   return canAdvance ? (
     <Button
-      onClick={() => void useRondaStore.getState().sendAction({ type: 'nextRound' })}
+      onClick={() => sendRoadmapAction(onAction, { type: 'nextRound' })}
       loading={pending}
     >
       Siguiente ronda
@@ -722,6 +1036,25 @@ function formatNumber(value: number | null | undefined): string {
   return value === null || value === undefined
     ? '—'
     : value.toLocaleString('es-ES', { maximumFractionDigits: 2 });
+}
+
+function sentenceCategoryLabel(category: string): string {
+  switch (category) {
+    case 'refran':
+      return 'Refrán';
+    case 'expresion':
+      return 'Expresión';
+    case 'cita':
+      return 'Cita célebre';
+    case 'historica':
+      return 'Frase histórica';
+    case 'humor':
+      return 'Humor';
+    case 'meme':
+      return 'Meme / cultura popular';
+    default:
+      return category;
+  }
 }
 
 function formatPercent(value: number | null | undefined): string {
