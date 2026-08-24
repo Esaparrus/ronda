@@ -1280,8 +1280,9 @@ summary {
 /* Cinquillo siempre tiene diez lugares por palo. Las cuatro calles evitan
  * que las cartas salten de fila al crecer la partida y permiten ver las 40. */
 .cinquillo-table {
-  --cinquillo-card-width: 32px;
-  --cinquillo-label-width: 42px;
+  --cinquillo-card-width: 33px;
+  --cinquillo-card-overlap: -6px;
+  --cinquillo-label-width: 52px;
   display: grid;
   width: 100%;
   height: 100%;
@@ -1292,7 +1293,8 @@ summary {
 
 .cinquillo-table--large {
   --cinquillo-card-width: clamp(42px, 4.6vw, 54px);
-  --cinquillo-label-width: clamp(48px, 6vw, 68px);
+  --cinquillo-card-overlap: -9px;
+  --cinquillo-label-width: clamp(56px, 6vw, 68px);
   gap: clamp(3px, 0.6vw, 7px);
   padding-top: 20px;
 }
@@ -1306,9 +1308,20 @@ summary {
 
 .cinquillo-table__suit {
   overflow: hidden;
-  color: var(--color-humo);
-  font-size: 10px;
+  box-sizing: border-box;
+  width: calc(100% - 2px);
+  padding: 3px;
+  border: 1px solid rgb(255 255 255 / 0.34);
+  border-radius: 999px;
+  background: rgb(5 48 34 / 0.82);
+  box-shadow: 0 2px 7px rgb(0 0 0 / 0.2);
+  color: #fffaf0;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.1;
+  text-align: center;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.7);
   white-space: nowrap;
 }
 
@@ -1317,18 +1330,22 @@ summary {
 }
 
 .cinquillo-table__rail {
-  display: grid;
+  display: flex;
   height: 100%;
   min-width: 0;
   align-items: center;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  justify-content: center;
 }
 
 .cinquillo-table__slot {
   display: block;
   width: var(--cinquillo-card-width);
+  flex: 0 0 var(--cinquillo-card-width);
   aspect-ratio: 2 / 3;
-  justify-self: center;
+}
+
+.cinquillo-table__slot + .cinquillo-table__slot {
+  margin-left: var(--cinquillo-card-overlap);
 }
 
 .cinquillo-table__slot > svg {
@@ -2572,7 +2589,7 @@ summary {
 @media (prefers-reduced-motion: reduce) {
   .gran-ronda-dice-roll,
   .gran-ronda-die-roll,
-  .gran-ronda-turn-roll__panel,
+  .gran-ronda-turn-roll__copy,
   .gran-ronda-turn-roll__die,
   .gran-ronda-roulette-dots,
   .gran-ronda-roulette-icon,
@@ -2632,8 +2649,10 @@ summary {
 }
 
 .gran-ronda-dice-roll {
+  border-color: rgb(255 255 255 / 0.88);
+  background: radial-gradient(circle at 50% 35%, rgb(40 93 62 / 0.72), transparent 58%), #10251a;
   color: #fffdf7;
-  animation: gran-ronda-dice-roll-in 1900ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  animation: gran-ronda-dice-roll-in 2350ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
 }
 
 .gran-ronda-dice-roll > p {
@@ -2697,83 +2716,76 @@ summary {
   position: fixed;
   z-index: 85;
   inset: 0;
-  display: grid;
-  place-items: center;
-  overflow-y: auto;
-  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  overflow: hidden;
 }
 
 .gran-ronda-turn-roll__veil {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 45%, rgb(255 205 64 / 0.14), transparent 18rem),
-    rgb(13 24 18 / 0.72);
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
+    radial-gradient(circle at 50% 43%, rgb(255 213 70 / 0.24), transparent 15rem),
+    rgb(8 19 13 / 0.82);
+  -webkit-backdrop-filter: blur(7px) saturate(0.72);
+  backdrop-filter: blur(7px) saturate(0.72);
 }
 
-.gran-ronda-turn-roll__panel {
-  position: relative;
+.gran-ronda-turn-roll__tap-area {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
   display: flex;
-  width: min(100%, 22rem);
-  max-height: calc(100dvh - 2rem);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: #fffdf7;
+  padding: max(1.25rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1.25rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  text-align: center;
+  cursor: pointer;
+}
+
+.gran-ronda-turn-roll__copy {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
-  overflow-y: auto;
-  border: 1px solid rgb(255 255 255 / 0.24);
-  border-radius: 30px;
-  background: rgb(25 40 31 / 0.94);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.14),
-    0 24px 70px rgb(0 0 0 / 0.46);
-  padding: 22px 18px 18px;
-  text-align: center;
+  gap: 13px;
   animation: gran-ronda-turn-roll-in 380ms cubic-bezier(0.2, 0.85, 0.25, 1.12) both;
 }
 
-.gran-ronda-turn-roll__panel h2 {
-  color: #fffdf7;
-}
-
-.gran-ronda-turn-roll__panel > .eyebrow,
-.gran-ronda-turn-roll__button {
+.gran-ronda-turn-roll__copy .eyebrow {
   color: #ffd44f;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 0.55);
 }
 
-.gran-ronda-turn-roll__button {
-  display: flex;
-  min-width: 9.5rem;
-  min-height: 8.5rem;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 10px;
-  border: 0;
-  border-radius: 26px;
-  margin-top: 4px;
-  background: radial-gradient(circle at 50% 35%, rgb(255 219 95 / 0.2), transparent 66%);
-  color: var(--color-oro);
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  transition:
-    background 160ms ease,
-    transform 160ms ease;
+.gran-ronda-turn-roll__copy strong {
+  color: #fffdf7;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 7vw, 2.15rem);
+  line-height: 1;
+  text-shadow: 0 3px 16px rgb(0 0 0 / 0.68);
 }
 
-.gran-ronda-turn-roll__button:hover:not(:disabled),
-.gran-ronda-turn-roll__button:focus-visible {
-  background: radial-gradient(circle at 50% 35%, rgb(255 219 95 / 0.3), transparent 68%);
-  outline: 2px solid var(--color-oro);
-  outline-offset: 2px;
-  transform: scale(1.025);
+.gran-ronda-turn-roll__copy small {
+  color: rgb(255 253 247 / 0.78);
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.72);
 }
 
-.gran-ronda-turn-roll__button:disabled {
+.gran-ronda-turn-roll__tap-area:hover:not(:disabled) .gran-ronda-turn-roll__die,
+.gran-ronda-turn-roll__tap-area:focus-visible .gran-ronda-turn-roll__die {
+  filter: drop-shadow(0 16px 20px rgb(0 0 0 / 0.42)) drop-shadow(0 0 13px #ffd44f);
+}
+
+.gran-ronda-turn-roll__tap-area:focus-visible {
+  outline: 3px solid #ffd44f;
+  outline-offset: -7px;
+}
+
+.gran-ronda-turn-roll__tap-area:disabled {
   cursor: wait;
-  opacity: 0.72;
+  opacity: 0.78;
 }
 
 .gran-ronda-turn-roll__die {
@@ -2787,8 +2799,23 @@ summary {
 }
 
 .gran-ronda-turn-roll__powerups {
-  width: 100%;
-  margin-top: 6px;
+  position: absolute;
+  z-index: 3;
+  right: max(0.85rem, env(safe-area-inset-right));
+  bottom: max(0.85rem, env(safe-area-inset-bottom));
+  left: max(0.85rem, env(safe-area-inset-left));
+  width: min(22rem, calc(100% - 1.7rem));
+  max-height: 42dvh;
+  overflow-y: auto;
+  margin-inline: auto;
+}
+
+.gran-ronda-dice-overlay {
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 48%, rgb(255 207 67 / 0.2), transparent 48%), rgb(5 13 9 / 0.72);
+  -webkit-backdrop-filter: blur(3px) saturate(0.72);
+  backdrop-filter: blur(3px) saturate(0.72);
 }
 
 @keyframes gran-ronda-roulette-pulse {
@@ -3333,6 +3360,12 @@ summary {
     0 0 0 6px rgb(255 199 54 / 0.72),
     0 7px 18px rgb(40 86 38 / 0.38);
   animation: gran-ronda-stamp-breathe 1.8s ease-in-out infinite;
+}
+
+.gran-ronda-space--stamp .gran-ronda-space__face > svg {
+  width: 72%;
+  height: 72%;
+  filter: drop-shadow(0 1px 1px rgb(255 255 255 / 0.45));
 }
 
 .gran-ronda-space--option {
@@ -4035,6 +4068,50 @@ summary {
   font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
   font-size: 19px;
   box-shadow: 0 3px 8px rgb(65 41 97 / 0.12);
+}
+
+.gran-ronda-shop__merchant {
+  display: flex;
+  min-height: 126px;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid rgb(126 85 172 / 0.28);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 24% 45%, rgb(255 210 77 / 0.2), transparent 42%),
+    rgb(255 255 255 / 0.42);
+  padding: 8px 10px 8px 0;
+}
+
+.gran-ronda-shop__merchant-image {
+  width: clamp(118px, 34vw, 158px);
+  height: 132px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 9px 9px rgb(60 36 18 / 0.22));
+}
+
+@keyframes gran-ronda-personal-result-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.gran-ronda-personal-result {
+  animation: gran-ronda-personal-result-in 420ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@media (max-width: 370px) {
+  .gran-ronda-shop__merchant-image {
+    width: 105px;
+  }
 }
 
 .gran-ronda-game-header,

@@ -53,6 +53,11 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
   return (
     <main className="app-page safe-page mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-5">
       <header className="flex flex-col items-center gap-2 text-center">
+        {view.gameId === 'sieteymedia' ? (
+          <p className="font-mono text-11 uppercase tracking-[0.16em] text-oro">
+            Resultado definitivo · no es un fin de ronda
+          </p>
+        ) : null}
         <h1 className="font-display text-28 leading-display text-hueso">Partida terminada</h1>
         {view.gameId === 'orden' ? (
           <p className="text-20 text-hueso">La cuadrilla ha completado {view.round} rondas</p>
@@ -64,6 +69,12 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
         <p className="text-14 text-humo">
           {view.round} {view.round === 1 ? 'ronda' : 'rondas'}
         </p>
+        {view.gameId === 'sieteymedia' ? (
+          <p className="max-w-sm rounded-2xl border border-oro/30 bg-oro/10 px-3 py-2 text-13 leading-relaxed text-hueso">
+            Esta clasificación ya es la final. «Nueva partida» empieza otro Siete y media desde
+            cero; «Salir» vuelve a la portada.
+          </p>
+        ) : null}
       </header>
 
       {!isScaleGroups ? (
@@ -100,7 +111,10 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
                 <span className="ml-2 font-mono text-18 text-oro">{group.score}</span>
                 <span className="mt-1 block text-12 text-humo">
                   {group.playerIds
-                    .map((playerId) => view.players.find((player) => player.playerId === playerId)?.nick)
+                    .map(
+                      (playerId) =>
+                        view.players.find((player) => player.playerId === playerId)?.nick,
+                    )
                     .filter((nick): nick is string => Boolean(nick))
                     .join(', ')}
                 </span>
@@ -127,7 +141,11 @@ export function GameEndScreen({ view }: GameEndScreenProps) {
           onClick={handleToggleRematch}
           loading={voting}
         >
-          {iVoted ? 'Quitar voto de revancha' : 'Revancha'}
+          {iVoted
+            ? 'Quitar voto de revancha'
+            : view.gameId === 'sieteymedia'
+              ? 'Nueva partida (revancha)'
+              : 'Revancha'}
         </Button>
         <p className="text-center text-14 text-humo">
           {iVoted

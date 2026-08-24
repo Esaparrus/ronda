@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type {
   GameAction,
@@ -14,6 +15,7 @@ import { GranRondaTurnRollPrompt } from '@/components/granronda/GranRondaTurnRol
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
+import { Sheet } from '@/components/ui/Sheet';
 import { useRondaStore } from '@/lib/store';
 import { ClassicGameScreen } from './ClassicGameScreen';
 import { GameScreen } from './GameScreen';
@@ -27,16 +29,25 @@ import { RondaGameScreen } from './RondaGameScreen';
 const POWERUP_COSTS: Record<GranRondaPowerupType, number> = {
   doubleRoll: 5,
   rivalPenalty: 4,
+  goldDuel: 6,
 };
 
 const POWERUP_LABELS: Record<GranRondaPowerupType, string> = {
   doubleRoll: 'Doble dado',
-  rivalPenalty: 'Penalización',
+  rivalPenalty: 'Guante ladrón',
+  goldDuel: 'Reto de Oros',
 };
 
 const POWERUP_DESCRIPTIONS: Record<GranRondaPowerupType, string> = {
   doubleRoll: 'Tira dos dados antes de moverte.',
-  rivalPenalty: 'Quita 2 Oros a un rival.',
+  rivalPenalty: 'Roba hasta 2 Oros y súmalos a tu bolsa.',
+  goldDuel: 'Reta a un rival: ambos tiráis y el ganador cobra la apuesta.',
+};
+
+const POWERUP_ICONS: Record<GranRondaPowerupType, string> = {
+  doubleRoll: '🎲',
+  rivalPenalty: '🧤',
+  goldDuel: '⚔️',
 };
 
 export interface GranRondaGameScreenProps {
@@ -46,6 +57,8 @@ export interface GranRondaGameScreenProps {
 
 export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScreenProps) {
   const router = useRouter();
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [showFinalStandings, setShowFinalStandings] = useState(false);
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const connection = useRondaStore((state) => state.connection);
   const actionBlocked = pendingAction || connection !== 'online';
@@ -59,6 +72,7 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
   const movementPathLength = view.movement?.path.length ?? 0;
   const embeddedGame = view.me.embeddedGame;
   const showEmbeddedGame = view.phase === 'minigameInput' && embeddedGame !== null;
+  const iVotedRematch = view.rematchVotes.includes(view.me.playerId);
 
   useEffect(() => {
     if (!canAdvance) return;
@@ -66,7 +80,7 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
       () => {
         void useRondaStore.getState().sendAction({ type: 'advanceGranRondaMovement' });
       },
-      movementPathLength <= 1 ? 1450 : 520,
+      movementPathLength <= 1 ? 2350 : 720,
     );
     return () => window.clearTimeout(timer);
   }, [canAdvance, movementPathLength, view.me.playerId, view.movement?.remainingSteps]);
@@ -82,6 +96,16 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
     );
     return () => window.clearTimeout(timer);
   }, [showEmbeddedGame, view.phase, view.miniGame.gameId]);
+
+  useEffect(() => {
+    if (view.phase !== 'resolving') return;
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById('gran-ronda-resolution')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 260);
+    return () => window.clearTimeout(timer);
+  }, [view.phase, view.resolution?.spaceId, view.resolution?.sealsDelta]);
 
   function send(action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) {
     void useRondaStore.getState().sendAction(action);
@@ -112,13 +136,23 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
             La Gran Ronda <span className="font-sans text-12 text-oro">R{view.round}</span>
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={onRequestLeave}
-          className="glass-button min-h-10 px-3 text-12 text-humo"
-        >
-          Salir
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setInfoOpen(true)}
+            className="glass-button grid size-10 place-items-center rounded-full text-15 font-bold text-hueso"
+            aria-label="Ver clasificación y recursos de todos"
+          >
+            i
+          </button>
+          <button
+            type="button"
+            onClick={onRequestLeave}
+            className="glass-button min-h-10 px-3 text-12 text-humo"
+          >
+            Salir
+          </button>
+        </div>
       </header>
 
       <section
@@ -154,6 +188,8 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
           boardPlayers={view.boardPlayers}
           players={view.players}
           stampSpaceId={view.stampSpaceId}
+          stampCost={view.stampCost}
+          stampValue={view.stampValue}
           trapSpaceIds={view.trapSpaceIds}
           routeOptions={view.routeOptions}
           activePlayerId={view.turnPlayerId}
@@ -176,18 +212,25 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
           rolling={pendingAction}
           onRoll={() => send({ type: 'rollGranRonda' })}
         >
-          {canUsePowerup ? <PowerupTray view={view} can={can} send={send} /> : null}
+          {canUsePowerup || view.lastInteraction?.actorPlayerId === view.me.playerId ? (
+            <PowerupTray view={view} can={can} send={send} />
+          ) : null}
         </GranRondaTurnRollPrompt>
       ) : null}
 
+      {view.lastInteraction && !canRoll ? <InteractionNotice view={view} /> : null}
+
       {showEmbeddedGame ? <EmbeddedMiniGamePanel view={view} /> : null}
-      {view.phase === 'minigameReveal' ? (
+      {view.phase === 'minigameReveal' && (!final || !showFinalStandings) ? (
         <MiniGamePanel
+          key={`${view.round}-${view.miniGame.id}`}
           view={view}
           can={can}
           send={send}
           pending={pendingAction}
           blocked={actionBlocked}
+          final={final}
+          onFinishReview={final ? () => setShowFinalStandings(true) : undefined}
         />
       ) : null}
 
@@ -255,15 +298,17 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
         </section>
       ) : null}
 
-      {final ? (
+      {final && showFinalStandings ? (
         <section className="surface-panel flex flex-col gap-4 p-4">
           <div className="text-center">
-            <p className="eyebrow">Partida terminada</p>
+            <p className="eyebrow text-oro">La partida ha terminado</p>
             <h2 className="mt-2 font-display text-32 text-hueso">
               Gana{' '}
               {view.players.find((player) => player.playerId === view.winnerId)?.nick ?? 'la mesa'}
             </h2>
-            <p className="mt-1 text-13 text-humo">Más Sellos; los Oros desempatan.</p>
+            <p className="mt-1 text-13 text-humo">
+              Resultado definitivo: mandan los Sellos y los Oros desempatan.
+            </p>
           </div>
           <ol className="flex flex-col gap-2">
             {standings.map((player, index) => {
@@ -288,16 +333,121 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
             })}
           </ol>
           <div className="flex flex-col gap-2">
-            <Button onClick={() => void useRondaStore.getState().voteRematch(true)}>
-              Revancha
+            <Button
+              loading={pendingAction}
+              disabled={actionBlocked}
+              variant={iVotedRematch ? 'ghost' : 'primary'}
+              onClick={() => void useRondaStore.getState().voteRematch(!iVotedRematch)}
+            >
+              {iVotedRematch ? 'Quitar voto de revancha' : 'Jugar revancha'}
             </Button>
+            <p className="text-center text-12 text-humo">
+              {view.rematchVotes.length} de{' '}
+              {view.players.filter((player) => !player.eliminated).length} han votado revancha.
+            </p>
             <Button variant="ghost" onClick={handleExit}>
               Salir
             </Button>
           </div>
         </section>
       ) : null}
+
+      <PlayersInfoSheet
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+        standings={standings}
+        view={view}
+      />
     </main>
+  );
+}
+
+function PlayersInfoSheet({
+  open,
+  onClose,
+  standings,
+  view,
+}: {
+  open: boolean;
+  onClose: () => void;
+  standings: GranRondaPlayerView['players'];
+  view: GranRondaPlayerView;
+}) {
+  const stampSpace = view.board.find((space) => space.id === view.stampSpaceId);
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      ariaLabel="Clasificación de La Gran Ronda"
+      className="max-h-[82dvh] overflow-y-auto"
+    >
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-4">
+        <div>
+          <p className="eyebrow text-oro">Información de la partida</p>
+          <h2 className="mt-1 font-display text-26 text-hueso">Así va todo el mundo</h2>
+          <p className="mt-1 text-13 text-humo">
+            El Sello activo está en {stampSpace?.label ?? 'el mapa'}: cuesta {view.stampCost} Oros y
+            entrega {view.stampValue}.
+          </p>
+        </div>
+        <ol className="flex flex-col gap-2">
+          {standings.map((player, index) => {
+            const boardPlayer = view.boardPlayers.find(
+              (candidate) => candidate.playerId === player.playerId,
+            );
+            return (
+              <li
+                key={player.playerId}
+                className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${
+                  player.playerId === view.me.playerId
+                    ? 'border-oro/60 bg-oro/10'
+                    : 'border-linea bg-tinta/25'
+                }`}
+              >
+                <span className="w-5 text-center font-mono text-12 text-humo">{index + 1}</span>
+                <Avatar name={player.nick} colorIndex={player.colorIndex} size={34} />
+                <span className="min-w-0 flex-1 truncate text-14 font-semibold text-hueso">
+                  {player.nick}
+                  {player.playerId === view.me.playerId ? ' · tú' : ''}
+                </span>
+                <span className="font-mono text-12 text-verde">
+                  {boardPlayer?.seals ?? 0} sellos
+                </span>
+                <span className="font-mono text-12 text-oro">{boardPlayer?.coins ?? 0} oros</span>
+              </li>
+            );
+          })}
+        </ol>
+        <Button variant="ghost" onClick={onClose}>
+          Volver al juego
+        </Button>
+      </div>
+    </Sheet>
+  );
+}
+
+function InteractionNotice({ view }: { view: GranRondaPlayerView }) {
+  const interaction = view.lastInteraction;
+  if (!interaction) return null;
+  const actor = view.players.find((player) => player.playerId === interaction.actorPlayerId);
+  const target = view.players.find((player) => player.playerId === interaction.targetPlayerId);
+  const winner = view.players.find((player) => player.playerId === interaction.winnerId);
+  return (
+    <section className="surface-panel flex items-center gap-3 border-violeta/45 bg-violeta/10 p-3">
+      <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-violeta/20 text-24">
+        {interaction.kind === 'duel' ? '⚔️' : '🧤'}
+      </span>
+      <div className="min-w-0">
+        <p className="eyebrow text-violeta">
+          {interaction.kind === 'duel' ? 'Reto de Oros resuelto' : 'Robo resuelto'}
+        </p>
+        <p className="mt-1 text-13 leading-relaxed text-hueso">
+          {interaction.kind === 'duel'
+            ? `${actor?.nick ?? 'Un jugador'} sacó ${interaction.actorRoll}; ${target?.nick ?? 'su rival'}, ${interaction.targetRoll}. ${winner?.nick ?? 'El ganador'} cobra ${interaction.coinsTransferred} Oros.`
+            : `${actor?.nick ?? 'Un jugador'} roba ${interaction.coinsTransferred} Oros a ${target?.nick ?? 'su rival'}.`}
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -438,7 +588,10 @@ function ResolutionPanel({
   const deltaLabel =
     resolution.coinsDelta > 0 ? `+${resolution.coinsDelta}` : `${resolution.coinsDelta}`;
   return (
-    <section className="surface-panel flex flex-col gap-3 border-oro/35 p-4">
+    <section
+      id="gran-ronda-resolution"
+      className="surface-panel flex flex-col gap-3 border-oro/35 p-4"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="eyebrow text-oro">
@@ -455,10 +608,19 @@ function ResolutionPanel({
       </div>
       <p className="text-14 leading-relaxed text-humo">{resolution.message}</p>
       {resolution.sealsDelta > 0 ? (
-        <p className="font-mono text-13 text-verde">+{resolution.sealsDelta} Sello</p>
+        <div className="rounded-2xl border border-verde/35 bg-verde/10 px-3 py-2 text-center">
+          <p className="eyebrow text-verde">Sello conseguido</p>
+          <strong className="mt-1 block font-display text-24 text-hueso">
+            {currentTurnNick ?? 'El jugador'} suma +{resolution.sealsDelta}{' '}
+            {resolution.sealsDelta === 1 ? 'Sello' : 'Sellos'}
+          </strong>
+        </div>
       ) : null}
       {can('buyGranRondaSeal') ? (
-        <Button onClick={() => send({ type: 'buyGranRondaSeal' })}>Comprar Sello · 8 Oros</Button>
+        <Button onClick={() => send({ type: 'buyGranRondaSeal' })}>
+          Comprar {view.stampValue === 1 ? 'Sello' : `${view.stampValue} Sellos`} · {view.stampCost}{' '}
+          Oros
+        </Button>
       ) : null}
       {resolution.kind === 'tienda' ? (
         <PowerupShop view={view} send={send} enabled={can('buyGranRondaPowerup')} />
@@ -482,90 +644,70 @@ function MiniGamePanel({
   send,
   pending,
   blocked,
+  final,
+  onFinishReview,
 }: {
   view: GranRondaPlayerView;
   can: (action: GranRondaPlayerView['me']['availableActions'][number]) => boolean;
   send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
   pending: boolean;
   blocked: boolean;
+  final: boolean;
+  onFinishReview?: () => void;
 }) {
-  const revealed = view.phase === 'minigameReveal';
-  const selected = view.me.selectedOptionId;
-  const personal = view.me.miniGame;
-  const finished = personal?.finished ?? false;
+  const [stage, setStage] = useState<'personal' | 'group'>('personal');
+  const personalResult = view.miniGame.results?.[view.me.playerId];
+  const rankedPlayers = [...view.players].sort((left, right) => {
+    const leftRank = view.miniGame.results?.[left.playerId]?.rank ?? Number.POSITIVE_INFINITY;
+    const rightRank = view.miniGame.results?.[right.playerId]?.rank ?? Number.POSITIVE_INFINITY;
+    return leftRank - rightRank || left.seat - right.seat;
+  });
   return (
     <section className="surface-panel gran-ronda-minigame-panel flex flex-col gap-3 border-oro/40 bg-oro/5 p-4 shadow-[0_14px_40px_rgba(246,195,76,0.08)]">
       <MiniGameRoulette gameId={view.miniGame.gameId} title={view.miniGame.title} />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="eyebrow text-oro">
-            {revealed ? 'Resultados del minijuego' : 'Sorteo de la ronda'}
-          </p>
-          <h2 className="mt-1 text-22 font-semibold text-hueso">
-            {revealed ? 'Reparto de Oros' : view.miniGame.title}
-          </h2>
-          <p className="mt-1 text-14 leading-relaxed text-humo">
-            {revealed
-              ? 'La partida original ha terminado. Este es el resultado de la ronda.'
-              : view.miniGame.prompt}
-          </p>
-          {!revealed ? (
-            <p className="mt-2 text-12 leading-relaxed text-humo">{view.miniGame.instructions}</p>
-          ) : null}
+      {stage === 'personal' ? (
+        <div className="gran-ronda-personal-result flex flex-col gap-4 rounded-[24px] border border-oro/45 bg-tinta/45 p-4 text-center">
+          <div>
+            <p className="eyebrow text-oro">Primero, tu resultado</p>
+            <h2 className="mt-1 font-display text-28 text-hueso">
+              {personalResult ? `Has quedado ${personalResult.rank}.º` : 'Resultado cerrado'}
+            </h2>
+          </div>
+          <PersonalMiniGameResult view={view} />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-2xl border border-linea bg-tinta/35 px-3 py-3">
+              <span className="block text-10 uppercase tracking-wider text-humo">Marcador</span>
+              <strong className="mt-1 block font-mono text-22 text-hueso">
+                {personalResult?.score ?? '—'}
+              </strong>
+            </div>
+            <div className="rounded-2xl border border-oro/35 bg-oro/10 px-3 py-3">
+              <span className="block text-10 uppercase tracking-wider text-humo">Tu premio</span>
+              <strong className="mt-1 block font-mono text-22 text-oro">
+                +{personalResult?.reward ?? 0} Oros
+              </strong>
+            </div>
+          </div>
+          <Button onClick={() => setStage('group')}>Aceptar y ver al resto</Button>
         </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-20 text-oro">
-          ✦
-        </span>
-      </div>
-      {!revealed ? (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {view.miniGame.options.map((option) => {
-            const isSelected = selected === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                disabled={finished || !can('submitGranRondaAnswer')}
-                onClick={() => send({ type: 'submitGranRondaAnswer', optionId: option.id })}
-                aria-pressed={isSelected}
-                className={`min-h-12 rounded-2xl border px-3 py-2 text-left text-14 font-semibold transition-[transform,background-color,border-color,opacity] active:scale-[0.985] disabled:cursor-default disabled:opacity-65 ${
-                  isSelected
-                    ? 'border-oro bg-oro/15 text-oro ring-2 ring-oro/20'
-                    : 'border-linea bg-tinta/30 text-hueso hover:border-oro/60'
-                }`}
-              >
-                <span className="mr-2 font-mono text-11 text-humo">{option.id.toUpperCase()}</span>
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-linea bg-tinta/30 px-3 py-2 text-12">
-        <span className="text-humo">
-          Tu marcador:{' '}
-          <strong className="font-mono text-hueso">{personal ? personal.score : '—'}</strong>
-          {personal?.lastCard !== null && personal?.lastCard !== undefined
-            ? ` · última carta ${personal.lastCard}`
-            : ''}
-        </span>
-        <span className="text-humo">
-          {view.miniGame.completedPlayerIds.length}/{view.players.length} terminados
-        </span>
-      </div>
-      {revealed ? (
+      ) : (
         <div className="flex flex-col gap-2 rounded-2xl border border-linea bg-tinta/35 p-3">
-          <p className="text-12 font-semibold uppercase tracking-[0.12em] text-humo">
-            Clasificación y premios
-          </p>
+          <div>
+            <p className="eyebrow text-oro">Resultados de todos</p>
+            <h2 className="mt-1 text-22 font-semibold text-hueso">Clasificación del minijuego</h2>
+          </div>
           <div className="grid gap-1.5 sm:grid-cols-2">
-            {view.players.map((player) => {
+            {rankedPlayers.map((player) => {
               const result = view.miniGame.results?.[player.playerId];
               const delta = result?.reward ?? view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
               return (
                 <div
                   key={player.playerId}
-                  className="flex items-center justify-between gap-2 text-12"
+                  className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-12 ${
+                    player.playerId === view.me.playerId
+                      ? 'border-oro/45 bg-oro/10'
+                      : 'border-linea bg-tinta/25'
+                  }`}
                 >
                   <span className="min-w-0 truncate text-hueso">
                     {result ? `${result.rank}. ` : ''}
@@ -581,27 +723,92 @@ function MiniGamePanel({
               );
             })}
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-2 text-12 text-humo">
-          <span>
-            {view.miniGame.submittedPlayerIds.length}/{view.players.length} acciones registradas
-          </span>
-          <span>1.º +6 · 2.º +3 · resto +1</span>
+          {final ? (
+            <Button className="mt-2" onClick={onFinishReview}>
+              Ver clasificación final de la partida
+            </Button>
+          ) : can('nextRound') ? (
+            <Button
+              className="mt-2"
+              loading={pending}
+              disabled={blocked}
+              onClick={() => send({ type: 'nextRound' })}
+            >
+              {pending ? 'Preparando la ronda…' : `Empezar ronda ${view.round + 1}`}
+            </Button>
+          ) : (
+            <p className="mt-2 text-center text-12 text-humo">
+              El anfitrión iniciará la ronda {view.round + 1} cuando todos hayan visto el resultado.
+            </p>
+          )}
         </div>
       )}
-      {can('finishGranRondaMiniGame') ? (
-        <Button variant="ghost" onClick={() => send({ type: 'finishGranRondaMiniGame' })}>
-          Revelar resultados
-        </Button>
-      ) : null}
-      {can('nextRound') ? (
-        <Button loading={pending} disabled={blocked} onClick={() => send({ type: 'nextRound' })}>
-          {pending ? 'Preparando la ronda…' : `Empezar ronda ${view.round + 1}`}
-        </Button>
-      ) : null}
     </section>
   );
+}
+
+function PersonalMiniGameResult({ view }: { view: GranRondaPlayerView }) {
+  const embedded = view.miniGame.embeddedGame;
+  const result = view.miniGame.results?.[view.me.playerId];
+
+  if (embedded?.gameId === 'preciojusto') {
+    const guess = embedded.price.guesses?.[view.me.playerId];
+    return (
+      <div className="flex flex-col gap-2 text-left">
+        <p className="rounded-2xl bg-oro/10 px-3 py-2 text-14 text-hueso">
+          El precio justo era{' '}
+          <strong className="font-mono text-oro">
+            {formatEuroCents(embedded.price.referencePriceCents)}
+          </strong>
+          .
+        </p>
+        <p className="px-1 text-13 leading-relaxed text-humo">
+          Tú pusiste <strong className="text-hueso">{formatEuroCents(guess?.priceCents)}</strong> y
+          te quedaste a{' '}
+          <strong className="text-hueso">{formatEuroCents(guess?.differenceCents)}</strong>.
+          {guess?.relativeErrorPercent !== null && guess?.relativeErrorPercent !== undefined
+            ? ` Tu diferencia fue del ${String(guess.relativeErrorPercent).replace('.', ',')}%.`
+            : ''}
+        </p>
+      </div>
+    );
+  }
+
+  if (embedded?.gameId === 'sieteymedia') {
+    const playerIndex = embedded.players.findIndex(
+      (player) => player.playerId === view.me.playerId,
+    );
+    const total = playerIndex >= 0 ? embedded.totals[playerIndex] : null;
+    const busted = embedded.bustPlayerIds.includes(view.me.playerId);
+    return (
+      <p className={`text-15 leading-relaxed ${busted ? 'text-brasa' : 'text-hueso'}`}>
+        {busted
+          ? `Te pasaste con ${formatSevenHalfResult(total)}. Esta era solo la resolución del minijuego; La Gran Ronda continúa.`
+          : `Terminaste con ${formatSevenHalfResult(total)} y ${result?.reward ? `ganas ${result.reward} Oros` : 'no sumas Oros'} en esta ronda.`}
+      </p>
+    );
+  }
+
+  const outcome =
+    result?.outcome === 'winner'
+      ? 'Has ganado el minijuego.'
+      : result?.outcome === 'podium'
+        ? 'Has entrado en el podio.'
+        : result?.outcome === 'bust'
+          ? 'Te has pasado y esta vez no sumas premio.'
+          : 'Has completado el minijuego.';
+  return <p className="text-15 leading-relaxed text-hueso">{outcome}</p>;
+}
+
+function formatEuroCents(cents: number | null | undefined): string {
+  if (cents === null || cents === undefined) return 'sin respuesta';
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+}
+
+function formatSevenHalfResult(total: number | null | undefined): string {
+  return total === null || total === undefined
+    ? 'resultado sin registrar'
+    : `${String(total).replace('.', ',')} puntos`;
 }
 
 function MiniGameRoulette({ gameId, title }: { gameId: string; title: string }) {
@@ -654,40 +861,60 @@ function PowerupShop({
   send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
   enabled: boolean;
 }) {
+  const purchased = new Set(view.resolution?.purchasedPowerups ?? []);
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-violeta/35 bg-violeta/10 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="eyebrow text-violeta">Tienda de poderes</p>
-        <span className="font-mono text-11 text-oro">{view.me.coins} Oros</span>
+    <div className="gran-ronda-shop flex flex-col gap-3 overflow-hidden rounded-2xl border border-violeta/35 bg-violeta/10 p-3">
+      <div className="gran-ronda-shop__merchant">
+        <Image
+          src="/games/granronda/tendero-ronda-v2.png"
+          alt="Tendero de La Gran Ronda mostrando sus dados y artículos"
+          width={1200}
+          height={1310}
+          sizes="(max-width: 640px) 150px, 190px"
+          className="gran-ronda-shop__merchant-image"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow text-violeta">Tienda de la Ronda</p>
+          <h3 className="mt-1 text-18 font-semibold text-hueso">¿Qué te preparo?</h3>
+          <p className="mt-1 text-11 leading-relaxed text-humo">
+            Puedes comprar una unidad de cada artículo durante esta visita.
+          </p>
+          <span className="mt-2 inline-flex rounded-full bg-oro/12 px-2.5 py-1 font-mono text-11 text-oro">
+            Tu bolsa · {view.me.coins} Oros
+          </span>
+        </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {(Object.keys(POWERUP_COSTS) as GranRondaPowerupType[]).map((powerup) => (
-          <button
-            key={powerup}
-            type="button"
-            disabled={!enabled || view.me.coins < POWERUP_COSTS[powerup]}
-            onClick={() => send({ type: 'buyGranRondaPowerup', powerup })}
-            className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-violeta/40 bg-tinta/35 px-3 py-2 text-left text-12 text-hueso transition-colors hover:border-violeta disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <span className="gran-ronda-shop-item__icon" aria-hidden="true">
-                {powerup === 'doubleRoll' ? '🎲' : '⚡'}
-              </span>
-              <span className="min-w-0">
-                <strong className="block text-13">{POWERUP_LABELS[powerup]}</strong>
-                <span className="block text-10 leading-snug text-humo">
-                  {POWERUP_DESCRIPTIONS[powerup]}
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(Object.keys(POWERUP_COSTS) as GranRondaPowerupType[]).map((powerup) => {
+          const sold = purchased.has(powerup);
+          return (
+            <button
+              key={powerup}
+              type="button"
+              disabled={sold || !enabled || view.me.coins < POWERUP_COSTS[powerup]}
+              onClick={() => send({ type: 'buyGranRondaPowerup', powerup })}
+              className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-violeta/40 bg-tinta/35 px-3 py-2 text-left text-12 text-hueso transition-colors hover:border-violeta disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span className="gran-ronda-shop-item__icon" aria-hidden="true">
+                  {POWERUP_ICONS[powerup]}
                 </span>
-                <span className="block text-10 text-humo">
-                  En mochila: {view.me.powerups[powerup]}
+                <span className="min-w-0">
+                  <strong className="block text-13">{POWERUP_LABELS[powerup]}</strong>
+                  <span className="block text-10 leading-snug text-humo">
+                    {POWERUP_DESCRIPTIONS[powerup]}
+                  </span>
+                  <span className="block text-10 text-humo">
+                    En mochila: {view.me.powerups[powerup]}
+                  </span>
                 </span>
               </span>
-            </span>
-            <span className="shrink-0 rounded-full bg-oro/10 px-2 py-1 font-mono text-oro">
-              {POWERUP_COSTS[powerup]} O
-            </span>
-          </button>
-        ))}
+              <span className="shrink-0 rounded-full bg-oro/10 px-2 py-1 font-mono text-oro">
+                {sold ? 'Comprado' : `${POWERUP_COSTS[powerup]} O`}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -702,17 +929,23 @@ function PowerupTray({
   can: (action: GranRondaPlayerView['me']['availableActions'][number]) => boolean;
   send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
 }) {
+  const [duelWager, setDuelWager] = useState(1);
   const rivals = view.players.filter(
     (player) => player.playerId !== view.me.playerId && !player.eliminated,
   );
-  if (!can('useGranRondaPowerup')) return null;
+  const boardByPlayer = new Map(view.boardPlayers.map((player) => [player.playerId, player]));
+  const canUse = can('useGranRondaPowerup');
+  if (!canUse && view.lastInteraction?.actorPlayerId !== view.me.playerId) return null;
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-violeta/35 bg-violeta/10 p-3 text-left">
+    <div className="flex flex-col gap-2 rounded-2xl border border-violeta/45 bg-tinta/95 p-3 text-left shadow-[0_16px_44px_rgba(0,0,0,0.45)] backdrop-blur-md">
+      {view.lastInteraction?.actorPlayerId === view.me.playerId ? (
+        <InteractionNotice view={view} />
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="eyebrow text-violeta">Poderes listos</p>
         <span className="text-11 text-humo">Se usan antes de tirar</span>
       </div>
-      {view.me.powerups.doubleRoll > 0 ? (
+      {canUse && view.me.powerups.doubleRoll > 0 ? (
         <button
           type="button"
           onClick={() => send({ type: 'useGranRondaPowerup', powerup: 'doubleRoll' })}
@@ -722,9 +955,9 @@ function PowerupTray({
           <span className="font-mono text-11">×{view.me.powerups.doubleRoll}</span>
         </button>
       ) : null}
-      {view.me.powerups.rivalPenalty > 0 ? (
+      {canUse && view.me.powerups.rivalPenalty > 0 ? (
         <div className="flex flex-col gap-1.5">
-          <p className="text-11 text-humo">Penalizar a un rival · −2 Oros</p>
+          <p className="text-11 text-humo">Guante ladrón · roba hasta 2 Oros</p>
           <div className="grid gap-1.5 sm:grid-cols-2">
             {rivals.map((rival) => (
               <button
@@ -739,10 +972,65 @@ function PowerupTray({
                 }
                 className="min-h-10 rounded-xl border border-brasa/45 bg-brasa/10 px-3 py-2 text-left text-12 text-hueso"
               >
-                {rival.nick}
+                Robar a {rival.nick} · tiene {boardByPlayer.get(rival.playerId)?.coins ?? 0}
               </button>
             ))}
           </div>
+        </div>
+      ) : null}
+      {canUse && view.me.powerups.goldDuel > 0 ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-oro/35 bg-oro/5 p-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-11 font-semibold text-hueso">⚔️ Reto de Oros</p>
+            <span className="font-mono text-10 text-humo">
+              Disponible ×{view.me.powerups.goldDuel}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5" aria-label="Oros apostados">
+            <span className="mr-1 text-10 text-humo">Apuesta</span>
+            {[1, 3, 5].map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                disabled={view.me.coins < amount}
+                aria-pressed={duelWager === amount}
+                onClick={() => setDuelWager(amount)}
+                className={`min-h-8 rounded-full border px-3 font-mono text-11 ${
+                  duelWager === amount
+                    ? 'border-oro bg-oro text-tinta'
+                    : 'border-linea bg-tinta/30 text-hueso'
+                } disabled:opacity-35`}
+              >
+                {amount} O
+              </button>
+            ))}
+          </div>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {rivals.map((rival) => {
+              const rivalCoins = boardByPlayer.get(rival.playerId)?.coins ?? 0;
+              return (
+                <button
+                  key={rival.playerId}
+                  type="button"
+                  disabled={rivalCoins < duelWager || view.me.coins < duelWager}
+                  onClick={() =>
+                    send({
+                      type: 'useGranRondaPowerup',
+                      powerup: 'goldDuel',
+                      targetPlayerId: rival.playerId,
+                      wager: duelWager,
+                    })
+                  }
+                  className="min-h-10 rounded-xl border border-oro/40 bg-oro/10 px-3 py-2 text-left text-12 text-hueso disabled:opacity-35"
+                >
+                  Retar a {rival.nick} · {rivalCoins} O
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-10 leading-relaxed text-humo">
+            Cada uno tira un dado. El ganador recibe la apuesta del rival; los empates se repiten.
+          </p>
         </div>
       ) : null}
     </div>

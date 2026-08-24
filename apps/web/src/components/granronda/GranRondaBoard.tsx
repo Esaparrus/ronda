@@ -22,6 +22,8 @@ export interface GranRondaBoardProps {
   boardPlayers: GranRondaBoardPlayer[];
   players: PublicPlayer[];
   stampSpaceId: string;
+  stampCost?: number;
+  stampValue?: number;
   trapSpaceIds?: string[];
   routeOptions?: string[];
   activePlayerId?: PlayerId | null;
@@ -162,6 +164,8 @@ export function GranRondaBoard({
   boardPlayers,
   players,
   stampSpaceId,
+  stampCost = 8,
+  stampValue = 1,
   trapSpaceIds = EMPTY_SPACE_IDS,
   routeOptions = EMPTY_SPACE_IDS,
   activePlayerId = null,
@@ -289,8 +293,17 @@ export function GranRondaBoard({
               const stamp = space.id === stampSpaceId;
               const trap = trapSet.has(space.id);
               const occupied = occupantsByPosition.has(space.id);
-              const visibleType: GranRondaSpaceType = trap ? 'trampa' : space.type;
-              const meta = SPACE_META[visibleType];
+              // Las plazas vacías conservan su recorrido, pero no enseñan
+              // varios iconos de Sello a la vez: solo la oferta activa lo hace.
+              const visibleType: GranRondaSpaceType = trap
+                ? 'trampa'
+                : space.type === 'sello' && !stamp
+                  ? 'evento'
+                  : space.type;
+              const meta =
+                space.type === 'sello' && !stamp
+                  ? { label: 'Plaza vacía', effect: 'El Sello está en otra plaza' }
+                  : SPACE_META[visibleType];
               return (
                 <button
                   key={space.id}
@@ -302,10 +315,14 @@ export function GranRondaBoard({
                   className={`gran-ronda-space gran-ronda-space--${visibleType} ${stamp ? 'gran-ronda-space--stamp' : ''} ${trap ? 'gran-ronda-space--trap' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
                   style={{ left: `${space.x}%`, top: `${space.y}%` }}
                 >
-                  {stamp ? <span className="gran-ronda-space__stamp-label">Sello</span> : null}
+                  {stamp ? (
+                    <span className="gran-ronda-space__stamp-label">
+                      {stampValue > 1 ? `${stampValue} Sellos` : 'Sello'}
+                    </span>
+                  ) : null}
                   {trap ? <span className="gran-ronda-space__trap-label">¡Trampa!</span> : null}
                   <span className="gran-ronda-space__face">
-                    <GranRondaSpaceIcon type={visibleType} />
+                    <GranRondaSpaceIcon type={visibleType} size={stamp ? 25 : undefined} />
                     <span className="gran-ronda-space__number">
                       {String(space.index + 1).padStart(2, '0')}
                     </span>
@@ -368,7 +385,9 @@ export function GranRondaBoard({
         </div>
         <div className="gran-ronda-board__stamp-status">
           <GranRondaSpaceIcon type="sello" size={15} />
-          <span>Sello · 8 Oros</span>
+          <span>
+            {stampValue > 1 ? `${stampValue} Sellos` : 'Sello'} · {stampCost} Oros
+          </span>
         </div>
         {!minimized ? (
           <button
@@ -396,7 +415,10 @@ export function GranRondaBoard({
         <div className="gran-ronda-board__mini-summary">
           <p>Mapa en pausa</p>
           <strong>{stampSpace?.label ?? 'El Sello sigue en el tablero'}</strong>
-          <span>Volverá a ocupar toda la pantalla al terminar el minijuego.</span>
+          <span>
+            {stampValue > 1 ? `${stampValue} Sellos` : '1 Sello'} por {stampCost} Oros · el mapa
+            volverá al terminar el minijuego.
+          </span>
         </div>
       ) : (
         <details className="gran-ronda-board__key" open={!compact}>

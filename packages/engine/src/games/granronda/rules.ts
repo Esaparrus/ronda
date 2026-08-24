@@ -2,9 +2,12 @@ import type { GranRondaBoardSpace, GranRondaSpaceType } from '@ronda/protocol';
 
 export const GRAN_RONDA_START_COINS = 5;
 export const GRAN_RONDA_STAMP_COST = 8;
+export const GRAN_RONDA_STAMP_MIN_COST = 6;
+export const GRAN_RONDA_STAMP_MAX_COST = 12;
 export const GRAN_RONDA_POWERUP_COSTS = {
   doubleRoll: 5,
   rivalPenalty: 4,
+  goldDuel: 6,
 } as const;
 
 /**
@@ -274,9 +277,17 @@ export function granRondaRouteOptions(
 export function granRondaMovementOptions(
   board: readonly GranRondaBoardSpace[],
   spaceId: string,
-  _path: readonly string[],
+  path: readonly string[],
 ): string[] {
-  return granRondaRouteOptions(board, spaceId);
+  const forwards = granRondaRouteOptions(board, spaceId);
+  // Al empezar una tirada se puede elegir cualquier vecino conectado,
+  // también el que queda detrás. Después del primer paso el recorrido vuelve
+  // a ser dirigido: una bifurcación nunca permite deshacer lo ya caminado.
+  if (path.length > 1) return forwards;
+  const backwards = board
+    .filter((space) => space.nextIds.includes(spaceId))
+    .map((space) => space.id);
+  return [...new Set([...forwards, ...backwards])];
 }
 
 export function granRondaSpaceLabel(type: GranRondaSpaceType): string {

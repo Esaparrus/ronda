@@ -50,7 +50,10 @@ export const GranRondaEmbeddedGameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('playNumber'), value: z.number().int().min(1).max(100) }),
   z.object({ type: z.literal('setOrderCards'), count: z.number().int().min(1).max(10) }),
   z.object({ type: z.literal('endOrder') }),
-  z.object({ type: z.literal('submitColors'), colors: z.array(z.string().min(1).max(24)).min(1).max(4) }),
+  z.object({
+    type: z.literal('submitColors'),
+    colors: z.array(z.string().min(1).max(24)).min(1).max(4),
+  }),
   z.object({ type: z.literal('finishColors') }),
   z.object({ type: z.literal('submitMajority'), answer: z.string().min(1).max(80) }),
   z.object({
@@ -62,12 +65,18 @@ export const GranRondaEmbeddedGameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('finishScale') }),
   z.object({ type: z.literal('submitMatiz'), hex: z.string().regex(/^#[0-9a-fA-F]{6}$/) }),
   z.object({ type: z.literal('finishMatiz') }),
-  z.object({ type: z.literal('submitPrice'), priceCents: z.number().int().min(1).max(100_000_000) }),
+  z.object({
+    type: z.literal('submitPrice'),
+    priceCents: z.number().int().min(1).max(100_000_000),
+  }),
   z.object({ type: z.literal('finishPrice') }),
   z.object({ type: z.literal('showPriceResults') }),
   z.object({ type: z.literal('submitFlag'), optionId: cardIdField }),
   z.object({ type: z.literal('finishFlags') }),
-  z.object({ type: z.literal('submitNumber'), value: z.number().finite().min(0).max(1_000_000_000_000) }),
+  z.object({
+    type: z.literal('submitNumber'),
+    value: z.number().finite().min(0).max(1_000_000_000_000),
+  }),
   z.object({ type: z.literal('submitOrder'), order: z.array(cardIdField).min(3).max(5) }),
   z.object({ type: z.literal('submitChoice'), optionId: cardIdField }),
   z.object({ type: z.literal('finishCifras') }),
@@ -248,12 +257,13 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('buyGranRondaSeal') }),
   z.object({
     type: z.literal('buyGranRondaPowerup'),
-    powerup: z.union([z.literal('doubleRoll'), z.literal('rivalPenalty')]),
+    powerup: z.union([z.literal('doubleRoll'), z.literal('rivalPenalty'), z.literal('goldDuel')]),
   }),
   z.object({
     type: z.literal('useGranRondaPowerup'),
-    powerup: z.union([z.literal('doubleRoll'), z.literal('rivalPenalty')]),
+    powerup: z.union([z.literal('doubleRoll'), z.literal('rivalPenalty'), z.literal('goldDuel')]),
     targetPlayerId: cardIdField.optional(),
+    wager: z.number().int().min(1).max(5).optional(),
   }),
   z.object({
     type: z.literal('submitGranRondaMiniGameAction'),

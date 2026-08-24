@@ -882,7 +882,7 @@ export type GranRondaAvailableAction =
   | 'submitGranRondaAnswer'
   | 'finishGranRondaMiniGame'
   | 'nextRound';
-export type GranRondaPowerupType = 'doubleRoll' | 'rivalPenalty';
+export type GranRondaPowerupType = 'doubleRoll' | 'rivalPenalty' | 'goldDuel';
 export type GranRondaMiniGameId =
   | 'chinchon'
   | 'pocha'
@@ -986,6 +986,19 @@ export interface GranRondaResolutionPublic {
   message: string;
   coinsDelta: number;
   sealsDelta: number;
+  /** Artículos comprados durante esta visita concreta a la tienda. */
+  purchasedPowerups?: GranRondaPowerupType[];
+}
+
+export interface GranRondaInteractionPublic {
+  kind: 'steal' | 'duel';
+  actorPlayerId: PlayerId;
+  targetPlayerId: PlayerId;
+  coinsTransferred: number;
+  wager: number | null;
+  actorRoll: number | null;
+  targetRoll: number | null;
+  winnerId: PlayerId | null;
 }
 
 export interface GranRondaCommonView extends CommonViewBase {
@@ -995,10 +1008,14 @@ export interface GranRondaCommonView extends CommonViewBase {
   board: GranRondaBoardSpace[];
   boardPlayers: GranRondaBoardPlayer[];
   stampSpaceId: string;
+  /** Siempre hay una sola oferta activa; precio y premio cambian con la partida. */
+  stampCost: number;
+  stampValue: number;
   trapSpaceIds: string[];
   routeOptions: string[];
   movement: GranRondaMovementPublic | null;
   resolution: GranRondaResolutionPublic | null;
+  lastInteraction: GranRondaInteractionPublic | null;
   miniGame: GranRondaMiniGamePublic;
 }
 

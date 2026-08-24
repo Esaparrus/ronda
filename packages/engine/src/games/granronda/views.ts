@@ -5,6 +5,7 @@ import type {
   GranRondaMovementPublic,
   GranRondaPlayerView,
   GranRondaPlayerViewMe,
+  GranRondaPowerupType,
   GranRondaResolutionPublic,
   GranRondaTableView,
   GranRondaAvailableAction,
@@ -38,7 +39,7 @@ import {
   getTableView as getRoadmapTableView,
 } from '../roadmap/views.ts';
 import { getRondaPlayerView, getRondaTableView } from '../laronda/views.ts';
-import { GRAN_RONDA_POWERUP_COSTS, GRAN_RONDA_STAMP_COST } from './rules.ts';
+import { GRAN_RONDA_POWERUP_COSTS } from './rules.ts';
 import { activeGranRondaPlayers, granRondaPlayer, type GranRondaState } from './state.ts';
 import type { PartyState } from '../party/state.ts';
 import type { RoadmapState } from '../roadmap/state.ts';
@@ -84,7 +85,14 @@ function movement(state: GranRondaState): GranRondaMovementPublic | null {
 }
 
 function resolution(state: GranRondaState): GranRondaResolutionPublic | null {
-  return state.resolution ? { ...state.resolution } : null;
+  return state.resolution
+    ? {
+        ...state.resolution,
+        purchasedPowerups: state.resolution.purchasedPowerups
+          ? [...state.resolution.purchasedPowerups]
+          : undefined,
+      }
+    : null;
 }
 
 function embeddedGameCommonView(state: GranRondaState) {
@@ -183,10 +191,13 @@ function common(state: GranRondaState): GranRondaCommonView {
     board: state.board.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
     boardPlayers: boardPlayers(state),
     stampSpaceId: state.stampSpaceId,
+    stampCost: state.stampCost,
+    stampValue: state.stampValue,
     trapSpaceIds: [...state.trapSpaceIds],
     routeOptions: state.phase === 'routeChoice' ? [...(state.movement?.routeOptions ?? [])] : [],
     movement: movement(state),
     resolution: resolution(state),
+    lastInteraction: state.lastInteraction ? { ...state.lastInteraction } : null,
     miniGame: miniGame(state),
   };
 }
@@ -200,7 +211,7 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
       position: 'salida',
       coins: 0,
       seals: 0,
-      powerups: { doubleRoll: 0, rivalPenalty: 0 },
+      powerups: { doubleRoll: 0, rivalPenalty: 0, goldDuel: 0 },
       embeddedGame: null,
       miniGame: null,
       selectedOptionId: null,
@@ -223,19 +234,26 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
       if (
         state.resolution?.kind === 'sello' &&
         state.resolution.spaceId === state.stampSpaceId &&
-        player.coins >= GRAN_RONDA_STAMP_COST
+        player.coins >= state.stampCost
       ) {
         availableActions.push('buyGranRondaSeal');
       }
       if (
         state.resolution?.kind === 'tienda' &&
-        player.coins >= Math.min(...Object.values(GRAN_RONDA_POWERUP_COSTS))
+        (Object.entries(GRAN_RONDA_POWERUP_COSTS) as [GranRondaPowerupType, number][]).some(
+          ([powerup, cost]) =>
+            !state.resolution?.purchasedPowerups?.includes(powerup) && player.coins >= cost,
+        )
       ) {
         availableActions.push('buyGranRondaPowerup');
       }
     }
     if (state.phase === 'movement' && state.turnSeat === player.seat) {
-      if (player.powerups.doubleRoll > 0 || player.powerups.rivalPenalty > 0) {
+      if (
+        player.powerups.doubleRoll > 0 ||
+        player.powerups.rivalPenalty > 0 ||
+        player.powerups.goldDuel > 0
+      ) {
         availableActions.push('useGranRondaPowerup');
       }
     }

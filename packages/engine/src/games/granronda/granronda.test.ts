@@ -186,7 +186,7 @@ describe('La Gran Ronda', () => {
     expect(state.movement).toBeNull();
   });
 
-  it('solo ofrece salidas hacia delante y mantiene las acciones del mapa como casillas', () => {
+  it('permite retroceder al iniciar la tirada, pero no deshacer pasos en una bifurcación', () => {
     let state = makeState();
     const player = state.players[0];
     if (!player) throw new Error('falta jugador activo');
@@ -194,6 +194,25 @@ describe('La Gran Ronda', () => {
     state.turnSeat = player.seat;
 
     state = play({ type: 'rollGranRonda' }, state, player.playerId);
+    expect(state.phase).toBe('routeChoice');
+    expect(state.movement?.routeOptions).toEqual(['senda-dorada', 'camino-riesgo', 'paseo-sol']);
+
+    state = makeState();
+    const movingPlayer = state.players[0];
+    if (!movingPlayer) throw new Error('falta jugador para la bifurcación');
+    movingPlayer.position = 'paseo-sol';
+    state.turnSeat = movingPlayer.seat;
+    state.movement = {
+      playerId: movingPlayer.playerId,
+      roll: 2,
+      dice: [2],
+      path: ['paseo-sol'],
+      remainingSteps: 2,
+      routeOptions: [],
+      forcedNextSpaceId: 'bifurcacion-azul',
+    };
+    state.phase = 'moving';
+    state = play({ type: 'advanceGranRondaMovement' }, state, movingPlayer.playerId);
     expect(state.phase).toBe('routeChoice');
     expect(state.movement?.routeOptions).toEqual(['senda-dorada', 'camino-riesgo']);
     expect(state.movement?.routeOptions).not.toContain('paseo-sol');
@@ -539,6 +558,8 @@ describe('La Gran Ronda', () => {
     expect(afterSeal.coins).toBe(12);
     expect(afterSeal.seals).toBe(1);
     expect(state.stampSpaceId).not.toBe('plaza-copas');
+    expect(state.stampCost).toBeGreaterThanOrEqual(6);
+    expect(state.stampCost).toBeLessThanOrEqual(12);
 
     state.resolution = {
       kind: 'tienda',
@@ -554,6 +575,16 @@ describe('La Gran Ronda', () => {
     if (!afterPowerup) throw new Error('falta p1 tras comprar el poder');
     expect(afterPowerup.coins).toBe(7);
     expect(afterPowerup.powerups.doubleRoll).toBe(1);
+    const duplicatePurchase = applyAction(
+      state,
+      'p1',
+      { type: 'buyGranRondaPowerup', powerup: 'doubleRoll' },
+      0,
+    );
+    expect(duplicatePurchase.ok).toBe(false);
+
+    state = play({ type: 'buyGranRondaPowerup', powerup: 'rivalPenalty' }, state, 'p1');
+    expect(state.players[0]?.powerups.rivalPenalty).toBe(1);
 
     state.phase = 'movement';
     state.resolution = null;
@@ -586,5 +617,34 @@ describe('La Gran Ronda', () => {
       throw new Error('faltan jugadores tras la penalización');
     expect(afterPenaltyP1.powerups.rivalPenalty).toBe(0);
     expect(afterPenaltyP2.coins).toBe(1);
+    expect(afterPenaltyP1.coins).toBe(7);
+    expect(penaltyState.lastInteraction?.kind).toBe('steal');
+  });
+
+  it('resuelve un reto de Oros cara a cara y transfiere la apuesta', () => {
+    let state = makeState(2);
+    const challenger = state.players[0];
+    const target = state.players[1];
+    if (!challenger || !target) throw new Error('faltan jugadores para el reto');
+    challenger.powerups.goldDuel = 1;
+    challenger.coins = 5;
+    target.coins = 5;
+
+    state = play(
+      {
+        type: 'useGranRondaPowerup',
+        powerup: 'goldDuel',
+        targetPlayerId: target.playerId,
+        wager: 3,
+      },
+      state,
+      challenger.playerId,
+    );
+
+    expect(state.players[0]?.powerups.goldDuel).toBe(0);
+    expect(state.lastInteraction?.kind).toBe('duel');
+    expect(state.lastInteraction?.actorRoll).not.toBe(state.lastInteraction?.targetRoll);
+    expect((state.players[0]?.coins ?? 0) + (state.players[1]?.coins ?? 0)).toBe(10);
+    expect([2, 8]).toContain(state.players[0]?.coins);
   });
 });

@@ -564,15 +564,15 @@ export const GAME_GUIDES = {
       },
       {
         title: 'Elige la ruta',
-        body: 'En cada bifurcación eliges una de las salidas hacia delante. Los ramales equilibran distancia y recompensa.',
+        body: 'Al iniciar la tirada puedes salir hacia delante o volver por la casilla que queda detrás. Después del primer paso, cada bifurcación solo ofrece sus salidas: no puedes deshacer el recorrido ya elegido.',
       },
       {
         title: 'Pasa por la tienda',
-        body: 'La tienda se abre aunque todavía te queden pasos. Compra un poder o continúa el movimiento con la misma tirada.',
+        body: 'La tienda se abre aunque todavía te queden pasos. En cada visita puedes comprar una unidad de cada artículo: dado doble, guante ladrón y reto de Oros.',
       },
       {
         title: 'Compra el Sello',
-        body: 'Si terminas en el destino activo y tienes 8 Oros, puedes comprar el Sello. Después aparece en otra plaza.',
+        body: 'Solo hay una oferta de Sello activa en el mapa. Su precio está entre 6 y 12 Oros; al comprarla se mueve a otra plaza y, en la parte final de la partida, puede entregar dos Sellos.',
       },
     ],
     victory:

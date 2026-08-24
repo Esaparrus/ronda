@@ -210,6 +210,14 @@ describe('clásicos de baraja española', () => {
     expect(nextRound.value.state.bankerSeat).toBe(1);
   });
 
+  it('Siete y media termina cuando todos han pasado una vez por la banca', () => {
+    const final = playToEnd(stateFor('sieteymedia', 3));
+
+    expect(final.status).toBe('gameEnd');
+    expect(final.round).toBe(3);
+    expect(final.winnerId).toBeTruthy();
+  });
+
   it('Siete y media solo publica las manos que ya han terminado', () => {
     const state = stateFor('sieteymedia', 3);
     const active = state.players[0];

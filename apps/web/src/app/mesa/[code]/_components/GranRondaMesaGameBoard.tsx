@@ -122,6 +122,8 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
           boardPlayers={view.boardPlayers}
           players={view.players}
           stampSpaceId={view.stampSpaceId}
+          stampCost={view.stampCost}
+          stampValue={view.stampValue}
           trapSpaceIds={view.trapSpaceIds}
           routeOptions={view.routeOptions}
           activePlayerId={view.turnPlayerId}
@@ -132,6 +134,20 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
           minimized={showEmbeddedGame}
         />
       </div>
+
+      {view.lastInteraction ? (
+        <section className="mx-auto flex w-full max-w-3xl items-center gap-4 rounded-[24px] border border-violeta/40 bg-violeta/10 p-5">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-violeta/20 text-28">
+            {view.lastInteraction.kind === 'duel' ? '⚔️' : '🧤'}
+          </span>
+          <div>
+            <p className="eyebrow text-violeta">
+              {view.lastInteraction.kind === 'duel' ? 'Reto resuelto' : 'Robo resuelto'}
+            </p>
+            <h2 className="mt-1 text-22 font-semibold text-hueso">{interactionText(view)}</h2>
+          </div>
+        </section>
+      ) : null}
 
       {view.phase === 'minigameInput' && view.miniGame.embeddedGame ? (
         <section className="gran-ronda-embedded-game mx-auto w-full max-w-5xl overflow-hidden rounded-[28px] border border-oro/45 bg-oro/5 shadow-[0_18px_48px_rgba(246,195,76,0.12)]">
@@ -317,4 +333,18 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
       </section>
     </main>
   );
+}
+
+function interactionText(view: GranRondaTableView): string {
+  const interaction = view.lastInteraction;
+  if (!interaction) return '';
+  const actor = view.players.find((player) => player.playerId === interaction.actorPlayerId)?.nick;
+  const target = view.players.find(
+    (player) => player.playerId === interaction.targetPlayerId,
+  )?.nick;
+  const winner = view.players.find((player) => player.playerId === interaction.winnerId)?.nick;
+  if (interaction.kind === 'steal') {
+    return `${actor ?? 'Un jugador'} roba ${interaction.coinsTransferred} Oros a ${target ?? 'su rival'}.`;
+  }
+  return `${actor ?? 'Un jugador'} saca ${interaction.actorRoll}; ${target ?? 'su rival'}, ${interaction.targetRoll}. ${winner ?? 'El ganador'} cobra ${interaction.coinsTransferred} Oros.`;
 }

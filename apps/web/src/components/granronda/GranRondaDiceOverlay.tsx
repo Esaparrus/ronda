@@ -63,7 +63,7 @@ function AnimatedDiceResult({
     const revealTimer = window.setTimeout(() => {
       window.clearInterval(interval);
       setRevealed(true);
-    }, 810);
+    }, 650);
     return () => {
       window.clearInterval(interval);
       window.clearTimeout(revealTimer);
@@ -76,7 +76,7 @@ function AnimatedDiceResult({
 
   return (
     <div
-      className="gran-ronda-dice-roll flex min-w-[min(86%,18rem)] flex-col items-center gap-2 rounded-[26px] border border-white/25 bg-tinta/90 px-5 py-4 text-center shadow-[0_18px_50px_rgba(0,0,0,0.4)] backdrop-blur-md"
+      className="gran-ronda-dice-roll flex min-w-[min(88%,19rem)] flex-col items-center gap-3 rounded-[28px] border-2 px-6 py-5 text-center shadow-[0_22px_60px_rgba(0,0,0,0.62)]"
       role="status"
       aria-live="polite"
     >
@@ -111,9 +111,15 @@ export function GranRondaDiceOverlay({
   movement: GranRondaMovementPublic;
   playerName: string;
 }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [movement.playerId, movement.roll]);
+  if (!visible) return null;
   const dice = movement.dice.length > 0 ? movement.dice : [Math.min(movement.roll, 6)];
   return (
-    <div className="pointer-events-none absolute inset-0 z-40 grid place-items-center p-3">
+    <div className="gran-ronda-dice-overlay pointer-events-none absolute inset-0 z-40 grid place-items-center p-3">
       <AnimatedDiceResult
         key={`${movement.playerId}-${movement.roll}-${dice.join('-')}`}
         dice={dice}

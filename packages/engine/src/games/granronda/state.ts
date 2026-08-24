@@ -2,6 +2,7 @@ import type {
   GranRondaBoardSpace,
   GranRondaConfig,
   GranRondaResolutionKind,
+  GranRondaInteractionPublic,
   GranRondaPowerupType,
   GranRondaMiniGameId,
   PlayerId,
@@ -106,6 +107,7 @@ export interface GranRondaResolutionState {
   message: string;
   coinsDelta: number;
   sealsDelta: number;
+  purchasedPowerups?: GranRondaPowerupType[];
 }
 
 export interface GranRondaState {
@@ -121,10 +123,13 @@ export interface GranRondaState {
   players: GranRondaPlayer[];
   board: GranRondaBoardSpace[];
   stampSpaceId: string;
+  stampCost: number;
+  stampValue: number;
   trapSpaceIds: string[];
   movedPlayerIds: PlayerId[];
   movement: GranRondaMovementState | null;
   resolution: GranRondaResolutionState | null;
+  lastInteraction: GranRondaInteractionPublic | null;
   miniGame: GranRondaMiniGameState;
   winnerId: PlayerId | null;
   rematchVotes: PlayerId[];
