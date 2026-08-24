@@ -6,6 +6,7 @@ import type {
   PlayerId,
   PublicPlayer,
 } from '@ronda/protocol';
+import { GranRondaDiceOverlay } from './GranRondaDiceOverlay';
 
 export interface GranRondaBoardProps {
   board: GranRondaBoardSpace[];
@@ -189,6 +190,9 @@ export function GranRondaBoard({
               );
             })}
           </div>
+          {movement && activePlayer ? (
+            <GranRondaDiceOverlay movement={movement} playerName={activePlayer.nick} />
+          ) : null}
         </div>
       </div>
 

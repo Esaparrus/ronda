@@ -877,9 +877,13 @@ export type GranRondaAvailableAction =
   | 'advanceGranRondaMovement'
   | 'chooseGranRondaPath'
   | 'continueGranRondaResolution'
+  | 'buyGranRondaSeal'
+  | 'buyGranRondaPowerup'
+  | 'useGranRondaPowerup'
   | 'submitGranRondaAnswer'
   | 'finishGranRondaMiniGame'
   | 'nextRound';
+export type GranRondaPowerupType = 'doubleRoll' | 'rivalPenalty';
 
 export interface GranRondaBoardSpace {
   id: string;
@@ -896,6 +900,7 @@ export interface GranRondaBoardPlayer {
   position: string;
   coins: number;
   seals: number;
+  powerups: Record<GranRondaPowerupType, number>;
   lastRoll: number | null;
   lastSpaceId: string | null;
 }
@@ -919,6 +924,7 @@ export interface GranRondaMiniGamePublic {
 export interface GranRondaMovementPublic {
   playerId: PlayerId;
   roll: number;
+  dice: number[];
   path: string[];
   remainingSteps: number;
   routeOptions: string[];
@@ -951,6 +957,7 @@ export interface GranRondaPlayerViewMe {
   position: string;
   coins: number;
   seals: number;
+  powerups: Record<GranRondaPowerupType, number>;
   selectedOptionId: string | null;
   availableActions: GranRondaAvailableAction[];
 }

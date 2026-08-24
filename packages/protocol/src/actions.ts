@@ -165,6 +165,16 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('advanceGranRondaMovement') }),
   z.object({ type: z.literal('chooseGranRondaPath'), nextSpaceId: cardIdField }),
   z.object({ type: z.literal('continueGranRondaResolution') }),
+  z.object({ type: z.literal('buyGranRondaSeal') }),
+  z.object({
+    type: z.literal('buyGranRondaPowerup'),
+    powerup: z.union([z.literal('doubleRoll'), z.literal('rivalPenalty')]),
+  }),
+  z.object({
+    type: z.literal('useGranRondaPowerup'),
+    powerup: z.union([z.literal('doubleRoll'), z.literal('rivalPenalty')]),
+    targetPlayerId: cardIdField.optional(),
+  }),
   z.object({ type: z.literal('submitGranRondaAnswer'), optionId: cardIdField }),
   /** El anfitrión puede cerrar el minijuego si alguien se desconecta. */
   z.object({ type: z.literal('finishGranRondaMiniGame') }),

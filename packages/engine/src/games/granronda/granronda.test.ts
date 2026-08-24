@@ -106,18 +106,76 @@ describe('La Gran Ronda', () => {
     expect(state.movement).toBeNull();
   });
 
-  it('termina la ronda sin lanzar preguntas genéricas y deja avanzar al anfitrión', () => {
+  it('termina el movimiento, abre el juego de la ronda y deja avanzar al anfitrión', () => {
     let state = makeState();
-    while (state.phase !== 'roundEnd') state = resolveCurrentTurn(state);
+    while (state.phase !== 'minigameInput') state = resolveCurrentTurn(state);
     expect(state.status).toBe('playing');
-    expect(state.phase).toBe('roundEnd');
+    expect(state.phase).toBe('minigameInput');
     expect(state.miniGame.submissions).toEqual({});
 
     const rejected = applyAction(state, 'p2', { type: 'nextRound' }, 0);
     expect(rejected.ok).toBe(false);
+    state = play({ type: 'finishGranRondaMiniGame' }, state, 'p1');
+    expect(state.phase).toBe('minigameReveal');
+    expect(state.miniGame.scoreDeltas).not.toBeNull();
     state = play({ type: 'nextRound' }, state, 'p1');
     expect(state.round).toBe(2);
     expect(state.phase).toBe('movement');
     expect(state.turnSeat).toBe(1);
+  });
+
+  it('permite comprar sellos y potenciadores y aplicar sus efectos', () => {
+    let state = makeState();
+    state.phase = 'resolving';
+    state.turnSeat = 0;
+    state.players[0].position = 'plaza-copas';
+    state.players[0].coins = 20;
+    state.movement = {
+      playerId: 'p1',
+      roll: 1,
+      dice: [1],
+      path: ['plaza-copas'],
+      remainingSteps: 0,
+      routeOptions: [],
+      forcedNextSpaceId: null,
+    };
+    state.resolution = {
+      kind: 'sello',
+      spaceId: 'plaza-copas',
+      title: 'Sello disponible',
+      message: 'Puedes comprarlo',
+      coinsDelta: 0,
+      sealsDelta: 0,
+    };
+
+    state = play({ type: 'buyGranRondaSeal' }, state, 'p1');
+    expect(state.players[0].coins).toBe(12);
+    expect(state.players[0].seals).toBe(1);
+    expect(state.stampSpaceId).toBe('puente-comun');
+
+    state = play({ type: 'buyGranRondaPowerup', powerup: 'doubleRoll' }, state, 'p1');
+    expect(state.players[0].coins).toBe(7);
+    expect(state.players[0].powerups.doubleRoll).toBe(1);
+
+    state.phase = 'movement';
+    state.resolution = null;
+    state.movement = null;
+    state = play({ type: 'useGranRondaPowerup', powerup: 'doubleRoll' }, state, 'p1');
+    expect(state.players[0].powerups.doubleRoll).toBe(0);
+    expect(state.movement?.dice).toHaveLength(2);
+    expect(state.movement?.roll).toBe((state.movement?.dice[0] ?? 0) + (state.movement?.dice[1] ?? 0));
+
+    let penaltyState = makeState();
+    penaltyState.phase = 'movement';
+    penaltyState.turnSeat = 0;
+    penaltyState.players[0].powerups.rivalPenalty = 1;
+    penaltyState.players[1].coins = 3;
+    penaltyState = play(
+      { type: 'useGranRondaPowerup', powerup: 'rivalPenalty', targetPlayerId: 'p2' },
+      penaltyState,
+      'p1',
+    );
+    expect(penaltyState.players[0].powerups.rivalPenalty).toBe(0);
+    expect(penaltyState.players[1].coins).toBe(1);
   });
 });

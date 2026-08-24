@@ -12,7 +12,11 @@ import type {
   PublicPlayer,
 } from '@ronda/protocol';
 import { granRondaMiniGameById } from './content.ts';
-import { granRondaSpaceById } from './rules.ts';
+import {
+  GRAN_RONDA_POWERUP_COSTS,
+  GRAN_RONDA_STAMP_COST,
+  granRondaSpaceById,
+} from './rules.ts';
 import { activeGranRondaPlayers, granRondaPlayer, type GranRondaState } from './state.ts';
 
 function publicPlayers(state: GranRondaState): PublicPlayer[] {
@@ -37,13 +41,21 @@ function boardPlayers(state: GranRondaState): GranRondaBoardPlayer[] {
     position: player.position,
     coins: player.coins,
     seals: player.seals,
+    powerups: { ...player.powerups },
     lastRoll: player.lastRoll,
     lastSpaceId: player.lastSpaceId,
   }));
 }
 
 function movement(state: GranRondaState): GranRondaMovementPublic | null {
-  return state.movement ? { ...state.movement, path: [...state.movement.path], routeOptions: [...state.movement.routeOptions] } : null;
+  return state.movement
+    ? {
+        ...state.movement,
+        dice: [...state.movement.dice],
+        path: [...state.movement.path],
+        routeOptions: [...state.movement.routeOptions],
+      }
+    : null;
 }
 
 function resolution(state: GranRondaState): GranRondaResolutionPublic | null {
@@ -99,6 +111,7 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
       position: 'salida',
       coins: 0,
       seals: 0,
+      powerups: { doubleRoll: 0, rivalPenalty: 0 },
       selectedOptionId: null,
       availableActions,
     };
@@ -116,6 +129,21 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     }
     if (state.phase === 'resolving' && state.movement?.playerId === playerId) {
       availableActions.push('continueGranRondaResolution');
+      if (
+        state.resolution?.kind === 'sello' &&
+        state.resolution.spaceId === state.stampSpaceId &&
+        player.coins >= GRAN_RONDA_STAMP_COST
+      ) {
+        availableActions.push('buyGranRondaSeal');
+      }
+      if (player.coins >= Math.min(...Object.values(GRAN_RONDA_POWERUP_COSTS))) {
+        availableActions.push('buyGranRondaPowerup');
+      }
+    }
+    if (state.phase === 'movement' && state.turnSeat === player.seat) {
+      if (player.powerups.doubleRoll > 0 || player.powerups.rivalPenalty > 0) {
+        availableActions.push('useGranRondaPowerup');
+      }
     }
     if (state.phase === 'minigameInput' && state.miniGame.submissions[playerId] === undefined) {
       availableActions.push('submitGranRondaAnswer');
@@ -123,7 +151,7 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     if (state.phase === 'minigameInput' && player.seat === 0) {
       availableActions.push('finishGranRondaMiniGame');
     }
-    if (state.phase === 'roundEnd' && state.status === 'playing' && player.seat === 0) {
+    if (state.phase === 'minigameReveal' && state.status === 'playing' && player.seat === 0) {
       availableActions.push('nextRound');
     }
   }
@@ -133,6 +161,7 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     position: player.position,
     coins: player.coins,
     seals: player.seals,
+    powerups: { ...player.powerups },
     selectedOptionId: state.miniGame.submissions[playerId] ?? null,
     availableActions,
   };

@@ -18,8 +18,12 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
       ? 'Eligiendo camino'
       : view.phase === 'moving'
         ? 'Ficha en movimiento'
-        : view.phase === 'resolving'
-          ? 'Resolviendo casilla'
+      : view.phase === 'resolving'
+        ? 'Resolviendo casilla'
+        : view.phase === 'minigameInput'
+          ? 'Juego de la ronda'
+          : view.phase === 'minigameReveal'
+            ? 'Resultados del juego'
           : view.phase === 'roundEnd'
             ? 'Ronda completada'
             : turnNick
@@ -50,6 +54,47 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
           movement={view.movement}
         />
       </div>
+
+      {view.phase === 'minigameInput' || view.phase === 'minigameReveal' ? (
+        <section className="mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-[24px] border border-oro/40 bg-oro/5 p-5 shadow-[0_14px_40px_rgba(246,195,76,0.08)]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="eyebrow text-oro">Juego de la ronda</p>
+              <h2 className="mt-1 text-26 font-semibold text-hueso">{view.miniGame.title}</h2>
+              <p className="mt-1 text-15 text-humo">{view.miniGame.prompt}</p>
+            </div>
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-24 text-oro">?</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {view.miniGame.options.map((option) => {
+              const correct = view.phase === 'minigameReveal' && view.miniGame.correctOptionId === option.id;
+              return (
+                <div key={option.id} className={`rounded-2xl border px-4 py-3 text-15 font-semibold ${correct ? 'border-equipo-turquesa bg-equipo-turquesa/15 text-equipo-turquesa' : 'border-linea bg-tinta/30 text-hueso'}`}>
+                  <span className="mr-2 font-mono text-11 text-humo">{option.id.toUpperCase()}</span>
+                  {option.label}
+                </div>
+              );
+            })}
+          </div>
+          {view.phase === 'minigameReveal' ? (
+            <div className="grid gap-1.5 rounded-2xl border border-linea bg-tinta/35 p-3 sm:grid-cols-2">
+              {view.players.map((player) => {
+                const delta = view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
+                return (
+                  <div key={player.playerId} className="flex items-center justify-between gap-2 text-13">
+                    <span className="truncate text-hueso">{player.nick}</span>
+                    <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
+                      {delta > 0 ? `+${delta}` : '±0'} Oros
+                    </strong>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-13 text-humo">Elige una respuesta en tu móvil · {view.miniGame.submittedPlayerIds.length}/{view.players.length} bloqueadas.</p>
+          )}
+        </section>
+      ) : null}
 
       {!final && view.phase === 'routeChoice' ? (
         <section className="mx-auto flex w-full max-w-3xl items-center justify-center gap-3 rounded-[24px] border border-oro/35 bg-oro/10 p-5 text-center">

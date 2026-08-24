@@ -2,12 +2,22 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { GranRondaPlayerView } from '@ronda/protocol';
+import type { GranRondaPlayerView, GranRondaPowerupType } from '@ronda/protocol';
 import { GranRondaBoard } from '@/components/granronda/GranRondaBoard';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
 import { useRondaStore } from '@/lib/store';
+
+const POWERUP_COSTS: Record<GranRondaPowerupType, number> = {
+  doubleRoll: 5,
+  rivalPenalty: 4,
+};
+
+const POWERUP_LABELS: Record<GranRondaPowerupType, string> = {
+  doubleRoll: 'Doble dado',
+  rivalPenalty: 'Penalización',
+};
 
 export interface GranRondaGameScreenProps {
   view: GranRondaPlayerView;
@@ -87,6 +97,10 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
         />
       </section>
 
+      {view.phase === 'minigameInput' || view.phase === 'minigameReveal' ? (
+        <MiniGamePanel view={view} can={can} send={send} />
+      ) : null}
+
       {!final && view.phase === 'movement' ? (
         <section className="surface-panel flex flex-col gap-3 p-4 text-center">
           <p className="eyebrow">Turno de movimiento</p>
@@ -98,7 +112,12 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
               ? 'El resultado lo verá toda la mesa y después podrás elegir el camino.'
               : 'El mapa permanece visible para todos mientras llega el siguiente movimiento.'}
           </p>
-          {can('rollGranRonda') ? <Button onClick={() => send({ type: 'rollGranRonda' })}>Tirar dado</Button> : null}
+          {can('rollGranRonda') ? (
+            <>
+              <Button onClick={() => send({ type: 'rollGranRonda' })}>Tirar dado</Button>
+              <PowerupTray view={view} can={can} send={send} />
+            </>
+          ) : null}
         </section>
       ) : null}
 
@@ -216,11 +235,185 @@ function ResolutionPanel({
       </div>
       <p className="text-14 leading-relaxed text-humo">{resolution.message}</p>
       {resolution.sealsDelta > 0 ? <p className="font-mono text-13 text-verde">+{resolution.sealsDelta} Sello</p> : null}
+      {can('buyGranRondaSeal') ? (
+        <Button onClick={() => send({ type: 'buyGranRondaSeal' })}>
+          Comprar Sello · 8 Oros
+        </Button>
+      ) : null}
+      {can('buyGranRondaPowerup') ? <PowerupShop view={view} send={send} /> : null}
       {can('continueGranRondaResolution') ? (
         <Button onClick={() => send({ type: 'continueGranRondaResolution' })}>Continuar</Button>
       ) : (
         <p className="text-13 text-humo">{currentTurnNick ?? 'La persona activa'} confirma la llegada.</p>
       )}
     </section>
+  );
+}
+
+function MiniGamePanel({
+  view,
+  can,
+  send,
+}: {
+  view: GranRondaPlayerView;
+  can: (action: GranRondaPlayerView['me']['availableActions'][number]) => boolean;
+  send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
+}) {
+  const revealed = view.phase === 'minigameReveal';
+  const selected = view.me.selectedOptionId;
+  const correct = view.miniGame.correctOptionId;
+  return (
+    <section className="surface-panel flex flex-col gap-3 border-oro/40 bg-oro/5 p-4 shadow-[0_14px_40px_rgba(246,195,76,0.08)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="eyebrow text-oro">Juego de la ronda</p>
+          <h2 className="mt-1 text-22 font-semibold text-hueso">{view.miniGame.title}</h2>
+          <p className="mt-1 text-14 leading-relaxed text-humo">{view.miniGame.prompt}</p>
+        </div>
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-20 text-oro">?</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {view.miniGame.options.map((option) => {
+          const isSelected = selected === option.id;
+          const isCorrect = revealed && correct === option.id;
+          const isWrongSelected = revealed && isSelected && !isCorrect;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              disabled={revealed || !can('submitGranRondaAnswer')}
+              onClick={() => send({ type: 'submitGranRondaAnswer', optionId: option.id })}
+              className={`min-h-12 rounded-2xl border px-3 py-2 text-left text-14 font-semibold transition-[transform,background-color,border-color,opacity] active:scale-[0.985] disabled:cursor-default disabled:opacity-85 ${
+                isCorrect
+                  ? 'border-equipo-turquesa bg-equipo-turquesa/15 text-equipo-turquesa'
+                  : isWrongSelected
+                    ? 'border-brasa bg-brasa/15 text-brasa'
+                    : isSelected
+                      ? 'border-oro bg-oro/15 text-oro ring-2 ring-oro/20'
+                      : 'border-linea bg-tinta/30 text-hueso hover:border-oro/60'
+              }`}
+            >
+              <span className="mr-2 font-mono text-11 text-humo">{option.id.toUpperCase()}</span>
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      {revealed ? (
+        <div className="flex flex-col gap-2 rounded-2xl border border-linea bg-tinta/35 p-3">
+          <p className="text-12 text-humo">
+            Respuesta correcta: <strong className="text-equipo-turquesa">{view.miniGame.options.find((option) => option.id === correct)?.label ?? '—'}</strong>
+          </p>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {view.players.map((player) => {
+              const delta = view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
+              return (
+                <div key={player.playerId} className="flex items-center justify-between gap-2 text-12">
+                  <span className="truncate text-hueso">{player.nick}</span>
+                  <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
+                    {delta > 0 ? `+${delta}` : '±0'} Oros
+                  </strong>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-12 text-humo">
+          <span>{view.miniGame.submittedPlayerIds.length}/{view.players.length} respuestas bloqueadas</span>
+          <span>Acertar: +4 · fallar: +1</span>
+        </div>
+      )}
+      {can('finishGranRondaMiniGame') ? (
+        <Button variant="ghost" onClick={() => send({ type: 'finishGranRondaMiniGame' })}>
+          Revelar resultados
+        </Button>
+      ) : null}
+      {can('nextRound') ? (
+        <Button onClick={() => send({ type: 'nextRound' })}>Empezar ronda {view.round + 1}</Button>
+      ) : null}
+    </section>
+  );
+}
+
+function PowerupShop({
+  view,
+  send,
+}: {
+  view: GranRondaPlayerView;
+  send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-violeta/35 bg-violeta/10 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="eyebrow text-violeta">Tienda de poderes</p>
+        <span className="font-mono text-11 text-oro">{view.me.coins} Oros</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(Object.keys(POWERUP_COSTS) as GranRondaPowerupType[]).map((powerup) => (
+          <button
+            key={powerup}
+            type="button"
+            disabled={view.me.coins < POWERUP_COSTS[powerup]}
+            onClick={() => send({ type: 'buyGranRondaPowerup', powerup })}
+            className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-violeta/40 bg-tinta/35 px-3 py-2 text-left text-12 text-hueso transition-colors hover:border-violeta disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <span>
+              <strong className="block text-13">{POWERUP_LABELS[powerup]}</strong>
+              <span className="text-humo">Tienes {view.me.powerups[powerup]}</span>
+            </span>
+            <span className="font-mono text-oro">{POWERUP_COSTS[powerup]} O</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PowerupTray({
+  view,
+  can,
+  send,
+}: {
+  view: GranRondaPlayerView;
+  can: (action: GranRondaPlayerView['me']['availableActions'][number]) => boolean;
+  send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
+}) {
+  const rivals = view.players.filter((player) => player.playerId !== view.me.playerId && !player.eliminated);
+  if (!can('useGranRondaPowerup')) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-violeta/35 bg-violeta/10 p-3 text-left">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="eyebrow text-violeta">Poderes listos</p>
+        <span className="text-11 text-humo">Se usan antes de tirar</span>
+      </div>
+      {view.me.powerups.doubleRoll > 0 ? (
+        <button
+          type="button"
+          onClick={() => send({ type: 'useGranRondaPowerup', powerup: 'doubleRoll' })}
+          className="flex min-h-11 items-center justify-between rounded-xl border border-oro/45 bg-oro/10 px-3 py-2 text-13 font-semibold text-oro"
+        >
+          <span>🎲🎲 Tirar dos dados</span>
+          <span className="font-mono text-11">×{view.me.powerups.doubleRoll}</span>
+        </button>
+      ) : null}
+      {view.me.powerups.rivalPenalty > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-11 text-humo">Penalizar a un rival · −2 Oros</p>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {rivals.map((rival) => (
+              <button
+                key={rival.playerId}
+                type="button"
+                onClick={() => send({ type: 'useGranRondaPowerup', powerup: 'rivalPenalty', targetPlayerId: rival.playerId })}
+                className="min-h-10 rounded-xl border border-brasa/45 bg-brasa/10 px-3 py-2 text-left text-12 text-hueso"
+              >
+                {rival.nick}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

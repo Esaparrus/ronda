@@ -1,6 +1,12 @@
 import type { CreateInitialStateInput } from '../../core/types.ts';
 import { hashSeed, mulberry32, shuffle } from '../../core/rng.ts';
-import type { GameAction, GameEvent, PlayerId, Result } from '@ronda/protocol';
+import type {
+  GameAction,
+  GameEvent,
+  GranRondaPowerupType,
+  PlayerId,
+  Result,
+} from '@ronda/protocol';
 import { err, ok } from '@ronda/protocol';
 import { GRAN_RONDA_MINIGAMES, granRondaMiniGameById } from './content.ts';
 import {
@@ -8,6 +14,7 @@ import {
   GRAN_RONDA_START_COINS,
   GRAN_RONDA_STAMP_COST,
   GRAN_RONDA_STAMP_TARGETS,
+  GRAN_RONDA_POWERUP_COSTS,
   granRondaSpaceById,
 } from './rules.ts';
 import {
@@ -50,6 +57,7 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
       position: 'salida',
       coins: GRAN_RONDA_START_COINS,
       seals: 0,
+      powerups: { doubleRoll: 0, rivalPenalty: 0 },
       score: 0,
       lastRoll: null,
       lastSpaceId: null,
@@ -102,6 +110,12 @@ export function applyAction(
       return choosePath(state, playerId, action.nextSpaceId);
     case 'continueGranRondaResolution':
       return continueResolution(state, playerId);
+    case 'buyGranRondaSeal':
+      return buySeal(state, playerId);
+    case 'buyGranRondaPowerup':
+      return buyPowerup(state, playerId, action.powerup);
+    case 'useGranRondaPowerup':
+      return usePowerup(state, playerId, action.powerup, action.targetPlayerId);
     case 'submitGranRondaAnswer':
       return submitAnswer(state, playerId, action.optionId);
     case 'finishGranRondaMiniGame':
@@ -113,7 +127,11 @@ export function applyAction(
   }
 }
 
-function rollDie(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
+function rollDie(
+  state: GranRondaState,
+  playerId: PlayerId,
+  diceCount: 1 | 2 = 1,
+): GranRondaActionResult {
   if (state.status !== 'playing' || state.phase !== 'movement') return err('INVALID_ACTION');
   const player = granRondaPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
@@ -121,13 +139,19 @@ function rollDie(state: GranRondaState, playerId: PlayerId): GranRondaActionResu
   if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
 
   const next = bump(state);
-  const rolled = nextRandomInt(next, 1, 6);
   const nextPlayer = granRondaPlayer(next, playerId);
   if (!nextPlayer) return err('PLAYER_NOT_IN_ROOM');
+  if (diceCount === 2) {
+    if (nextPlayer.powerups.doubleRoll <= 0) return err('INVALID_ACTION');
+    nextPlayer.powerups.doubleRoll -= 1;
+  }
+  const dice = Array.from({ length: diceCount }, () => nextRandomInt(next, 1, 6));
+  const rolled = dice.reduce((total, value) => total + value, 0);
   nextPlayer.lastRoll = rolled;
   next.movement = {
     playerId,
     roll: rolled,
+    dice,
     path: [nextPlayer.position],
     remainingSteps: rolled,
     routeOptions: [],
@@ -224,6 +248,93 @@ function continueResolution(state: GranRondaState, playerId: PlayerId): GranRond
   return ok({ state: next, events: [] });
 }
 
+function buySeal(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
+  if (state.status !== 'playing' || state.phase !== 'resolving') return err('INVALID_ACTION');
+  const movement = state.movement;
+  const player = granRondaPlayer(state, playerId);
+  const resolution = state.resolution;
+  if (!movement || movement.playerId !== playerId || !player) return err('INVALID_ACTION');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
+  if (
+    !resolution ||
+    resolution.kind !== 'sello' ||
+    resolution.spaceId !== state.stampSpaceId ||
+    player.coins < GRAN_RONDA_STAMP_COST
+  ) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  const nextPlayer = granRondaPlayer(next, playerId);
+  if (!nextPlayer || !next.resolution) return err('INVALID_ACTION');
+  nextPlayer.coins -= GRAN_RONDA_STAMP_COST;
+  nextPlayer.seals += 1;
+  nextPlayer.score = nextPlayer.seals;
+  const targetIndex = GRAN_RONDA_STAMP_TARGETS.indexOf(
+    next.stampSpaceId as (typeof GRAN_RONDA_STAMP_TARGETS)[number],
+  );
+  next.stampSpaceId =
+    GRAN_RONDA_STAMP_TARGETS[(targetIndex + 1) % GRAN_RONDA_STAMP_TARGETS.length] ??
+    GRAN_RONDA_STAMP_TARGETS[0];
+  next.resolution = {
+    ...next.resolution,
+    title: 'Sello comprado',
+    message: `Has gastado ${GRAN_RONDA_STAMP_COST} Oros y consigues un Sello. El siguiente aparece en ${granRondaSpaceById(next.stampSpaceId)?.label ?? 'otra plaza'}.`,
+    coinsDelta: -GRAN_RONDA_STAMP_COST,
+    sealsDelta: 1,
+  };
+  return ok({ state: next, events: [] });
+}
+
+function buyPowerup(
+  state: GranRondaState,
+  playerId: PlayerId,
+  powerup: GranRondaPowerupType,
+): GranRondaActionResult {
+  if (state.status !== 'playing' || state.phase !== 'resolving') return err('INVALID_ACTION');
+  const movement = state.movement;
+  const player = granRondaPlayer(state, playerId);
+  if (!movement || movement.playerId !== playerId || !player) return err('INVALID_ACTION');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
+  const cost = GRAN_RONDA_POWERUP_COSTS[powerup];
+  if (player.coins < cost) return err('INVALID_ACTION');
+
+  const next = bump(state);
+  const nextPlayer = granRondaPlayer(next, playerId);
+  if (!nextPlayer) return err('INVALID_ACTION');
+  nextPlayer.coins -= cost;
+  nextPlayer.powerups[powerup] += 1;
+  return ok({ state: next, events: [] });
+}
+
+function usePowerup(
+  state: GranRondaState,
+  playerId: PlayerId,
+  powerup: GranRondaPowerupType,
+  targetPlayerId?: PlayerId,
+): GranRondaActionResult {
+  if (powerup === 'doubleRoll') return rollDie(state, playerId, 2);
+  if (state.status !== 'playing' || state.phase !== 'movement') return err('INVALID_ACTION');
+  const player = granRondaPlayer(state, playerId);
+  if (!player || player.left) return err('PLAYER_NOT_IN_ROOM');
+  if (state.turnSeat !== player.seat || player.powerups.rivalPenalty <= 0) {
+    return err('INVALID_ACTION');
+  }
+  if (!targetPlayerId || targetPlayerId === playerId) return err('INVALID_ACTION');
+  const target = granRondaPlayer(state, targetPlayerId);
+  if (!target || target.left) return err('INVALID_ACTION');
+
+  const next = bump(state);
+  const nextPlayer = granRondaPlayer(next, playerId);
+  const nextTarget = granRondaPlayer(next, targetPlayerId);
+  if (!nextPlayer || !nextTarget) return err('INVALID_ACTION');
+  nextPlayer.powerups.rivalPenalty -= 1;
+  nextTarget.coins = Math.max(0, nextTarget.coins - 2);
+  return ok({ state: next, events: [] });
+}
+
 function submitAnswer(
   state: GranRondaState,
   playerId: PlayerId,
@@ -254,7 +365,7 @@ function finishMiniGame(state: GranRondaState, playerId: PlayerId): GranRondaAct
 function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
   if (
     state.status !== 'playing' ||
-    (state.phase !== 'roundEnd' && state.phase !== 'minigameReveal')
+    state.phase !== 'minigameReveal'
   ) {
     return err('INVALID_ACTION');
   }
@@ -304,7 +415,7 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
     coinsDelta = 1;
     player.coins += coinsDelta;
     title = 'Cruce de la Ronda';
-    message = 'Por ahora, el cruce te concede 1 Oro. Aquí podremos conectar una actividad.';
+    message = 'El cruce te concede 1 Oro. En esta llegada puedes comprar un poder para la siguiente vuelta.';
   }
   if (space.type === 'atajo') {
     coinsDelta = 2;
@@ -313,24 +424,16 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
     message = 'El atajo premia la decisión con 2 Oros.';
   }
 
-  if (space.type === 'sello' && space.id === state.stampSpaceId) {
-    if (player.coins >= GRAN_RONDA_STAMP_COST) {
-      coinsDelta = -GRAN_RONDA_STAMP_COST;
-      sealsDelta = 1;
-      player.coins -= GRAN_RONDA_STAMP_COST;
-      player.seals += sealsDelta;
-      player.score = player.seals;
-      title = 'Sello conseguido';
-      message = `Has gastado ${GRAN_RONDA_STAMP_COST} Oros y consigues un Sello.`;
-      const targetIndex = GRAN_RONDA_STAMP_TARGETS.indexOf(
-        state.stampSpaceId as (typeof GRAN_RONDA_STAMP_TARGETS)[number],
-      );
-      state.stampSpaceId =
-        GRAN_RONDA_STAMP_TARGETS[(targetIndex + 1) % GRAN_RONDA_STAMP_TARGETS.length] ??
-        GRAN_RONDA_STAMP_TARGETS[0];
+  if (space.type === 'sello') {
+    if (space.id === state.stampSpaceId) {
+      title = 'Sello disponible';
+      message =
+        player.coins >= GRAN_RONDA_STAMP_COST
+          ? `Cuesta ${GRAN_RONDA_STAMP_COST} Oros. Puedes comprarlo ahora o guardar tus Oros.`
+          : `Necesitas ${GRAN_RONDA_STAMP_COST} Oros para comprarlo; ahora tienes ${player.coins}.`;
     } else {
-      title = 'Sello fuera de alcance';
-      message = `Necesitas ${GRAN_RONDA_STAMP_COST} Oros para comprarlo.`;
+      title = 'Plaza de Sello';
+      message = `Aquí no está el Sello activo. El objetivo actual es ${granRondaSpaceById(state.stampSpaceId)?.label ?? 'otra plaza'}.`;
     }
   }
 
@@ -348,12 +451,10 @@ function finishMovement(state: GranRondaState, playerId: PlayerId): void {
   if (!state.movedPlayerIds.includes(playerId)) state.movedPlayerIds.push(playerId);
   const active = activeGranRondaPlayers(state).sort((left, right) => left.seat - right.seat);
   if (state.movedPlayerIds.length >= active.length) {
-    state.phase = 'roundEnd';
+    // Cada ronda termina con un juego compartido. El anfitrión solo puede
+    // revelar cuando han respondido todos o cuando decide cerrar la ventana.
+    state.phase = 'minigameInput';
     state.turnSeat = null;
-    if (state.round >= state.config.rounds) {
-      state.status = 'gameEnd';
-      state.winnerId = decideWinner(state);
-    }
     return;
   }
 
@@ -414,6 +515,7 @@ function bump(state: GranRondaState): GranRondaState {
   const movement: GranRondaMovementState | null = state.movement
     ? {
         ...state.movement,
+        dice: [...state.movement.dice],
         path: [...state.movement.path],
         routeOptions: [...state.movement.routeOptions],
       }
@@ -424,7 +526,11 @@ function bump(state: GranRondaState): GranRondaState {
   return {
     ...state,
     rng: { ...state.rng },
-    players: state.players.map((player) => ({ ...player, hand: [...player.hand] })),
+    players: state.players.map((player) => ({
+      ...player,
+      hand: [...player.hand],
+      powerups: { ...player.powerups },
+    })),
     board: state.board.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
     movedPlayerIds: [...state.movedPlayerIds],
     movement,

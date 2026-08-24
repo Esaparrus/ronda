@@ -2,48 +2,63 @@ import type { GranRondaBoardSpace, GranRondaSpaceType } from '@ronda/protocol';
 
 export const GRAN_RONDA_START_COINS = 5;
 export const GRAN_RONDA_STAMP_COST = 8;
+export const GRAN_RONDA_POWERUP_COSTS = {
+  doubleRoll: 5,
+  rivalPenalty: 4,
+} as const;
 
-/** Tablero inicial: una ruta circular con dos decisiones reales de camino. */
+/**
+ * Tablero de 26 posiciones. La ruta principal rodea el paño y las tres
+ * bifurcaciones tienen alternativas con distinta longitud y recompensa:
+ * el camino corto adelanta, el largo ofrece más casillas de Oros pero también
+ * más riesgo. La salida es la única posición sin elección.
+ */
 export const GRAN_RONDA_BOARD: readonly GranRondaBoardSpace[] = [
-  { id: 'salida', index: 0, label: 'Salida', type: 'start', nextIds: ['plaza-oros'], x: 14, y: 84 },
+  { id: 'salida', index: 0, label: 'Salida', type: 'start', nextIds: ['plaza-oros'], x: 10, y: 88 },
   {
     id: 'plaza-oros',
     index: 1,
     label: 'Plaza de Oros',
     type: 'oros',
     nextIds: ['paseo-azul', 'senda-bastos'],
-    x: 25,
-    y: 84,
+    x: 21,
+    y: 88,
   },
-  { id: 'paseo-azul', index: 2, label: 'Paseo Azul', type: 'atajo', nextIds: ['paseo-3'], x: 37, y: 84 },
-  { id: 'senda-bastos', index: 3, label: 'Senda de Bastos', type: 'perdida', nextIds: ['paseo-3'], x: 25, y: 71 },
-  { id: 'paseo-3', index: 4, label: 'Cruce de Copas', type: 'evento', nextIds: ['plaza-copas'], x: 37, y: 64 },
-  { id: 'plaza-copas', index: 5, label: 'Plaza de Copas', type: 'sello', nextIds: ['paseo-5'], x: 49, y: 64 },
-  { id: 'paseo-5', index: 6, label: 'Paseo del Sol', type: 'oros', nextIds: ['bifurcacion'], x: 61, y: 64 },
+  { id: 'paseo-azul', index: 2, label: 'Paseo Azul', type: 'atajo', nextIds: ['fuente-azul'], x: 31, y: 84 },
+  { id: 'fuente-azul', index: 3, label: 'Fuente Azul', type: 'oros', nextIds: ['union-bastos'], x: 39, y: 76 },
+  { id: 'union-bastos', index: 4, label: 'Unión de Bastos', type: 'evento', nextIds: ['plaza-copas'], x: 48, y: 76 },
+  { id: 'senda-bastos', index: 5, label: 'Senda de Bastos', type: 'perdida', nextIds: ['sendero-bastos'], x: 30, y: 95 },
+  { id: 'sendero-bastos', index: 6, label: 'Sendero de Bastos', type: 'evento', nextIds: ['mercado-bastos'], x: 39, y: 91 },
+  { id: 'mercado-bastos', index: 7, label: 'Mercado de Bastos', type: 'oros', nextIds: ['union-bastos'], x: 46, y: 84 },
+  { id: 'plaza-copas', index: 8, label: 'Plaza de Copas', type: 'sello', nextIds: ['paseo-sol'], x: 57, y: 68 },
+  { id: 'paseo-sol', index: 9, label: 'Paseo del Sol', type: 'oros', nextIds: ['bifurcacion-azul'], x: 67, y: 68 },
   {
-    id: 'bifurcacion',
-    index: 7,
-    label: 'Bifurcación',
+    id: 'bifurcacion-azul',
+    index: 10,
+    label: 'Bifurcación Azul',
     type: 'evento',
-    nextIds: ['senda-oro', 'senda-riesgo'],
-    x: 73,
-    y: 64,
+    nextIds: ['senda-dorada', 'camino-riesgo'],
+    x: 76,
+    y: 68,
   },
-  { id: 'senda-oro', index: 8, label: 'Senda Dorada', type: 'oros', nextIds: ['union'], x: 83, y: 53 },
-  { id: 'senda-riesgo', index: 9, label: 'Senda de Riesgo', type: 'perdida', nextIds: ['union'], x: 83, y: 75 },
-  { id: 'union', index: 10, label: 'Puente Común', type: 'sello', nextIds: ['paseo-10'], x: 91, y: 64 },
-  { id: 'paseo-10', index: 11, label: 'Mirador', type: 'evento', nextIds: ['plaza-espadas'], x: 91, y: 50 },
-  { id: 'plaza-espadas', index: 12, label: 'Plaza de Espadas', type: 'oros', nextIds: ['atajo-1'], x: 81, y: 42 },
-  { id: 'atajo-1', index: 13, label: 'Atajo de la Fuente', type: 'atajo', nextIds: ['atajo-2'], x: 69, y: 42 },
-  { id: 'atajo-2', index: 14, label: 'Fuente del Sello', type: 'sello', nextIds: ['paseo-15'], x: 57, y: 42 },
-  { id: 'paseo-15', index: 15, label: 'Curva de Bastos', type: 'perdida', nextIds: ['paseo-16'], x: 45, y: 42 },
-  { id: 'paseo-16', index: 16, label: 'Arco de Copas', type: 'evento', nextIds: ['paseo-17'], x: 33, y: 42 },
-  { id: 'paseo-17', index: 17, label: 'Rincón de Oros', type: 'oros', nextIds: ['paseo-18'], x: 21, y: 42 },
-  { id: 'paseo-18', index: 18, label: 'Terraza del Sello', type: 'sello', nextIds: ['paseo-19'], x: 12, y: 53 },
-  { id: 'paseo-19', index: 19, label: 'Camino de Vuelta', type: 'evento', nextIds: ['salida'], x: 12, y: 68 },
+  { id: 'senda-dorada', index: 11, label: 'Senda Dorada', type: 'oros', nextIds: ['puente-comun'], x: 83, y: 57 },
+  { id: 'camino-riesgo', index: 12, label: 'Camino de Riesgo', type: 'perdida', nextIds: ['desvio-riesgo'], x: 83, y: 78 },
+  { id: 'desvio-riesgo', index: 13, label: 'Desvío de Riesgo', type: 'evento', nextIds: ['puente-comun'], x: 75, y: 88 },
+  { id: 'puente-comun', index: 14, label: 'Puente Común', type: 'sello', nextIds: ['mirador'], x: 89, y: 47 },
+  { id: 'mirador', index: 15, label: 'Mirador', type: 'evento', nextIds: ['plaza-espadas'], x: 88, y: 36 },
+  { id: 'plaza-espadas', index: 16, label: 'Plaza de Espadas', type: 'oros', nextIds: ['atajo-fuente', 'sendero-copas'], x: 78, y: 29 },
+  { id: 'atajo-fuente', index: 17, label: 'Atajo de la Fuente', type: 'atajo', nextIds: ['curva-bastos'], x: 66, y: 30 },
+  { id: 'sendero-copas', index: 18, label: 'Sendero de Copas', type: 'evento', nextIds: ['fuente-sello'], x: 68, y: 18 },
+  { id: 'fuente-sello', index: 19, label: 'Fuente del Sello', type: 'sello', nextIds: ['curva-bastos'], x: 56, y: 18 },
+  { id: 'curva-bastos', index: 20, label: 'Curva de Bastos', type: 'perdida', nextIds: ['arco-copas'], x: 45, y: 29 },
+  { id: 'arco-copas', index: 21, label: 'Arco de Copas', type: 'evento', nextIds: ['rincon-oros'], x: 34, y: 29 },
+  { id: 'rincon-oros', index: 22, label: 'Rincón de Oros', type: 'oros', nextIds: ['terraza-sello'], x: 23, y: 29 },
+  { id: 'terraza-sello', index: 23, label: 'Terraza del Sello', type: 'sello', nextIds: ['camino-vuelta'], x: 13, y: 39 },
+  { id: 'camino-vuelta', index: 24, label: 'Camino de Vuelta', type: 'evento', nextIds: ['puerta-salida'], x: 11, y: 57 },
+  { id: 'puerta-salida', index: 25, label: 'Puerta de Salida', type: 'atajo', nextIds: ['salida'], x: 10, y: 73 },
 ];
 
-export const GRAN_RONDA_STAMP_TARGETS = ['plaza-copas', 'union', 'atajo-2', 'paseo-18'] as const;
+export const GRAN_RONDA_STAMP_TARGETS = ['plaza-copas', 'puente-comun', 'fuente-sello', 'terraza-sello'] as const;
 
 export function granRondaSpaceById(id: string): GranRondaBoardSpace | undefined {
   return GRAN_RONDA_BOARD.find((space) => space.id === id);

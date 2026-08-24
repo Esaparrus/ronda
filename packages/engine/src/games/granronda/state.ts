@@ -2,6 +2,7 @@ import type {
   GranRondaBoardSpace,
   GranRondaConfig,
   GranRondaResolutionKind,
+  GranRondaPowerupType,
   PlayerId,
   RoomCode,
 } from '@ronda/protocol';
@@ -31,6 +32,7 @@ export interface GranRondaPlayer {
   position: string;
   coins: number;
   seals: number;
+  powerups: Record<GranRondaPowerupType, number>;
   /** Alias de marcador para las estadísticas comunes de la sala. */
   score: number;
   lastRoll: number | null;
@@ -49,6 +51,7 @@ export interface GranRondaMiniGameState {
 export interface GranRondaMovementState {
   playerId: PlayerId;
   roll: number;
+  dice: number[];
   path: string[];
   remainingSteps: number;
   routeOptions: string[];
