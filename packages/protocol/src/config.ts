@@ -503,6 +503,7 @@ const MUSICAL_MAX_PLAYERS = z.union([
   z.literal(8),
 ]);
 const MUSICAL_ROUNDS = z.union([
+  z.literal(3),
   z.literal(5),
   z.literal(10),
   z.literal(15),

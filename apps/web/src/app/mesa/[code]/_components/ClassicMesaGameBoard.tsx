@@ -15,15 +15,15 @@ const TITLE = {
   cinquillo: 'Cinquillo',
 } as const;
 
-export function ClassicMesaGameBoard({ view }: { view: ClassicTableView }) {
+export function ClassicMesaGameBoard({ view, embedded = false }: { view: ClassicTableView; embedded?: boolean }) {
   const publicCardCount =
     view.gameId === 'sieteymedia'
       ? view.revealedHands.reduce((count, hand) => count + hand.cards.length, 0)
       : view.tableCards.length || view.currentTrick.length;
 
   return (
-    <main className="flex min-h-dvh flex-1 items-center justify-center p-6">
-      <div className="mesa-arena relative aspect-square w-[min(92vw,84vh)]">
+    <main className={`flex flex-1 items-center justify-center ${embedded ? 'min-h-[620px] p-3' : 'min-h-dvh p-6'}`}>
+      <div className={`mesa-arena relative aspect-square ${embedded ? 'w-[min(92vw,560px)]' : 'w-[min(92vw,84vh)]'}`}>
         <SeatRing
           players={view.players}
           turnPlayerId={view.turnPlayerId}

@@ -3,11 +3,20 @@ import { hashSeed, mulberry32, shuffle } from '../../core/rng.ts';
 import type {
   GameAction,
   GameEvent,
+  GranRondaEmbeddedGameAction,
   GranRondaPowerupType,
   PlayerId,
   Result,
 } from '@ronda/protocol';
-import { err, ok } from '@ronda/protocol';
+import {
+  DEFAULT_CINQUILLO_CONFIG,
+  DEFAULT_MUSICAL_CONFIG,
+  DEFAULT_SIETE_Y_MEDIA_CONFIG,
+  err,
+  ok,
+} from '@ronda/protocol';
+import { applyClassicAction, createClassicState } from '../classics/reducer.ts';
+import { applyAction as applyMusicalAction, createInitialState as createMusicalState } from '../musical/reducer.ts';
 import { GRAN_RONDA_MINIGAMES, granRondaMiniGameById } from './content.ts';
 import {
   GRAN_RONDA_BOARD,
@@ -16,11 +25,16 @@ import {
   GRAN_RONDA_STAMP_TARGETS,
   GRAN_RONDA_POWERUP_COSTS,
   granRondaSpaceById,
+  granRondaMovementOptions,
+  granRondaRouteOptions,
 } from './rules.ts';
 import {
   activeGranRondaPlayers,
   granRondaPlayer,
+  type GranRondaMiniGameResult,
   type GranRondaMiniGameState,
+  type GranRondaMiniPlayerState,
+  type GranRondaEmbeddedGameState,
   type GranRondaMovementState,
   type GranRondaPlayer,
   type GranRondaResolutionState,
@@ -69,7 +83,16 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
     questionIndex: 0,
     questionId: questionOrderResult.items[0] ?? firstQuestion.id,
     submissions: {},
+    playerStates: Object.fromEntries(
+      players.map((player) => [
+        player.playerId,
+        { score: 0, lastCard: null, finished: false, busted: false, actions: 0, completedAt: null },
+      ]),
+    ) as Record<PlayerId, GranRondaMiniPlayerState>,
+    targetOptionId: null,
     scoreDeltas: null,
+    results: null,
+    embeddedGame: null,
   };
 
   return {
@@ -100,7 +123,6 @@ export function applyAction(
   action: GameAction,
   now: number,
 ): GranRondaActionResult {
-  void now;
   switch (action.type) {
     case 'rollGranRonda':
       return rollDie(state, playerId);
@@ -116,8 +138,10 @@ export function applyAction(
       return buyPowerup(state, playerId, action.powerup);
     case 'useGranRondaPowerup':
       return usePowerup(state, playerId, action.powerup, action.targetPlayerId);
+    case 'submitGranRondaMiniGameAction':
+      return submitEmbeddedGameAction(state, playerId, action.action, now);
     case 'submitGranRondaAnswer':
-      return submitAnswer(state, playerId, action.optionId);
+      return submitAnswer(state, playerId, action.optionId, now);
     case 'finishGranRondaMiniGame':
       return finishMiniGame(state, playerId);
     case 'nextRound':
@@ -159,10 +183,10 @@ function rollDie(
   };
   next.phase = 'moving';
 
-  const currentSpace = granRondaSpaceById(nextPlayer.position);
-  if (currentSpace && currentSpace.nextIds.length > 1) {
+  const routeOptions = granRondaRouteOptions(next.board, nextPlayer.position);
+  if (routeOptions.length > 1) {
     next.phase = 'routeChoice';
-    next.movement.routeOptions = [...currentSpace.nextIds];
+    next.movement.routeOptions = routeOptions;
   }
   return ok({ state: next, events: [] });
 }
@@ -182,8 +206,15 @@ function advanceMovement(state: GranRondaState, playerId: PlayerId): GranRondaAc
   const nextPlayer = granRondaPlayer(next, playerId);
   if (!nextMovement || !nextPlayer) return err('PLAYER_NOT_IN_ROOM');
 
-  const currentSpace = granRondaSpaceById(nextPlayer.position);
-  const nextSpaceId = nextMovement.forcedNextSpaceId ?? currentSpace?.nextIds[0];
+  const movementOptions = granRondaMovementOptions(next.board, nextPlayer.position, nextMovement.path);
+  const nextSpaceId = nextMovement.forcedNextSpaceId ?? (movementOptions.length === 1 ? movementOptions[0] : undefined);
+  if (!nextMovement.forcedNextSpaceId) {
+    if (movementOptions.length > 1) {
+      nextMovement.routeOptions = movementOptions;
+      next.phase = 'routeChoice';
+      return ok({ state: next, events: [] });
+    }
+  }
   if (!nextSpaceId) return err('INVALID_ACTION');
 
   nextMovement.forcedNextSpaceId = null;
@@ -199,9 +230,10 @@ function advanceMovement(state: GranRondaState, playerId: PlayerId): GranRondaAc
   }
 
   const landedSpace = granRondaSpaceById(nextSpaceId);
-  if (landedSpace && landedSpace.nextIds.length > 1) {
+  const routeOptions = granRondaMovementOptions(next.board, nextSpaceId, nextMovement.path);
+  if (landedSpace && routeOptions.length > 1) {
     next.phase = 'routeChoice';
-    nextMovement.routeOptions = [...landedSpace.nextIds];
+    nextMovement.routeOptions = routeOptions;
   } else {
     next.phase = 'moving';
   }
@@ -221,8 +253,7 @@ function choosePath(
   if (player.left) return err('PLAYER_ELIMINATED');
   if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
 
-  const currentSpace = granRondaSpaceById(player.position);
-  if (!currentSpace || !currentSpace.nextIds.includes(nextSpaceId)) return err('INVALID_ACTION');
+  if (!movement.routeOptions.includes(nextSpaceId)) return err('INVALID_ACTION');
 
   const next = bump(state);
   if (!next.movement) return err('INVALID_ACTION');
@@ -271,12 +302,7 @@ function buySeal(state: GranRondaState, playerId: PlayerId): GranRondaActionResu
   nextPlayer.coins -= GRAN_RONDA_STAMP_COST;
   nextPlayer.seals += 1;
   nextPlayer.score = nextPlayer.seals;
-  const targetIndex = GRAN_RONDA_STAMP_TARGETS.indexOf(
-    next.stampSpaceId as (typeof GRAN_RONDA_STAMP_TARGETS)[number],
-  );
-  next.stampSpaceId =
-    GRAN_RONDA_STAMP_TARGETS[(targetIndex + 1) % GRAN_RONDA_STAMP_TARGETS.length] ??
-    GRAN_RONDA_STAMP_TARGETS[0];
+  next.stampSpaceId = nextRandomStampTarget(next, next.stampSpaceId);
   next.resolution = {
     ...next.resolution,
     title: 'Sello comprado',
@@ -298,6 +324,7 @@ function buyPowerup(
   if (!movement || movement.playerId !== playerId || !player) return err('INVALID_ACTION');
   if (player.left) return err('PLAYER_ELIMINATED');
   if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
+  if (state.resolution?.kind !== 'tienda') return err('INVALID_ACTION');
   const cost = GRAN_RONDA_POWERUP_COSTS[powerup];
   if (player.coins < cost) return err('INVALID_ACTION');
 
@@ -339,19 +366,82 @@ function submitAnswer(
   state: GranRondaState,
   playerId: PlayerId,
   optionId: string,
+  now: number,
 ): GranRondaActionResult {
   if (state.status !== 'playing' || state.phase !== 'minigameInput') return err('INVALID_ACTION');
   const player = granRondaPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (player.left) return err('PLAYER_ELIMINATED');
-  const question = granRondaMiniGameById(state.miniGame.questionId);
-  if (!question.options.some((option) => option.id === optionId)) return err('INVALID_ACTION');
-  if (state.miniGame.submissions[playerId] !== undefined) return err('INVALID_ACTION');
+  const game = granRondaMiniGameById(state.miniGame.questionId);
+  const playerState = state.miniGame.playerStates[playerId];
+  if (!game.options.some((option) => option.id === optionId) || !playerState || playerState.finished) {
+    return err('INVALID_ACTION');
+  }
 
   const next = bump(state);
+  const nextPlayerState = next.miniGame.playerStates[playerId];
+  if (!nextPlayerState) return err('INVALID_ACTION');
   next.miniGame.submissions[playerId] = optionId;
-  if (allActivePlayersAnswered(next)) revealMiniGame(next);
+  nextPlayerState.actions += 1;
+
+  if (game.id === 'sieteymedia') {
+    if (optionId === 'stand') {
+      nextPlayerState.finished = true;
+      nextPlayerState.completedAt = now;
+    } else {
+      const card = nextSevenHalfCard(next);
+      nextPlayerState.lastCard = card;
+      nextPlayerState.score = Math.round((nextPlayerState.score + card) * 2) / 2;
+      if (nextPlayerState.score >= 7.5 || nextPlayerState.score > 7.5) {
+        nextPlayerState.finished = true;
+        nextPlayerState.busted = nextPlayerState.score > 7.5;
+        nextPlayerState.completedAt = now;
+      }
+    }
+  } else if (game.id === 'musical') {
+    if (optionId !== 'pulse') return err('INVALID_ACTION');
+    nextPlayerState.score = Math.min(3, nextPlayerState.score + 1);
+    if (nextPlayerState.score >= 3) {
+      nextPlayerState.finished = true;
+      nextPlayerState.completedAt = now;
+    }
+  } else {
+    nextPlayerState.score = optionId === next.miniGame.targetOptionId ? 3 : 1;
+    nextPlayerState.finished = true;
+    nextPlayerState.completedAt = now;
+  }
+
+  if (allMiniPlayersFinished(next)) revealMiniGame(next);
   return ok({ state: next, events: [] });
+}
+
+function submitEmbeddedGameAction(
+  state: GranRondaState,
+  playerId: PlayerId,
+  action: GranRondaEmbeddedGameAction,
+  now: number,
+): GranRondaActionResult {
+  if (state.status !== 'playing' || state.phase !== 'minigameInput') return err('INVALID_ACTION');
+  const player = granRondaPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (player.left) return err('PLAYER_ELIMINATED');
+  if (!state.miniGame.embeddedGame) return err('INVALID_ACTION');
+
+  const next = bump(state);
+  const embedded = next.miniGame.embeddedGame;
+  if (!embedded) return err('INVALID_ACTION');
+  const result =
+    embedded.gameId === 'musical'
+      ? applyMusicalAction(embedded, playerId, action, now)
+      : applyClassicAction(embedded, playerId, action, now);
+  if (!result.ok) return err(result.code);
+
+  next.miniGame.embeddedGame = result.value.state;
+  if (embeddedGameIsFinished(result.value.state)) {
+    syncMiniPlayerStatesFromEmbedded(next);
+    revealMiniGame(next);
+  }
+  return ok({ state: next, events: result.value.events });
 }
 
 function finishMiniGame(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
@@ -384,7 +474,11 @@ function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionRe
   next.miniGame.questionId =
     next.miniGame.questionOrder[next.miniGame.questionIndex] ?? next.miniGame.questionId;
   next.miniGame.submissions = {};
+  next.miniGame.playerStates = {};
+  next.miniGame.targetOptionId = null;
   next.miniGame.scoreDeltas = null;
+  next.miniGame.results = null;
+  prepareMiniGame(next);
   next.rematchVotes = [];
   return ok({ state: next, events: [] });
 }
@@ -424,6 +518,23 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
     message = 'El atajo premia la decisión con 2 Oros.';
   }
 
+  if (space.type === 'doble') {
+    player.powerups.doubleRoll += 1;
+    title = 'Dado doble';
+    message = 'La casilla te entrega una ficha para tirar dos dados en un turno futuro.';
+  }
+
+  if (space.type === 'penalizacion') {
+    player.powerups.rivalPenalty += 1;
+    title = 'Penalización';
+    message = 'Has encontrado una penalización para quitar 2 Oros a un rival en su próximo turno.';
+  }
+
+  if (space.type === 'tienda') {
+    title = 'Tienda de la Ronda';
+    message = 'Puedes gastar Oros en un dado doble o en una penalización para un rival.';
+  }
+
   if (space.type === 'sello') {
     if (space.id === state.stampSpaceId) {
       title = 'Sello disponible';
@@ -451,8 +562,7 @@ function finishMovement(state: GranRondaState, playerId: PlayerId): void {
   if (!state.movedPlayerIds.includes(playerId)) state.movedPlayerIds.push(playerId);
   const active = activeGranRondaPlayers(state).sort((left, right) => left.seat - right.seat);
   if (state.movedPlayerIds.length >= active.length) {
-    // Cada ronda termina con un juego compartido. El anfitrión solo puede
-    // revelar cuando han respondido todos o cuando decide cerrar la ventana.
+    prepareMiniGame(state);
     state.phase = 'minigameInput';
     state.turnSeat = null;
     return;
@@ -464,15 +574,40 @@ function finishMovement(state: GranRondaState, playerId: PlayerId): void {
 }
 
 function revealMiniGame(state: GranRondaState): void {
-  const question = granRondaMiniGameById(state.miniGame.questionId);
+  syncMiniPlayerStatesFromEmbedded(state);
+  const active = activeGranRondaPlayers(state);
+  const ranked = [...active].sort((left, right) => {
+    const leftState = state.miniGame.playerStates[left.playerId];
+    const rightState = state.miniGame.playerStates[right.playerId];
+    const leftBusted = leftState?.busted ? 1 : 0;
+    const rightBusted = rightState?.busted ? 1 : 0;
+    return (
+      leftBusted - rightBusted ||
+      (rightState?.score ?? 0) - (leftState?.score ?? 0) ||
+      (leftState?.completedAt ?? Number.POSITIVE_INFINITY) -
+        (rightState?.completedAt ?? Number.POSITIVE_INFINITY) ||
+      left.seat - right.seat
+    );
+  });
   const scoreDeltas: Record<PlayerId, number> = {};
-  for (const player of activeGranRondaPlayers(state)) {
-    const answer = state.miniGame.submissions[player.playerId];
-    const delta = answer === question.correctOptionId ? 4 : answer === undefined ? 0 : 1;
-    scoreDeltas[player.playerId] = delta;
-    player.coins += delta;
-  }
+  const results: Record<PlayerId, GranRondaMiniGameResult> = {};
+  ranked.forEach((player, index) => {
+    const playerState = state.miniGame.playerStates[player.playerId];
+    const rank = index + 1;
+    const busted = playerState?.busted ?? false;
+    const completed = playerState?.finished ?? false;
+    const reward = !completed || busted ? 0 : rank === 1 ? 6 : rank === 2 ? 3 : 1;
+    scoreDeltas[player.playerId] = reward;
+    player.coins += reward;
+    results[player.playerId] = {
+      rank,
+      score: playerState?.score ?? 0,
+      reward,
+      outcome: busted ? 'bust' : rank === 1 ? 'winner' : rank === 2 ? 'podium' : 'participant',
+    };
+  });
   state.miniGame.scoreDeltas = scoreDeltas;
+  state.miniGame.results = results;
   state.phase = 'minigameReveal';
   if (state.round >= state.config.rounds) {
     state.status = 'gameEnd';
@@ -480,9 +615,118 @@ function revealMiniGame(state: GranRondaState): void {
   }
 }
 
-function allActivePlayersAnswered(state: GranRondaState): boolean {
+function allMiniPlayersFinished(state: GranRondaState): boolean {
   const active = activeGranRondaPlayers(state);
-  return active.length > 0 && active.every((player) => state.miniGame.submissions[player.playerId] !== undefined);
+  return active.length > 0 && active.every((player) => state.miniGame.playerStates[player.playerId]?.finished);
+}
+
+function prepareMiniGame(state: GranRondaState): void {
+  const game = granRondaMiniGameById(state.miniGame.questionId);
+  state.miniGame.submissions = {};
+  state.miniGame.scoreDeltas = null;
+  state.miniGame.results = null;
+  state.miniGame.embeddedGame = createEmbeddedGame(state);
+  state.miniGame.targetOptionId =
+    game.id === 'cinquillo'
+      ? game.options[nextRandomInt(state, 0, game.options.length - 1)]?.id ?? null
+      : null;
+  state.miniGame.playerStates = Object.fromEntries(
+    activeGranRondaPlayers(state).map((player) => [
+      player.playerId,
+      {
+        score: game.id === 'sieteymedia' ? nextRandomInt(state, 1, 6) : 0,
+        lastCard: null,
+        finished: false,
+        busted: false,
+        actions: 0,
+        completedAt: null,
+      },
+    ]),
+  ) as Record<PlayerId, GranRondaMiniPlayerState>;
+}
+
+function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
+  const players = activeGranRondaPlayers(state).map((player) => ({
+    playerId: player.playerId,
+    nick: player.nick,
+    seat: player.seat,
+    isBot: player.isBot,
+  }));
+  const seed = `${state.rng.seed}:granronda:${state.round}:${state.miniGame.questionId}`;
+  if (state.miniGame.questionId === 'sieteymedia') {
+    return createClassicState(
+      {
+        config: DEFAULT_SIETE_Y_MEDIA_CONFIG,
+        players: players.map(({ playerId, nick, seat }) => ({ playerId, nick, seat })),
+        seed,
+        roomCode: state.roomCode,
+      },
+      'sieteymedia',
+    );
+  }
+  if (state.miniGame.questionId === 'cinquillo') {
+    return createClassicState(
+      {
+        config: DEFAULT_CINQUILLO_CONFIG,
+        players: players.map(({ playerId, nick, seat }) => ({ playerId, nick, seat })),
+        seed,
+        roomCode: state.roomCode,
+      },
+      'cinquillo',
+    );
+  }
+  return createMusicalState({
+    config: { ...DEFAULT_MUSICAL_CONFIG, rounds: 3 },
+    players,
+    seed,
+    roomCode: state.roomCode,
+  });
+}
+
+function embeddedGameIsFinished(game: GranRondaEmbeddedGameState): boolean {
+  return game.gameId === 'musical' ? game.status === 'gameEnd' : game.status !== 'playing';
+}
+
+function syncMiniPlayerStatesFromEmbedded(state: GranRondaState): void {
+  const embedded = state.miniGame.embeddedGame;
+  if (!embedded) return;
+
+  if (embedded.gameId === 'musical') {
+    for (const player of activeGranRondaPlayers(state)) {
+      const embeddedPlayer = embedded.players.find((candidate) => candidate.playerId === player.playerId);
+      if (!embeddedPlayer) continue;
+      const guesses = embedded.guesses[player.playerId] ?? [];
+      const completed = embedded.status === 'gameEnd' || guesses.length > 0;
+      state.miniGame.playerStates[player.playerId] = {
+        score: embeddedPlayer.score,
+        lastCard: null,
+        finished: completed,
+        busted: false,
+        actions: guesses.length,
+        completedAt: completed ? player.seat : null,
+      };
+    }
+    return;
+  }
+
+  for (const player of activeGranRondaPlayers(state)) {
+    const embeddedPlayer = embedded.players.find((candidate) => candidate.playerId === player.playerId);
+    if (!embeddedPlayer) continue;
+    const completed = embedded.status !== 'playing' || embeddedPlayer.stood || embeddedPlayer.bust || embeddedPlayer.revealed;
+    state.miniGame.playerStates[player.playerId] = {
+      score: embeddedPlayer.score,
+      lastCard: null,
+      finished: completed,
+      busted: embeddedPlayer.bust,
+      actions: embeddedPlayer.hand.length,
+      completedAt: completed ? player.seat : null,
+    };
+  }
+}
+
+function nextSevenHalfCard(state: GranRondaState): number {
+  const rank = nextRandomInt(state, 1, 10);
+  return rank <= 7 ? rank : 0.5;
 }
 
 function decideWinner(state: GranRondaState): PlayerId | null {
@@ -509,6 +753,12 @@ function nextRandomInt(state: GranRondaState, min: number, max: number): number 
   const value = min + Math.floor(random() * (max - min + 1));
   state.rng.calls += 1;
   return value;
+}
+
+function nextRandomStampTarget(state: GranRondaState, currentId: string): string {
+  const candidates = GRAN_RONDA_STAMP_TARGETS.filter((target) => target !== currentId);
+  if (candidates.length === 0) return currentId;
+  return candidates[nextRandomInt(state, 0, candidates.length - 1)] ?? candidates[0] ?? currentId;
 }
 
 function bump(state: GranRondaState): GranRondaState {
@@ -539,9 +789,67 @@ function bump(state: GranRondaState): GranRondaState {
       ...state.miniGame,
       questionOrder: [...state.miniGame.questionOrder],
       submissions: { ...state.miniGame.submissions },
+      playerStates: Object.fromEntries(
+        Object.entries(state.miniGame.playerStates).map(([playerId, playerState]) => [
+          playerId,
+          { ...playerState },
+        ]),
+      ),
       scoreDeltas: state.miniGame.scoreDeltas ? { ...state.miniGame.scoreDeltas } : null,
+      results: state.miniGame.results
+        ? Object.fromEntries(
+            Object.entries(state.miniGame.results).map(([playerId, result]) => [playerId, { ...result }]),
+          )
+        : null,
+      embeddedGame: state.miniGame.embeddedGame ? cloneEmbeddedGame(state.miniGame.embeddedGame) : null,
     },
     rematchVotes: [...state.rematchVotes],
     version: state.version + 1,
+  };
+}
+
+function cloneEmbeddedGame(game: GranRondaEmbeddedGameState): GranRondaEmbeddedGameState {
+  if (game.gameId === 'musical') {
+    return {
+      ...game,
+      players: game.players.map((player) => ({ ...player, hand: [...player.hand] })),
+      playedTrackIds: [...game.playedTrackIds],
+      currentTrack: game.currentTrack ? { ...game.currentTrack } : null,
+      blockedPlayerIds: [...game.blockedPlayerIds],
+      guesses: Object.fromEntries(
+        Object.entries(game.guesses).map(([playerId, guesses]) => [
+          playerId,
+          guesses.map((guess) => ({ ...guess })),
+        ]),
+      ),
+      roundResult: game.roundResult
+        ? {
+            ...game.roundResult,
+            track: { ...game.roundResult.track },
+            guesses: Object.fromEntries(
+              Object.entries(game.roundResult.guesses).map(([playerId, guesses]) => [
+                playerId,
+                guesses.map((guess) => ({ ...guess })),
+              ]),
+            ),
+            responseTimes: { ...game.roundResult.responseTimes },
+          }
+        : null,
+      rematchVotes: [...game.rematchVotes],
+    };
+  }
+  return {
+    ...game,
+    rng: { ...game.rng },
+    deck: [...game.deck],
+    currentTrick: game.currentTrick.map((card) => ({ ...card })),
+    tableCards: [...game.tableCards],
+    players: game.players.map((player) => ({
+      ...player,
+      hand: [...player.hand],
+      captured: [...player.captured],
+      sungSuits: [...player.sungSuits],
+    })),
+    rematchVotes: [...game.rematchVotes],
   };
 }

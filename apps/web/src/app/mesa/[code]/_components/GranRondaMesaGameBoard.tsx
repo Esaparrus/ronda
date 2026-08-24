@@ -1,6 +1,8 @@
 import type { GranRondaTableView } from '@ronda/protocol';
 import { GranRondaBoard } from '@/components/granronda/GranRondaBoard';
 import { Pill } from '@/components/ui/Pill';
+import { ClassicMesaGameBoard } from './ClassicMesaGameBoard';
+import { MusicalMesaGameBoard } from './MusicalMesaGameBoard';
 
 export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
   const final = view.status === 'gameEnd';
@@ -55,21 +57,40 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
         />
       </div>
 
-      {view.phase === 'minigameInput' || view.phase === 'minigameReveal' ? (
+      {view.phase === 'minigameInput' && view.miniGame.embeddedGame ? (
+        <section className="gran-ronda-embedded-game mx-auto w-full max-w-5xl overflow-hidden rounded-[28px] border border-oro/45 bg-oro/5 shadow-[0_18px_48px_rgba(246,195,76,0.12)]">
+          <div className="flex items-center justify-between gap-3 border-b border-oro/20 px-5 py-4">
+            <div>
+              <p className="eyebrow text-oro">Minijuego de la ronda</p>
+              <p className="mt-1 text-14 text-humo">La mesa muestra la interfaz original del juego seleccionado.</p>
+            </div>
+            <Pill>{view.miniGame.gameId === 'musical' ? 'Musical' : view.miniGame.gameId === 'sieteymedia' ? 'Siete y media' : 'Cinquillo'}</Pill>
+          </div>
+          <div className="gran-ronda-embedded-game__table-frame">
+            {view.miniGame.embeddedGame.gameId === 'musical' ? (
+              <MusicalMesaGameBoard view={view.miniGame.embeddedGame} embedded />
+            ) : (
+              <ClassicMesaGameBoard view={view.miniGame.embeddedGame} embedded />
+            )}
+          </div>
+        </section>
+      ) : view.phase === 'minigameInput' || view.phase === 'minigameReveal' ? (
         <section className="mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-[24px] border border-oro/40 bg-oro/5 p-5 shadow-[0_14px_40px_rgba(246,195,76,0.08)]">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="eyebrow text-oro">Juego de la ronda</p>
+              <p className="eyebrow text-oro">Ruleta de minijuegos</p>
               <h2 className="mt-1 text-26 font-semibold text-hueso">{view.miniGame.title}</h2>
               <p className="mt-1 text-15 text-humo">{view.miniGame.prompt}</p>
+              <p className="mt-2 text-13 text-humo">{view.miniGame.instructions}</p>
             </div>
-            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-24 text-oro">?</span>
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-24 text-oro">
+              {view.miniGame.gameId === 'musical' ? '♫' : view.miniGame.gameId === 'sieteymedia' ? '7½' : '♣'}
+            </span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {view.miniGame.options.map((option) => {
-              const correct = view.phase === 'minigameReveal' && view.miniGame.correctOptionId === option.id;
               return (
-                <div key={option.id} className={`rounded-2xl border px-4 py-3 text-15 font-semibold ${correct ? 'border-equipo-turquesa bg-equipo-turquesa/15 text-equipo-turquesa' : 'border-linea bg-tinta/30 text-hueso'}`}>
+                <div key={option.id} className="rounded-2xl border border-linea bg-tinta/30 px-4 py-3 text-15 font-semibold text-hueso">
                   <span className="mr-2 font-mono text-11 text-humo">{option.id.toUpperCase()}</span>
                   {option.label}
                 </div>
@@ -79,19 +100,23 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
           {view.phase === 'minigameReveal' ? (
             <div className="grid gap-1.5 rounded-2xl border border-linea bg-tinta/35 p-3 sm:grid-cols-2">
               {view.players.map((player) => {
-                const delta = view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
+                const result = view.miniGame.results?.[player.playerId];
+                const delta = result?.reward ?? view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
                 return (
                   <div key={player.playerId} className="flex items-center justify-between gap-2 text-13">
-                    <span className="truncate text-hueso">{player.nick}</span>
+                    <span className="truncate text-hueso">
+                      {result ? `${result.rank}. ` : ''}{player.nick}
+                      {result?.outcome === 'bust' ? <span className="ml-1 text-brasa">· Se pasó</span> : null}
+                    </span>
                     <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
-                      {delta > 0 ? `+${delta}` : '±0'} Oros
+                      {result?.score ?? '—'} · {delta > 0 ? `+${delta}` : '±0'} Oros
                     </strong>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-13 text-humo">Elige una respuesta en tu móvil · {view.miniGame.submittedPlayerIds.length}/{view.players.length} bloqueadas.</p>
+            <p className="text-13 text-humo">Juega desde tu móvil · {view.miniGame.completedPlayerIds.length}/{view.players.length} terminados.</p>
           )}
         </section>
       ) : null}

@@ -19,6 +19,28 @@ export type MusicalTrack = z.infer<typeof MusicalTrackSchema>;
 
 const musicalGuessField = z.string().trim().max(120);
 
+/** Acciones permitidas mientras un juego original está alojado dentro de La Gran Ronda. */
+export const GranRondaEmbeddedGameActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('drawDeck') }),
+  z.object({ type: z.literal('stand') }),
+  z.object({ type: z.literal('playCard'), cardId: cardIdField }),
+  z.object({ type: z.literal('pass') }),
+  z.object({ type: z.literal('musicSelectTrack'), track: MusicalTrackSchema }),
+  z.object({ type: z.literal('musicStartClip') }),
+  z.object({ type: z.literal('musicResolveClip') }),
+  z.object({ type: z.literal('musicBuzz') }),
+  z.object({
+    type: z.literal('musicSubmitGuess'),
+    artist: musicalGuessField,
+    title: musicalGuessField,
+    year: z.number().int().min(1900).max(2100).nullable(),
+  }),
+  z.object({ type: z.literal('musicNextClip') }),
+  z.object({ type: z.literal('musicNextRound') }),
+]);
+
+export type GranRondaEmbeddedGameAction = z.infer<typeof GranRondaEmbeddedGameActionSchema>;
+
 /** Frases cerradas de la consulta privada de pareja en el Mus online. */
 export const MusPartnerSignalSchema = z.enum([
   'porMiMus',
@@ -174,6 +196,10 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     type: z.literal('useGranRondaPowerup'),
     powerup: z.union([z.literal('doubleRoll'), z.literal('rivalPenalty')]),
     targetPlayerId: cardIdField.optional(),
+  }),
+  z.object({
+    type: z.literal('submitGranRondaMiniGameAction'),
+    action: GranRondaEmbeddedGameActionSchema,
   }),
   z.object({ type: z.literal('submitGranRondaAnswer'), optionId: cardIdField }),
   /** El anfitrión puede cerrar el minijuego si alguien se desconecta. */

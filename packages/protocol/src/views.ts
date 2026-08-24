@@ -870,7 +870,16 @@ export type GranRondaPhase =
   | 'roundEnd'
   | 'minigameInput'
   | 'minigameReveal';
-export type GranRondaSpaceType = 'start' | 'oros' | 'perdida' | 'sello' | 'evento' | 'atajo';
+export type GranRondaSpaceType =
+  | 'start'
+  | 'oros'
+  | 'perdida'
+  | 'sello'
+  | 'evento'
+  | 'atajo'
+  | 'doble'
+  | 'penalizacion'
+  | 'tienda';
 export type GranRondaResolutionKind = GranRondaSpaceType;
 export type GranRondaAvailableAction =
   | 'rollGranRonda'
@@ -880,10 +889,14 @@ export type GranRondaAvailableAction =
   | 'buyGranRondaSeal'
   | 'buyGranRondaPowerup'
   | 'useGranRondaPowerup'
+  | 'submitGranRondaMiniGameAction'
   | 'submitGranRondaAnswer'
   | 'finishGranRondaMiniGame'
   | 'nextRound';
 export type GranRondaPowerupType = 'doubleRoll' | 'rivalPenalty';
+export type GranRondaMiniGameId = 'sieteymedia' | 'musical' | 'cinquillo';
+export type GranRondaEmbeddedGameCommonView = ClassicTableView | MusicalTableView;
+export type GranRondaEmbeddedGamePlayerView = ClassicPlayerView | MusicalPlayerView;
 
 export interface GranRondaBoardSpace {
   id: string;
@@ -912,13 +925,25 @@ export interface GranRondaMiniGameOption {
 
 export interface GranRondaMiniGamePublic {
   id: string;
+  gameId: GranRondaMiniGameId;
   title: string;
   prompt: string;
+  instructions: string;
   options: GranRondaMiniGameOption[];
   submittedPlayerIds: PlayerId[];
+  completedPlayerIds: PlayerId[];
   correctOptionId: string | null;
   answers: Record<PlayerId, string> | null;
   scoreDeltas: Record<PlayerId, number> | null;
+  results: Record<PlayerId, GranRondaMiniGameResultPublic> | null;
+  embeddedGame: GranRondaEmbeddedGameCommonView | null;
+}
+
+export interface GranRondaMiniGameResultPublic {
+  rank: number;
+  score: number;
+  reward: number;
+  outcome: 'winner' | 'podium' | 'bust' | 'participant';
 }
 
 export interface GranRondaMovementPublic {
@@ -958,6 +983,13 @@ export interface GranRondaPlayerViewMe {
   coins: number;
   seals: number;
   powerups: Record<GranRondaPowerupType, number>;
+  embeddedGame: GranRondaEmbeddedGamePlayerView | null;
+  miniGame: {
+    score: number;
+    lastCard: number | null;
+    finished: boolean;
+    actions: number;
+  } | null;
   selectedOptionId: string | null;
   availableActions: GranRondaAvailableAction[];
 }

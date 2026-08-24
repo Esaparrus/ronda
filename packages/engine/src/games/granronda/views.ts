@@ -12,10 +12,11 @@ import type {
   PublicPlayer,
 } from '@ronda/protocol';
 import { granRondaMiniGameById } from './content.ts';
+import { getClassicPlayerView, getClassicTableView } from '../classics/views.ts';
+import { getPlayerView as getMusicalPlayerView, getTableView as getMusicalTableView } from '../musical/views.ts';
 import {
   GRAN_RONDA_POWERUP_COSTS,
   GRAN_RONDA_STAMP_COST,
-  granRondaSpaceById,
 } from './rules.ts';
 import { activeGranRondaPlayers, granRondaPlayer, type GranRondaState } from './state.ts';
 
@@ -62,25 +63,49 @@ function resolution(state: GranRondaState): GranRondaResolutionPublic | null {
   return state.resolution ? { ...state.resolution } : null;
 }
 
+function embeddedGameCommonView(state: GranRondaState) {
+  const embedded = state.miniGame.embeddedGame;
+  if (!embedded) return null;
+  return embedded.gameId === 'musical' ? getMusicalTableView(embedded) : getClassicTableView(embedded);
+}
+
+function embeddedGamePlayerView(state: GranRondaState, playerId: PlayerId) {
+  const embedded = state.miniGame.embeddedGame;
+  if (!embedded) return null;
+  return embedded.gameId === 'musical'
+    ? getMusicalPlayerView(embedded, playerId)
+    : getClassicPlayerView(embedded, playerId);
+}
+
 function miniGame(state: GranRondaState): GranRondaMiniGamePublic {
   const question = granRondaMiniGameById(state.miniGame.questionId);
   const revealed = state.phase === 'minigameReveal' || state.status === 'gameEnd';
   return {
     id: question.id,
+    gameId: question.id,
     title: question.title,
     prompt: question.prompt,
+    instructions: question.instructions,
     options: question.options.map((option) => ({ ...option })),
     submittedPlayerIds: Object.keys(state.miniGame.submissions),
-    correctOptionId: revealed ? question.correctOptionId : null,
+    completedPlayerIds: activeGranRondaPlayers(state)
+      .filter((player) => state.miniGame.playerStates[player.playerId]?.finished)
+      .map((player) => player.playerId),
+    correctOptionId: null,
     answers: revealed ? { ...state.miniGame.submissions } : null,
     scoreDeltas: revealed && state.miniGame.scoreDeltas ? { ...state.miniGame.scoreDeltas } : null,
+    results: revealed && state.miniGame.results
+      ? Object.fromEntries(
+          Object.entries(state.miniGame.results).map(([playerId, result]) => [playerId, { ...result }]),
+        )
+      : null,
+    embeddedGame: embeddedGameCommonView(state),
   };
 }
 
 function common(state: GranRondaState): GranRondaCommonView {
   const turnPlayerId = state.turnSeat === null ? null : state.players[state.turnSeat]?.playerId ?? null;
   const turnPlayer = turnPlayerId ? granRondaPlayer(state, turnPlayerId) : undefined;
-  const currentSpace = turnPlayer ? granRondaSpaceById(turnPlayer.position) : undefined;
   return {
     roomCode: state.roomCode,
     status: state.status,
@@ -95,7 +120,7 @@ function common(state: GranRondaState): GranRondaCommonView {
     board: state.board.map((space) => ({ ...space, nextIds: [...space.nextIds] })),
     boardPlayers: boardPlayers(state),
     stampSpaceId: state.stampSpaceId,
-    routeOptions: state.phase === 'routeChoice' ? [...(currentSpace?.nextIds ?? [])] : [],
+    routeOptions: state.phase === 'routeChoice' ? [...(state.movement?.routeOptions ?? [])] : [],
     movement: movement(state),
     resolution: resolution(state),
     miniGame: miniGame(state),
@@ -112,6 +137,8 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
       coins: 0,
       seals: 0,
       powerups: { doubleRoll: 0, rivalPenalty: 0 },
+      embeddedGame: null,
+      miniGame: null,
       selectedOptionId: null,
       availableActions,
     };
@@ -136,7 +163,7 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
       ) {
         availableActions.push('buyGranRondaSeal');
       }
-      if (player.coins >= Math.min(...Object.values(GRAN_RONDA_POWERUP_COSTS))) {
+      if (state.resolution?.kind === 'tienda' && player.coins >= Math.min(...Object.values(GRAN_RONDA_POWERUP_COSTS))) {
         availableActions.push('buyGranRondaPowerup');
       }
     }
@@ -145,7 +172,10 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
         availableActions.push('useGranRondaPowerup');
       }
     }
-    if (state.phase === 'minigameInput' && state.miniGame.submissions[playerId] === undefined) {
+    const embeddedView = state.phase === 'minigameInput' ? embeddedGamePlayerView(state, playerId) : null;
+    if (embeddedView && embeddedView.me.availableActions.length > 0) {
+      availableActions.push('submitGranRondaMiniGameAction');
+    } else if (state.phase === 'minigameInput' && !state.miniGame.playerStates[playerId]?.finished) {
       availableActions.push('submitGranRondaAnswer');
     }
     if (state.phase === 'minigameInput' && player.seat === 0) {
@@ -162,6 +192,10 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     coins: player.coins,
     seals: player.seals,
     powerups: { ...player.powerups },
+    embeddedGame: state.phase === 'minigameInput' ? embeddedGamePlayerView(state, playerId) : null,
+    miniGame: state.phase === 'minigameInput'
+      ? { ...(state.miniGame.playerStates[playerId] ?? { score: 0, lastCard: null, finished: false, actions: 0 }) }
+      : null,
     selectedOptionId: state.miniGame.submissions[playerId] ?? null,
     availableActions,
   };

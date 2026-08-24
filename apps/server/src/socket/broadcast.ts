@@ -576,13 +576,18 @@ function buildGranRondaLobbyCommon(room: Room): GranRondaCommonView {
     resolution: null,
     miniGame: {
       id: question.id,
+      gameId: question.id,
       title: question.title,
       prompt: question.prompt,
+      instructions: question.instructions,
       options: question.options.map((option) => ({ ...option })),
       submittedPlayerIds: [],
+      completedPlayerIds: [],
       correctOptionId: null,
       answers: null,
       scoreDeltas: null,
+      results: null,
+      embeddedGame: null,
     },
   };
 }
@@ -672,6 +677,8 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
         coins: 5,
         seals: 0,
         powerups: { doubleRoll: 0, rivalPenalty: 0 },
+        embeddedGame: null,
+        miniGame: null,
         selectedOptionId: null,
         availableActions: [],
       },

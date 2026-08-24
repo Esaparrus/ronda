@@ -1,13 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { GranRondaPlayerView, GranRondaPowerupType } from '@ronda/protocol';
+import type {
+  GameAction,
+  GranRondaEmbeddedGameAction,
+  GranRondaPlayerView,
+  GranRondaPowerupType,
+} from '@ronda/protocol';
 import { GranRondaBoard } from '@/components/granronda/GranRondaBoard';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
 import { useRondaStore } from '@/lib/store';
+import { ClassicGameScreen } from './ClassicGameScreen';
+import { MusicalGameScreen } from './MusicalGameScreen';
 
 const POWERUP_COSTS: Record<GranRondaPowerupType, number> = {
   doubleRoll: 5,
@@ -31,6 +38,8 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
     view.me.availableActions.includes(action);
   const final = view.status === 'gameEnd';
   const canAdvance = can('advanceGranRondaMovement');
+  const embeddedGame = view.me.embeddedGame;
+  const showEmbeddedGame = view.phase === 'minigameInput' && embeddedGame !== null;
 
   useEffect(() => {
     if (!canAdvance) return;
@@ -39,6 +48,15 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
     }, 520);
     return () => window.clearTimeout(timer);
   }, [canAdvance, view.me.playerId, view.movement?.path.length, view.movement?.remainingSteps]);
+
+  useEffect(() => {
+    if (view.phase !== 'minigameInput' && view.phase !== 'minigameReveal') return;
+    const targetId = showEmbeddedGame ? 'gran-ronda-minigame' : 'gran-ronda-map';
+    const timer = window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, showEmbeddedGame ? 180 : 80);
+    return () => window.clearTimeout(timer);
+  }, [showEmbeddedGame, view.phase, view.miniGame.gameId]);
 
   function send(action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) {
     void useRondaStore.getState().sendAction(action);
@@ -83,7 +101,10 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
         </div>
       </section>
 
-      <section className="surface-panel p-2.5">
+      <section
+        id="gran-ronda-map"
+        className={`gran-ronda-map-shell surface-panel p-2.5 ${showEmbeddedGame ? 'gran-ronda-map-shell--minigame' : ''}`}
+      >
         <GranRondaBoard
           board={view.board}
           boardPlayers={view.boardPlayers}
@@ -97,7 +118,8 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
         />
       </section>
 
-      {view.phase === 'minigameInput' || view.phase === 'minigameReveal' ? (
+      {showEmbeddedGame ? <EmbeddedMiniGamePanel view={view} /> : null}
+      {view.phase === 'minigameReveal' ? (
         <MiniGamePanel view={view} can={can} send={send} />
       ) : null}
 
@@ -122,27 +144,11 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
       ) : null}
 
       {!final && view.phase === 'routeChoice' ? (
-        <section className="surface-panel flex flex-col gap-3 border-oro/35 p-4 text-center">
-          <p className="eyebrow text-oro">Camino abierto</p>
-          <h2 className="text-20 font-semibold text-hueso">
-            {can('chooseGranRondaPath') ? 'Elige una casilla iluminada en el mapa' : `${currentTurn?.nick ?? 'La persona activa'} elige camino`}
-          </h2>
-          <p className="text-13 text-humo">
-            El dado ha salido {view.movement?.roll ?? '—'}. Las opciones aparecen marcadas en oro.
-          </p>
-          {can('chooseGranRondaPath') ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {view.routeOptions.map((spaceId) => {
-                const space = view.board.find((candidate) => candidate.id === spaceId);
-                return (
-                  <Button key={spaceId} variant="ghost" onClick={() => send({ type: 'chooseGranRondaPath', nextSpaceId: spaceId })}>
-                    Ir a {space?.label ?? 'la siguiente casilla'}
-                  </Button>
-                );
-              })}
-            </div>
-          ) : null}
-        </section>
+        <p className="px-2 text-center text-12 text-humo">
+          {can('chooseGranRondaPath')
+            ? 'Toca directamente una de las casillas doradas del mapa para elegir el camino.'
+            : `${currentTurn?.nick ?? 'La persona activa'} está eligiendo una casilla del mapa.`}
+        </p>
       ) : null}
 
       {!final && view.phase === 'moving' ? (
@@ -208,6 +214,42 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
   );
 }
 
+function EmbeddedMiniGamePanel({ view }: { view: GranRondaPlayerView }) {
+  const embedded = view.me.embeddedGame;
+  const sendEmbeddedAction = useCallback((action: GameAction): void => {
+    void useRondaStore.getState().sendAction({
+      type: 'submitGranRondaMiniGameAction',
+      action: action as GranRondaEmbeddedGameAction,
+    });
+  }, []);
+  if (!embedded) return null;
+
+  return (
+    <section
+      id="gran-ronda-minigame"
+      className="gran-ronda-embedded-game surface-panel flex flex-col gap-3 border-oro/45 bg-oro/5 p-2.5 shadow-[0_18px_48px_rgba(246,195,76,0.12)]"
+      aria-label={`Minijuego ${embedded.gameId}`}
+    >
+      <div className="flex items-center justify-between gap-3 px-2 pt-1">
+        <div>
+          <p className="eyebrow text-oro">Minijuego de la ronda</p>
+          <p className="mt-1 text-13 text-humo">Desplázate dentro de esta pantalla para jugar.</p>
+        </div>
+        <span className="rounded-full border border-oro/40 bg-oro/10 px-2.5 py-1 font-mono text-10 uppercase tracking-wider text-oro">
+          {embedded.gameId === 'musical' ? 'Musical' : embedded.gameId === 'sieteymedia' ? 'Siete y media' : 'Cinquillo'}
+        </span>
+      </div>
+      <div className="gran-ronda-embedded-game__frame">
+        {embedded.gameId === 'musical' ? (
+          <MusicalGameScreen view={embedded} onAction={sendEmbeddedAction} />
+        ) : (
+          <ClassicGameScreen view={embedded} onAction={sendEmbeddedAction} />
+        )}
+      </div>
+    </section>
+  );
+}
+
 function ResolutionPanel({
   view,
   can,
@@ -261,57 +303,72 @@ function MiniGamePanel({
 }) {
   const revealed = view.phase === 'minigameReveal';
   const selected = view.me.selectedOptionId;
-  const correct = view.miniGame.correctOptionId;
+  const personal = view.me.miniGame;
+  const finished = personal?.finished ?? false;
   return (
-    <section className="surface-panel flex flex-col gap-3 border-oro/40 bg-oro/5 p-4 shadow-[0_14px_40px_rgba(246,195,76,0.08)]">
+    <section className="surface-panel gran-ronda-minigame-panel flex flex-col gap-3 border-oro/40 bg-oro/5 p-4 shadow-[0_14px_40px_rgba(246,195,76,0.08)]">
+      <MiniGameRoulette gameId={view.miniGame.gameId} title={view.miniGame.title} />
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="eyebrow text-oro">Juego de la ronda</p>
-          <h2 className="mt-1 text-22 font-semibold text-hueso">{view.miniGame.title}</h2>
-          <p className="mt-1 text-14 leading-relaxed text-humo">{view.miniGame.prompt}</p>
+          <p className="eyebrow text-oro">{revealed ? 'Resultados del minijuego' : 'Sorteo de la ronda'}</p>
+          <h2 className="mt-1 text-22 font-semibold text-hueso">
+            {revealed ? 'Reparto de Oros' : view.miniGame.title}
+          </h2>
+          <p className="mt-1 text-14 leading-relaxed text-humo">
+            {revealed
+              ? 'La partida original ha terminado. Este es el resultado de la ronda.'
+              : view.miniGame.prompt}
+          </p>
+          {!revealed ? <p className="mt-2 text-12 leading-relaxed text-humo">{view.miniGame.instructions}</p> : null}
         </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-20 text-oro">?</span>
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-oro/15 font-display text-20 text-oro">✦</span>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {view.miniGame.options.map((option) => {
-          const isSelected = selected === option.id;
-          const isCorrect = revealed && correct === option.id;
-          const isWrongSelected = revealed && isSelected && !isCorrect;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              disabled={revealed || !can('submitGranRondaAnswer')}
-              onClick={() => send({ type: 'submitGranRondaAnswer', optionId: option.id })}
-              className={`min-h-12 rounded-2xl border px-3 py-2 text-left text-14 font-semibold transition-[transform,background-color,border-color,opacity] active:scale-[0.985] disabled:cursor-default disabled:opacity-85 ${
-                isCorrect
-                  ? 'border-equipo-turquesa bg-equipo-turquesa/15 text-equipo-turquesa'
-                  : isWrongSelected
-                    ? 'border-brasa bg-brasa/15 text-brasa'
-                    : isSelected
-                      ? 'border-oro bg-oro/15 text-oro ring-2 ring-oro/20'
-                      : 'border-linea bg-tinta/30 text-hueso hover:border-oro/60'
-              }`}
-            >
-              <span className="mr-2 font-mono text-11 text-humo">{option.id.toUpperCase()}</span>
-              {option.label}
-            </button>
-          );
-        })}
+      {!revealed ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {view.miniGame.options.map((option) => {
+            const isSelected = selected === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                disabled={finished || !can('submitGranRondaAnswer')}
+                onClick={() => send({ type: 'submitGranRondaAnswer', optionId: option.id })}
+                aria-pressed={isSelected}
+                className={`min-h-12 rounded-2xl border px-3 py-2 text-left text-14 font-semibold transition-[transform,background-color,border-color,opacity] active:scale-[0.985] disabled:cursor-default disabled:opacity-65 ${
+                  isSelected
+                    ? 'border-oro bg-oro/15 text-oro ring-2 ring-oro/20'
+                    : 'border-linea bg-tinta/30 text-hueso hover:border-oro/60'
+                }`}
+              >
+                <span className="mr-2 font-mono text-11 text-humo">{option.id.toUpperCase()}</span>
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-linea bg-tinta/30 px-3 py-2 text-12">
+        <span className="text-humo">
+          Tu marcador: <strong className="font-mono text-hueso">{personal ? personal.score : '—'}</strong>
+          {personal?.lastCard !== null && personal?.lastCard !== undefined ? ` · última carta ${personal.lastCard}` : ''}
+        </span>
+        <span className="text-humo">{view.miniGame.completedPlayerIds.length}/{view.players.length} terminados</span>
       </div>
       {revealed ? (
         <div className="flex flex-col gap-2 rounded-2xl border border-linea bg-tinta/35 p-3">
-          <p className="text-12 text-humo">
-            Respuesta correcta: <strong className="text-equipo-turquesa">{view.miniGame.options.find((option) => option.id === correct)?.label ?? '—'}</strong>
-          </p>
+          <p className="text-12 font-semibold uppercase tracking-[0.12em] text-humo">Clasificación y premios</p>
           <div className="grid gap-1.5 sm:grid-cols-2">
             {view.players.map((player) => {
-              const delta = view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
+              const result = view.miniGame.results?.[player.playerId];
+              const delta = result?.reward ?? view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
               return (
                 <div key={player.playerId} className="flex items-center justify-between gap-2 text-12">
-                  <span className="truncate text-hueso">{player.nick}</span>
+                  <span className="min-w-0 truncate text-hueso">
+                    {result ? `${result.rank}. ` : ''}{player.nick}
+                    {result?.outcome === 'bust' ? <span className="ml-1 text-brasa">· Se pasó</span> : null}
+                  </span>
                   <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
-                    {delta > 0 ? `+${delta}` : '±0'} Oros
+                    {result?.score ?? '—'} · {delta > 0 ? `+${delta}` : '±0'} Oros
                   </strong>
                 </div>
               );
@@ -320,8 +377,8 @@ function MiniGamePanel({
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 text-12 text-humo">
-          <span>{view.miniGame.submittedPlayerIds.length}/{view.players.length} respuestas bloqueadas</span>
-          <span>Acertar: +4 · fallar: +1</span>
+          <span>{view.miniGame.submittedPlayerIds.length}/{view.players.length} acciones registradas</span>
+          <span>1.º +6 · 2.º +3 · resto +1</span>
         </div>
       )}
       {can('finishGranRondaMiniGame') ? (
@@ -333,6 +390,33 @@ function MiniGamePanel({
         <Button onClick={() => send({ type: 'nextRound' })}>Empezar ronda {view.round + 1}</Button>
       ) : null}
     </section>
+  );
+}
+
+function MiniGameRoulette({ gameId, title }: { gameId: string; title: string }) {
+  return (
+    <div className="gran-ronda-roulette flex items-center gap-3 rounded-2xl border border-white/15 bg-tinta/45 px-3 py-2">
+      <span className="gran-ronda-roulette-icon grid size-9 shrink-0 place-items-center rounded-xl bg-oro text-tinta" aria-hidden="true">
+        {gameId === 'musical' ? '♫' : gameId === 'sieteymedia' ? '7½' : '♣'}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-mono text-9 uppercase tracking-[0.16em] text-oro">La ruleta ha elegido</p>
+        <div className="gran-ronda-roulette-reel mt-0.5" aria-hidden="true">
+          <div className="gran-ronda-roulette-track">
+            <span>Siete y media</span>
+            <span>Musical</span>
+            <span>Cinquillo</span>
+            <span>{title}</span>
+          </div>
+        </div>
+        <p className="truncate text-13 font-semibold text-hueso">{title}</p>
+      </div>
+      <span className="gran-ronda-roulette-dots flex gap-1" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+    </div>
   );
 }
 

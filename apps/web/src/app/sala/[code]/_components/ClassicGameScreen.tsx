@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { parseCardId, type CardId, type ClassicPlayerView, type PublicPlayer } from '@ronda/protocol';
+import { parseCardId, type CardId, type ClassicPlayerView, type GameAction, type PublicPlayer } from '@ronda/protocol';
 import { CinquilloTable } from '@/components/cards/CinquilloTable';
 import { CardBack } from '@/components/cards/CardBack';
 import { MiniCardFan } from '@/components/cards/MiniCardFan';
@@ -23,13 +23,26 @@ const TITLES: Record<ClassicPlayerView['gameId'], string> = {
   cinquillo: 'Cinquillo',
 };
 
+type GameActionSender = (action: GameAction) => void;
+
+function sendGameAction(action: GameAction): void {
+  void useRondaStore.getState().sendAction(action);
+}
+
 function escobaValue(cardId: CardId): number {
   const parsed = parseCardId(cardId);
   if (!parsed.ok) return 0;
   return parsed.value.rank <= 7 ? parsed.value.rank : parsed.value.rank - 2;
 }
 
-export function ClassicGameScreen({ view }: { view: ClassicPlayerView }) {
+export function ClassicGameScreen({
+  view,
+  onAction,
+}: {
+  view: ClassicPlayerView;
+  onAction?: GameActionSender;
+}) {
+  const dispatch = onAction ?? sendGameAction;
   const turn = view.players.find((player) => player.playerId === view.turnPlayerId) ?? null;
   const isSevenHalf = view.gameId === 'sieteymedia';
   const meIsBust = isSevenHalf && view.bustPlayerIds.includes(view.me.playerId);
@@ -54,19 +67,19 @@ export function ClassicGameScreen({ view }: { view: ClassicPlayerView }) {
         }
       />
       {view.gameId === 'escoba' ? (
-        <EscobaBoard view={view} />
+        <EscobaBoard view={view} onAction={dispatch} />
       ) : view.gameId === 'sieteymedia' ? (
-        <SevenHalfBoard view={view} />
+        <SevenHalfBoard view={view} onAction={dispatch} />
       ) : view.gameId === 'cinquillo' ? (
-        <CinquilloBoard view={view} />
+        <CinquilloBoard view={view} onAction={dispatch} />
       ) : (
-        <TrickBoard view={view} />
+        <TrickBoard view={view} onAction={dispatch} />
       )}
     </div>
   );
 }
 
-function TrickBoard({ view }: { view: ClassicPlayerView }) {
+function TrickBoard({ view, onAction }: { view: ClassicPlayerView; onAction: GameActionSender }) {
   const canPlay = view.me.availableActions.includes('playCard');
   return (
     <>
@@ -89,13 +102,13 @@ function TrickBoard({ view }: { view: ClassicPlayerView }) {
         hand={view.me.hand}
         legalCardIds={view.me.legalCardIds}
         canPlay={canPlay}
-        onPlay={(cardId) => void useRondaStore.getState().sendAction({ type: 'playCard', cardId })}
+            onPlay={(cardId) => onAction({ type: 'playCard', cardId })}
       />
     </>
   );
 }
 
-function EscobaBoard({ view }: { view: ClassicPlayerView }) {
+function EscobaBoard({ view, onAction }: { view: ClassicPlayerView; onAction: GameActionSender }) {
   const [handCard, setHandCard] = useState<CardId | null>(null);
   const [selectedTable, setSelectedTable] = useState<CardId[]>([]);
   const canPlay = view.me.availableActions.includes('playCapture');
@@ -131,7 +144,7 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
 
   function play(capture: boolean) {
     if (!handCard) return;
-    void useRondaStore.getState().sendAction({
+    onAction({
       type: 'playCapture',
       cardId: handCard,
       captureIds: capture ? selectedTable : [],
@@ -188,7 +201,7 @@ function EscobaBoard({ view }: { view: ClassicPlayerView }) {
   );
 }
 
-function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
+function SevenHalfBoard({ view, onAction }: { view: ClassicPlayerView; onAction: GameActionSender }) {
   const canDraw = view.me.availableActions.includes('drawDeck');
   const canStand = view.me.availableActions.includes('stand');
   const meIsBust = view.bustPlayerIds.includes(view.me.playerId);
@@ -259,14 +272,14 @@ function SevenHalfBoard({ view }: { view: ClassicPlayerView }) {
             variant="ghost"
             disabled={!canStand || pendingAction}
             loading={pendingAction}
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'stand' })}
+            onClick={() => onAction({ type: 'stand' })}
           >
             Plantarse · {formatSevenHalfTotal(view.me.total)}
           </Button>
           <Button
             disabled={!canDraw || pendingAction}
             loading={pendingAction}
-            onClick={() => void useRondaStore.getState().sendAction({ type: 'drawDeck' })}
+            onClick={() => onAction({ type: 'drawDeck' })}
           >
             Pedir carta
           </Button>
@@ -414,7 +427,7 @@ function SevenHalfHand({
   );
 }
 
-function CinquilloBoard({ view }: { view: ClassicPlayerView }) {
+function CinquilloBoard({ view, onAction }: { view: ClassicPlayerView; onAction: GameActionSender }) {
   const canPlay = view.me.availableActions.includes('playCard');
   const canPass = view.me.availableActions.includes('pass');
   return (
@@ -429,12 +442,12 @@ function CinquilloBoard({ view }: { view: ClassicPlayerView }) {
           hand={view.me.hand}
           legalCardIds={view.me.legalCardIds}
           canPlay={canPlay}
-          onPlay={(cardId) => void useRondaStore.getState().sendAction({ type: 'playCard', cardId })}
+          onPlay={(cardId) => onAction({ type: 'playCard', cardId })}
         />
       </div>
       {canPass ? (
         <div className="shrink-0 px-4 pb-4">
-          <Button variant="ghost" className="w-full" onClick={() => void useRondaStore.getState().sendAction({ type: 'pass' })}>
+          <Button variant="ghost" className="w-full" onClick={() => onAction({ type: 'pass' })}>
             Pasar
           </Button>
         </div>

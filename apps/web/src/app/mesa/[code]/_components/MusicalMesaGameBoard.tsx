@@ -7,12 +7,13 @@ import { musicFiltersLabel } from '@/lib/musical';
 
 export interface MusicalMesaGameBoardProps {
   view: MusicalTableView;
+  embedded?: boolean;
 }
 
-export function MusicalMesaGameBoard({ view }: MusicalMesaGameBoardProps) {
+export function MusicalMesaGameBoard({ view, embedded = false }: MusicalMesaGameBoardProps) {
   const result = view.roundResult;
   return (
-    <main className="flex min-h-dvh flex-1 flex-col">
+    <main className={`flex flex-1 flex-col ${embedded ? 'min-h-[520px]' : 'min-h-dvh'}`}>
       <TableHeader left={`Musical · ronda ${view.round}/${view.config.rounds}`} turnNick={null} />
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-10 py-10 text-center">
         <span className="text-[clamp(3rem,10vw,7rem)] text-oro" aria-hidden="true">

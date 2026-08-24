@@ -2575,8 +2575,14 @@ summary {
  * usan; esta regla es la red de seguridad global). */
 @media (prefers-reduced-motion: reduce) {
   .gran-ronda-dice-roll,
-  .gran-ronda-die-roll {
+  .gran-ronda-die-roll,
+  .gran-ronda-roulette-dots,
+  .gran-ronda-roulette-icon,
+  .gran-ronda-roulette-track,
+  .gran-ronda-map-shell,
+  .gran-ronda-embedded-game {
     animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -2621,6 +2627,127 @@ summary {
 
 .gran-ronda-die-roll {
   animation: gran-ronda-die-wobble 620ms ease-in-out both;
+}
+
+@keyframes gran-ronda-roulette-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.gran-ronda-map-shell {
+  scroll-margin-top: 0.75rem;
+  transform-origin: top center;
+  transition:
+    transform 360ms ease,
+    opacity 360ms ease,
+    filter 360ms ease,
+    padding 360ms ease;
+}
+
+.gran-ronda-map-shell--minigame {
+  transform: scale(0.965);
+  opacity: 0.82;
+  filter: saturate(0.82);
+  padding-block: 0.35rem;
+}
+
+.gran-ronda-embedded-game {
+  scroll-margin-top: 0.75rem;
+  animation: gran-ronda-embedded-game-in 440ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.gran-ronda-embedded-game__frame {
+  display: flex;
+  min-height: 720px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 0.18);
+}
+
+.gran-ronda-embedded-game__frame > .game-shell {
+  min-height: 718px;
+  flex: 1 1 auto;
+}
+
+.gran-ronda-embedded-game__table-frame {
+  min-height: 620px;
+  overflow: hidden;
+  background: rgb(0 0 0 / 0.12);
+}
+
+@keyframes gran-ronda-embedded-game-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.gran-ronda-roulette-dots i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-oro, #f6c34c);
+  animation: gran-ronda-roulette-pulse 840ms ease-in-out infinite;
+}
+
+.gran-ronda-roulette-dots i:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.gran-ronda-roulette-dots i:nth-child(3) {
+  animation-delay: 280ms;
+}
+
+.gran-ronda-roulette-icon {
+  animation: gran-ronda-roulette-pulse 1200ms ease-in-out infinite;
+}
+
+.gran-ronda-roulette-reel {
+  height: 1rem;
+  overflow: hidden;
+  color: rgb(247 244 236 / 0.55);
+  font-size: 0.72rem;
+  line-height: 1rem;
+}
+
+.gran-ronda-roulette-track {
+  display: flex;
+  flex-direction: column;
+  animation: gran-ronda-roulette-reel 1400ms cubic-bezier(0.18, 0.82, 0.24, 1) both;
+}
+
+.gran-ronda-roulette-track span {
+  display: block;
+  height: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes gran-ronda-roulette-reel {
+  0% {
+    transform: translateY(0);
+  }
+  68% {
+    transform: translateY(-2rem);
+  }
+  100% {
+    transform: translateY(-3rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

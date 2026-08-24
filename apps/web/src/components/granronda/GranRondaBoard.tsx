@@ -27,6 +27,9 @@ const SPACE_STYLES: Record<GranRondaSpaceType, string> = {
   sello: 'border-verde bg-verde text-tinta',
   evento: 'border-azul bg-azul text-hueso',
   atajo: 'border-violeta bg-violeta text-hueso',
+  doble: 'border-rosa bg-rosa text-tinta',
+  penalizacion: 'border-brasa/80 bg-brasa/90 text-hueso',
+  tienda: 'border-violeta/80 bg-violeta/90 text-hueso',
 };
 
 const SPACE_GLYPHS: Record<GranRondaSpaceType, string> = {
@@ -36,6 +39,9 @@ const SPACE_GLYPHS: Record<GranRondaSpaceType, string> = {
   sello: '✦',
   evento: '?',
   atajo: '↗',
+  doble: '2×',
+  penalizacion: '!',
+  tienda: '$',
 };
 
 const PLAYER_STYLES = [
@@ -73,7 +79,7 @@ export function GranRondaBoard({
   return (
     <section className="flex flex-col gap-2" aria-label="Mapa de La Gran Ronda">
       <div
-        className={`relative isolate overflow-hidden rounded-[26px] border border-white/20 bg-gradient-to-br from-azul/25 via-tinta to-verde/10 shadow-[0_20px_60px_rgba(0,0,0,0.22)] ${compact ? 'aspect-[1.02]' : 'aspect-[1.1]'}`}
+        className={`relative isolate overflow-hidden rounded-[26px] border border-white/20 bg-gradient-to-br from-azul/25 via-tinta to-verde/10 shadow-[0_20px_60px_rgba(0,0,0,0.22)] ${compact ? 'aspect-[0.96] sm:aspect-[1.12]' : 'aspect-[1.04]'}`}
       >
         <svg
           className="absolute inset-0 size-full"
@@ -151,18 +157,18 @@ export function GranRondaBoard({
                 onClick={() => onSpaceSelect?.(space.id)}
                 title={`${space.label} · ${space.type}`}
                 aria-label={`${space.label}, casilla ${space.index + 1}${isOption ? ', elegir este camino' : ''}`}
-                className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-full transition-transform duration-200 ${isOption ? 'z-20 scale-125 cursor-pointer' : 'z-10'} ${interactive && !isOption ? 'cursor-default' : ''}`}
+                className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full transition-transform duration-200 ${isOption ? 'z-20 scale-110 cursor-pointer' : 'z-10'} ${interactive && !isOption ? 'cursor-default' : ''}`}
                 style={{ left: `${space.x}%`, top: `${space.y}%` }}
               >
                 <span
-                  className={`grid ${compact ? 'size-7 sm:size-8' : 'size-8 sm:size-10'} place-items-center rounded-full border-2 shadow-[0_4px_12px_rgba(0,0,0,0.25)] ${SPACE_STYLES[space.type]} ${
+                  className={`relative grid ${compact ? 'size-[1.8rem] sm:size-9' : 'size-9 sm:size-10'} place-items-center rounded-full border-2 shadow-[0_4px_12px_rgba(0,0,0,0.25)] ${SPACE_STYLES[space.type]} ${
                     stamp ? 'ring-2 ring-oro ring-offset-2 ring-offset-transparent' : ''
                   } ${isOption ? 'animate-pulse ring-4 ring-oro/65 ring-offset-2 ring-offset-tinta/20' : ''}`}
                 >
-                  <span className="font-display text-12 sm:text-14">{SPACE_GLYPHS[space.type]}</span>
-                </span>
-                <span className={`rounded-full bg-tinta/70 px-1.5 font-mono text-8 text-hueso ${isOption ? 'text-10 text-oro' : ''}`}>
-                  {String(space.index + 1).padStart(2, '0')}
+                  <span className="font-display text-10 sm:text-12">{SPACE_GLYPHS[space.type]}</span>
+                  <span className="absolute -bottom-1 -right-1 grid min-w-3.5 place-items-center rounded-full border border-tinta/15 bg-hueso px-0.5 font-mono text-[7px] leading-3 text-tinta shadow-sm">
+                    {String(space.index + 1).padStart(2, '0')}
+                  </span>
                 </span>
               </button>
             );
@@ -182,7 +188,7 @@ export function GranRondaBoard({
                 <span
                   key={occupant.playerId}
                   title={player?.nick ?? 'Jugador'}
-                  className={`absolute grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-hueso text-10 font-bold shadow-lg transition-[left,top] duration-500 ease-out ${color} ${active ? 'ring-2 ring-oro ring-offset-1 ring-offset-tinta' : ''}`}
+                  className={`absolute grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-hueso text-8 font-bold shadow-lg transition-[left,top] duration-500 ease-out ${color} ${active ? 'ring-2 ring-oro ring-offset-1 ring-offset-tinta' : ''}`}
                   style={{ left: `${space.x + offset.x}%`, top: `${space.y + offset.y}%` }}
                 >
                   {(player?.nick ?? '?').slice(0, 1).toUpperCase()}
@@ -201,7 +207,23 @@ export function GranRondaBoard({
           {(Object.keys(SPACE_STYLES) as GranRondaSpaceType[]).map((type) => (
             <span key={type} className="flex items-center gap-1 text-10 text-humo">
               <span className={`size-2 rounded-full ${SPACE_STYLES[type].split(' ')[1]}`} />
-              {type === 'perdida' ? 'Pérdida' : type === 'evento' ? 'Evento' : type === 'atajo' ? 'Atajo' : type === 'sello' ? 'Sello' : type === 'oros' ? 'Oros' : 'Salida'}
+              {type === 'perdida'
+                ? 'Pérdida'
+                : type === 'evento'
+                  ? 'Evento'
+                  : type === 'atajo'
+                    ? 'Atajo'
+                    : type === 'sello'
+                      ? 'Sello'
+                      : type === 'oros'
+                        ? 'Oros'
+                        : type === 'doble'
+                          ? 'Dado doble'
+                          : type === 'penalizacion'
+                            ? 'Penalización'
+                            : type === 'tienda'
+                              ? 'Tienda'
+                              : 'Salida'}
             </span>
           ))}
         </div>

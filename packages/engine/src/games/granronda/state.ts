@@ -3,9 +3,12 @@ import type {
   GranRondaConfig,
   GranRondaResolutionKind,
   GranRondaPowerupType,
+  GranRondaMiniGameId,
   PlayerId,
   RoomCode,
 } from '@ronda/protocol';
+import type { ClassicState } from '../classics/state.ts';
+import type { MusicalState } from '../musical/state.ts';
 
 export type GranRondaStatus = 'playing' | 'gameEnd';
 export type GranRondaPhase =
@@ -41,11 +44,33 @@ export interface GranRondaPlayer {
 }
 
 export interface GranRondaMiniGameState {
-  questionOrder: string[];
+  questionOrder: GranRondaMiniGameId[];
   questionIndex: number;
-  questionId: string;
+  questionId: GranRondaMiniGameId;
   submissions: Record<PlayerId, string>;
+  playerStates: Record<PlayerId, GranRondaMiniPlayerState>;
+  targetOptionId: string | null;
   scoreDeltas: Record<PlayerId, number> | null;
+  results: Record<PlayerId, GranRondaMiniGameResult> | null;
+  embeddedGame: GranRondaEmbeddedGameState | null;
+}
+
+export type GranRondaEmbeddedGameState = ClassicState | MusicalState;
+
+export interface GranRondaMiniPlayerState {
+  score: number;
+  lastCard: number | null;
+  finished: boolean;
+  busted: boolean;
+  actions: number;
+  completedAt: number | null;
+}
+
+export interface GranRondaMiniGameResult {
+  rank: number;
+  score: number;
+  reward: number;
+  outcome: 'winner' | 'podium' | 'bust' | 'participant';
 }
 
 export interface GranRondaMovementState {

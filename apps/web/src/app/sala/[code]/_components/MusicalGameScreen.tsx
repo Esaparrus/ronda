@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { MusicalPlayerView } from '@ronda/protocol';
+import type { GameAction, MusicalPlayerView } from '@ronda/protocol';
 import { Button } from '@/components/ui/Button';
 import { MusicAutocompleteInput } from '@/components/ui/MusicAutocompleteInput';
 import { MusicalFeedback } from '@/components/ui/MusicalFeedback';
@@ -23,6 +23,11 @@ import { TableHeader } from './TableHeader';
 
 interface MusicalGameScreenProps {
   view: MusicalPlayerView;
+  onAction?: (action: GameAction) => void;
+}
+
+function sendMusicalAction(action: GameAction): void {
+  void useRondaStore.getState().sendAction(action);
 }
 
 interface GuessForm {
@@ -55,7 +60,8 @@ function formatElapsed(milliseconds: number | null | undefined): string {
   return `${(milliseconds / 1000).toFixed(1)} s`;
 }
 
-export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
+export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
+  const dispatch = onAction ?? sendMusicalAction;
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [guess, setGuess] = useState<GuessForm>(EMPTY_GUESS);
@@ -121,7 +127,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
       const selectionKey = `${playlistKey}:${round}:${track.id}`;
       if (selectedTrackKeyRef.current === selectionKey) return;
       selectedTrackKeyRef.current = selectionKey;
-      void useRondaStore.getState().sendAction({
+      dispatch({
         type: 'musicSelectTrack',
         track: {
           id: track.id,
@@ -175,6 +181,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     isHost,
     regionsKey,
     selectionRetry,
+    dispatch,
     view.config.rounds,
     view.phase,
     view.round,
@@ -272,7 +279,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
       // audio tanto en el móvil del anfitrión como en el de cada jugador online.
       const started = await playPreview();
       if (started) {
-        await useRondaStore.getState().sendAction({ type: 'musicStartClip' });
+        await dispatch({ type: 'musicStartClip' });
       }
     } finally {
       setStartingClip(false);
@@ -284,7 +291,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     stopPreview();
     setClipReady(true);
     setMessage(null);
-    void useRondaStore.getState().sendAction({ type: 'musicResolveClip' });
+    dispatch({ type: 'musicResolveClip' });
   }
 
   function stopPreview() {
@@ -328,7 +335,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     }
     prepareMusicalFeedbackAudio();
     setMessage(null);
-    void useRondaStore.getState().sendAction({
+    dispatch({
       type: 'musicSubmitGuess',
       artist,
       title,
@@ -350,12 +357,12 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
     if (!isOnlineMode) stopPreview();
     setMessage(null);
     prepareMusicalFeedbackAudio();
-    void useRondaStore.getState().sendAction({ type: 'musicBuzz' });
+    dispatch({ type: 'musicBuzz' });
   }
 
   function nextClip() {
     stopPreview();
-    void useRondaStore.getState().sendAction({ type: 'musicNextClip' });
+    dispatch({ type: 'musicNextClip' });
   }
 
   const scores = (
@@ -779,7 +786,7 @@ export function MusicalGameScreen({ view }: MusicalGameScreenProps) {
             </div>
             {view.status === 'playing' && isHost ? (
               <Button
-                onClick={() => void useRondaStore.getState().sendAction({ type: 'musicNextRound' })}
+                onClick={() => dispatch({ type: 'musicNextRound' })}
                 loading={pendingAction}
               >
                 Siguiente canción

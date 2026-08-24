@@ -3,6 +3,8 @@ import { DEFAULT_GRAN_RONDA_CONFIG, type GameAction } from '@ronda/protocol';
 import { createInitialState, applyAction } from './reducer.ts';
 import { getPlayerView } from './views.ts';
 import type { GranRondaState } from './state.ts';
+import { getClassicPlayerView } from '../classics/views.ts';
+import { getPlayerView as getMusicalPlayerView } from '../musical/views.ts';
 
 const players = [
   { playerId: 'p1', nick: 'Ana', seat: 0, isBot: false },
@@ -22,7 +24,7 @@ function makeState(): GranRondaState {
 function play(action: GameAction, state: GranRondaState, playerId: string): GranRondaState {
   const result = applyAction(state, playerId, action, 0);
   if (!result.ok) {
-    throw new Error(`${result.code} action=${action.type} phase=${state.phase} turn=${state.turnSeat} player=${playerId}`);
+    throw new Error(`${result.code} action=${JSON.stringify(action)} phase=${state.phase} turn=${state.turnSeat} player=${playerId}`);
   }
   return result.value.state;
 }
@@ -106,6 +108,63 @@ describe('La Gran Ronda', () => {
     expect(state.movement).toBeNull();
   });
 
+  it('ofrece la arista de vuelta y mantiene las acciones del mapa como casillas', () => {
+    let state = makeState();
+    const player = state.players[0];
+    if (!player) throw new Error('falta jugador activo');
+    player.position = 'plaza-copas';
+    state.turnSeat = player.seat;
+
+    state = play({ type: 'rollGranRonda' }, state, player.playerId);
+    expect(state.phase).toBe('routeChoice');
+    expect(state.movement?.routeOptions).toContain('union-bastos');
+    expect(state.movement?.routeOptions).toContain('paseo-sol');
+
+    const actionSpace = state.board.find((space) => space.type === 'doble');
+    expect(actionSpace?.id).toBe('sendero-bastos');
+    expect(state.board.some((space) => space.type === 'tienda')).toBe(true);
+    expect(state.board.some((space) => space.type === 'penalizacion')).toBe(true);
+  });
+
+  it('activa las casillas de dado doble y penalización al aterrizar', () => {
+    let state = makeState();
+    const player = state.players[0];
+    if (!player) throw new Error('falta jugador activo');
+    state.turnSeat = player.seat;
+    player.position = 'senda-bastos';
+    state.movement = {
+      playerId: player.playerId,
+      roll: 1,
+      dice: [1],
+      path: ['senda-bastos'],
+      remainingSteps: 1,
+      routeOptions: [],
+      forcedNextSpaceId: 'sendero-bastos',
+    };
+    state.phase = 'moving';
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+    expect(state.phase).toBe('resolving');
+    expect(state.players[0]?.powerups.doubleRoll).toBe(1);
+
+    state.phase = 'moving';
+    state.resolution = null;
+    const playerAfterDouble = state.players[0];
+    if (!playerAfterDouble) throw new Error('falta jugador tras el dado doble');
+    state.movement = {
+      playerId: playerAfterDouble.playerId,
+      roll: 1,
+      dice: [1],
+      path: ['curva-bastos'],
+      remainingSteps: 1,
+      routeOptions: [],
+      forcedNextSpaceId: 'arco-copas',
+    };
+    playerAfterDouble.position = 'curva-bastos';
+    state = play({ type: 'advanceGranRondaMovement' }, state, playerAfterDouble.playerId);
+    expect(state.phase).toBe('resolving');
+    expect(state.players[0]?.powerups.rivalPenalty).toBe(1);
+  });
+
   it('termina el movimiento, abre el juego de la ronda y deja avanzar al anfitrión', () => {
     let state = makeState();
     while (state.phase !== 'minigameInput') state = resolveCurrentTurn(state);
@@ -124,12 +183,82 @@ describe('La Gran Ronda', () => {
     expect(state.turnSeat).toBe(1);
   });
 
+  it('resuelve un minijuego competitivo con acciones y clasificación de Oros', () => {
+    let state = makeState();
+    while (state.phase !== 'minigameInput') state = resolveCurrentTurn(state);
+    let guard = 0;
+    while (state.phase === 'minigameInput' && guard < 160) {
+      guard += 1;
+      const embedded = state.miniGame.embeddedGame;
+      if (!embedded) throw new Error('falta el juego original alojado');
+      if (embedded.gameId === 'sieteymedia') {
+        const player = embedded.players.find((candidate) => candidate.seat === embedded.turnSeat);
+        if (!player) throw new Error('falta el turno de Siete y Media');
+        state = play(
+          { type: 'submitGranRondaMiniGameAction', action: { type: 'stand' } },
+          state,
+          player.playerId,
+        );
+      } else if (embedded.gameId === 'cinquillo') {
+        const player = embedded.players.find((candidate) => candidate.seat === embedded.turnSeat);
+        if (!player) throw new Error('falta el turno de Cinquillo');
+        const view = getClassicPlayerView(embedded, player.playerId);
+        const cardId = view.me.legalCardIds[0];
+        state = play(
+          {
+            type: 'submitGranRondaMiniGameAction',
+            action: cardId ? { type: 'playCard', cardId } : { type: 'pass' },
+          },
+          state,
+          player.playerId,
+        );
+      } else if (embedded.gameId === 'musical') {
+        const view = getMusicalPlayerView(embedded, 'p1');
+        const nestedActions = new Set(view.me.availableActions);
+        const trackIndex = embedded.playedTrackIds.length + 1;
+        const action = nestedActions.has('musicSelectTrack')
+          ? {
+              type: 'musicSelectTrack' as const,
+              track: {
+                id: `granronda-test-track-${trackIndex}`,
+                title: `Canción de prueba ${trackIndex}`,
+                artist: 'Artista de prueba',
+                year: 2020,
+                previewUrl: 'https://example.com/preview.mp3',
+                artworkUrl: null,
+                storeUrl: 'https://example.com',
+              },
+            }
+          : nestedActions.has('musicStartClip')
+            ? { type: 'musicStartClip' as const }
+            : nestedActions.has('musicBuzz')
+              ? { type: 'musicBuzz' as const }
+              : nestedActions.has('musicSubmitGuess')
+                ? { type: 'musicSubmitGuess' as const, artist: 'No', title: 'No', year: null }
+                : nestedActions.has('musicNextClip')
+                  ? { type: 'musicNextClip' as const }
+                  : { type: 'musicNextRound' as const };
+        state = play({ type: 'submitGranRondaMiniGameAction', action }, state, 'p1');
+      } else {
+        throw new Error(`juego alojado inesperado: ${embedded.gameId}`);
+      }
+    }
+    expect(guard).toBeLessThan(160);
+    expect(state.phase).toBe('minigameReveal');
+    expect(state.miniGame.embeddedGame).not.toBeNull();
+    expect(state.miniGame.results).not.toBeNull();
+    expect(Object.values(state.miniGame.scoreDeltas ?? {}).some((delta) => delta > 0)).toBe(true);
+  });
+
   it('permite comprar sellos y potenciadores y aplicar sus efectos', () => {
     let state = makeState();
+    const p1 = state.players[0];
+    const p2 = state.players[1];
+    if (!p1 || !p2) throw new Error('faltan jugadores para la prueba');
     state.phase = 'resolving';
     state.turnSeat = 0;
-    state.players[0].position = 'plaza-copas';
-    state.players[0].coins = 20;
+    p1.position = 'plaza-copas';
+    p1.coins = 20;
     state.movement = {
       playerId: 'p1',
       roll: 1,
@@ -149,33 +278,54 @@ describe('La Gran Ronda', () => {
     };
 
     state = play({ type: 'buyGranRondaSeal' }, state, 'p1');
-    expect(state.players[0].coins).toBe(12);
-    expect(state.players[0].seals).toBe(1);
-    expect(state.stampSpaceId).toBe('puente-comun');
+    const afterSeal = state.players[0];
+    if (!afterSeal) throw new Error('falta p1 tras comprar el sello');
+    expect(afterSeal.coins).toBe(12);
+    expect(afterSeal.seals).toBe(1);
+    expect(state.stampSpaceId).not.toBe('plaza-copas');
+
+    state.resolution = {
+      kind: 'tienda',
+      spaceId: 'mirador',
+      title: 'Tienda',
+      message: 'Puedes comprar',
+      coinsDelta: 0,
+      sealsDelta: 0,
+    };
 
     state = play({ type: 'buyGranRondaPowerup', powerup: 'doubleRoll' }, state, 'p1');
-    expect(state.players[0].coins).toBe(7);
-    expect(state.players[0].powerups.doubleRoll).toBe(1);
+    const afterPowerup = state.players[0];
+    if (!afterPowerup) throw new Error('falta p1 tras comprar el poder');
+    expect(afterPowerup.coins).toBe(7);
+    expect(afterPowerup.powerups.doubleRoll).toBe(1);
 
     state.phase = 'movement';
     state.resolution = null;
     state.movement = null;
     state = play({ type: 'useGranRondaPowerup', powerup: 'doubleRoll' }, state, 'p1');
-    expect(state.players[0].powerups.doubleRoll).toBe(0);
+    const afterUse = state.players[0];
+    if (!afterUse) throw new Error('falta p1 tras usar el poder');
+    expect(afterUse.powerups.doubleRoll).toBe(0);
     expect(state.movement?.dice).toHaveLength(2);
     expect(state.movement?.roll).toBe((state.movement?.dice[0] ?? 0) + (state.movement?.dice[1] ?? 0));
 
     let penaltyState = makeState();
     penaltyState.phase = 'movement';
     penaltyState.turnSeat = 0;
-    penaltyState.players[0].powerups.rivalPenalty = 1;
-    penaltyState.players[1].coins = 3;
+    const penaltyP1 = penaltyState.players[0];
+    const penaltyP2 = penaltyState.players[1];
+    if (!penaltyP1 || !penaltyP2) throw new Error('faltan jugadores para la penalización');
+    penaltyP1.powerups.rivalPenalty = 1;
+    penaltyP2.coins = 3;
     penaltyState = play(
       { type: 'useGranRondaPowerup', powerup: 'rivalPenalty', targetPlayerId: 'p2' },
       penaltyState,
       'p1',
     );
-    expect(penaltyState.players[0].powerups.rivalPenalty).toBe(0);
-    expect(penaltyState.players[1].coins).toBe(1);
+    const afterPenaltyP1 = penaltyState.players[0];
+    const afterPenaltyP2 = penaltyState.players[1];
+    if (!afterPenaltyP1 || !afterPenaltyP2) throw new Error('faltan jugadores tras la penalización');
+    expect(afterPenaltyP1.powerups.rivalPenalty).toBe(0);
+    expect(afterPenaltyP2.coins).toBe(1);
   });
 });
