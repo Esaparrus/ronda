@@ -123,7 +123,9 @@ describe('La Gran Ronda', () => {
     const state = makeState(2);
     const compatibleIds = granRondaMiniGamesForPlayerCount(2).map((game) => game.id);
     expect(state.players).toHaveLength(2);
-    expect(compatibleIds).toContain('tute');
+    expect(compatibleIds).not.toContain('pocha');
+    expect(compatibleIds).not.toContain('tute');
+    expect(compatibleIds).not.toContain('orden');
     expect(compatibleIds).toContain('laronda');
     expect(state.miniGame.questionOrder.every((id) => compatibleIds.includes(id))).toBe(true);
   });
@@ -133,8 +135,12 @@ describe('La Gran Ronda', () => {
     const forFive = granRondaMiniGamesForPlayerCount(5).map((game) => game.id);
     const forSeven = granRondaMiniGamesForPlayerCount(7).map((game) => game.id);
 
-    expect(forTwo).toContain('tute');
+    expect(forTwo).not.toContain('pocha');
+    expect(forTwo).not.toContain('tute');
+    expect(forTwo).not.toContain('orden');
     expect(forFive).not.toContain('tute');
+    expect(forFive).not.toContain('pocha');
+    expect(forFive).not.toContain('orden');
     expect(forFive).not.toContain('chinchon');
     expect(forFive).not.toContain('brisca');
     expect(forSeven).not.toContain('pocha');
@@ -180,22 +186,79 @@ describe('La Gran Ronda', () => {
     expect(state.movement).toBeNull();
   });
 
-  it('ofrece la arista de vuelta y mantiene las acciones del mapa como casillas', () => {
+  it('solo ofrece salidas hacia delante y mantiene las acciones del mapa como casillas', () => {
     let state = makeState();
     const player = state.players[0];
     if (!player) throw new Error('falta jugador activo');
-    player.position = 'plaza-copas';
+    player.position = 'bifurcacion-azul';
     state.turnSeat = player.seat;
 
     state = play({ type: 'rollGranRonda' }, state, player.playerId);
     expect(state.phase).toBe('routeChoice');
-    expect(state.movement?.routeOptions).toContain('union-bastos');
-    expect(state.movement?.routeOptions).toContain('paseo-sol');
+    expect(state.movement?.routeOptions).toEqual(['senda-dorada', 'camino-riesgo']);
+    expect(state.movement?.routeOptions).not.toContain('paseo-sol');
 
     const actionSpace = state.board.find((space) => space.type === 'doble');
     expect(actionSpace?.id).toBe('sendero-bastos');
     expect(state.board.some((space) => space.type === 'tienda')).toBe(true);
     expect(state.board.some((space) => space.type === 'penalizacion')).toBe(true);
+  });
+
+  it('solo activa premios y penalizaciones al caer, no al atravesar la casilla', () => {
+    let state = makeState();
+    const player = state.players[0];
+    if (!player) throw new Error('falta jugador activo');
+    player.position = 'salida';
+    player.coins = 5;
+    state.turnSeat = player.seat;
+    state.movement = {
+      playerId: player.playerId,
+      roll: 2,
+      dice: [2],
+      path: ['salida'],
+      remainingSteps: 2,
+      routeOptions: [],
+      forcedNextSpaceId: 'plaza-oros',
+    };
+    state.phase = 'moving';
+
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+
+    expect(state.players[0]?.position).toBe('plaza-oros');
+    expect(state.players[0]?.coins).toBe(5);
+    expect(state.phase).toBe('routeChoice');
+    expect(state.resolution).toBeNull();
+  });
+
+  it('abre la tienda al pasar y reanuda los pasos pendientes después de continuar', () => {
+    let state = makeState();
+    const player = state.players[0];
+    if (!player) throw new Error('falta jugador activo');
+    player.position = 'puente-comun';
+    state.turnSeat = player.seat;
+    state.movement = {
+      playerId: player.playerId,
+      roll: 2,
+      dice: [2],
+      path: ['puente-comun'],
+      remainingSteps: 2,
+      routeOptions: [],
+      forcedNextSpaceId: 'mirador',
+    };
+    state.phase = 'moving';
+
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+    expect(state.phase).toBe('resolving');
+    expect(state.resolution?.kind).toBe('tienda');
+    expect(state.movement?.remainingSteps).toBe(1);
+
+    state = play({ type: 'continueGranRondaResolution' }, state, player.playerId);
+    expect(state.phase).toBe('moving');
+    expect(state.movement?.remainingSteps).toBe(1);
+
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+    expect(state.players[0]?.position).toBe('plaza-espadas');
+    expect(state.phase).toBe('resolving');
   });
 
   it('activa las casillas de dado doble y penalización al aterrizar', () => {

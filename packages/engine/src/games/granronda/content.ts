@@ -11,6 +11,18 @@ export interface GranRondaMiniGameDefinition {
 }
 
 /**
+ * Se conservan las definiciones para poder reanudar partidas antiguas, pero no
+ * entran en sorteos nuevos: Pocha y Tute necesitan una partida completa para
+ * tener sentido, y Orden resuelve un resultado cooperativo para toda la mesa.
+ * Mus no forma parte del catálogo alojado de La Gran Ronda.
+ */
+export const GRAN_RONDA_ROULETTE_EXCLUDED_IDS = new Set<GranRondaMiniGameId>([
+  'pocha',
+  'tute',
+  'orden',
+]);
+
+/**
  * Variantes cortas para el tablero. No son preguntas de cultura general: cada
  * entrada tiene una acción competitiva propia y el motor resuelve una
  * clasificación que luego se convierte en Oros.
@@ -215,6 +227,9 @@ export function granRondaMiniGamesForPlayerCount(
   playerCount: number,
 ): GranRondaMiniGameDefinition[] {
   return GRAN_RONDA_MINIGAMES.filter(
-    (game) => playerCount >= game.minPlayers && playerCount <= game.maxPlayers,
+    (game) =>
+      !GRAN_RONDA_ROULETTE_EXCLUDED_IDS.has(game.id) &&
+      playerCount >= game.minPlayers &&
+      playerCount <= game.maxPlayers,
   );
 }

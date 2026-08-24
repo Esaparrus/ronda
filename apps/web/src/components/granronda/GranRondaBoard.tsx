@@ -1,4 +1,6 @@
-import type { CSSProperties } from 'react';
+'use client';
+
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   DEFAULT_PLAYER_TOKEN_ICON,
   PLAYER_TOKEN_ICONS,
@@ -11,6 +13,7 @@ import {
   type PublicPlayer,
 } from '@ronda/protocol';
 import { GranRondaDiceOverlay } from './GranRondaDiceOverlay';
+import { GranRondaCoinBurst } from './GranRondaCoinBurst';
 import { GranRondaSpaceIcon } from './GranRondaSpaceIcon';
 import { GranRondaTrapEncounter } from './GranRondaTrapEncounter';
 
@@ -26,6 +29,7 @@ export interface GranRondaBoardProps {
   resolution?: GranRondaResolutionPublic | null;
   compact?: boolean;
   minimized?: boolean;
+  closeZoom?: number;
   onSpaceSelect?: (spaceId: string) => void;
 }
 
@@ -36,15 +40,15 @@ interface SpaceMeta {
 
 const SPACE_META: Record<GranRondaSpaceType, SpaceMeta> = {
   start: { label: 'Salida', effect: 'Punto de vuelta' },
-  oros: { label: 'Oros', effect: '+3 Oros' },
-  perdida: { label: 'Pérdida', effect: '−2 Oros' },
-  sello: { label: 'Plaza de Sello', effect: 'Compra por 8 Oros' },
-  evento: { label: 'Suerte', effect: '+1 Oro' },
-  atajo: { label: 'Atajo', effect: '+2 Oros' },
-  doble: { label: 'Dado doble', effect: 'Guarda 2 dados' },
-  penalizacion: { label: 'Penalización', effect: 'Rival −2 Oros' },
-  tienda: { label: 'Tienda', effect: 'Compra poderes' },
-  trampa: { label: 'Trampa monstruo', effect: 'Pierdes hasta 3 Oros' },
+  oros: { label: 'Oros', effect: '+3 al caer' },
+  perdida: { label: 'Pérdida', effect: '−2 al caer' },
+  sello: { label: 'Plaza de Sello', effect: 'Compra al caer' },
+  evento: { label: 'Suerte', effect: '+1 al caer' },
+  atajo: { label: 'Atajo', effect: '+2 al caer' },
+  doble: { label: 'Dado doble', effect: 'Consíguelo al caer' },
+  penalizacion: { label: 'Penalización', effect: 'Consíguela al caer' },
+  tienda: { label: 'Tienda', effect: 'Se abre al pasar' },
+  trampa: { label: 'Trampa monstruo', effect: 'Hasta −3 al caer' },
 };
 
 const LEGEND_ORDER: GranRondaSpaceType[] = [
@@ -79,6 +83,49 @@ const EDGE_CURVES: Record<string, number> = {
   'plaza-espadas-sendero-copas': -2.5,
   'fuente-sello-curva-bastos': 2,
 };
+
+const EMPTY_SPACE_IDS: string[] = [];
+
+interface BoardFocus {
+  x: number;
+  y: number;
+}
+
+interface CoinBurst {
+  id: number;
+  amount: number;
+  x: number;
+  y: number;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function closeBoardFocus(
+  board: GranRondaBoardSpace[],
+  boardPlayers: GranRondaBoardPlayer[],
+  activePlayerId: PlayerId | null,
+  routeOptions: string[],
+): BoardFocus {
+  const occupant =
+    boardPlayers.find((player) => player.playerId === activePlayerId) ?? boardPlayers[0];
+  const origin = board.find((space) => space.id === occupant?.position) ?? board[0];
+  if (!origin) return { x: 50, y: 50 };
+
+  const nearbyIds = new Set<string>([origin.id, ...routeOptions, ...origin.nextIds]);
+  for (const nextId of origin.nextIds) {
+    const nextSpace = board.find((space) => space.id === nextId);
+    for (const followingId of nextSpace?.nextIds ?? []) nearbyIds.add(followingId);
+  }
+  const nearby = board.filter((space) => nearbyIds.has(space.id));
+  // El origen pesa dos veces para seguir la ficha sin perder de vista los pasos próximos.
+  const focusSpaces = [origin, ...nearby];
+  return {
+    x: focusSpaces.reduce((total, space) => total + space.x, 0) / focusSpaces.length,
+    y: focusSpaces.reduce((total, space) => total + space.y, 0) / focusSpaces.length,
+  };
+}
 
 function pieceOffset(index: number, total: number): { x: number; y: number } {
   if (total <= 1) return { x: 0, y: -3.8 };
@@ -115,24 +162,42 @@ export function GranRondaBoard({
   boardPlayers,
   players,
   stampSpaceId,
-  trapSpaceIds = [],
-  routeOptions = [],
+  trapSpaceIds = EMPTY_SPACE_IDS,
+  routeOptions = EMPTY_SPACE_IDS,
   activePlayerId = null,
   movement = null,
   resolution = null,
   compact = false,
   minimized = false,
+  closeZoom = 1.85,
   onSpaceSelect,
 }: GranRondaBoardProps) {
-  const positions = new Map(board.map((space) => [space.id, space]));
-  const routeSet = new Set(routeOptions);
-  const trapSet = new Set(trapSpaceIds);
-  const activePlayer = players.find((player) => player.playerId === activePlayerId);
+  const [viewMode, setViewMode] = useState<'close' | 'overview'>('close');
+  const [coinBursts, setCoinBursts] = useState<CoinBurst[]>([]);
+  const previousCoinsRef = useRef<Record<string, number> | null>(null);
+  const burstIdRef = useRef(0);
+  const burstTimersRef = useRef<number[]>([]);
+  const positions = useMemo(() => new Map(board.map((space) => [space.id, space])), [board]);
+  const routeSet = useMemo(() => new Set(routeOptions), [routeOptions]);
+  const trapSet = useMemo(() => new Set(trapSpaceIds), [trapSpaceIds]);
+  const playersById = useMemo(
+    () => new Map(players.map((player) => [player.playerId, player])),
+    [players],
+  );
+  const activePlayer = activePlayerId ? playersById.get(activePlayerId) : undefined;
   const interactive = routeOptions.length > 0 && onSpaceSelect !== undefined;
   const choiceOrigin = movement?.path[movement.path.length - 1] ?? null;
   const stampSpace = positions.get(stampSpaceId);
-  const trapHitSpace =
-    resolution?.kind === 'trampa' ? positions.get(resolution.spaceId) : undefined;
+  const closeFocus = useMemo(
+    () => closeBoardFocus(board, boardPlayers, activePlayerId, routeOptions),
+    [activePlayerId, board, boardPlayers, routeOptions],
+  );
+  const cameraScale = minimized || viewMode === 'overview' ? 1 : closeZoom;
+  const cameraOffsetX = clamp(0.5 - (closeFocus.x / 100) * cameraScale, 1 - cameraScale, 0);
+  const cameraOffsetY = clamp(0.5 - (closeFocus.y / 100) * cameraScale, 1 - cameraScale, 0);
+  const cameraStyle = {
+    transform: `translate3d(${cameraOffsetX * 100}%, ${cameraOffsetY * 100}%, 0) scale(${cameraScale})`,
+  };
   const occupantsByPosition = new Map<string, GranRondaBoardPlayer[]>();
   for (const occupant of boardPlayers) {
     const occupants = occupantsByPosition.get(occupant.position) ?? [];
@@ -140,136 +205,187 @@ export function GranRondaBoard({
     occupantsByPosition.set(occupant.position, occupants);
   }
 
+  useEffect(() => {
+    const currentCoins = Object.fromEntries(
+      boardPlayers.map((player) => [player.playerId, player.coins]),
+    );
+    const previousCoins = previousCoinsRef.current;
+    previousCoinsRef.current = currentCoins;
+    if (!previousCoins) return;
+
+    const gains = boardPlayers.flatMap<CoinBurst>((player) => {
+      const previous = previousCoins[player.playerId];
+      const amount = previous === undefined ? 0 : player.coins - previous;
+      const space = positions.get(player.position);
+      if (amount <= 0 || !space) return [];
+      burstIdRef.current += 1;
+      return [{ id: burstIdRef.current, amount, x: space.x, y: space.y }];
+    });
+    if (gains.length === 0) return;
+
+    setCoinBursts((current) => [...current, ...gains]);
+    const gainIds = new Set(gains.map((gain) => gain.id));
+    const timer = window.setTimeout(() => {
+      setCoinBursts((current) => current.filter((burst) => !gainIds.has(burst.id)));
+      burstTimersRef.current = burstTimersRef.current.filter((candidate) => candidate !== timer);
+    }, 1650);
+    burstTimersRef.current.push(timer);
+  }, [boardPlayers, positions]);
+
+  useEffect(
+    () => () => {
+      for (const timer of burstTimersRef.current) window.clearTimeout(timer);
+    },
+    [],
+  );
+
   return (
     <section
       className={`gran-ronda-board ${compact ? 'gran-ronda-board--compact' : ''} ${minimized ? 'gran-ronda-board--minimized' : ''}`}
       aria-label="Mapa de La Gran Ronda"
     >
       <div className="gran-ronda-board__stage">
-        <div className="gran-ronda-board__art" aria-hidden="true" />
-        <div className="gran-ronda-board__shade" aria-hidden="true" />
+        <div className="gran-ronda-board__camera" style={cameraStyle}>
+          <div className="gran-ronda-board__art" aria-hidden="true" />
+          <div className="gran-ronda-board__shade" aria-hidden="true" />
 
-        <svg
-          className="gran-ronda-board__routes"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          {board.flatMap((space) =>
-            space.nextIds.flatMap((nextId) => {
-              const next = positions.get(nextId);
-              if (!next) return [];
-              const choice =
-                choiceOrigin !== null &&
-                ((space.id === choiceOrigin && routeSet.has(next.id)) ||
-                  (next.id === choiceOrigin && routeSet.has(space.id)));
-              const travelled = edgeWasTravelled(movement, space.id, next.id);
-              const path = edgePath(space, next);
+          <svg
+            className="gran-ronda-board__routes"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {board.flatMap((space) =>
+              space.nextIds.flatMap((nextId) => {
+                const next = positions.get(nextId);
+                if (!next) return [];
+                const choice =
+                  choiceOrigin !== null &&
+                  ((space.id === choiceOrigin && routeSet.has(next.id)) ||
+                    (next.id === choiceOrigin && routeSet.has(space.id)));
+                const travelled = edgeWasTravelled(movement, space.id, next.id);
+                const path = edgePath(space, next);
+                return (
+                  <g
+                    key={`${space.id}-${next.id}`}
+                    className={`gran-ronda-route ${choice ? 'gran-ronda-route--choice' : ''} ${travelled ? 'gran-ronda-route--travelled' : ''}`}
+                  >
+                    <path d={path} className="gran-ronda-route__edge" />
+                    <path d={path} className="gran-ronda-route__road" />
+                    <path d={path} className="gran-ronda-route__stitch" />
+                  </g>
+                );
+              }),
+            )}
+          </svg>
+
+          <div className="absolute inset-0">
+            {board.map((space) => {
+              const isOption = routeSet.has(space.id);
+              const stamp = space.id === stampSpaceId;
+              const trap = trapSet.has(space.id);
+              const occupied = occupantsByPosition.has(space.id);
+              const visibleType: GranRondaSpaceType = trap ? 'trampa' : space.type;
+              const meta = SPACE_META[visibleType];
               return (
-                <g
-                  key={`${space.id}-${next.id}`}
-                  className={`gran-ronda-route ${choice ? 'gran-ronda-route--choice' : ''} ${travelled ? 'gran-ronda-route--travelled' : ''}`}
+                <button
+                  key={space.id}
+                  type="button"
+                  disabled={!interactive || !isOption}
+                  onClick={() => onSpaceSelect?.(space.id)}
+                  title={`${space.label} · ${meta.effect}`}
+                  aria-label={`${space.label}, casilla ${space.index + 1}, ${meta.effect}${isOption ? ', elegir este camino' : ''}`}
+                  className={`gran-ronda-space gran-ronda-space--${visibleType} ${stamp ? 'gran-ronda-space--stamp' : ''} ${trap ? 'gran-ronda-space--trap' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
+                  style={{ left: `${space.x}%`, top: `${space.y}%` }}
                 >
-                  <path d={path} className="gran-ronda-route__edge" />
-                  <path d={path} className="gran-ronda-route__road" />
-                  <path d={path} className="gran-ronda-route__stitch" />
-                </g>
+                  {stamp ? <span className="gran-ronda-space__stamp-label">Sello</span> : null}
+                  {trap ? <span className="gran-ronda-space__trap-label">¡Trampa!</span> : null}
+                  <span className="gran-ronda-space__face">
+                    <GranRondaSpaceIcon type={visibleType} />
+                    <span className="gran-ronda-space__number">
+                      {String(space.index + 1).padStart(2, '0')}
+                    </span>
+                  </span>
+                </button>
               );
-            }),
-          )}
-        </svg>
+            })}
+
+            <div
+              className="pointer-events-none absolute inset-0 z-30"
+              role="group"
+              aria-label="Fichas de jugadores"
+            >
+              {boardPlayers.map((occupant) => {
+                const space = positions.get(occupant.position);
+                if (!space) return null;
+                const occupants = occupantsByPosition.get(occupant.position) ?? [];
+                const occupantIndex = occupants.findIndex(
+                  (player) => player.playerId === occupant.playerId,
+                );
+                const player = playersById.get(occupant.playerId);
+                const offset = pieceOffset(occupantIndex, occupants.length);
+                const colorIndex = player?.colorIndex ?? 0;
+                const tokenIcon =
+                  player?.tokenIcon ??
+                  PLAYER_TOKEN_ICONS[colorIndex % PLAYER_TOKEN_ICONS.length] ??
+                  DEFAULT_PLAYER_TOKEN_ICON;
+                const active = occupant.playerId === activePlayerId;
+                const hit =
+                  resolution?.kind === 'trampa' && occupant.position === resolution.spaceId;
+                return (
+                  <span
+                    key={occupant.playerId}
+                    role="img"
+                    title={`${player?.nick ?? 'Jugador'} · ${tokenIcon}`}
+                    aria-label={player?.nick ?? 'Jugador'}
+                    className={`gran-ronda-piece ${active ? 'gran-ronda-piece--active' : ''} ${hit ? 'gran-ronda-piece--hit' : ''}`}
+                    style={
+                      {
+                        left: `${space.x + offset.x}%`,
+                        top: `${space.y + offset.y}%`,
+                        '--piece-color': PLAYER_COLORS[colorIndex],
+                      } as CSSProperties
+                    }
+                  >
+                    <span aria-hidden="true">{tokenIcon}</span>
+                  </span>
+                );
+              })}
+            </div>
+            {coinBursts.map((burst) => (
+              <GranRondaCoinBurst key={burst.id} x={burst.x} y={burst.y} amount={burst.amount} />
+            ))}
+          </div>
+        </div>
 
         <div className="gran-ronda-board__map-label">
           <span>La Gran Ronda</span>
-          <strong>Mapa</strong>
+          <strong>{viewMode === 'close' ? 'Cerca' : 'Mapa'}</strong>
         </div>
         <div className="gran-ronda-board__stamp-status">
           <GranRondaSpaceIcon type="sello" size={15} />
           <span>Sello · 8 Oros</span>
         </div>
-
-        <div className="absolute inset-0">
-          {board.map((space) => {
-            const isOption = routeSet.has(space.id);
-            const stamp = space.id === stampSpaceId;
-            const trap = trapSet.has(space.id);
-            const occupied = occupantsByPosition.has(space.id);
-            const visibleType: GranRondaSpaceType = trap ? 'trampa' : space.type;
-            const meta = SPACE_META[visibleType];
-            return (
-              <button
-                key={space.id}
-                type="button"
-                disabled={!interactive || !isOption}
-                onClick={() => onSpaceSelect?.(space.id)}
-                title={`${space.label} · ${meta.effect}`}
-                aria-label={`${space.label}, casilla ${space.index + 1}, ${meta.effect}${isOption ? ', elegir este camino' : ''}`}
-                className={`gran-ronda-space gran-ronda-space--${visibleType} ${stamp ? 'gran-ronda-space--stamp' : ''} ${trap ? 'gran-ronda-space--trap' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
-                style={{ left: `${space.x}%`, top: `${space.y}%` }}
-              >
-                {stamp ? <span className="gran-ronda-space__stamp-label">Sello</span> : null}
-                {trap ? <span className="gran-ronda-space__trap-label">¡Trampa!</span> : null}
-                <span className="gran-ronda-space__face">
-                  <GranRondaSpaceIcon type={visibleType} />
-                  <span className="gran-ronda-space__number">
-                    {String(space.index + 1).padStart(2, '0')}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-
-          <div
-            className="pointer-events-none absolute inset-0 z-30"
-            role="group"
-            aria-label="Fichas de jugadores"
+        {!minimized ? (
+          <button
+            type="button"
+            className="gran-ronda-board__zoom-control"
+            onClick={() => setViewMode((current) => (current === 'close' ? 'overview' : 'close'))}
+            aria-label={
+              viewMode === 'close' ? 'Alejar y ver el mapa completo' : 'Acercar a las fichas'
+            }
+            aria-pressed={viewMode === 'overview'}
           >
-            {boardPlayers.map((occupant) => {
-              const space = positions.get(occupant.position);
-              if (!space) return null;
-              const occupants = occupantsByPosition.get(occupant.position) ?? [];
-              const occupantIndex = occupants.findIndex(
-                (player) => player.playerId === occupant.playerId,
-              );
-              const player = players.find((candidate) => candidate.playerId === occupant.playerId);
-              const offset = pieceOffset(occupantIndex, occupants.length);
-              const colorIndex = player?.colorIndex ?? 0;
-              const tokenIcon =
-                player?.tokenIcon ??
-                PLAYER_TOKEN_ICONS[colorIndex % PLAYER_TOKEN_ICONS.length] ??
-                DEFAULT_PLAYER_TOKEN_ICON;
-              const active = occupant.playerId === activePlayerId;
-              const hit = resolution?.kind === 'trampa' && occupant.position === resolution.spaceId;
-              return (
-                <span
-                  key={occupant.playerId}
-                  title={`${player?.nick ?? 'Jugador'} · ${tokenIcon}`}
-                  aria-label={player?.nick ?? 'Jugador'}
-                  className={`gran-ronda-piece ${active ? 'gran-ronda-piece--active' : ''} ${hit ? 'gran-ronda-piece--hit' : ''}`}
-                  style={
-                    {
-                      left: `${space.x + offset.x}%`,
-                      top: `${space.y + offset.y}%`,
-                      '--piece-color': PLAYER_COLORS[colorIndex],
-                    } as CSSProperties
-                  }
-                >
-                  <span aria-hidden="true">{tokenIcon}</span>
-                </span>
-              );
-            })}
-          </div>
-          {trapHitSpace && resolution ? (
-            <GranRondaTrapEncounter
-              x={trapHitSpace.x}
-              y={trapHitSpace.y}
-              coinsDelta={resolution.coinsDelta}
-            />
-          ) : null}
-          {movement && activePlayer && !minimized ? (
-            <GranRondaDiceOverlay movement={movement} playerName={activePlayer.nick} />
-          ) : null}
-        </div>
+            <span aria-hidden="true">{viewMode === 'close' ? '−' : '+'}</span>
+            <strong>{viewMode === 'close' ? 'Mapa completo' : 'Acercar'}</strong>
+          </button>
+        ) : null}
+        {resolution?.kind === 'trampa' ? (
+          <GranRondaTrapEncounter coinsDelta={resolution.coinsDelta} />
+        ) : null}
+        {movement && activePlayer && !minimized ? (
+          <GranRondaDiceOverlay movement={movement} playerName={activePlayer.nick} />
+        ) : null}
       </div>
 
       {minimized ? (

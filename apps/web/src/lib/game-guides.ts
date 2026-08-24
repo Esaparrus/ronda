@@ -393,7 +393,8 @@ export const GAME_GUIDES = {
     title: 'Matiz',
     kind: 'Percepción de color',
     mark: '◉',
-    objective: 'Recrea el color que falta en una ilustración y acércate todo lo posible al original.',
+    objective:
+      'Recrea el color que falta en una ilustración y acércate todo lo posible al original.',
     steps: [
       {
         title: 'Mira el dibujo',
@@ -414,7 +415,8 @@ export const GAME_GUIDES = {
     ],
     victory:
       'Cada ronda da hasta 100 puntos. Tras completar las rondas configuradas, gana quien tenga la puntuación acumulada más alta.',
-    keyRule: 'Una vez aceptado el color no se puede cambiar: piensa y confirma solo cuando estés conforme.',
+    keyRule:
+      'Una vez aceptado el color no se puede cambiar: piensa y confirma solo cuando estés conforme.',
   },
   preciojusto: {
     title: 'Precio justo',
@@ -451,13 +453,26 @@ export const GAME_GUIDES = {
     mark: '⚑',
     objective: 'Identifica cada bandera entre cuatro opciones y acumula aciertos.',
     steps: [
-      { title: 'Mira la bandera', body: 'Todos recibís la misma bandera y el mismo conjunto de opciones.' },
-      { title: 'Elige un nombre', body: 'Pulsa una de las cuatro respuestas. La elección queda bloqueada.' },
-      { title: 'Espera la revelación', body: 'La ronda termina cuando responde la mesa o se agota el tiempo.' },
-      { title: 'Suma aciertos', body: 'Cada respuesta correcta vale un punto; no hay bonus por velocidad.' },
+      {
+        title: 'Mira la bandera',
+        body: 'Todos recibís la misma bandera y el mismo conjunto de opciones.',
+      },
+      {
+        title: 'Elige un nombre',
+        body: 'Pulsa una de las cuatro respuestas. La elección queda bloqueada.',
+      },
+      {
+        title: 'Espera la revelación',
+        body: 'La ronda termina cuando responde la mesa o se agota el tiempo.',
+      },
+      {
+        title: 'Suma aciertos',
+        body: 'Cada respuesta correcta vale un punto; no hay bonus por velocidad.',
+      },
     ],
     victory: 'Gana quien consigue más aciertos al terminar las rondas.',
-    keyRule: 'Los distractores pertenecen al mismo tipo de entidad para que la comparación sea justa.',
+    keyRule:
+      'Los distractores pertenecen al mismo tipo de entidad para que la comparación sea justa.',
   },
   cifras: {
     title: 'Cifras',
@@ -465,10 +480,22 @@ export const GAME_GUIDES = {
     mark: '#',
     objective: 'Acércate a datos reales, ordena tarjetas o elige quién tiene más.',
     steps: [
-      { title: 'Lee la definición', body: 'La unidad y qué se mide aparecen siempre junto a la pregunta.' },
-      { title: 'Responde en privado', body: 'Escribe una cifra, mueve las tarjetas o toca una de las dos opciones.' },
-      { title: 'Comprueba el dato', body: 'Se revela el valor de referencia, el orden correcto o la opción ganadora.' },
-      { title: 'Acumula precisión', body: 'La cercanía, el orden completo y los aciertos suman puntos.' },
+      {
+        title: 'Lee la definición',
+        body: 'La unidad y qué se mide aparecen siempre junto a la pregunta.',
+      },
+      {
+        title: 'Responde en privado',
+        body: 'Escribe una cifra, mueve las tarjetas o toca una de las dos opciones.',
+      },
+      {
+        title: 'Comprueba el dato',
+        body: 'Se revela el valor de referencia, el orden correcto o la opción ganadora.',
+      },
+      {
+        title: 'Acumula precisión',
+        body: 'La cercanía, el orden completo y los aciertos suman puntos.',
+      },
     ],
     victory: 'Gana quien suma más puntos de precisión al completar la partida.',
     keyRule: 'No escribas la unidad: viene fijada por la pregunta.',
@@ -480,11 +507,21 @@ export const GAME_GUIDES = {
     objective: 'Elige en secreto a la persona que más encaja con cada situación.',
     steps: [
       { title: 'Lee la pregunta', body: 'La misma situación aparece en todos los móviles.' },
-      { title: 'Vota a alguien', body: 'Pulsa un participante. El voto queda oculto y no se puede cambiar.' },
-      { title: 'Revelad el grupo', body: 'Al terminar, los votos se agrupan y aparece quién recibió más.' },
-      { title: 'Comentad la jugada', body: 'El modo social no elimina a nadie ni impone retos o acciones.' },
+      {
+        title: 'Vota a alguien',
+        body: 'Pulsa un participante. El voto queda oculto y no se puede cambiar.',
+      },
+      {
+        title: 'Revelad el grupo',
+        body: 'Al terminar, los votos se agrupan y aparece quién recibió más.',
+      },
+      {
+        title: 'Comentad la jugada',
+        body: 'El modo social no elimina a nadie ni impone retos o acciones.',
+      },
     ],
-    victory: 'Por defecto no hay ganador: la mesa descubre sus patrones. El modo competitivo premia leer a la mayoría.',
+    victory:
+      'Por defecto no hay ganador: la mesa descubre sus patrones. El modo competitivo premia leer a la mayoría.',
     keyRule: 'No se puede votar a uno mismo salvo que el anfitrión lo permita.',
   },
   completalafrase: {
@@ -493,13 +530,26 @@ export const GAME_GUIDES = {
     mark: '…',
     objective: 'Completa el hueco con la palabra o expresión que falta.',
     steps: [
-      { title: 'Lee el hueco', body: 'La palabra retirada tiene contenido: no es un artículo ni un relleno arbitrario.' },
-      { title: 'Escribe tu respuesta', body: 'Las tildes, mayúsculas y signos no cambian la comparación.' },
-      { title: 'Pide una pista', body: 'Si la partida lo permite, la pista ayuda pero esa respuesta no suma el punto.' },
-      { title: 'Revisa la solución', body: 'Se muestra la respuesta canónica y las variantes aceptadas.' },
+      {
+        title: 'Lee el hueco',
+        body: 'La palabra retirada tiene contenido: no es un artículo ni un relleno arbitrario.',
+      },
+      {
+        title: 'Escribe tu respuesta',
+        body: 'Las tildes, mayúsculas y signos no cambian la comparación.',
+      },
+      {
+        title: 'Pide una pista',
+        body: 'Si la partida lo permite, la pista ayuda pero esa respuesta no suma el punto.',
+      },
+      {
+        title: 'Revisa la solución',
+        body: 'Se muestra la respuesta canónica y las variantes aceptadas.',
+      },
     ],
     victory: 'Gana quien reúne más frases acertadas al terminar las rondas.',
-    keyRule: 'El pack “De todo” mezcla refranes, expresiones, citas atribuibles, frases históricas, humor y cultura popular.',
+    keyRule:
+      'El pack “De todo” mezcla refranes, expresiones, citas atribuibles, frases históricas, humor y cultura popular.',
   },
   granronda: {
     title: 'La Gran Ronda',
@@ -510,24 +560,25 @@ export const GAME_GUIDES = {
     steps: [
       {
         title: 'Tira el dado cuando te toque',
-        body: 'El servidor mueve tu ficha y resuelve la casilla: puedes ganar Oros, perderlos o llegar al destino del Sello.',
+        body: 'El servidor mueve tu ficha paso a paso. Los premios, pérdidas y eventos se resuelven solo en la casilla donde terminas.',
       },
       {
         title: 'Elige la ruta',
-        body: 'En las bifurcaciones decides desde el móvil si prefieres la senda segura o el camino con más recompensa.',
+        body: 'En cada bifurcación eliges una de las salidas hacia delante. Los ramales equilibran distancia y recompensa.',
+      },
+      {
+        title: 'Pasa por la tienda',
+        body: 'La tienda se abre aunque todavía te queden pasos. Compra un poder o continúa el movimiento con la misma tirada.',
       },
       {
         title: 'Compra el Sello',
-        body: 'Si llegas al destino y tienes 8 Oros, se descuentan automáticamente y ganas un Sello. Después el destino cambia.',
-      },
-      {
-        title: 'Resuelve la casilla',
-        body: 'Al llegar, el mapa muestra el resultado aquí mismo: ganas o pierdes Oros, consigues un atajo o intentas comprar el Sello.',
+        body: 'Si terminas en el destino activo y tienes 8 Oros, puedes comprar el Sello. Después aparece en otra plaza.',
       },
     ],
     victory:
       'Gana quien reúne más Sellos. Los Oros rompen los empates y ayudan a decidir qué rutas merecen la pena.',
-    keyRule: 'Los Oros son el recurso; los Sellos son el objetivo. Una sola tirada no decide la partida.',
+    keyRule:
+      'Los Oros son el recurso; los Sellos son el objetivo. Una sola tirada no decide la partida.',
   },
   laronda: {
     title: 'La Ronda',

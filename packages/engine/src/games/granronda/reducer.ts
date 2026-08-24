@@ -284,13 +284,20 @@ function advanceMovement(state: GranRondaState, playerId: PlayerId): GranRondaAc
   nextMovement.path.push(nextSpaceId);
   nextMovement.remainingSteps -= 1;
 
+  const landedSpace = granRondaSpaceById(nextSpaceId);
+  // La tienda se abre al pasar y, al cerrarla, conserva los pasos pendientes.
+  if (landedSpace?.type === 'tienda') {
+    resolveLanding(next, nextPlayer);
+    next.phase = 'resolving';
+    return ok({ state: next, events: [] });
+  }
+
   if (nextMovement.remainingSteps <= 0) {
     resolveLanding(next, nextPlayer);
     next.phase = 'resolving';
     return ok({ state: next, events: [] });
   }
 
-  const landedSpace = granRondaSpaceById(nextSpaceId);
   const routeOptions = granRondaMovementOptions(next.board, nextSpaceId, nextMovement.path);
   if (landedSpace && routeOptions.length > 1) {
     next.phase = 'routeChoice';
@@ -333,8 +340,13 @@ function continueResolution(state: GranRondaState, playerId: PlayerId): GranRond
   if (player.left) return err('PLAYER_ELIMINATED');
   if (state.turnSeat !== player.seat) return err('NOT_YOUR_TURN');
 
+  const resumesAfterShop = state.resolution?.kind === 'tienda' && movement.remainingSteps > 0;
   const next = bump(state);
   next.resolution = null;
+  if (resumesAfterShop) {
+    next.phase = 'moving';
+    return ok({ state: next, events: [] });
+  }
   next.movement = null;
   finishMovement(next, playerId);
   return ok({ state: next, events: [] });
@@ -628,8 +640,12 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
   }
 
   if (space.type === 'tienda') {
-    title = 'Tienda de la Ronda';
-    message = 'Puedes gastar Oros en un dado doble o en una penalización para un rival.';
+    const remainingSteps = state.movement?.remainingSteps ?? 0;
+    title = remainingSteps > 0 ? 'Parada en la tienda' : 'Tienda de la Ronda';
+    message =
+      remainingSteps > 0
+        ? `Puedes gastar Oros antes de continuar las ${remainingSteps} casillas que te quedan.`
+        : 'Puedes gastar Oros en un dado doble o en una penalización para un rival.';
   }
 
   if (space.type === 'sello') {

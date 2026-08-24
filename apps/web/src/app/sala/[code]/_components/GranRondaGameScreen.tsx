@@ -153,6 +153,7 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
           movement={view.movement}
           resolution={view.resolution}
           compact
+          closeZoom={1.9}
           minimized={showEmbeddedGame}
           onSpaceSelect={
             can('chooseGranRondaPath')
@@ -425,13 +426,17 @@ function ResolutionPanel({
 }) {
   const resolution = view.resolution;
   if (!resolution) return null;
+  const remainingAfterShop =
+    resolution.kind === 'tienda' ? (view.movement?.remainingSteps ?? 0) : 0;
   const deltaLabel =
     resolution.coinsDelta > 0 ? `+${resolution.coinsDelta}` : `${resolution.coinsDelta}`;
   return (
     <section className="surface-panel flex flex-col gap-3 border-oro/35 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="eyebrow text-oro">Llegada a la casilla</p>
+          <p className="eyebrow text-oro">
+            {remainingAfterShop > 0 ? 'Parada durante el recorrido' : 'Llegada a la casilla'}
+          </p>
           <h2 className="mt-1 text-22 font-semibold text-hueso">{resolution.title}</h2>
         </div>
         <div
@@ -448,12 +453,16 @@ function ResolutionPanel({
       {can('buyGranRondaSeal') ? (
         <Button onClick={() => send({ type: 'buyGranRondaSeal' })}>Comprar Sello · 8 Oros</Button>
       ) : null}
-      {can('buyGranRondaPowerup') ? <PowerupShop view={view} send={send} /> : null}
+      {resolution.kind === 'tienda' ? (
+        <PowerupShop view={view} send={send} enabled={can('buyGranRondaPowerup')} />
+      ) : null}
       {can('continueGranRondaResolution') ? (
-        <Button onClick={() => send({ type: 'continueGranRondaResolution' })}>Continuar</Button>
+        <Button onClick={() => send({ type: 'continueGranRondaResolution' })}>
+          {remainingAfterShop > 0 ? `Seguir avanzando · quedan ${remainingAfterShop}` : 'Continuar'}
+        </Button>
       ) : (
         <p className="text-13 text-humo">
-          {currentTurnNick ?? 'La persona activa'} confirma la llegada.
+          {currentTurnNick ?? 'La persona activa'} confirma el resultado.
         </p>
       )}
     </section>
@@ -632,9 +641,11 @@ function MiniGameRoulette({ gameId, title }: { gameId: string; title: string }) 
 function PowerupShop({
   view,
   send,
+  enabled,
 }: {
   view: GranRondaPlayerView;
   send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
+  enabled: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-violeta/35 bg-violeta/10 p-3">
@@ -647,7 +658,7 @@ function PowerupShop({
           <button
             key={powerup}
             type="button"
-            disabled={view.me.coins < POWERUP_COSTS[powerup]}
+            disabled={!enabled || view.me.coins < POWERUP_COSTS[powerup]}
             onClick={() => send({ type: 'buyGranRondaPowerup', powerup })}
             className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-violeta/40 bg-tinta/35 px-3 py-2 text-left text-12 text-hueso transition-colors hover:border-violeta disabled:cursor-not-allowed disabled:opacity-45"
           >

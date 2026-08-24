@@ -9,9 +9,9 @@ export const GRAN_RONDA_POWERUP_COSTS = {
 
 /**
  * Tablero de 26 posiciones. La ruta principal rodea el paño y las tres
- * bifurcaciones tienen alternativas con distinta longitud y recompensa:
- * el camino corto adelanta, el largo ofrece más casillas de Oros pero también
- * más riesgo. La salida es la única posición sin elección.
+ * bifurcaciones equilibran distancia y recompensa: el camino corto avanza más,
+ * mientras que el largo ofrece una casilla o poder adicional. Ninguna elección
+ * enfrenta un premio inmediato con un castigo inmediato.
  */
 export const GRAN_RONDA_BOARD: readonly GranRondaBoardSpace[] = [
   { id: 'salida', index: 0, label: 'Salida', type: 'start', nextIds: ['plaza-oros'], x: 9, y: 86 },
@@ -55,7 +55,7 @@ export const GRAN_RONDA_BOARD: readonly GranRondaBoardSpace[] = [
     id: 'senda-bastos',
     index: 5,
     label: 'Senda de Bastos',
-    type: 'perdida',
+    type: 'evento',
     nextIds: ['sendero-bastos'],
     x: 25,
     y: 91,
@@ -117,8 +117,8 @@ export const GRAN_RONDA_BOARD: readonly GranRondaBoardSpace[] = [
   {
     id: 'camino-riesgo',
     index: 12,
-    label: 'Camino de Riesgo',
-    type: 'perdida',
+    label: 'Camino del Río',
+    type: 'oros',
     nextIds: ['desvio-riesgo'],
     x: 77,
     y: 72,
@@ -126,7 +126,7 @@ export const GRAN_RONDA_BOARD: readonly GranRondaBoardSpace[] = [
   {
     id: 'desvio-riesgo',
     index: 13,
-    label: 'Desvío de Riesgo',
+    label: 'Mirador del Río',
     type: 'evento',
     nextIds: ['puente-comun'],
     x: 86,
@@ -259,9 +259,8 @@ export function granRondaSpaceById(id: string): GranRondaBoardSpace | undefined 
 }
 
 /**
- * El mapa se dibuja con una dirección base, pero las decisiones se toman en
- * un grafo sin dirección. La salida mantiene una única salida y la primera
- * bifurcación no permite volver inmediatamente al inicio.
+ * El recorrido es dirigido: en una bifurcación solo se ofrecen las salidas que
+ * continúan la vuelta. Las aristas entrantes nunca permiten desandar el camino.
  */
 export function granRondaRouteOptions(
   board: readonly GranRondaBoardSpace[],
@@ -269,21 +268,15 @@ export function granRondaRouteOptions(
 ): string[] {
   const current = board.find((space) => space.id === spaceId);
   if (!current) return [];
-  if (current.id === 'salida' || current.id === 'plaza-oros') return [...current.nextIds];
-
-  const incoming = board
-    .filter((space) => space.nextIds.includes(spaceId))
-    .map((space) => space.id);
-  return [...new Set([...current.nextIds, ...incoming])];
+  return [...current.nextIds];
 }
 
 export function granRondaMovementOptions(
   board: readonly GranRondaBoardSpace[],
   spaceId: string,
-  path: readonly string[],
+  _path: readonly string[],
 ): string[] {
-  const previousSpaceId = path.length > 1 ? path[path.length - 2] : undefined;
-  return granRondaRouteOptions(board, spaceId).filter((candidate) => candidate !== previousSpaceId);
+  return granRondaRouteOptions(board, spaceId);
 }
 
 export function granRondaSpaceLabel(type: GranRondaSpaceType): string {

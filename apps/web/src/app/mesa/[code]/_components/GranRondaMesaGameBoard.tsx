@@ -128,6 +128,7 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
           movement={view.movement}
           resolution={view.resolution}
           compact
+          closeZoom={1.55}
           minimized={showEmbeddedGame}
         />
       </div>
@@ -275,7 +276,11 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
             ✦
           </div>
           <div>
-            <p className="eyebrow text-oro">Llegada de {turnNick ?? 'la ficha'}</p>
+            <p className="eyebrow text-oro">
+              {view.resolution.kind === 'tienda' && (view.movement?.remainingSteps ?? 0) > 0
+                ? `Parada de ${turnNick ?? 'la ficha'} · quedan ${view.movement?.remainingSteps} pasos`
+                : `Llegada de ${turnNick ?? 'la ficha'}`}
+            </p>
             <h2 className="text-26 font-semibold text-hueso">{view.resolution.title}</h2>
             <p className="mt-1 text-14 text-humo">{view.resolution.message}</p>
           </div>
