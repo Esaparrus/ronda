@@ -57,7 +57,8 @@ export default function JuegosPage() {
                     {category.description}
                   </span>
                   <span className="mt-1 text-12 font-semibold text-oro">
-                    {category.gameSlugs.length} juegos
+                    {category.gameSlugs.length}{' '}
+                    {category.gameSlugs.length === 1 ? 'juego' : 'juegos'}
                   </span>
                 </span>
                 <span className="relative z-[1] grid size-8 shrink-0 place-items-center rounded-full bg-tinta/70 text-oro transition-transform group-hover:translate-x-0.5">

@@ -11,8 +11,12 @@ import type { GranRondaState } from './state.ts';
 import { getClassicPlayerView } from '../classics/views.ts';
 import { getPlayerView as getMusicalPlayerView } from '../musical/views.ts';
 import { colorQuestionById } from '../party/content.ts';
-import { granRondaMiniGameById, granRondaMiniGamesForPlayerCount } from './content.ts';
-import { granRondaDestinationPaths } from './rules.ts';
+import {
+  GRAN_RONDA_DUEL_MINIGAME_IDS,
+  granRondaMiniGameById,
+  granRondaMiniGamesForPlayerCount,
+} from './content.ts';
+import { granRondaDestinationPaths, granRondaRouteChoicePaths } from './rules.ts';
 
 const players = [
   { playerId: 'p1', nick: 'Ana', seat: 0, isBot: false },
@@ -127,7 +131,7 @@ describe('La Gran Ronda', () => {
     expect(compatibleIds).not.toContain('pocha');
     expect(compatibleIds).not.toContain('tute');
     expect(compatibleIds).not.toContain('orden');
-    expect(compatibleIds).toContain('laronda');
+    expect(compatibleIds).not.toContain('laronda');
     expect(state.miniGame.questionOrder.every((id) => compatibleIds.includes(id))).toBe(true);
   });
 
@@ -187,20 +191,20 @@ describe('La Gran Ronda', () => {
     expect(state.movement).toBeNull();
   });
 
-  it('elige la casilla exacta de llegada y nunca ofrece retroceder', () => {
+  it('permite iniciar la tirada hacia delante o hacia atrás', () => {
     let state = makeState();
     const player = state.players[0];
     if (!player) throw new Error('falta jugador activo');
-    player.position = 'plaza-oros';
+    player.position = 'salida';
     state.turnSeat = player.seat;
     const destinations = granRondaDestinationPaths(state.board, player.position, 5);
-    expect(destinations).toHaveLength(2);
     expect(destinations.every((destination) => destination.path.length === 6)).toBe(true);
-    expect(destinations.every((destination) => !destination.path.slice(1).includes('salida'))).toBe(
-      true,
-    );
+    expect(destinations.some((destination) => destination.path[1] === 'plaza-oros')).toBe(true);
+    expect(destinations.some((destination) => destination.path[1] === 'puerta-salida')).toBe(true);
+
+    const choices = granRondaRouteChoicePaths(state.board, player.position, 5);
     const routePaths = Object.fromEntries(
-      destinations.map((destination) => [destination.destinationId, destination.path]),
+      choices.map((choice) => [choice.nextSpaceId, choice.path]),
     );
     state.movement = {
       playerId: player.playerId,
@@ -208,24 +212,23 @@ describe('La Gran Ronda', () => {
       dice: [5],
       path: [player.position],
       remainingSteps: 5,
-      routeOptions: destinations.map((destination) => destination.destinationId),
+      routeOptions: choices.map((choice) => choice.nextSpaceId),
       routePaths,
       plannedPath: [],
     };
     state.phase = 'routeChoice';
-    const chosen = destinations[1];
-    if (!chosen) throw new Error('falta el segundo destino');
+    expect(state.movement.routeOptions).toEqual(['plaza-oros', 'puerta-salida']);
     state = play(
-      { type: 'chooseGranRondaPath', nextSpaceId: chosen.destinationId },
+      { type: 'chooseGranRondaPath', nextSpaceId: 'plaza-oros' },
       state,
       player.playerId,
     );
     expect(state.phase).toBe('moving');
-    expect(state.movement?.plannedPath).toEqual(chosen.path.slice(1));
-    while (state.phase === 'moving') {
-      state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
-    }
-    expect(state.players[0]?.position).toBe(chosen.destinationId);
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+    expect(state.players[0]?.position).toBe('plaza-oros');
+    expect(state.phase).toBe('routeChoice');
+    expect(state.movement?.routeOptions).toEqual(['paseo-azul', 'senda-bastos']);
+    expect(state.movement?.routeOptions).not.toContain('salida');
 
     const actionSpace = state.board.find((space) => space.type === 'doble');
     expect(actionSpace?.id).toBe('sendero-bastos');
@@ -745,7 +748,7 @@ describe('La Gran Ronda', () => {
     expect(penaltyState.lastInteraction?.kind).toBe('steal');
   });
 
-  it('resuelve un reto de Oros cara a cara y transfiere la apuesta', () => {
+  it('pausa la tirada y abre un minijuego aleatorio solo con el rival elegido', () => {
     let state = makeState(2);
     const challenger = state.players[0];
     const target = state.players[1];
@@ -766,9 +769,22 @@ describe('La Gran Ronda', () => {
     );
 
     expect(state.players[0]?.powerups.goldDuel).toBe(0);
-    expect(state.lastInteraction?.kind).toBe('duel');
-    expect(state.lastInteraction?.actorRoll).not.toBe(state.lastInteraction?.targetRoll);
+    expect(state.phase).toBe('minigameInput');
+    expect(state.duel).toMatchObject({
+      actorPlayerId: challenger.playerId,
+      targetPlayerId: target.playerId,
+      wager: 3,
+    });
+    expect(GRAN_RONDA_DUEL_MINIGAME_IDS).toContain(state.duel?.gameId);
+    expect(state.miniGame.embeddedGame?.players.map((player) => player.playerId)).toEqual([
+      challenger.playerId,
+      target.playerId,
+    ]);
+    expect(getPlayerView(state, challenger.playerId).me.availableActions).not.toContain(
+      'rollGranRonda',
+    );
+    expect(state.lastInteraction).toBeNull();
     expect((state.players[0]?.coins ?? 0) + (state.players[1]?.coins ?? 0)).toBe(10);
-    expect([2, 8]).toContain(state.players[0]?.coins);
+    expect(state.players[0]?.coins).toBe(5);
   });
 });

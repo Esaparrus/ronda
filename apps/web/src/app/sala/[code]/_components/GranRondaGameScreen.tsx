@@ -42,7 +42,7 @@ const POWERUP_LABELS: Record<GranRondaPowerupType, string> = {
 const POWERUP_DESCRIPTIONS: Record<GranRondaPowerupType, string> = {
   doubleRoll: 'Tira dos dados antes de moverte.',
   rivalPenalty: 'Roba hasta 2 Oros y súmalos a tu bolsa.',
-  goldDuel: 'Reta a un rival: ambos tiráis y el ganador cobra la apuesta.',
+  goldDuel: 'Reta a un rival a un minijuego aleatorio y apuesta Oros.',
 };
 
 const POWERUP_ICONS: Record<GranRondaPowerupType, string> = {
@@ -250,8 +250,10 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
       {!final && view.phase === 'routeChoice' ? (
         <p className="px-2 text-center text-12 text-humo">
           {can('chooseGranRondaPath')
-            ? `Toca la casilla exacta en la que quieres caer con tu ${view.movement?.roll ?? 'tirada'}.`
-            : `${currentTurn?.nick ?? 'La persona activa'} está eligiendo su destino final.`}
+            ? view.movement?.path.length === 1
+              ? 'Elige si avanzas hacia delante o hacia atrás. El tramo posible está iluminado.'
+              : 'Has llegado a un cruce: elige por qué camino continúas.'
+            : `${currentTurn?.nick ?? 'La persona activa'} está eligiendo por dónde continúa.`}
         </p>
       ) : null}
 
@@ -442,6 +444,13 @@ function InteractionNotice({ view }: { view: GranRondaPlayerView }) {
   const actor = view.players.find((player) => player.playerId === interaction.actorPlayerId);
   const target = view.players.find((player) => player.playerId === interaction.targetPlayerId);
   const winner = view.players.find((player) => player.playerId === interaction.winnerId);
+  const duelGame = interaction.gameId ? embeddedGameLabel(interaction.gameId) : null;
+  const duelMessage =
+    interaction.winnerId === null
+      ? `${actor?.nick ?? 'Un jugador'} y ${target?.nick ?? 'su rival'} han empatado${duelGame ? ` en ${duelGame}` : ''}; nadie pierde Oros.`
+      : duelGame
+        ? `${actor?.nick ?? 'Un jugador'} retó a ${target?.nick ?? 'su rival'} en ${duelGame}. ${winner?.nick ?? 'El ganador'} cobra ${formatOroAmount(interaction.coinsTransferred)}.`
+        : `${actor?.nick ?? 'Un jugador'} sacó ${interaction.actorRoll}; ${target?.nick ?? 'su rival'}, ${interaction.targetRoll}. ${winner?.nick ?? 'El ganador'} cobra ${formatOroAmount(interaction.coinsTransferred)}.`;
   return (
     <section className="surface-panel flex items-center gap-3 border-violeta/45 bg-violeta/10 p-3">
       <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-violeta/20 text-24">
@@ -453,8 +462,8 @@ function InteractionNotice({ view }: { view: GranRondaPlayerView }) {
         </p>
         <p className="mt-1 text-13 leading-relaxed text-hueso">
           {interaction.kind === 'duel'
-            ? `${actor?.nick ?? 'Un jugador'} sacó ${interaction.actorRoll}; ${target?.nick ?? 'su rival'}, ${interaction.targetRoll}. ${winner?.nick ?? 'El ganador'} cobra ${interaction.coinsTransferred} Oros.`
-            : `${actor?.nick ?? 'Un jugador'} roba ${interaction.coinsTransferred} Oros a ${target?.nick ?? 'su rival'}.`}
+            ? duelMessage
+            : `${actor?.nick ?? 'Un jugador'} roba ${formatOroAmount(interaction.coinsTransferred)} a ${target?.nick ?? 'su rival'}.`}
         </p>
       </div>
     </section>
@@ -479,8 +488,14 @@ function EmbeddedMiniGamePanel({ view }: { view: GranRondaPlayerView }) {
     >
       <div className="flex items-center justify-between gap-3 px-2 pt-1">
         <div>
-          <p className="eyebrow text-oro">Minijuego de la ronda</p>
-          <p className="mt-1 text-13 text-humo">Desplázate dentro de esta pantalla para jugar.</p>
+          <p className="eyebrow text-oro">
+            {view.duel ? 'Reto de Oros en curso' : 'Minijuego de la ronda'}
+          </p>
+          <p className="mt-1 text-13 text-humo">
+            {view.duel
+              ? `${view.players.find((player) => player.playerId === view.duel?.actorPlayerId)?.nick ?? 'Un jugador'} reta a ${view.players.find((player) => player.playerId === view.duel?.targetPlayerId)?.nick ?? 'su rival'} por ${formatOroAmount(view.duel.wager)}.`
+              : 'Desplázate dentro de esta pantalla para jugar.'}
+          </p>
         </div>
         <span className="rounded-full border border-oro/40 bg-oro/10 px-2.5 py-1 font-mono text-10 uppercase tracking-wider text-oro">
           {embeddedGameLabel(embedded.gameId)}
@@ -688,9 +703,13 @@ function MiniGamePanel({
   final: boolean;
   onFinishReview?: () => void;
 }) {
-  const [stage, setStage] = useState<'personal' | 'group'>('personal');
+  const resultPlayers = granRondaResultPlayers(view);
+  const isDuelParticipant = resultPlayers.some((player) => player.playerId === view.me.playerId);
+  const [stage, setStage] = useState<'personal' | 'group'>(
+    view.duel && !isDuelParticipant ? 'group' : 'personal',
+  );
   const personalResult = view.miniGame.results?.[view.me.playerId];
-  const rankedPlayers = [...view.players].sort((left, right) => {
+  const rankedPlayers = [...resultPlayers].sort((left, right) => {
     const leftRank = view.miniGame.results?.[left.playerId]?.rank ?? Number.POSITIVE_INFINITY;
     const rightRank = view.miniGame.results?.[right.playerId]?.rank ?? Number.POSITIVE_INFINITY;
     return leftRank - rightRank || left.seat - right.seat;
@@ -701,7 +720,9 @@ function MiniGamePanel({
       {stage === 'personal' ? (
         <div className="gran-ronda-personal-result flex flex-col gap-4 rounded-[24px] border border-oro/45 bg-tinta/45 p-4 text-center">
           <div>
-            <p className="eyebrow text-oro">Primero, tu resultado</p>
+            <p className="eyebrow text-oro">
+              {view.duel ? 'Tu resultado en el reto' : 'Primero, tu resultado'}
+            </p>
             <h2 className="mt-1 font-display text-28 text-hueso">
               {personalResult ? `Has quedado ${personalResult.rank}.º` : 'Resultado cerrado'}
             </h2>
@@ -715,19 +736,29 @@ function MiniGamePanel({
               </strong>
             </div>
             <div className="rounded-2xl border border-oro/35 bg-oro/10 px-3 py-3">
-              <span className="block text-10 uppercase tracking-wider text-humo">Tu premio</span>
-              <strong className="mt-1 block font-mono text-22 text-oro">
-                +{personalResult?.reward ?? 0} Oros
+              <span className="block text-10 uppercase tracking-wider text-humo">
+                {view.duel ? 'Balance del reto' : 'Tu premio'}
+              </span>
+              <strong
+                className={`mt-1 block font-mono text-22 ${(personalResult?.reward ?? 0) < 0 ? 'text-brasa' : 'text-oro'}`}
+              >
+                {formatOroDelta(personalResult?.reward ?? 0)}
               </strong>
             </div>
           </div>
-          <Button onClick={() => setStage('group')}>Aceptar y ver al resto</Button>
+          <Button onClick={() => setStage('group')}>
+            {view.duel ? 'Ver resultado del reto' : 'Aceptar y ver al resto'}
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-2 rounded-2xl border border-linea bg-tinta/35 p-3">
           <div>
-            <p className="eyebrow text-oro">Resultados de todos</p>
-            <h2 className="mt-1 text-22 font-semibold text-hueso">Clasificación del minijuego</h2>
+            <p className="eyebrow text-oro">
+              {view.duel ? 'Reto de Oros resuelto' : 'Resultados de todos'}
+            </p>
+            <h2 className="mt-1 text-22 font-semibold text-hueso">
+              {view.duel ? 'Resultado cara a cara' : 'Clasificación del minijuego'}
+            </h2>
           </div>
           <MiniGameAnswerReview view={view} />
           <div className="grid gap-1.5 sm:grid-cols-2">
@@ -753,14 +784,31 @@ function MiniGamePanel({
                       <span className="ml-1 text-brasa">· Se pasó</span>
                     ) : null}
                   </span>
-                  <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
-                    {result?.score ?? '—'} · {delta > 0 ? `+${delta}` : '±0'} Oros
+                  <strong
+                    className={
+                      delta > 0
+                        ? 'font-mono text-oro'
+                        : delta < 0
+                          ? 'font-mono text-brasa'
+                          : 'font-mono text-humo'
+                    }
+                  >
+                    {result?.score ?? '—'} · {formatOroDelta(delta)}
                   </strong>
                 </div>
               );
             })}
           </div>
-          {final ? (
+          {can('continueGranRondaDuel') ? (
+            <Button
+              className="mt-2"
+              loading={pending}
+              disabled={blocked}
+              onClick={() => send({ type: 'continueGranRondaDuel' })}
+            >
+              {pending ? 'Volviendo al mapa…' : 'Volver al turno y tirar'}
+            </Button>
+          ) : final ? (
             <Button className="mt-2" onClick={onFinishReview}>
               Ver clasificación final de la partida
             </Button>
@@ -775,13 +823,21 @@ function MiniGamePanel({
             </Button>
           ) : (
             <p className="mt-2 text-center text-12 text-humo">
-              El anfitrión iniciará la ronda {view.round + 1} cuando todos hayan visto el resultado.
+              {view.duel
+                ? 'La persona que lanzó el reto retomará ahora su tirada.'
+                : `El anfitrión iniciará la ronda ${view.round + 1} cuando todos hayan visto el resultado.`}
             </p>
           )}
         </div>
       )}
     </section>
   );
+}
+
+function granRondaResultPlayers(view: GranRondaPlayerView) {
+  if (!view.duel) return view.players;
+  const participantIds = new Set([view.duel.actorPlayerId, view.duel.targetPlayerId]);
+  return view.players.filter((player) => participantIds.has(player.playerId));
 }
 
 function PersonalMiniGameResult({ view }: { view: GranRondaPlayerView }) {
@@ -853,6 +909,86 @@ function PersonalMiniGameResult({ view }: { view: GranRondaPlayerView }) {
     );
   }
 
+  if (embedded?.gameId === 'cifras') {
+    const itemLabel = (itemId: string) =>
+      embedded.cifras.items.find((item) => item.id === itemId)?.label ?? itemId;
+    if (embedded.cifras.kind === 'estimate') {
+      const estimate = embedded.cifras.estimates?.[view.me.playerId];
+      const unit = embedded.cifras.unit ? ` ${embedded.cifras.unit}` : '';
+      return (
+        <div className="flex flex-col gap-2 text-left">
+          <AnswerCallout
+            label="Lo correcto era"
+            value={`${formatCifrasNumber(embedded.cifras.referenceValue)}${unit}`}
+            state="correct"
+          />
+          <AnswerCallout
+            label="Tú has puesto"
+            value={
+              estimate?.value === null || estimate?.value === undefined
+                ? 'Sin respuesta'
+                : `${formatCifrasNumber(estimate.value)}${unit}`
+            }
+            state="wrong"
+          />
+          <p className="rounded-2xl border border-oro/35 bg-oro/10 px-3 py-2 text-center text-14 text-hueso">
+            {estimate?.errorPercent === null || estimate?.errorPercent === undefined ? (
+              'No se pudo calcular tu distancia al resultado.'
+            ) : (
+              <>
+                Te has quedado a un{' '}
+                <strong className="font-mono text-oro">
+                  {String(estimate.errorPercent).replace('.', ',')}% de error
+                </strong>
+                .
+              </>
+            )}
+          </p>
+        </div>
+      );
+    }
+
+    if (embedded.cifras.kind === 'order') {
+      const order = embedded.cifras.orders?.[view.me.playerId];
+      const accuracy = order
+        ? Math.round((order.correctPositions / embedded.cifras.items.length) * 100)
+        : 0;
+      return (
+        <div className="flex flex-col gap-2 text-left">
+          <AnswerCallout
+            label="Orden correcto"
+            value={order?.correctOrder.map(itemLabel).join(' → ') ?? '—'}
+            state="correct"
+          />
+          <AnswerCallout
+            label="Tu orden"
+            value={order?.order?.map(itemLabel).join(' → ') ?? 'Sin respuesta'}
+            state={accuracy === 100 ? 'correct' : 'wrong'}
+          />
+          <p className="text-center text-14 text-hueso">
+            Has acertado <strong className="font-mono text-oro">{accuracy}% del orden</strong>.
+          </p>
+        </div>
+      );
+    }
+
+    const choice = embedded.cifras.choices?.[view.me.playerId];
+    return (
+      <div className="grid gap-2 text-left sm:grid-cols-2">
+        <AnswerCallout
+          label="Lo correcto era"
+          value={choice ? itemLabel(choice.correctOptionId) : '—'}
+          state="correct"
+        />
+        <AnswerCallout
+          label="Tú has puesto"
+          value={choice?.selectedOptionId ? itemLabel(choice.selectedOptionId) : 'Sin respuesta'}
+          state={choice?.correct ? 'correct' : 'wrong'}
+        />
+      </div>
+    );
+  }
+
   if (embedded?.gameId === 'preciojusto') {
     const guess = embedded.price.guesses?.[view.me.playerId];
     return (
@@ -886,7 +1022,7 @@ function PersonalMiniGameResult({ view }: { view: GranRondaPlayerView }) {
       <p className={`text-15 leading-relaxed ${busted ? 'text-brasa' : 'text-hueso'}`}>
         {busted
           ? `Te pasaste con ${formatSevenHalfResult(total)}. Esta era solo la resolución del minijuego; La Gran Ronda continúa.`
-          : `Terminaste con ${formatSevenHalfResult(total)} y ${result?.reward ? `ganas ${result.reward} Oros` : 'no sumas Oros'} en esta ronda.`}
+          : `Terminaste con ${formatSevenHalfResult(total)} y ${result?.reward ? `ganas ${formatOroAmount(result.reward)}` : 'no sumas Oros'} en esta ronda.`}
       </p>
     );
   }
@@ -905,6 +1041,7 @@ function PersonalMiniGameResult({ view }: { view: GranRondaPlayerView }) {
 function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
   const embedded = view.miniGame.embeddedGame;
   if (!embedded) return null;
+  const reviewPlayers = granRondaResultPlayers(view);
 
   if (embedded.gameId === 'banderas') {
     return (
@@ -912,7 +1049,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
         <div className="grid gap-2 sm:grid-cols-2">
           {embedded.flags.options.map((option) => {
             const isCorrect = option.id === embedded.flags.correctOptionId;
-            const voters = view.players.filter(
+            const voters = reviewPlayers.filter(
               (player) => embedded.flags.answers?.[player.playerId] === option.id,
             );
             return (
@@ -962,7 +1099,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
       <AnswerReviewFrame title="Combinaciones de la mesa">
         <ColorAnswerCard label="Respuesta correcta" colors={correct} state="correct" />
         <div className="grid gap-2 sm:grid-cols-2">
-          {view.players.map((player) => {
+          {reviewPlayers.map((player) => {
             const colors = embedded.party.answers?.[player.playerId] ?? [];
             return (
               <ColorAnswerCard
@@ -987,7 +1124,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
           color={embedded.party.targetHex}
         />
         <div className="grid gap-2 sm:grid-cols-2">
-          {view.players.map((player) => {
+          {reviewPlayers.map((player) => {
             const answer = embedded.party.answers?.[player.playerId] ?? null;
             const accuracy = embedded.party.scoreDeltas?.[player.playerId] ?? 0;
             return (
@@ -1018,7 +1155,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
     return (
       <AnswerReviewFrame title="Respuestas de la mesa">
         <div className="grid gap-1.5 sm:grid-cols-2">
-          {view.players.map((player) => {
+          {reviewPlayers.map((player) => {
             const answer = embedded.party.answers?.[player.playerId] ?? 'Sin respuesta';
             const isMajority = embedded.party.majorityAnswers?.includes(answer) ?? false;
             return (
@@ -1040,7 +1177,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
     return (
       <AnswerReviewFrame title={`Punto exacto: ${embedded.party.target ?? '—'}/100`}>
         <div className="grid gap-1.5 sm:grid-cols-2">
-          {view.players
+          {reviewPlayers
             .filter((player) => player.playerId !== embedded.party.cluePlayerId)
             .map((player) => {
               const guess = embedded.party.guesses?.[player.playerId];
@@ -1068,7 +1205,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
         title={`Precio real: ${formatEuroCents(embedded.price.referencePriceCents)}`}
       >
         <div className="grid gap-1.5 sm:grid-cols-2">
-          {view.players.map((player) => {
+          {reviewPlayers.map((player) => {
             const guess = embedded.price.guesses?.[player.playerId];
             return (
               <AnswerPlayerRow
@@ -1092,9 +1229,9 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
     return (
       <AnswerReviewFrame title="Quién votó a quién">
         <div className="grid gap-1.5 sm:grid-cols-2">
-          {view.players.map((player) => {
+          {reviewPlayers.map((player) => {
             const votedId = embedded.who.votes?.[player.playerId];
-            const voted = view.players.find((candidate) => candidate.playerId === votedId);
+            const voted = reviewPlayers.find((candidate) => candidate.playerId === votedId);
             return (
               <AnswerPlayerRow
                 key={player.playerId}
@@ -1112,7 +1249,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
     return (
       <AnswerReviewFrame title={`Solución: ${embedded.sentence.canonicalAnswer ?? '—'}`}>
         <div className="grid gap-1.5 sm:grid-cols-2">
-          {view.players.map((player) => {
+          {reviewPlayers.map((player) => {
             const answer = embedded.sentence.answers?.[player.playerId];
             return (
               <AnswerPlayerRow
@@ -1144,7 +1281,7 @@ function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
           </p>
         ) : null}
         <div className="grid gap-1.5 sm:grid-cols-2">
-          {view.players.map((player) => {
+          {reviewPlayers.map((player) => {
             const estimate = embedded.cifras.estimates?.[player.playerId];
             const choice = embedded.cifras.choices?.[player.playerId];
             const order = embedded.cifras.orders?.[player.playerId];
@@ -1345,6 +1482,29 @@ function formatSevenHalfResult(total: number | null | undefined): string {
     : `${String(total).replace('.', ',')} puntos`;
 }
 
+function formatCifrasNumber(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(value);
+}
+
+function formatCoinDelta(value: number): string {
+  if (value > 0) return `+${value}`;
+  if (value < 0) return String(value);
+  return '±0';
+}
+
+function oroLabel(value: number): 'Oro' | 'Oros' {
+  return Math.abs(value) === 1 ? 'Oro' : 'Oros';
+}
+
+function formatOroAmount(value: number): string {
+  return `${value} ${oroLabel(value)}`;
+}
+
+function formatOroDelta(value: number): string {
+  return `${formatCoinDelta(value)} ${oroLabel(value)}`;
+}
+
 function MiniGameRoulette({ gameId, title }: { gameId: string; title: string }) {
   return (
     <div className="gran-ronda-roulette flex items-center gap-3 rounded-2xl border border-white/15 bg-tinta/45 px-3 py-2">
@@ -1414,7 +1574,7 @@ function PowerupShop({
             Puedes comprar una unidad de cada artículo durante esta visita.
           </p>
           <span className="mt-2 inline-flex rounded-full bg-oro/12 px-2.5 py-1 font-mono text-11 text-oro">
-            Tu bolsa · {view.me.coins} Oros
+            Tu bolsa · {formatOroAmount(view.me.coins)}
           </span>
         </div>
       </div>
@@ -1464,10 +1624,17 @@ function PowerupTray({
   send: (action: Parameters<ReturnType<typeof useRondaStore.getState>['sendAction']>[0]) => void;
 }) {
   const [duelWager, setDuelWager] = useState(1);
+  const [duelTargetId, setDuelTargetId] = useState('');
   const rivals = view.players.filter(
     (player) => player.playerId !== view.me.playerId && !player.eliminated,
   );
   const boardByPlayer = new Map(view.boardPlayers.map((player) => [player.playerId, player]));
+  const affordableDuelRivals = rivals.filter(
+    (rival) => (boardByPlayer.get(rival.playerId)?.coins ?? 0) >= duelWager,
+  );
+  const duelTarget =
+    affordableDuelRivals.find((rival) => rival.playerId === duelTargetId) ??
+    affordableDuelRivals[0];
   const canUse = can('useGranRondaPowerup');
   if (!canUse && view.lastInteraction?.actorPlayerId !== view.me.playerId) return null;
   return (
@@ -1539,31 +1706,41 @@ function PowerupTray({
               </button>
             ))}
           </div>
-          <div className="grid gap-1.5 sm:grid-cols-2">
-            {rivals.map((rival) => {
-              const rivalCoins = boardByPlayer.get(rival.playerId)?.coins ?? 0;
-              return (
-                <button
-                  key={rival.playerId}
-                  type="button"
-                  disabled={rivalCoins < duelWager || view.me.coins < duelWager}
-                  onClick={() =>
-                    send({
-                      type: 'useGranRondaPowerup',
-                      powerup: 'goldDuel',
-                      targetPlayerId: rival.playerId,
-                      wager: duelWager,
-                    })
-                  }
-                  className="min-h-10 rounded-xl border border-oro/40 bg-oro/10 px-3 py-2 text-left text-12 text-hueso disabled:opacity-35"
-                >
-                  Retar a {rival.nick} · {rivalCoins} O
-                </button>
-              );
-            })}
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="flex min-w-0 flex-col gap-1 text-10 text-humo">
+              Rival elegido
+              <select
+                value={duelTarget?.playerId ?? ''}
+                onChange={(event) => setDuelTargetId(event.target.value)}
+                className="form-control min-h-10 w-full px-3 text-12 text-hueso"
+              >
+                {affordableDuelRivals.map((rival) => (
+                  <option key={rival.playerId} value={rival.playerId}>
+                    {rival.nick} · {formatOroAmount(boardByPlayer.get(rival.playerId)?.coins ?? 0)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              type="button"
+              disabled={!duelTarget || view.me.coins < duelWager}
+              onClick={() => {
+                if (!duelTarget) return;
+                send({
+                  type: 'useGranRondaPowerup',
+                  powerup: 'goldDuel',
+                  targetPlayerId: duelTarget.playerId,
+                  wager: duelWager,
+                });
+              }}
+              className="sm:self-end"
+            >
+              Retar ahora
+            </Button>
           </div>
           <p className="text-10 leading-relaxed text-humo">
-            Cada uno tira un dado. El ganador recibe la apuesta del rival; los empates se repiten.
+            La ruleta elegirá un minijuego solo para vosotros. El turno se pausa y el ganador cobra
+            la apuesta; si empatáis, nadie pierde Oros.
           </p>
         </div>
       ) : null}

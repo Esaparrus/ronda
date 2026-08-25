@@ -7,7 +7,7 @@
 // segundo toque de confirmación.
 'use client';
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { SUITS, parseCardId, type CardId } from '@ronda/protocol';
 import { PlayingCard } from '@/components/cards/PlayingCard';
@@ -58,7 +58,9 @@ export function PochaHand({
   const legal = new Set(legalCardIds);
   const ordered = [...hand].sort((a, b) => sortKey(a) - sortKey(b));
   const dragRef = useRef<PochaDrag | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const suppressClick = useRef(false);
+  const [containerWidth, setContainerWidth] = useState(320);
   const [dragVisual, setDragVisual] = useState<{
     cardId: CardId;
     x: number;
@@ -66,9 +68,24 @@ export function PochaHand({
     ready: boolean;
   } | null>(null);
   const n = Math.max(ordered.length, 1);
-  const rawWidth = 360 / (1 + (n - 1) * (1 - OVERLAP_FRACTION));
+  const rawWidth = containerWidth / (1 + (n - 1) * (1 - OVERLAP_FRACTION));
   const cardWidth = Math.min(MAX_CARD_WIDTH, Math.max(MIN_CARD_WIDTH, rawWidth));
-  const slot = cardWidth * (1 - OVERLAP_FRACTION);
+  const desiredSlot = cardWidth * (1 - OVERLAP_FRACTION);
+  const availableSlot = n > 1 ? Math.max(1, (containerWidth - cardWidth) / (n - 1)) : 0;
+  const slot = Math.min(desiredSlot, availableSlot);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width;
+      if (width && width > 0) {
+        setContainerWidth((current) => (Math.abs(current - width) > 0.5 ? width : current));
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   function isOverTable(x: number, y: number): boolean {
     const zone = document.querySelector<HTMLElement>('[data-card-drop-target="pocha"]');
@@ -152,7 +169,7 @@ export function PochaHand({
         <h2 className="text-14 font-semibold text-hueso">Tu mano</h2>
         {canPlay ? <span className="drag-instruction">Toca o desliza</span> : null}
       </div>
-      <div className="flex touch-pan-y items-end overflow-x-auto">
+      <div ref={containerRef} className="flex w-full min-w-0 touch-pan-y items-end overflow-hidden">
         {ordered.map((cardId, i) => {
           const isLegal = canPlay && legal.has(cardId);
           return (

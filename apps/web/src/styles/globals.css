@@ -32,6 +32,17 @@
   box-shadow: 0 2px 8px rgb(22 24 29 / 28%);
 }
 
+.matiz-color-field {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.matiz-color-field:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-oro) 72%, white);
+  outline-offset: 4px;
+}
+
 /* Girthquake es una tipografía comercial. Si está instalada localmente, el
  * aviso de turno la usa sin redistribuirla; el display de Ronda evita texto
  * invisible mientras el proyecto no incluya el archivo con su licencia. */
@@ -712,6 +723,11 @@ summary {
   box-shadow: 0 8px 18px rgb(191 90 242 / 0.2);
 }
 
+.game-glyph-tile[data-category='gran-ronda'] {
+  background: linear-gradient(145deg, #f6c34c, #e45d36 58%, #7c3aed);
+  box-shadow: 0 8px 18px rgb(228 93 54 / 0.24);
+}
+
 .game-card {
   position: relative;
   overflow: hidden;
@@ -1281,7 +1297,7 @@ summary {
  * que las cartas salten de fila al crecer la partida y permiten ver las 40. */
 .cinquillo-table {
   --cinquillo-card-width: 33px;
-  --cinquillo-card-overlap: -6px;
+  --cinquillo-card-bleed: 6px;
   --cinquillo-label-width: 52px;
   display: grid;
   width: 100%;
@@ -1293,7 +1309,7 @@ summary {
 
 .cinquillo-table--large {
   --cinquillo-card-width: clamp(42px, 4.6vw, 54px);
-  --cinquillo-card-overlap: -9px;
+  --cinquillo-card-bleed: 9px;
   --cinquillo-label-width: clamp(56px, 6vw, 68px);
   gap: clamp(3px, 0.6vw, 7px);
   padding-top: 20px;
@@ -1330,22 +1346,20 @@ summary {
 }
 
 .cinquillo-table__rail {
-  display: flex;
+  display: grid;
   height: 100%;
   min-width: 0;
   align-items: center;
-  justify-content: center;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  padding-inline: calc(var(--cinquillo-card-bleed) / 2 + 1px);
 }
 
 .cinquillo-table__slot {
   display: block;
-  width: var(--cinquillo-card-width);
-  flex: 0 0 var(--cinquillo-card-width);
+  width: min(var(--cinquillo-card-width), calc(100% + var(--cinquillo-card-bleed)));
+  max-width: var(--cinquillo-card-width);
+  justify-self: center;
   aspect-ratio: 2 / 3;
-}
-
-.cinquillo-table__slot + .cinquillo-table__slot {
-  margin-left: var(--cinquillo-card-overlap);
 }
 
 .cinquillo-table__slot > svg {
@@ -3099,21 +3113,23 @@ summary {
 }
 
 .gran-ronda-route__choice-glow {
-  stroke: rgb(255 238 126 / 0.96);
-  stroke-width: 6.2;
-  animation: gran-ronda-route-choice 950ms ease-in-out infinite alternate;
+  stroke: rgb(52 45 24 / 0.92);
+  stroke-width: 6.4;
+  filter: drop-shadow(0 0 2px rgb(255 220 73 / 0.72));
 }
 
 .gran-ronda-route__choice-line {
-  stroke: #8a5700;
-  stroke-width: 1.3;
-  stroke-dasharray: 0.5 1.05;
+  stroke: #ffd83f;
+  stroke-width: 1.7;
+  stroke-dasharray: 0.55 0.95;
+  animation: gran-ronda-route-choice 780ms ease-in-out infinite alternate;
 }
 
 @keyframes gran-ronda-route-choice {
   to {
-    stroke: #ffd027;
-    filter: drop-shadow(0 0 2.6px rgb(255 208 39 / 1));
+    stroke: #fff3a3;
+    stroke-width: 2.15;
+    filter: drop-shadow(0 0 2.8px rgb(255 208 39 / 1));
   }
 }
 
@@ -3446,6 +3462,19 @@ summary {
   animation: gran-ronda-option-pulse 1s ease-in-out infinite alternate;
 }
 
+.gran-ronda-space--route-end:not(.gran-ronda-space--option) {
+  z-index: 20;
+  filter: drop-shadow(0 0 8px rgb(255 209 39 / 0.94));
+}
+
+.gran-ronda-space--route-end:not(.gran-ronda-space--option) .gran-ronda-space__face {
+  box-shadow:
+    0 0 0 2px #fff7bd,
+    0 0 0 6px rgb(255 190 20 / 0.82),
+    0 8px 20px rgb(90 60 5 / 0.42);
+  animation: gran-ronda-route-end-pulse 720ms ease-in-out infinite alternate;
+}
+
 @keyframes gran-ronda-stamp-breathe {
   50% {
     transform: translateY(-2px) scale(1.04);
@@ -3456,6 +3485,13 @@ summary {
 @keyframes gran-ronda-option-pulse {
   to {
     transform: scale(1.06);
+  }
+}
+
+@keyframes gran-ronda-route-end-pulse {
+  to {
+    filter: brightness(1.32);
+    transform: scale(1.12);
   }
 }
 

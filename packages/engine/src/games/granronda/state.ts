@@ -104,6 +104,15 @@ export interface GranRondaMovementState {
   plannedPath: string[];
 }
 
+export interface GranRondaDuelState {
+  actorPlayerId: PlayerId;
+  targetPlayerId: PlayerId;
+  wager: number;
+  gameId: GranRondaMiniGameId;
+  /** Minijuego que correspondía a la ronda antes de interrumpirla con el reto. */
+  scheduledQuestionId: GranRondaMiniGameId;
+}
+
 export interface GranRondaResolutionState {
   kind: GranRondaResolutionKind;
   spaceId: string;
@@ -134,6 +143,7 @@ export interface GranRondaState {
   movement: GranRondaMovementState | null;
   resolution: GranRondaResolutionState | null;
   lastInteraction: GranRondaInteractionPublic | null;
+  duel: GranRondaDuelState | null;
   miniGame: GranRondaMiniGameState;
   winnerId: PlayerId | null;
   rematchVotes: PlayerId[];

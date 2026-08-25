@@ -585,6 +585,7 @@ function buildGranRondaLobbyCommon(room: Room): GranRondaCommonView {
     movement: null,
     resolution: null,
     lastInteraction: null,
+    duel: null,
     miniGame: {
       id: question.id,
       gameId: question.id,
@@ -748,6 +749,7 @@ function lobbyPlayerView(room: Room, playerId: string): PlayerView {
         onlineClipStartedAt: null,
         onlineClipResolvedAt: null,
         onlineClipElapsedMs: null,
+        revealedAnswer: null,
       },
     };
     return view;

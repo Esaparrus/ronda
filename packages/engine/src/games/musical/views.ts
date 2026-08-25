@@ -103,6 +103,7 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
       onlineClipStartedAt: null,
       onlineClipResolvedAt: null,
       onlineClipElapsedMs: null,
+      revealedAnswer: null,
     };
   }
 
@@ -121,10 +122,8 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
           availableActions.push('musicResolveClip');
         } else {
           availableActions.push('musicSubmitGuess');
+          availableActions.push('musicGiveUp');
         }
-      }
-      if (player.seat === 0) {
-        availableActions.push('musicNextClip');
       }
     } else {
       if (!blocked) {
@@ -160,6 +159,14 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
     onlineClipStartedAt: player.onlineClipStartedAt,
     onlineClipResolvedAt: player.onlineClipResolvedAt,
     onlineClipElapsedMs: player.onlineClipElapsedMs,
+    revealedAnswer:
+      (state.gaveUpPlayerIds ?? []).includes(playerId) && state.currentTrack
+        ? {
+            title: state.currentTrack.title,
+            artist: state.currentTrack.artist,
+            year: state.currentTrack.year,
+          }
+        : null,
   };
 }
 

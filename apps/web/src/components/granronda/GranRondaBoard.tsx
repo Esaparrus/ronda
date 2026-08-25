@@ -244,6 +244,16 @@ export function GranRondaBoard({
     () => [...new Set(routePreviews.flatMap((preview) => preview.path))],
     [routePreviews],
   );
+  const routeEndSet = useMemo(
+    () =>
+      new Set(
+        routePreviews.flatMap((preview) => {
+          const endId = preview.path[preview.path.length - 1];
+          return endId ? [endId] : [];
+        }),
+      ),
+    [routePreviews],
+  );
   const closeFocus = useMemo(
     () => closeBoardFocus(board, boardPlayers, activePlayerId, routePreviewSpaceIds),
     [activePlayerId, board, boardPlayers, routePreviewSpaceIds],
@@ -355,6 +365,7 @@ export function GranRondaBoard({
           <div className="absolute inset-0">
             {board.map((space) => {
               const isOption = routeSet.has(space.id);
+              const isRouteEnd = routeEndSet.has(space.id);
               const stamp = space.id === stampSpaceId;
               const trap = trapSet.has(space.id);
               const occupied = occupantsByPosition.has(space.id);
@@ -376,8 +387,8 @@ export function GranRondaBoard({
                   disabled={!interactive || !isOption}
                   onClick={() => onSpaceSelect?.(space.id)}
                   title={`${space.label} · ${meta.effect}`}
-                  aria-label={`${space.label}, casilla ${space.index + 1}, ${meta.effect}${isOption ? ', elegir este camino' : ''}`}
-                  className={`gran-ronda-space gran-ronda-space--${visibleType} ${stamp ? 'gran-ronda-space--stamp' : ''} ${trap ? 'gran-ronda-space--trap' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
+                  aria-label={`${space.label}, casilla ${space.index + 1}, ${meta.effect}${isOption ? ', elegir esta dirección' : ''}${isRouteEnd ? ', final del tramo iluminado' : ''}`}
+                  className={`gran-ronda-space gran-ronda-space--${visibleType} ${stamp ? 'gran-ronda-space--stamp' : ''} ${trap ? 'gran-ronda-space--trap' : ''} ${isOption ? 'gran-ronda-space--option' : ''} ${isRouteEnd ? 'gran-ronda-space--route-end' : ''} ${occupied ? 'gran-ronda-space--occupied' : ''}`}
                   style={{ left: `${space.x}%`, top: `${space.y}%` }}
                 >
                   {stamp ? (
@@ -386,11 +397,6 @@ export function GranRondaBoard({
                     </span>
                   ) : null}
                   {trap ? <span className="gran-ronda-space__trap-label">¡Trampa!</span> : null}
-                  {isOption ? (
-                    <span className="gran-ronda-space__destination-label">
-                      Caes aquí · {movement?.roll ?? 0}
-                    </span>
-                  ) : null}
                   <span className="gran-ronda-space__face">
                     <GranRondaSpaceIcon type={visibleType} size={stamp ? 25 : undefined} />
                     <span className="gran-ronda-space__number">
@@ -529,7 +535,7 @@ export function GranRondaBoard({
 
       {routeOptions.length > 0 && !minimized ? (
         <p className="gran-ronda-board__choice-hint">
-          Elige dónde quieres caer · el camino completo está iluminado
+          Elige una dirección · volverás a decidir al llegar a un cruce
         </p>
       ) : null}
     </section>

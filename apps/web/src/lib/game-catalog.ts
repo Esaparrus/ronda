@@ -11,7 +11,7 @@ export interface GameCatalogEntry {
 export type GameCategoryIcon = 'cards' | 'users' | 'sparkles';
 
 export interface GameCategory {
-  readonly slug: 'cartas' | 'otros';
+  readonly slug: 'cartas' | 'otros' | 'gran-ronda';
   readonly eyebrow: string;
   readonly title: string;
   readonly description: string;
@@ -114,14 +114,14 @@ export const GAME_CATALOG = [
   {
     slug: 'musical',
     name: 'Musical',
-    players: '1–8 jugadores',
+    players: '1 solo · 2–8 en grupo',
     duration: '10–25 min',
     kind: 'Música',
   },
   {
     slug: 'matiz',
     name: 'Matiz',
-    players: '1–7 jugadores',
+    players: '1 solo · 2–7 en grupo',
     duration: '5–15 min',
     kind: 'Color y precisión',
   },
@@ -206,8 +206,15 @@ export const GAME_CATEGORIES = [
       'cifras',
       'quienloharia',
       'completalafrase',
-      'granronda',
     ],
+  },
+  {
+    slug: 'gran-ronda',
+    eyebrow: 'Partida completa',
+    title: 'La Gran Ronda',
+    description: 'Tablero, Oros, Sellos y minijuegos aleatorios en una sola partida.',
+    icon: 'users',
+    gameSlugs: ['granronda'],
   },
 ] as const satisfies readonly GameCategory[];
 

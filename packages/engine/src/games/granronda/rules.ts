@@ -267,17 +267,20 @@ export function granRondaSpaceById(id: string): GranRondaBoardSpace | undefined 
   return GRAN_RONDA_BOARD.find((space) => space.id === id);
 }
 
-/**
- * El recorrido es dirigido: en una bifurcación solo se ofrecen las salidas que
- * continúan la vuelta. Las aristas entrantes nunca permiten desandar el camino.
- */
+/** Vecinos físicos de una casilla. El mapa se recorre en ambos sentidos. */
 export function granRondaRouteOptions(
   board: readonly GranRondaBoardSpace[],
   spaceId: string,
+  previousSpaceId: string | null = null,
 ): string[] {
   const current = board.find((space) => space.id === spaceId);
   if (!current) return [];
-  return [...current.nextIds];
+  const incomingIds = board
+    .filter((space) => space.nextIds.includes(spaceId))
+    .map((space) => space.id);
+  return [...new Set([...current.nextIds, ...incomingIds])].filter(
+    (candidateId) => candidateId !== previousSpaceId,
+  );
 }
 
 export interface GranRondaDestinationPath {
@@ -286,9 +289,8 @@ export interface GranRondaDestinationPath {
 }
 
 /**
- * Calcula antes de mover todos los destinos exactos de una tirada. El jugador
- * elige dónde caerá, no la primera casilla del ramal. El recorrido es siempre
- * hacia delante y nunca ofrece la arista por la que llegó.
+ * Calcula todos los destinos exactos de una tirada recorriendo el tablero en
+ * ambos sentidos. En cada paso se excluye únicamente la arista de llegada.
  */
 export function granRondaDestinationPaths(
   board: readonly GranRondaBoardSpace[],
@@ -300,16 +302,21 @@ export function granRondaDestinationPaths(
   }
 
   const completed: string[][] = [];
-  const walk = (currentId: string, remaining: number, path: string[]): void => {
+  const walk = (
+    currentId: string,
+    previousId: string | null,
+    remaining: number,
+    path: string[],
+  ): void => {
     if (remaining === 0) {
       completed.push(path);
       return;
     }
-    for (const nextId of granRondaRouteOptions(board, currentId)) {
-      walk(nextId, remaining - 1, [...path, nextId]);
+    for (const nextId of granRondaRouteOptions(board, currentId, previousId)) {
+      walk(nextId, currentId, remaining - 1, [...path, nextId]);
     }
   };
-  walk(spaceId, steps, [spaceId]);
+  walk(spaceId, null, steps, [spaceId]);
 
   const unique = new Map<string, string[]>();
   for (const path of completed) {
@@ -317,6 +324,49 @@ export function granRondaDestinationPaths(
     if (destinationId && !unique.has(destinationId)) unique.set(destinationId, path);
   }
   return [...unique].map(([destinationId, path]) => ({ destinationId, path }));
+}
+
+export interface GranRondaRouteChoicePath {
+  /** Primera casilla que el jugador elige en este cruce. */
+  nextSpaceId: string;
+  /** Tramo automático hasta el siguiente cruce o hasta agotar la tirada. */
+  path: string[];
+}
+
+/**
+ * Construye las direcciones que se pueden elegir ahora. Cada preview se corta
+ * justo antes de tener que tomar otra decisión, de modo que una bifurcación
+ * nunca queda resuelta por adelantado.
+ */
+export function granRondaRouteChoicePaths(
+  board: readonly GranRondaBoardSpace[],
+  spaceId: string,
+  steps: number,
+  previousSpaceId: string | null = null,
+): GranRondaRouteChoicePath[] {
+  if (!Number.isInteger(steps) || steps < 1 || !board.some((space) => space.id === spaceId)) {
+    return [];
+  }
+
+  return granRondaRouteOptions(board, spaceId, previousSpaceId).map((firstSpaceId) => {
+    const path = [spaceId, firstSpaceId];
+    let previousId = spaceId;
+    let currentId = firstSpaceId;
+    let remaining = steps - 1;
+
+    while (remaining > 0) {
+      const options = granRondaRouteOptions(board, currentId, previousId);
+      if (options.length !== 1) break;
+      const nextId = options[0];
+      if (!nextId) break;
+      path.push(nextId);
+      previousId = currentId;
+      currentId = nextId;
+      remaining -= 1;
+    }
+
+    return { nextSpaceId: firstSpaceId, path };
+  });
 }
 
 export function granRondaBridgeDestination(spaceId: string): string | null {

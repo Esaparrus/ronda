@@ -53,6 +53,8 @@ export interface MusicalState {
   clipStartedAt: number | null;
   buzzedPlayerId: PlayerId | null;
   blockedPlayerIds: PlayerId[];
+  /** Jugadores que han pedido ver la respuesta en privado en modo online. */
+  gaveUpPlayerIds: PlayerId[];
   clipIndex: number;
   guesses: Record<PlayerId, MusicalGuess[]>;
   roundResult: MusicalRoundResultState | null;

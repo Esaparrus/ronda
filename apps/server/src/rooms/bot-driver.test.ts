@@ -293,6 +293,40 @@ describe('BotDriver', () => {
           room.state.players.find((p) => p.playerId === bot.value.playerId)?.onlineClipResolvedAt,
       ).toBe(NOW);
       vi.advanceTimersByTime(5_000);
+      expect(room.state?.phase).toBe('playing');
+      if (!room.state || room.state.gameId !== 'musical') throw new Error('estado incorrecto');
+      const humanStarted = manager.applyAction({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        clientActionId: 'human-start-online-track',
+        expectedVersion: room.state.version,
+        action: { type: 'musicStartClip' },
+        now: NOW + 1_000,
+      });
+      if (!humanStarted.ok) throw new Error('la persona no pudo iniciar su audio');
+      const humanResolved = manager.applyAction({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        clientActionId: 'human-resolve-online-track',
+        expectedVersion: room.state.version,
+        action: { type: 'musicResolveClip' },
+        now: NOW + 5_000,
+      });
+      if (!humanResolved.ok) throw new Error('la persona no pudo detener su audio');
+      const humanAnswered = manager.applyAction({
+        roomCode: created.value.roomCode,
+        playerId: created.value.playerId,
+        clientActionId: 'human-answer-online-track',
+        expectedVersion: room.state.version,
+        action: {
+          type: 'musicSubmitGuess',
+          artist: 'El artista',
+          title: 'La canción',
+          year: 2020,
+        },
+        now: NOW + 5_100,
+      });
+      if (!humanAnswered.ok) throw new Error('la persona no pudo responder');
       expect(room.state?.phase).toBe('reveal');
       expect(room.state?.roundResult?.winnerId).toBe(bot.value.playerId);
     } finally {

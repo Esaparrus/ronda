@@ -672,6 +672,7 @@ export type MusicalAvailableAction =
   | 'musicSelectTrack'
   | 'musicStartClip'
   | 'musicResolveClip'
+  | 'musicGiveUp'
   | 'musicBuzz'
   | 'musicSubmitGuess'
   | 'musicNextClip'
@@ -732,6 +733,8 @@ export interface MusicalPlayerViewMe {
   onlineClipStartedAt: number | null;
   onlineClipResolvedAt: number | null;
   onlineClipElapsedMs: number | null;
+  /** Respuesta privada tras abandonar una canción en modo por dispositivo. */
+  revealedAnswer: Pick<MusicalRoundResult, 'title' | 'artist' | 'year'> | null;
 }
 
 export interface MusicalPlayerView extends MusicalCommonView {
@@ -881,6 +884,7 @@ export type GranRondaAvailableAction =
   | 'submitGranRondaMiniGameAction'
   | 'submitGranRondaAnswer'
   | 'finishGranRondaMiniGame'
+  | 'continueGranRondaDuel'
   | 'nextRound';
 export type GranRondaPowerupType = 'doubleRoll' | 'rivalPenalty' | 'goldDuel';
 export type GranRondaMiniGameId =
@@ -979,10 +983,17 @@ export interface GranRondaMovementPublic {
   /** Casillas ya recorridas, incluida la posición de salida de la tirada. */
   path: string[];
   remainingSteps: number;
-  /** Destinos reales en los que puede terminar la tirada. */
+  /** Primeras casillas seleccionables desde la posición actual. */
   routeOptions: string[];
-  /** Recorrido completo que conduce a cada destino seleccionable. */
+  /** Tramo visible de cada dirección hasta el próximo cruce o el final de la tirada. */
   routePaths: Record<string, string[]>;
+}
+
+export interface GranRondaDuelPublic {
+  actorPlayerId: PlayerId;
+  targetPlayerId: PlayerId;
+  wager: number;
+  gameId: GranRondaMiniGameId;
 }
 
 export interface GranRondaResolutionPublic {
@@ -1005,6 +1016,8 @@ export interface GranRondaInteractionPublic {
   actorRoll: number | null;
   targetRoll: number | null;
   winnerId: PlayerId | null;
+  /** Minijuego del reto; null en interacciones antiguas resueltas con dados. */
+  gameId?: GranRondaMiniGameId | null;
 }
 
 export interface GranRondaCommonView extends CommonViewBase {
@@ -1022,6 +1035,7 @@ export interface GranRondaCommonView extends CommonViewBase {
   movement: GranRondaMovementPublic | null;
   resolution: GranRondaResolutionPublic | null;
   lastInteraction: GranRondaInteractionPublic | null;
+  duel: GranRondaDuelPublic | null;
   miniGame: GranRondaMiniGamePublic;
 }
 

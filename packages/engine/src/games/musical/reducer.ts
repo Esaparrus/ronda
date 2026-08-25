@@ -60,6 +60,7 @@ export function createInitialState(
     clipStartedAt: null,
     buzzedPlayerId: null,
     blockedPlayerIds: [],
+    gaveUpPlayerIds: [],
     clipIndex: 0,
     guesses: {},
     roundResult: null,
@@ -81,6 +82,8 @@ export function applyAction(
       return startClip(state, playerId, now);
     case 'musicResolveClip':
       return resolveClip(state, playerId, now);
+    case 'musicGiveUp':
+      return giveUp(state, playerId);
     case 'musicBuzz':
       return buzz(state, playerId);
     case 'musicSubmitGuess':
@@ -113,6 +116,7 @@ function selectTrack(
   next.clipStartedAt = null;
   next.buzzedPlayerId = null;
   next.blockedPlayerIds = [];
+  next.gaveUpPlayerIds = [];
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
@@ -180,6 +184,34 @@ function resolveClip(state: MusicalState, playerId: PlayerId, now: number): Musi
   return ok({ state: next, events: [] });
 }
 
+function giveUp(state: MusicalState, playerId: PlayerId): MusicalActionResult {
+  if (
+    state.config.audioMode !== 'online' ||
+    state.status !== 'playing' ||
+    state.phase !== 'playing' ||
+    !state.currentTrack
+  ) {
+    return err('INVALID_ACTION');
+  }
+  const player = findPlayer(state, playerId);
+  if (!player) return err('PLAYER_NOT_IN_ROOM');
+  if (
+    player.left ||
+    player.onlineClipResolvedAt === null ||
+    state.blockedPlayerIds.includes(playerId) ||
+    (state.guesses[playerId]?.length ?? 0) > 0
+  ) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  next.blockedPlayerIds.push(playerId);
+  next.gaveUpPlayerIds.push(playerId);
+  const events: GameEvent[] = [];
+  if (allOnlinePlayersSettled(next)) finishOnlineRound(next, events);
+  return ok({ state: next, events });
+}
+
 function buzz(state: MusicalState, playerId: PlayerId): MusicalActionResult {
   if (
     state.status !== 'playing' ||
@@ -245,13 +277,14 @@ function submitGuess(
   next.guesses[playerId] = [...guesses, guess];
   const events: GameEvent[] = [{ t: 'musicGuessSubmitted', playerId }];
 
-  if (guess.correct && next.config.audioMode === 'online') {
+  if (next.config.audioMode === 'online') {
     // En online no gana quien consigue enviar antes el formulario, sino el
-    // acierto con menor tiempo de escucha. Esperamos a las respuestas de las
-    // personas que ya han entrado en la carrera para poder compararlas.
-    if (allOnlineParticipantsHaveGuessed(next)) {
-      finishOnlineRound(next, events);
+    // acierto con menor tiempo de escucha. Cada dispositivo termina su intento
+    // de forma independiente y la ronda espera a toda la mesa.
+    if (!guess.correct && !next.blockedPlayerIds.includes(playerId)) {
+      next.blockedPlayerIds.push(playerId);
     }
+    if (allOnlinePlayersSettled(next)) finishOnlineRound(next, events);
   } else if (guess.correct) {
     const points = pointsForClip(next.clipIndex);
     const nextPlayer = findPlayer(next, playerId);
@@ -265,14 +298,14 @@ function submitGuess(
       next.winnerId = decideWinner(next);
       if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
     }
-  } else if (next.config.audioMode === 'online' || next.config.mode === 'velocidad') {
+  } else if (next.config.mode === 'velocidad') {
     // Un fallo elimina al jugador de esta canción. En presencial el pulsador
     // queda libre para que otra persona pueda intentarlo; en online ya no
     // vuelve a abrirse el formulario de este jugador.
     if (!next.blockedPlayerIds.includes(playerId)) {
       next.blockedPlayerIds.push(playerId);
     }
-    if (next.config.audioMode !== 'online') next.buzzedPlayerId = null;
+    next.buzzedPlayerId = null;
   }
 
   return ok({ state: next, events });
@@ -283,9 +316,8 @@ function nextClip(state: MusicalState, playerId: PlayerId): MusicalActionResult 
     return err(isHost(state, playerId) ? 'INVALID_ACTION' : 'NOT_HOST');
   }
   if (!state.currentTrack) return err('INVALID_ACTION');
-  if (state.config.audioMode !== 'online' && state.clipStartedAt === null) {
+  if (state.config.audioMode === 'online' || state.clipStartedAt === null)
     return err('INVALID_ACTION');
-  }
   if (state.config.mode === 'velocidad' && state.buzzedPlayerId !== null) {
     return err('INVALID_ACTION');
   }
@@ -293,14 +325,6 @@ function nextClip(state: MusicalState, playerId: PlayerId): MusicalActionResult 
   const next = bump(state);
   next.clipStartedAt = null;
   next.buzzedPlayerId = null;
-  if (next.config.audioMode === 'online') {
-    const events: GameEvent[] = [{ t: 'musicClipAdvanced', clipIndex: next.clipIndex }];
-    finishOnlineRound(next, events);
-    return ok({
-      state: next,
-      events,
-    });
-  }
   if (next.config.mode === 'velocidad') {
     next.phase = 'reveal';
     next.roundResult = buildRoundResult(next, null, 0);
@@ -344,6 +368,7 @@ function nextRound(state: MusicalState, playerId: PlayerId): MusicalActionResult
   next.clipStartedAt = null;
   next.buzzedPlayerId = null;
   next.blockedPlayerIds = [];
+  next.gaveUpPlayerIds = [];
   next.clipIndex = 0;
   next.guesses = {};
   next.roundResult = null;
@@ -376,13 +401,15 @@ function resetOnlineClocks(state: MusicalState): void {
   }
 }
 
-function allOnlineParticipantsHaveGuessed(state: MusicalState): boolean {
-  const participants = activePlayers(state).filter(
-    (player) => player.onlineClipStartedAt !== null,
-  );
+function allOnlinePlayersSettled(state: MusicalState): boolean {
+  const players = activePlayers(state);
   return (
-    participants.length > 0 &&
-    participants.every((player) => (state.guesses[player.playerId]?.length ?? 0) > 0)
+    players.length > 0 &&
+    players.every(
+      (player) =>
+        (state.guesses[player.playerId]?.length ?? 0) > 0 ||
+        (state.gaveUpPlayerIds ?? []).includes(player.playerId),
+    )
   );
 }
 
@@ -506,6 +533,7 @@ function bump(state: MusicalState): MusicalState {
     clipStartedAt: state.clipStartedAt,
     buzzedPlayerId: state.buzzedPlayerId,
     blockedPlayerIds: [...state.blockedPlayerIds],
+    gaveUpPlayerIds: [...(state.gaveUpPlayerIds ?? [])],
     guesses: cloneGuesses(state.guesses),
     roundResult: state.roundResult
       ? {

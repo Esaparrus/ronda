@@ -20,7 +20,19 @@ export const GRAN_RONDA_ROULETTE_EXCLUDED_IDS = new Set<GranRondaMiniGameId>([
   'pocha',
   'tute',
   'orden',
+  'laronda',
 ]);
+
+/** Pruebas competitivas que funcionan bien como reto directo entre dos personas. */
+export const GRAN_RONDA_DUEL_MINIGAME_IDS = [
+  'banderas',
+  'cifras',
+  'preciojusto',
+  'colores',
+  'matiz',
+  'completalafrase',
+  'sieteymedia',
+] as const satisfies readonly GranRondaMiniGameId[];
 
 /**
  * Variantes cortas para el tablero. No son preguntas de cultura general: cada

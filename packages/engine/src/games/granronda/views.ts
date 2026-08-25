@@ -207,6 +207,14 @@ function common(state: GranRondaState): GranRondaCommonView {
     movement: movement(state),
     resolution: resolution(state),
     lastInteraction: state.lastInteraction ? { ...state.lastInteraction } : null,
+    duel: state.duel
+      ? {
+          actorPlayerId: state.duel.actorPlayerId,
+          targetPlayerId: state.duel.targetPlayerId,
+          wager: state.duel.wager,
+          gameId: state.duel.gameId,
+        }
+      : null,
     miniGame: miniGame(state),
   };
 }
@@ -285,7 +293,18 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     ) {
       availableActions.push('finishGranRondaMiniGame');
     }
-    if (state.phase === 'minigameReveal' && state.status === 'playing' && player.seat === 0) {
+    if (
+      state.phase === 'minigameReveal' &&
+      state.status === 'playing' &&
+      state.duel?.actorPlayerId === playerId
+    ) {
+      availableActions.push('continueGranRondaDuel');
+    } else if (
+      state.phase === 'minigameReveal' &&
+      state.status === 'playing' &&
+      !state.duel &&
+      player.seat === 0
+    ) {
       availableActions.push('nextRound');
     }
   }

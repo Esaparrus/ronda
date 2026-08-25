@@ -40,6 +40,7 @@ export const GranRondaEmbeddedGameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('musicSelectTrack'), track: MusicalTrackSchema }),
   z.object({ type: z.literal('musicStartClip') }),
   z.object({ type: z.literal('musicResolveClip') }),
+  z.object({ type: z.literal('musicGiveUp') }),
   z.object({ type: z.literal('musicBuzz') }),
   z.object({
     type: z.literal('musicSubmitGuess'),
@@ -242,6 +243,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('musicSelectTrack'), track: MusicalTrackSchema }),
   z.object({ type: z.literal('musicStartClip') }),
   z.object({ type: z.literal('musicResolveClip') }),
+  z.object({ type: z.literal('musicGiveUp') }),
   z.object({ type: z.literal('musicBuzz') }),
   z.object({
     type: z.literal('musicSubmitGuess'),
@@ -274,6 +276,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('submitGranRondaAnswer'), optionId: cardIdField }),
   /** Cierre de respaldo para una prueba que no tenga motor alojado. */
   z.object({ type: z.literal('finishGranRondaMiniGame') }),
+  z.object({ type: z.literal('continueGranRondaDuel') }),
   // --- La Ronda ------------------------------------------------------------
   z.object({
     type: z.literal('playRondaCard'),

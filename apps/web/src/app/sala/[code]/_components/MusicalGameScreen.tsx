@@ -101,8 +101,7 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
   const hasSelectedArtist =
     !requiresArtist ||
     (Boolean(guess.artist.trim()) && selectedSuggestions.artist === guess.artist);
-  const hasSelectedTitle =
-    Boolean(guess.title.trim()) && selectedSuggestions.title === guess.title;
+  const hasSelectedTitle = Boolean(guess.title.trim()) && selectedSuggestions.title === guess.title;
   const hasSelectedAnswer = hasSelectedArtist && hasSelectedTitle;
   const filters: MusicFilters = {
     genre: view.config.genre,
@@ -172,6 +171,9 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
 
     return () => {
       cancelled = true;
+      if (playlistPromiseKeyRef.current === playlistKey) {
+        playlistPromiseKeyRef.current = null;
+      }
     };
   }, [
     filters.genre,
@@ -223,7 +225,13 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
     const remaining = view.clipStartedAt + view.clipSeconds * 1000 - Date.now();
     const timer = window.setTimeout(() => setClipReady(true), Math.max(0, remaining));
     return () => window.clearTimeout(timer);
-  }, [isOnlineMode, isSpeedMode, view.clipSeconds, view.clipStartedAt, view.me.onlineClipResolvedAt]);
+  }, [
+    isOnlineMode,
+    isSpeedMode,
+    view.clipSeconds,
+    view.clipStartedAt,
+    view.me.onlineClipResolvedAt,
+  ]);
 
   useEffect(() => {
     if (isOnlineMode || !isSpeedMode || view.buzzedPlayerId === null) return;
@@ -365,6 +373,13 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
     dispatch({ type: 'musicNextClip' });
   }
 
+  function giveUpAndReveal() {
+    if (pendingAction) return;
+    stopPreview();
+    setMessage(null);
+    dispatch({ type: 'musicGiveUp' });
+  }
+
   const scores = (
     <div className="flex flex-wrap justify-center gap-2">
       {view.players.map((player) => (
@@ -462,8 +477,8 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   ? isOnlineMode
                     ? 'Escucha hasta saberla'
                     : isSpeedMode
-                    ? 'Escucha la preview completa'
-                    : `Escucha ${view.clipSeconds} segundos`
+                      ? 'Escucha la preview completa'
+                      : `Escucha ${view.clipSeconds} segundos`
                   : 'Respuesta revelada'}
               </h1>
               {view.phase === 'playing' ? (
@@ -514,7 +529,9 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   </Button>
                 ) : isBlocked ? (
                   <p className="flex flex-1 items-center justify-center rounded-2xl border border-brasa/50 bg-brasa/10 px-4 py-3 text-center text-13 text-brasa">
-                    Respuesta incorrecta: estás fuera de esta canción
+                    {view.me.revealedAnswer
+                      ? 'Has revelado la canción: espera al resto'
+                      : 'Respuesta incorrecta: estás fuera de esta canción'}
                   </p>
                 ) : view.me.onlineClipResolvedAt === null ? (
                   <p className="flex flex-1 items-center justify-center rounded-2xl border border-oro/40 bg-oro/10 px-4 py-3 text-center text-13 text-oro">
@@ -547,7 +564,7 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   El anfitrión controla la música. Cuando pulse play, se activará vuestro pulsador.
                 </p>
               )}
-              {isHost && !sharedSpeedClaimed ? (
+              {view.me.availableActions.includes('musicNextClip') && !sharedSpeedClaimed ? (
                 <Button
                   variant="ghost"
                   onClick={nextClip}
@@ -602,12 +619,25 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
             </section>
           ) : isOnlineMode && isBlocked ? (
             <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
-              <span className="text-32 text-brasa" aria-hidden="true">
-                ✕
+              <span className="text-32 text-oro" aria-hidden="true">
+                {view.me.revealedAnswer ? '♪' : '✕'}
               </span>
-              <h2 className="text-20 font-semibold text-hueso">Respuesta incorrecta</h2>
+              <h2 className="text-20 font-semibold text-hueso">
+                {view.me.revealedAnswer ? 'Era esta' : 'Respuesta incorrecta'}
+              </h2>
+              {view.me.revealedAnswer ? (
+                <div className="rounded-2xl border border-oro/45 bg-oro/10 px-4 py-3">
+                  <strong className="block text-18 text-hueso">
+                    {view.me.revealedAnswer.title}
+                  </strong>
+                  <span className="mt-1 block text-14 text-humo">
+                    {view.me.revealedAnswer.artist}
+                    {view.me.revealedAnswer.year ? ` · ${view.me.revealedAnswer.year}` : ''}
+                  </span>
+                </div>
+              ) : null}
               <p className="text-14 text-humo">
-                Ya no puedes responder esta canción. Espera al resultado.
+                Tu intento ha terminado. La canción sigue para quienes aún están jugando.
               </p>
             </section>
           ) : isOnlineMode && view.me.onlineClipResolvedAt === null ? (
@@ -701,8 +731,8 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   {isOnlineMode
                     ? 'Has parado tu audio. Elige las sugerencias y corrige tu respuesta.'
                     : isSpeedMode
-                    ? 'Ya tienes el pulsador. Elige las sugerencias y corrige tu respuesta.'
-                    : 'Elige una sugerencia para cada nombre; el primer acierto gana.'}
+                      ? 'Ya tienes el pulsador. Elige las sugerencias y corrige tu respuesta.'
+                      : 'Elige una sugerencia para cada nombre; el primer acierto gana.'}
                 </p>
               </div>
               {requiresArtist ? (
@@ -711,9 +741,7 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   label="Artista"
                   value={guess.artist}
                   onChange={(artist) => updateGuessField('artist', artist)}
-                  onSelectionChange={(suggestion) =>
-                    updateSelectedSuggestion('artist', suggestion)
-                  }
+                  onSelectionChange={(suggestion) => updateSelectedSuggestion('artist', suggestion)}
                   placeholder="Por ejemplo, A…"
                 />
               ) : null}
@@ -742,13 +770,27 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   />
                 </label>
               ) : null}
-              <Button
-                type="submit"
-                disabled={!hasSelectedAnswer}
-                loading={pendingAction}
+              <div
+                className={
+                  isOnlineMode && view.me.availableActions.includes('musicGiveUp')
+                    ? 'grid grid-cols-2 gap-2'
+                    : 'grid'
+                }
               >
-                Corregir
-              </Button>
+                <Button type="submit" disabled={!hasSelectedAnswer} loading={pendingAction}>
+                  Corregir
+                </Button>
+                {isOnlineMode && view.me.availableActions.includes('musicGiveUp') ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={pendingAction}
+                    onClick={giveUpAndReveal}
+                  >
+                    No la sé · revelar
+                  </Button>
+                ) : null}
+              </div>
             </form>
           )
         ) : view.roundResult ? (
@@ -785,10 +827,7 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
               })}
             </div>
             {view.status === 'playing' && isHost ? (
-              <Button
-                onClick={() => dispatch({ type: 'musicNextRound' })}
-                loading={pendingAction}
-              >
+              <Button onClick={() => dispatch({ type: 'musicNextRound' })} loading={pendingAction}>
                 Siguiente canción
               </Button>
             ) : view.status === 'playing' ? (

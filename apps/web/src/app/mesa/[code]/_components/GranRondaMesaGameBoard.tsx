@@ -55,6 +55,15 @@ function embeddedGameLabel(gameId: GranRondaTableView['miniGame']['gameId']): st
   }
 }
 
+function formatOroAmount(value: number): string {
+  return `${value} ${Math.abs(value) === 1 ? 'Oro' : 'Oros'}`;
+}
+
+function formatOroDelta(value: number): string {
+  const delta = value > 0 ? `+${value}` : value < 0 ? String(value) : '±0';
+  return `${delta} ${Math.abs(value) === 1 ? 'Oro' : 'Oros'}`;
+}
+
 function miniGameIcon(gameId: GranRondaTableView['miniGame']['gameId']): string {
   if (gameId === 'musical') return '♫';
   if (gameId === 'chinchon') return '♧';
@@ -153,9 +162,13 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
         <section className="gran-ronda-embedded-game mx-auto w-full max-w-5xl overflow-hidden rounded-[28px] border border-oro/45 bg-oro/5 shadow-[0_18px_48px_rgba(246,195,76,0.12)]">
           <div className="flex items-center justify-between gap-3 border-b border-oro/20 px-5 py-4">
             <div>
-              <p className="eyebrow text-oro">Minijuego de la ronda</p>
+              <p className="eyebrow text-oro">
+                {view.duel ? 'Reto de Oros en curso' : 'Minijuego de la ronda'}
+              </p>
               <p className="mt-1 text-14 text-humo">
-                La mesa muestra la interfaz original del juego seleccionado.
+                {view.duel
+                  ? `${view.players.find((player) => player.playerId === view.duel?.actorPlayerId)?.nick ?? 'Un jugador'} contra ${view.players.find((player) => player.playerId === view.duel?.targetPlayerId)?.nick ?? 'su rival'} por ${formatOroAmount(view.duel.wager)}.`
+                  : 'La mesa muestra la interfaz original del juego seleccionado.'}
               </p>
             </div>
             <Pill>{embeddedGameLabel(view.miniGame.gameId)}</Pill>
@@ -221,27 +234,34 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
           </div>
           {view.phase === 'minigameReveal' ? (
             <div className="grid gap-1.5 rounded-2xl border border-linea bg-tinta/35 p-3 sm:grid-cols-2">
-              {view.players.map((player) => {
-                const result = view.miniGame.results?.[player.playerId];
-                const delta = result?.reward ?? view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
-                return (
-                  <div
-                    key={player.playerId}
-                    className="flex items-center justify-between gap-2 text-13"
-                  >
-                    <span className="truncate text-hueso">
-                      {result ? `${result.rank}. ` : ''}
-                      {player.nick}
-                      {result?.outcome === 'bust' ? (
-                        <span className="ml-1 text-brasa">· Se pasó</span>
-                      ) : null}
-                    </span>
-                    <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
-                      {result?.score ?? '—'} · {delta > 0 ? `+${delta}` : '±0'} Oros
-                    </strong>
-                  </div>
-                );
-              })}
+              {view.players
+                .filter(
+                  (player) =>
+                    !view.duel ||
+                    player.playerId === view.duel.actorPlayerId ||
+                    player.playerId === view.duel.targetPlayerId,
+                )
+                .map((player) => {
+                  const result = view.miniGame.results?.[player.playerId];
+                  const delta = result?.reward ?? view.miniGame.scoreDeltas?.[player.playerId] ?? 0;
+                  return (
+                    <div
+                      key={player.playerId}
+                      className="flex items-center justify-between gap-2 text-13"
+                    >
+                      <span className="truncate text-hueso">
+                        {result ? `${result.rank}. ` : ''}
+                        {player.nick}
+                        {result?.outcome === 'bust' ? (
+                          <span className="ml-1 text-brasa">· Se pasó</span>
+                        ) : null}
+                      </span>
+                      <strong className={delta > 0 ? 'font-mono text-oro' : 'font-mono text-humo'}>
+                        {result?.score ?? '—'} · {formatOroDelta(delta)}
+                      </strong>
+                    </div>
+                  );
+                })}
             </div>
           ) : (
             <p className="text-13 text-humo">
@@ -352,7 +372,13 @@ function interactionText(view: GranRondaTableView): string {
   )?.nick;
   const winner = view.players.find((player) => player.playerId === interaction.winnerId)?.nick;
   if (interaction.kind === 'steal') {
-    return `${actor ?? 'Un jugador'} roba ${interaction.coinsTransferred} Oros a ${target ?? 'su rival'}.`;
+    return `${actor ?? 'Un jugador'} roba ${formatOroAmount(interaction.coinsTransferred)} a ${target ?? 'su rival'}.`;
   }
-  return `${actor ?? 'Un jugador'} saca ${interaction.actorRoll}; ${target ?? 'su rival'}, ${interaction.targetRoll}. ${winner ?? 'El ganador'} cobra ${interaction.coinsTransferred} Oros.`;
+  if (interaction.gameId) {
+    if (!winner) {
+      return `${actor ?? 'Un jugador'} y ${target ?? 'su rival'} empatan en ${embeddedGameLabel(interaction.gameId)}; nadie pierde Oros.`;
+    }
+    return `${actor ?? 'Un jugador'} reta a ${target ?? 'su rival'} en ${embeddedGameLabel(interaction.gameId)}. ${winner} cobra ${formatOroAmount(interaction.coinsTransferred)}.`;
+  }
+  return `${actor ?? 'Un jugador'} saca ${interaction.actorRoll}; ${target ?? 'su rival'}, ${interaction.targetRoll}. ${winner ?? 'El ganador'} cobra ${formatOroAmount(interaction.coinsTransferred)}.`;
 }

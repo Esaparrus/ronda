@@ -19,9 +19,7 @@ import { decideRoadmapAction } from './roadmap.ts';
 import { decideRondaAction } from './laronda.ts';
 
 /** Política sencilla: tira, toma la primera ruta y deja que la ficha avance. */
-export function decideGranRondaAction(
-  view: GranRondaPlayerView,
-): Extract<
+export function decideGranRondaAction(view: GranRondaPlayerView): Extract<
   GameAction,
   {
     type:
@@ -32,6 +30,7 @@ export function decideGranRondaAction(
       | 'submitGranRondaMiniGameAction'
       | 'submitGranRondaAnswer'
       | 'finishGranRondaMiniGame'
+      | 'continueGranRondaDuel'
       | 'nextRound';
   }
 > | null {
@@ -116,6 +115,7 @@ export function decideGranRondaAction(
         },
       };
     } else if (nestedActions.has('musicStartClip')) action = { type: 'musicStartClip' };
+    else if (nestedActions.has('musicResolveClip')) action = { type: 'musicResolveClip' };
     else if (nestedActions.has('musicBuzz')) action = { type: 'musicBuzz' };
     else if (nestedActions.has('musicSubmitGuess')) {
       action = { type: 'musicSubmitGuess', artist: 'Bot', title: 'Respuesta', year: null };
@@ -128,6 +128,7 @@ export function decideGranRondaAction(
     return optionId ? { type: 'submitGranRondaAnswer', optionId } : null;
   }
   if (actions.has('finishGranRondaMiniGame')) return { type: 'finishGranRondaMiniGame' };
+  if (actions.has('continueGranRondaDuel')) return { type: 'continueGranRondaDuel' };
   if (actions.has('nextRound')) return { type: 'nextRound' };
   return null;
 }

@@ -60,6 +60,7 @@ import {
 } from '../roadmap/reducer.ts';
 import { applyRondaAction, createRondaState } from '../laronda/reducer.ts';
 import {
+  GRAN_RONDA_DUEL_MINIGAME_IDS,
   GRAN_RONDA_MINIGAMES,
   granRondaMiniGameById,
   granRondaMiniGamesForPlayerCount,
@@ -74,7 +75,7 @@ import {
   GRAN_RONDA_TRAP_TARGETS,
   GRAN_RONDA_POWERUP_COSTS,
   granRondaBridgeDestination,
-  granRondaDestinationPaths,
+  granRondaRouteChoicePaths,
   granRondaSpaceById,
 } from './rules.ts';
 import {
@@ -84,6 +85,7 @@ import {
   type GranRondaMiniGameState,
   type GranRondaMiniPlayerState,
   type GranRondaEmbeddedGameState,
+  type GranRondaDuelState,
   type GranRondaMovementState,
   type GranRondaPlayer,
   type GranRondaResolutionState,
@@ -173,6 +175,7 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
     movement: null,
     resolution: null,
     lastInteraction: null,
+    duel: null,
     miniGame,
     winnerId: null,
     rematchVotes: [],
@@ -206,6 +209,8 @@ export function applyAction(
       return submitAnswer(state, playerId, action.optionId, now);
     case 'finishGranRondaMiniGame':
       return finishMiniGame(state, playerId);
+    case 'continueGranRondaDuel':
+      return continueDuel(state, playerId);
     case 'nextRound':
       return nextRound(state, playerId);
     default:
@@ -245,18 +250,7 @@ function rollDie(
     routePaths: {},
     plannedPath: [],
   };
-  const destinations = granRondaDestinationPaths(next.board, nextPlayer.position, rolled);
-  if (destinations.length === 0) return err('INTERNAL');
-  next.movement.routePaths = Object.fromEntries(
-    destinations.map((destination) => [destination.destinationId, [...destination.path]]),
-  );
-  if (destinations.length > 1) {
-    next.phase = 'routeChoice';
-    next.movement.routeOptions = destinations.map((destination) => destination.destinationId);
-  } else {
-    next.phase = 'moving';
-    next.movement.plannedPath = destinations[0]?.path.slice(1) ?? [];
-  }
+  if (!prepareNextMovementSegment(next)) return err('INTERNAL');
   return ok({ state: next, events: [] });
 }
 
@@ -297,7 +291,11 @@ function advanceMovement(state: GranRondaState, playerId: PlayerId): GranRondaAc
     return ok({ state: next, events: [] });
   }
 
-  next.phase = 'moving';
+  if (nextMovement.plannedPath.length > 0) {
+    next.phase = 'moving';
+  } else if (!prepareNextMovementSegment(next)) {
+    return err('INTERNAL');
+  }
   return ok({ state: next, events: [] });
 }
 
@@ -319,8 +317,11 @@ function choosePath(
   const next = bump(state);
   if (!next.movement) return err('INVALID_ACTION');
   const route = next.movement.routePaths[nextSpaceId];
-  if (!route || route[0] !== player.position) return err('INVALID_ACTION');
+  if (!route || route[0] !== player.position || route[1] !== nextSpaceId) {
+    return err('INVALID_ACTION');
+  }
   next.movement.routeOptions = [];
+  next.movement.routePaths = {};
   next.movement.plannedPath = route.slice(1);
   next.phase = 'moving';
   return ok({ state: next, events: [] });
@@ -339,12 +340,49 @@ function continueResolution(state: GranRondaState, playerId: PlayerId): GranRond
   const next = bump(state);
   next.resolution = null;
   if (resumesAfterShop) {
-    next.phase = 'moving';
+    if (next.movement?.plannedPath.length) {
+      next.phase = 'moving';
+    } else if (!prepareNextMovementSegment(next)) {
+      return err('INTERNAL');
+    }
     return ok({ state: next, events: [] });
   }
   next.movement = null;
   finishMovement(next, playerId);
   return ok({ state: next, events: [] });
+}
+
+/**
+ * Prepara solo el tramo hasta el siguiente cruce. Al inicio no hay arista de
+ * llegada y por eso aparecen tanto el sentido horario como el antihorario.
+ */
+function prepareNextMovementSegment(state: GranRondaState): boolean {
+  const movement = state.movement;
+  if (!movement || movement.remainingSteps <= 0) return false;
+  const currentSpaceId = movement.path[movement.path.length - 1];
+  if (!currentSpaceId) return false;
+  const previousSpaceId = movement.path[movement.path.length - 2] ?? null;
+  const choices = granRondaRouteChoicePaths(
+    state.board,
+    currentSpaceId,
+    movement.remainingSteps,
+    previousSpaceId,
+  );
+  if (choices.length === 0) return false;
+
+  movement.routePaths = Object.fromEntries(
+    choices.map((choice) => [choice.nextSpaceId, [...choice.path]]),
+  );
+  movement.plannedPath = [];
+  if (choices.length === 1) {
+    movement.routeOptions = [];
+    movement.plannedPath = choices[0]?.path.slice(1) ?? [];
+    state.phase = 'moving';
+  } else {
+    movement.routeOptions = choices.map((choice) => choice.nextSpaceId);
+    state.phase = 'routeChoice';
+  }
+  return true;
 }
 
 function buySeal(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
@@ -463,26 +501,47 @@ function usePowerup(
     return err('INVALID_ACTION');
   }
   nextPlayer.powerups.goldDuel -= 1;
-  let actorRoll = nextRandomInt(next, 1, 6);
-  let targetRoll = nextRandomInt(next, 1, 6);
-  while (actorRoll === targetRoll) {
-    actorRoll = nextRandomInt(next, 1, 6);
-    targetRoll = nextRandomInt(next, 1, 6);
-  }
-  const winner = actorRoll > targetRoll ? nextPlayer : nextTarget;
-  const loser = winner.playerId === nextPlayer.playerId ? nextTarget : nextPlayer;
-  loser.coins -= duelWager;
-  winner.coins += duelWager;
-  next.lastInteraction = {
-    kind: 'duel',
+  const duelGameId =
+    GRAN_RONDA_DUEL_MINIGAME_IDS[nextRandomInt(next, 0, GRAN_RONDA_DUEL_MINIGAME_IDS.length - 1)];
+  if (!duelGameId) return err('INTERNAL');
+  const duel: GranRondaDuelState = {
     actorPlayerId: playerId,
     targetPlayerId,
-    coinsTransferred: duelWager,
     wager: duelWager,
-    actorRoll,
-    targetRoll,
-    winnerId: winner.playerId,
+    gameId: duelGameId,
+    scheduledQuestionId: next.miniGame.questionId,
   };
+  next.duel = duel;
+  next.lastInteraction = null;
+  next.miniGame.questionId = duelGameId;
+  prepareMiniGame(next, [playerId, targetPlayerId]);
+  next.phase = 'minigameInput';
+  return ok({ state: next, events: [] });
+}
+
+function continueDuel(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
+  const duel = state.duel;
+  if (
+    state.status !== 'playing' ||
+    state.phase !== 'minigameReveal' ||
+    !duel ||
+    duel.actorPlayerId !== playerId
+  ) {
+    return err('INVALID_ACTION');
+  }
+
+  const next = bump(state);
+  const scheduledQuestionId = next.duel?.scheduledQuestionId;
+  if (!scheduledQuestionId) return err('INVALID_ACTION');
+  next.duel = null;
+  next.miniGame.questionId = scheduledQuestionId;
+  next.miniGame.submissions = {};
+  next.miniGame.playerStates = {};
+  next.miniGame.targetOptionId = null;
+  next.miniGame.scoreDeltas = null;
+  next.miniGame.results = null;
+  next.miniGame.embeddedGame = null;
+  next.phase = 'movement';
   return ok({ state: next, events: [] });
 }
 
@@ -599,6 +658,7 @@ function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionRe
   if (state.status !== 'playing' || state.phase !== 'minigameReveal') {
     return err('INVALID_ACTION');
   }
+  if (state.duel) return err('INVALID_ACTION');
   if (!isHost(state, playerId)) return err('NOT_HOST');
   if (state.round >= state.config.rounds) return err('INVALID_ACTION');
 
@@ -725,7 +785,7 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
     title = remainingSteps > 0 ? 'Parada en la tienda' : 'Tienda de la Ronda';
     message =
       remainingSteps > 0
-        ? `Puedes gastar Oros antes de continuar las ${remainingSteps} casillas que te quedan.`
+        ? `Puedes gastar Oros antes de continuar ${remainingSteps === 1 ? 'la casilla que te queda' : `las ${remainingSteps} casillas que te quedan`}.`
         : 'Puedes gastar Oros en un dado doble o en una penalización para un rival.';
   }
 
@@ -799,6 +859,10 @@ function nextMovementPlayer(
 
 function revealMiniGame(state: GranRondaState): void {
   syncMiniPlayerStatesFromEmbedded(state);
+  if (state.duel) {
+    revealDuel(state);
+    return;
+  }
   const active = activeGranRondaPlayers(state);
   const ranked = [...active].sort((left, right) => {
     const leftState = state.miniGame.playerStates[left.playerId];
@@ -845,6 +909,58 @@ function revealMiniGame(state: GranRondaState): void {
   }
 }
 
+function revealDuel(state: GranRondaState): void {
+  const duel = state.duel;
+  if (!duel) return;
+  const actor = granRondaPlayer(state, duel.actorPlayerId);
+  const target = granRondaPlayer(state, duel.targetPlayerId);
+  if (!actor || !target) return;
+  const actorState = state.miniGame.playerStates[actor.playerId];
+  const targetState = state.miniGame.playerStates[target.playerId];
+  const actorScore = actorState?.busted ? Number.NEGATIVE_INFINITY : (actorState?.score ?? 0);
+  const targetScore = targetState?.busted ? Number.NEGATIVE_INFINITY : (targetState?.score ?? 0);
+  const winner = actorScore === targetScore ? null : actorScore > targetScore ? actor : target;
+  const loser = winner?.playerId === actor.playerId ? target : winner ? actor : null;
+  const transferred = winner && loser ? duel.wager : 0;
+  if (winner && loser) {
+    loser.coins -= transferred;
+    winner.coins += transferred;
+  }
+
+  state.lastInteraction = {
+    kind: 'duel',
+    actorPlayerId: actor.playerId,
+    targetPlayerId: target.playerId,
+    coinsTransferred: transferred,
+    wager: duel.wager,
+    actorRoll: null,
+    targetRoll: null,
+    winnerId: winner?.playerId ?? null,
+    gameId: duel.gameId,
+  };
+  state.miniGame.scoreDeltas = {
+    [actor.playerId]:
+      winner?.playerId === actor.playerId ? transferred : loser === actor ? -transferred : 0,
+    [target.playerId]:
+      winner?.playerId === target.playerId ? transferred : loser === target ? -transferred : 0,
+  };
+  state.miniGame.results = {
+    [actor.playerId]: {
+      rank: winner === null ? 1 : winner.playerId === actor.playerId ? 1 : 2,
+      score: actorState?.score ?? 0,
+      reward: state.miniGame.scoreDeltas[actor.playerId] ?? 0,
+      outcome: winner?.playerId === actor.playerId ? 'winner' : 'participant',
+    },
+    [target.playerId]: {
+      rank: winner === null ? 1 : winner.playerId === target.playerId ? 1 : 2,
+      score: targetState?.score ?? 0,
+      reward: state.miniGame.scoreDeltas[target.playerId] ?? 0,
+      outcome: winner?.playerId === target.playerId ? 'winner' : 'participant',
+    },
+  };
+  state.phase = 'minigameReveal';
+}
+
 function miniGameReward(
   gameId: GranRondaMiniGameId,
   rank: number,
@@ -869,18 +985,27 @@ function allMiniPlayersFinished(state: GranRondaState): boolean {
   );
 }
 
-function prepareMiniGame(state: GranRondaState): void {
+function prepareMiniGame(state: GranRondaState, participantIds?: PlayerId[]): void {
   const game = granRondaMiniGameById(state.miniGame.questionId);
+  const participants = participantIds
+    ? participantIds
+        .map((playerId) => granRondaPlayer(state, playerId))
+        .filter((player): player is GranRondaPlayer => Boolean(player && !player.left))
+    : activeGranRondaPlayers(state);
   state.miniGame.submissions = {};
   state.miniGame.scoreDeltas = null;
   state.miniGame.results = null;
-  state.miniGame.embeddedGame = createEmbeddedGame(state);
+  state.miniGame.embeddedGame = createEmbeddedGame(
+    state,
+    participants.map((player) => player.playerId),
+    participantIds !== undefined,
+  );
   state.miniGame.targetOptionId =
     game.id === 'cinquillo'
       ? (game.options[nextRandomInt(state, 0, game.options.length - 1)]?.id ?? null)
       : null;
   state.miniGame.playerStates = Object.fromEntries(
-    activeGranRondaPlayers(state).map((player) => [
+    participants.map((player) => [
       player.playerId,
       {
         score: game.id === 'sieteymedia' ? nextRandomInt(state, 1, 6) : 0,
@@ -894,16 +1019,23 @@ function prepareMiniGame(state: GranRondaState): void {
   ) as Record<PlayerId, GranRondaMiniPlayerState>;
 }
 
-function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
-  const players = activeGranRondaPlayers(state).map((player) => ({
+function createEmbeddedGame(
+  state: GranRondaState,
+  participantIds = activeGranRondaPlayers(state).map((player) => player.playerId),
+  normalizeSeats = false,
+): GranRondaEmbeddedGameState {
+  const participants = participantIds
+    .map((playerId) => granRondaPlayer(state, playerId))
+    .filter((player): player is GranRondaPlayer => Boolean(player && !player.left));
+  const players = participants.map((player, index) => ({
     playerId: player.playerId,
     nick: player.nick,
-    seat: player.seat,
+    seat: normalizeSeats ? index : player.seat,
     isBot: player.isBot,
   }));
   const playerInputs = players.map(({ playerId, nick, seat }) => ({ playerId, nick, seat }));
   const partyPlayers = playerInputs;
-  const seed = `${state.rng.seed}:granronda:${state.round}:${state.miniGame.questionId}`;
+  const seed = `${state.rng.seed}:granronda:${state.round}:${state.miniGame.questionId}${state.duel ? `:duel:${state.duel.actorPlayerId}:${state.duel.targetPlayerId}:${state.rng.calls}` : ''}`;
   const id = state.miniGame.questionId;
 
   if (id === 'chinchon') {
@@ -1004,7 +1136,7 @@ function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
   }
 
   return createMusicalState({
-    config: { ...DEFAULT_MUSICAL_CONFIG, rounds: 3 },
+    config: { ...DEFAULT_MUSICAL_CONFIG, rounds: 3, audioMode: 'online' },
     players,
     seed,
     roomCode: state.roomCode,
@@ -1343,6 +1475,7 @@ function bump(state: GranRondaState): GranRondaState {
     movement,
     resolution,
     lastInteraction: state.lastInteraction ? { ...state.lastInteraction } : null,
+    duel: state.duel ? { ...state.duel } : null,
     miniGame: {
       ...state.miniGame,
       questionOrder: [...state.miniGame.questionOrder],
@@ -1379,6 +1512,7 @@ function cloneEmbeddedGame(game: GranRondaEmbeddedGameState): GranRondaEmbeddedG
       playedTrackIds: [...game.playedTrackIds],
       currentTrack: game.currentTrack ? { ...game.currentTrack } : null,
       blockedPlayerIds: [...game.blockedPlayerIds],
+      gaveUpPlayerIds: [...(game.gaveUpPlayerIds ?? [])],
       guesses: Object.fromEntries(
         Object.entries(game.guesses).map(([playerId, guesses]) => [
           playerId,

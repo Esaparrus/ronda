@@ -217,6 +217,8 @@ describe('Musical', () => {
       'p1',
       { type: 'musicSelectTrack', track: TRACK },
     );
+    expect(getPlayerView(selected, 'p1').me.availableActions).not.toContain('musicNextClip');
+    expect(applyAction(selected, 'p1', { type: 'musicNextClip' }, 500).ok).toBe(false);
     const p1Started = applyAt(selected, 'p1', { type: 'musicStartClip' }, 1_000);
     const bothStarted = applyAt(p1Started, 'p2', { type: 'musicStartClip' }, 1_200);
     const p1Resolved = applyAt(bothStarted, 'p1', { type: 'musicResolveClip' }, 6_000);
@@ -225,20 +227,30 @@ describe('Musical', () => {
     expect(getPlayerView(p1Resolved, 'p1').me.availableActions).toContain('musicSubmitGuess');
     expect(getPlayerView(p2Resolved, 'p2').me.onlineClipElapsedMs).toBe(6_000);
 
-    const slowerAnswer = applyAt(p2Resolved, 'p2', {
-      type: 'musicSubmitGuess',
-      artist: TRACK.artist,
-      title: TRACK.title,
-      year: TRACK.year,
-    }, 8_000);
+    const slowerAnswer = applyAt(
+      p2Resolved,
+      'p2',
+      {
+        type: 'musicSubmitGuess',
+        artist: TRACK.artist,
+        title: TRACK.title,
+        year: TRACK.year,
+      },
+      8_000,
+    );
     expect(slowerAnswer.phase).toBe('playing');
 
-    const fastestAnswer = applyAt(slowerAnswer, 'p1', {
-      type: 'musicSubmitGuess',
-      artist: TRACK.artist,
-      title: TRACK.title,
-      year: TRACK.year,
-    }, 9_000);
+    const fastestAnswer = applyAt(
+      slowerAnswer,
+      'p1',
+      {
+        type: 'musicSubmitGuess',
+        artist: TRACK.artist,
+        title: TRACK.title,
+        year: TRACK.year,
+      },
+      9_000,
+    );
     expect(fastestAnswer.phase).toBe('reveal');
     expect(fastestAnswer.roundResult?.winnerId).toBe('p1');
     expect(fastestAnswer.roundResult?.responseTimes).toEqual({ p1: 5_000, p2: 6_000 });
@@ -255,33 +267,84 @@ describe('Musical', () => {
     const bothStarted = applyAt(started, 'p2', { type: 'musicStartClip' }, 1_100);
     const p1Resolved = applyAt(bothStarted, 'p1', { type: 'musicResolveClip' }, 4_000);
     const p2Resolved = applyAt(p1Resolved, 'p2', { type: 'musicResolveClip' }, 4_500);
-    const wrong = applyAt(p2Resolved, 'p2', {
-      type: 'musicSubmitGuess',
-      artist: 'Otra banda',
-      title: 'Otra canción',
-      year: null,
-    }, 5_000);
+    const wrong = applyAt(
+      p2Resolved,
+      'p2',
+      {
+        type: 'musicSubmitGuess',
+        artist: 'Otra banda',
+        title: 'Otra canción',
+        year: null,
+      },
+      5_000,
+    );
 
     expect(wrong.phase).toBe('playing');
     expect(wrong.blockedPlayerIds).toEqual(['p2']);
     expect(getPlayerView(wrong, 'p2').me.availableActions).not.toContain('musicSubmitGuess');
 
-    const retry = applyAction(wrong, 'p2', {
-      type: 'musicSubmitGuess',
-      artist: TRACK.artist,
-      title: TRACK.title,
-      year: TRACK.year,
-    }, 5_500);
+    const retry = applyAction(
+      wrong,
+      'p2',
+      {
+        type: 'musicSubmitGuess',
+        artist: TRACK.artist,
+        title: TRACK.title,
+        year: TRACK.year,
+      },
+      5_500,
+    );
     expect(retry.ok).toBe(false);
 
-    const finished = applyAt(wrong, 'p1', {
-      type: 'musicSubmitGuess',
-      artist: TRACK.artist,
-      title: TRACK.title,
-      year: TRACK.year,
-    }, 6_000);
+    const finished = applyAt(
+      wrong,
+      'p1',
+      {
+        type: 'musicSubmitGuess',
+        artist: TRACK.artist,
+        title: TRACK.title,
+        year: TRACK.year,
+      },
+      6_000,
+    );
     expect(finished.phase).toBe('reveal');
     expect(finished.roundResult?.winnerId).toBe('p1');
+  });
+
+  it('permite revelar en privado al no saberla y espera al resto de dispositivos', () => {
+    const selected = apply(
+      createState({ ...DEFAULT_MUSICAL_CONFIG, audioMode: 'online', mode: 'velocidad' }),
+      'p1',
+      { type: 'musicSelectTrack', track: TRACK },
+    );
+    const started = applyAt(selected, 'p1', { type: 'musicStartClip' }, 1_000);
+    const resolved = applyAt(started, 'p1', { type: 'musicResolveClip' }, 4_000);
+    expect(getPlayerView(resolved, 'p1').me.availableActions).toContain('musicGiveUp');
+
+    const gaveUp = applyAt(resolved, 'p1', { type: 'musicGiveUp' }, 4_100);
+    expect(gaveUp.phase).toBe('playing');
+    expect(getPlayerView(gaveUp, 'p1').me.revealedAnswer).toEqual({
+      title: TRACK.title,
+      artist: TRACK.artist,
+      year: TRACK.year,
+    });
+    expect(JSON.stringify(getTableView(gaveUp))).not.toContain(TRACK.title);
+
+    const p2Started = applyAt(gaveUp, 'p2', { type: 'musicStartClip' }, 5_000);
+    const p2Resolved = applyAt(p2Started, 'p2', { type: 'musicResolveClip' }, 7_000);
+    const finished = applyAt(
+      p2Resolved,
+      'p2',
+      {
+        type: 'musicSubmitGuess',
+        artist: TRACK.artist,
+        title: TRACK.title,
+        year: TRACK.year,
+      },
+      7_100,
+    );
+    expect(finished.phase).toBe('reveal');
+    expect(finished.roundResult?.winnerId).toBe('p2');
   });
 
   it('exige el ano cuando la partida lo configura', () => {
