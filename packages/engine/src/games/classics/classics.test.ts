@@ -167,6 +167,43 @@ describe('clásicos de baraja española', () => {
     expect(starter ? legalCardsFor(state, starter) : []).toEqual(['oros-5']);
   });
 
+  it('Cinquillo continúa hasta ordenar a toda la mesa', () => {
+    const state = stateFor('cinquillo', 3);
+    const first = state.players[0];
+    const second = state.players[1];
+    const last = state.players[2];
+    if (!first || !second || !last) throw new Error('faltan jugadores para la prueba');
+    state.tableCards = ['oros-5'];
+    state.turnSeat = first.seat;
+    first.hand = ['oros-6'];
+    second.hand = ['oros-7'];
+    last.hand = ['copas-5'];
+
+    const firstFinish = applyClassicAction(
+      state,
+      first.playerId,
+      { type: 'playCard', cardId: 'oros-6' },
+      0,
+    );
+    expect(firstFinish.ok).toBe(true);
+    if (!firstFinish.ok) return;
+    expect(firstFinish.value.state.status).toBe('playing');
+    expect(firstFinish.value.state.turnSeat).toBe(second.seat);
+    expect(firstFinish.value.state.players[0]?.score).toBe(3);
+
+    const secondFinish = applyClassicAction(
+      firstFinish.value.state,
+      second.playerId,
+      { type: 'playCard', cardId: 'oros-7' },
+      1,
+    );
+    expect(secondFinish.ok).toBe(true);
+    if (!secondFinish.ok) return;
+    expect(secondFinish.value.state.status).toBe('gameEnd');
+    expect(secondFinish.value.state.winnerId).toBe(first.playerId);
+    expect(secondFinish.value.state.players.map((player) => player.score)).toEqual([3, 2, 0]);
+  });
+
   it('Siete y media conserva la carta que hace pasarse hasta confirmar la ronda', () => {
     const state = stateFor('sieteymedia', 2);
     state.bankerSeat = 0;

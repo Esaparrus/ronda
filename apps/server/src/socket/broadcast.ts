@@ -572,6 +572,7 @@ function buildGranRondaLobbyCommon(room: Room): GranRondaCommonView {
       position: 'salida',
       coins: 5,
       seals: 0,
+      skipTurns: 0,
       powerups: { doubleRoll: 0, rivalPenalty: 0, goldDuel: 0 },
       lastRoll: null,
       lastSpaceId: null,

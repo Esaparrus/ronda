@@ -35,6 +35,8 @@ export const GranRondaEmbeddedGameActionSchema = z.discriminatedUnion('type', [
     captureIds: z.array(cardIdField),
   }),
   z.object({ type: z.literal('pass') }),
+  /** Avanza entre rondas internas de los juegos rápidos alojados. */
+  z.object({ type: z.literal('nextRound') }),
   z.object({ type: z.literal('musicSelectTrack'), track: MusicalTrackSchema }),
   z.object({ type: z.literal('musicStartClip') }),
   z.object({ type: z.literal('musicResolveClip') }),
@@ -270,7 +272,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     action: GranRondaEmbeddedGameActionSchema,
   }),
   z.object({ type: z.literal('submitGranRondaAnswer'), optionId: cardIdField }),
-  /** El anfitrión puede cerrar el minijuego si alguien se desconecta. */
+  /** Cierre de respaldo para una prueba que no tenga motor alojado. */
   z.object({ type: z.literal('finishGranRondaMiniGame') }),
   // --- La Ronda ------------------------------------------------------------
   z.object({

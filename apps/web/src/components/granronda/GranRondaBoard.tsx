@@ -43,10 +43,10 @@ interface SpaceMeta {
 const SPACE_META: Record<GranRondaSpaceType, SpaceMeta> = {
   start: { label: 'Salida', effect: 'Punto de vuelta' },
   oros: { label: 'Oros', effect: '+3 al caer' },
-  perdida: { label: 'Pérdida', effect: '−2 al caer' },
+  perdida: { label: 'Cárcel', effect: 'Pierdes el próximo turno' },
   sello: { label: 'Plaza de Sello', effect: 'Compra al caer' },
   evento: { label: 'Suerte', effect: '+1 al caer' },
-  atajo: { label: 'Atajo', effect: '+2 al caer' },
+  atajo: { label: 'Puente', effect: 'Viaja al otro puente' },
   doble: { label: 'Dado doble', effect: 'Consíguelo al caer' },
   penalizacion: { label: 'Penalización', effect: 'Consíguela al caer' },
   tienda: { label: 'Tienda', effect: 'Se abre al pasar' },
@@ -76,15 +76,51 @@ const PLAYER_COLORS = [
   'var(--seat-7)',
 ];
 
-/** Curvas suaves solo en los desvíos; mantienen cada ramal en su carril. */
+/** Curvas suaves solo en los dos desvíos largos; mantienen cada ramal en su carril. */
 const EDGE_CURVES: Record<string, number> = {
-  'plaza-oros-senda-bastos': 2.5,
-  'mercado-bastos-union-bastos': -2,
-  'bifurcacion-azul-camino-riesgo': 2.5,
-  'desvio-riesgo-puente-comun': -3,
-  'plaza-espadas-sendero-copas': -2.5,
-  'fuente-sello-curva-bastos': 2,
+  'plaza-oros-senda-bastos': 2,
+  'camino-riesgo-bifurcacion-azul': -2,
+  'plaza-espadas-sendero-copas': 2.5,
+  'desvio-riesgo-terraza-sello': -2.5,
 };
+
+/**
+ * Tres trazos continuos: una vuelta principal y dos ramales extensos. Se
+ * dibujan así para que el camino no se cierre visualmente entre cada casilla.
+ */
+const BOARD_ROUTES = [
+  [
+    'salida',
+    'plaza-oros',
+    'paseo-azul',
+    'fuente-azul',
+    'union-bastos',
+    'plaza-copas',
+    'paseo-sol',
+    'bifurcacion-azul',
+    'senda-dorada',
+    'puente-comun',
+    'mirador',
+    'plaza-espadas',
+    'atajo-fuente',
+    'curva-bastos',
+    'arco-copas',
+    'rincon-oros',
+    'terraza-sello',
+    'camino-vuelta',
+    'puerta-salida',
+    'salida',
+  ],
+  [
+    'plaza-oros',
+    'senda-bastos',
+    'sendero-bastos',
+    'mercado-bastos',
+    'camino-riesgo',
+    'bifurcacion-azul',
+  ],
+  ['plaza-espadas', 'sendero-copas', 'fuente-sello', 'desvio-riesgo', 'terraza-sello'],
+] as const;
 
 const EMPTY_SPACE_IDS: string[] = [];
 
@@ -136,27 +172,32 @@ function pieceOffset(index: number, total: number, spread = 1): { x: number; y: 
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
 }
 
-function edgePath(from: GranRondaBoardSpace, to: GranRondaBoardSpace): string {
-  const curve = EDGE_CURVES[`${from.id}-${to.id}`] ?? 0;
-  if (curve === 0) return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const middleX = (from.x + to.x) / 2 + (-dy / length) * curve;
-  const middleY = (from.y + to.y) / 2 + (dx / length) * curve;
-  return `M ${from.x} ${from.y} Q ${middleX} ${middleY} ${to.x} ${to.y}`;
-}
-
-function edgeWasTravelled(
-  movement: GranRondaMovementPublic | null,
-  fromId: string,
-  toId: string,
-): boolean {
-  if (!movement) return false;
-  return movement.path.some((spaceId, index) => {
-    const nextId = movement.path[index + 1];
-    return (spaceId === fromId && nextId === toId) || (spaceId === toId && nextId === fromId);
-  });
+function continuousPath(
+  ids: readonly string[],
+  positions: Map<string, GranRondaBoardSpace>,
+): string {
+  const first = ids[0] ? positions.get(ids[0]) : undefined;
+  if (!first) return '';
+  let path = `M ${first.x} ${first.y}`;
+  for (let index = 1; index < ids.length; index += 1) {
+    const fromId = ids[index - 1];
+    const toId = ids[index];
+    const from = fromId ? positions.get(fromId) : undefined;
+    const to = toId ? positions.get(toId) : undefined;
+    if (!from || !to) continue;
+    const curve = EDGE_CURVES[`${from.id}-${to.id}`] ?? 0;
+    if (curve === 0) {
+      path += ` L ${to.x} ${to.y}`;
+      continue;
+    }
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const middleX = (from.x + to.x) / 2 + (-dy / length) * curve;
+    const middleY = (from.y + to.y) / 2 + (dx / length) * curve;
+    path += ` Q ${middleX} ${middleY} ${to.x} ${to.y}`;
+  }
+  return path;
 }
 
 export function GranRondaBoard({
@@ -190,13 +231,25 @@ export function GranRondaBoard({
   );
   const activePlayer = activePlayerId ? playersById.get(activePlayerId) : undefined;
   const interactive = routeOptions.length > 0 && onSpaceSelect !== undefined;
-  const choiceOrigin = movement?.path[movement.path.length - 1] ?? null;
   const stampSpace = positions.get(stampSpaceId);
-  const closeFocus = useMemo(
-    () => closeBoardFocus(board, boardPlayers, activePlayerId, routeOptions),
-    [activePlayerId, board, boardPlayers, routeOptions],
+  const routePreviews = useMemo(
+    () =>
+      routeOptions.flatMap((destinationId) => {
+        const path = movement?.routePaths[destinationId];
+        return path ? [{ destinationId, path }] : [];
+      }),
+    [movement?.routePaths, routeOptions],
   );
-  const cameraScale = minimized || viewMode === 'overview' ? 1 : closeZoom;
+  const routePreviewSpaceIds = useMemo(
+    () => [...new Set(routePreviews.flatMap((preview) => preview.path))],
+    [routePreviews],
+  );
+  const closeFocus = useMemo(
+    () => closeBoardFocus(board, boardPlayers, activePlayerId, routePreviewSpaceIds),
+    [activePlayerId, board, boardPlayers, routePreviewSpaceIds],
+  );
+  const cameraScale =
+    minimized || viewMode === 'overview' || routeOptions.length > 0 ? 1 : closeZoom;
   const pieceSpread = cameraScale > 1 ? 1 / cameraScale : 1;
   const cameraOffsetX = clamp(0.5 - (closeFocus.x / 100) * cameraScale, 1 - cameraScale, 0);
   const cameraOffsetY = clamp(0.5 - (closeFocus.y / 100) * cameraScale, 1 - cameraScale, 0);
@@ -251,7 +304,7 @@ export function GranRondaBoard({
     >
       <div className="gran-ronda-board__stage">
         <div
-          className={`gran-ronda-board__camera ${viewMode === 'close' && !minimized ? 'gran-ronda-board__camera--close' : ''}`}
+          className={`gran-ronda-board__camera ${viewMode === 'close' && !minimized ? 'gran-ronda-board__camera--close' : ''} ${routeOptions.length > 0 ? 'gran-ronda-board__camera--choice' : ''}`}
           style={cameraStyle}
         >
           <div className="gran-ronda-board__art" aria-hidden="true" />
@@ -263,28 +316,40 @@ export function GranRondaBoard({
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            {board.flatMap((space) =>
-              space.nextIds.flatMap((nextId) => {
-                const next = positions.get(nextId);
-                if (!next) return [];
-                const choice =
-                  choiceOrigin !== null &&
-                  ((space.id === choiceOrigin && routeSet.has(next.id)) ||
-                    (next.id === choiceOrigin && routeSet.has(space.id)));
-                const travelled = edgeWasTravelled(movement, space.id, next.id);
-                const path = edgePath(space, next);
-                return (
-                  <g
-                    key={`${space.id}-${next.id}`}
-                    className={`gran-ronda-route ${choice ? 'gran-ronda-route--choice' : ''} ${travelled ? 'gran-ronda-route--travelled' : ''}`}
-                  >
-                    <path d={path} className="gran-ronda-route__edge" />
-                    <path d={path} className="gran-ronda-route__road" />
-                    <path d={path} className="gran-ronda-route__stitch" />
-                  </g>
-                );
-              }),
-            )}
+            {BOARD_ROUTES.map((route, index) => {
+              const path = continuousPath(route, positions);
+              return (
+                <g key={`road-${index}`} className="gran-ronda-route gran-ronda-route--base">
+                  <path d={path} className="gran-ronda-route__edge" />
+                  <path d={path} className="gran-ronda-route__road" />
+                  <path d={path} className="gran-ronda-route__stitch" />
+                </g>
+              );
+            })}
+            {movement && movement.path.length > 1 ? (
+              <g className="gran-ronda-route gran-ronda-route--travelled">
+                <path
+                  d={continuousPath(movement.path, positions)}
+                  className="gran-ronda-route__travelled-glow"
+                />
+                <path
+                  d={continuousPath(movement.path, positions)}
+                  className="gran-ronda-route__travelled-line"
+                />
+              </g>
+            ) : null}
+            {routePreviews.map((preview) => {
+              const path = continuousPath(preview.path, positions);
+              return (
+                <g
+                  key={preview.destinationId}
+                  className="gran-ronda-route gran-ronda-route--choice"
+                >
+                  <path d={path} className="gran-ronda-route__choice-glow" />
+                  <path d={path} className="gran-ronda-route__choice-line" />
+                </g>
+              );
+            })}
           </svg>
 
           <div className="absolute inset-0">
@@ -321,6 +386,11 @@ export function GranRondaBoard({
                     </span>
                   ) : null}
                   {trap ? <span className="gran-ronda-space__trap-label">¡Trampa!</span> : null}
+                  {isOption ? (
+                    <span className="gran-ronda-space__destination-label">
+                      Caes aquí · {movement?.roll ?? 0}
+                    </span>
+                  ) : null}
                   <span className="gran-ronda-space__face">
                     <GranRondaSpaceIcon type={visibleType} size={stamp ? 25 : undefined} />
                     <span className="gran-ronda-space__number">
@@ -369,6 +439,11 @@ export function GranRondaBoard({
                     }
                   >
                     <span aria-hidden="true">{tokenIcon}</span>
+                    {occupant.skipTurns > 0 ? (
+                      <small className="gran-ronda-piece__status" aria-label="En la cárcel">
+                        🔒
+                      </small>
+                    ) : null}
                   </span>
                 );
               })}
@@ -454,7 +529,7 @@ export function GranRondaBoard({
 
       {routeOptions.length > 0 && !minimized ? (
         <p className="gran-ronda-board__choice-hint">
-          Elige una de las casillas que laten en dorado
+          Elige dónde quieres caer · el camino completo está iluminado
         </p>
       ) : null}
     </section>

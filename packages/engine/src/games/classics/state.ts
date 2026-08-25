@@ -56,7 +56,10 @@ export function seatAtTurnOffset(state: ClassicState, seat: number, offset: numb
 export function nextActiveSeat(state: ClassicState, seat: number): number | null {
   for (let offset = 1; offset <= state.players.length; offset++) {
     const candidate = seatAtTurnOffset(state, seat, offset);
-    if (state.players[candidate] && !state.players[candidate].left) return candidate;
+    const player = state.players[candidate];
+    if (player && !player.left && !(state.gameId === 'cinquillo' && player.revealed)) {
+      return candidate;
+    }
   }
   return null;
 }

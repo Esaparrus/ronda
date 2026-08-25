@@ -524,10 +524,24 @@ function playCinquillo(
   next.version += 1;
   const events: GameEvent[] = [{ t: 'cardPlayed', playerId: current.playerId, cardId }];
   if (current.hand.length === 0) {
-    current.score = 1;
+    const activeCount = next.players.filter((candidate) => !candidate.left).length;
+    const alreadyFinished = next.players.filter(
+      (candidate) => !candidate.left && candidate.revealed,
+    ).length;
+    current.score = activeCount - alreadyFinished;
     current.revealed = true;
-    finishWithHighestScore(next);
-    if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
+    const remaining = next.players.filter((candidate) => !candidate.left && !candidate.revealed);
+    if (remaining.length <= 1) {
+      const last = remaining[0];
+      if (last) {
+        last.score = 0;
+        last.revealed = true;
+      }
+      finishWithHighestScore(next);
+      if (next.winnerId) events.push({ t: 'gameOver', winnerId: next.winnerId });
+    } else {
+      next.turnSeat = nextActiveSeat(next, current.seat);
+    }
   } else {
     next.turnSeat = nextActiveSeat(next, current.seat);
   }

@@ -5,6 +5,7 @@ import type {
   GameAction,
   GameEvent,
   GranRondaEmbeddedGameAction,
+  GranRondaMiniGameId,
   GranRondaPowerupType,
   PlayerId,
   Result,
@@ -72,8 +73,9 @@ import {
   GRAN_RONDA_STAMP_TARGETS,
   GRAN_RONDA_TRAP_TARGETS,
   GRAN_RONDA_POWERUP_COSTS,
+  granRondaBridgeDestination,
+  granRondaDestinationPaths,
   granRondaSpaceById,
-  granRondaMovementOptions,
 } from './rules.ts';
 import {
   activeGranRondaPlayers,
@@ -126,6 +128,7 @@ export function createInitialState(input: GranRondaInitialStateInput): GranRonda
       position: 'salida',
       coins: GRAN_RONDA_START_COINS,
       seals: 0,
+      skipTurns: 0,
       powerups: { doubleRoll: 0, rivalPenalty: 0, goldDuel: 0 },
       score: 0,
       lastRoll: null,
@@ -239,16 +242,20 @@ function rollDie(
     path: [nextPlayer.position],
     remainingSteps: rolled,
     routeOptions: [],
-    forcedNextSpaceId: null,
+    routePaths: {},
+    plannedPath: [],
   };
-  next.phase = 'moving';
-
-  const routeOptions = granRondaMovementOptions(next.board, nextPlayer.position, [
-    nextPlayer.position,
-  ]);
-  if (routeOptions.length > 1) {
+  const destinations = granRondaDestinationPaths(next.board, nextPlayer.position, rolled);
+  if (destinations.length === 0) return err('INTERNAL');
+  next.movement.routePaths = Object.fromEntries(
+    destinations.map((destination) => [destination.destinationId, [...destination.path]]),
+  );
+  if (destinations.length > 1) {
     next.phase = 'routeChoice';
-    next.movement.routeOptions = routeOptions;
+    next.movement.routeOptions = destinations.map((destination) => destination.destinationId);
+  } else {
+    next.phase = 'moving';
+    next.movement.plannedPath = destinations[0]?.path.slice(1) ?? [];
   }
   return ok({ state: next, events: [] });
 }
@@ -268,24 +275,9 @@ function advanceMovement(state: GranRondaState, playerId: PlayerId): GranRondaAc
   const nextPlayer = granRondaPlayer(next, playerId);
   if (!nextMovement || !nextPlayer) return err('PLAYER_NOT_IN_ROOM');
 
-  const movementOptions = granRondaMovementOptions(
-    next.board,
-    nextPlayer.position,
-    nextMovement.path,
-  );
-  const nextSpaceId =
-    nextMovement.forcedNextSpaceId ??
-    (movementOptions.length === 1 ? movementOptions[0] : undefined);
-  if (!nextMovement.forcedNextSpaceId) {
-    if (movementOptions.length > 1) {
-      nextMovement.routeOptions = movementOptions;
-      next.phase = 'routeChoice';
-      return ok({ state: next, events: [] });
-    }
-  }
+  const nextSpaceId = nextMovement.plannedPath.shift();
   if (!nextSpaceId) return err('INVALID_ACTION');
 
-  nextMovement.forcedNextSpaceId = null;
   nextMovement.routeOptions = [];
   nextPlayer.position = nextSpaceId;
   nextMovement.path.push(nextSpaceId);
@@ -305,13 +297,7 @@ function advanceMovement(state: GranRondaState, playerId: PlayerId): GranRondaAc
     return ok({ state: next, events: [] });
   }
 
-  const routeOptions = granRondaMovementOptions(next.board, nextSpaceId, nextMovement.path);
-  if (landedSpace && routeOptions.length > 1) {
-    next.phase = 'routeChoice';
-    nextMovement.routeOptions = routeOptions;
-  } else {
-    next.phase = 'moving';
-  }
+  next.phase = 'moving';
   return ok({ state: next, events: [] });
 }
 
@@ -332,8 +318,10 @@ function choosePath(
 
   const next = bump(state);
   if (!next.movement) return err('INVALID_ACTION');
+  const route = next.movement.routePaths[nextSpaceId];
+  if (!route || route[0] !== player.position) return err('INVALID_ACTION');
   next.movement.routeOptions = [];
-  next.movement.forcedNextSpaceId = nextSpaceId;
+  next.movement.plannedPath = route.slice(1);
   next.phase = 'moving';
   return ok({ state: next, events: [] });
 }
@@ -599,6 +587,9 @@ function submitEmbeddedGameAction(
 function finishMiniGame(state: GranRondaState, playerId: PlayerId): GranRondaActionResult {
   if (state.status !== 'playing' || state.phase !== 'minigameInput') return err('INVALID_ACTION');
   if (!isHost(state, playerId)) return err('NOT_HOST');
+  // Los juegos alojados gobiernan su propio final. Esto evita que el anfitrión
+  // cierre por accidente una prueba rápida tras la primera de sus tres rondas.
+  if (state.miniGame.embeddedGame) return err('INVALID_ACTION');
   const next = bump(state);
   revealMiniGame(next);
   return ok({ state: next, events: [] });
@@ -615,7 +606,8 @@ function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionRe
   next.round += 1;
   next.phase = 'movement';
   next.movedPlayerIds = [];
-  next.turnSeat = firstSeatForRound(next);
+  const preferredFirstSeat = firstSeatForRound(next);
+  next.turnSeat = null;
   next.movement = null;
   next.resolution = null;
   next.lastInteraction = null;
@@ -632,6 +624,19 @@ function nextRound(state: GranRondaState, playerId: PlayerId): GranRondaActionRe
   next.miniGame.scoreDeltas = null;
   next.miniGame.results = null;
   prepareMiniGame(next);
+  const activeBySeat = activeGranRondaPlayers(next).sort((left, right) => left.seat - right.seat);
+  const preferredIndex = activeBySeat.findIndex((player) => player.seat === preferredFirstSeat);
+  const previousSeat =
+    preferredIndex >= 0
+      ? (activeBySeat[(preferredIndex - 1 + activeBySeat.length) % activeBySeat.length]?.seat ??
+        null)
+      : null;
+  const firstPlayer = nextMovementPlayer(next, previousSeat);
+  if (firstPlayer) {
+    next.turnSeat = firstPlayer.seat;
+  } else {
+    next.phase = 'minigameInput';
+  }
   next.rematchVotes = [];
   return ok({ state: next, events: [] });
 }
@@ -675,10 +680,9 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
     message = 'La casilla te entrega 3 Oros.';
   }
   if (space.type === 'perdida') {
-    coinsDelta = Math.max(-2, -player.coins);
-    player.coins = Math.max(0, player.coins - 2);
-    title = 'Senda de Pérdida';
-    message = 'La casilla resta 2 Oros, sin bajar de cero.';
+    player.skipTurns = Math.max(player.skipTurns, 1);
+    title = 'A la cárcel';
+    message = 'Pierdes tu próximo turno de movimiento, pero sí jugarás el minijuego con todos.';
   }
   if (space.type === 'evento') {
     coinsDelta = 1;
@@ -688,10 +692,20 @@ function resolveLanding(state: GranRondaState, player: GranRondaPlayer): void {
       'El cruce de suerte te concede 1 Oro. Elige bien tu ruta para acercarte a una tienda o al Sello.';
   }
   if (space.type === 'atajo') {
-    coinsDelta = 2;
-    player.coins += coinsDelta;
-    title = 'Atajo';
-    message = 'El atajo premia la decisión con 2 Oros.';
+    const bridgeDestinationId = granRondaBridgeDestination(space.id);
+    const bridgeDestination = bridgeDestinationId
+      ? granRondaSpaceById(bridgeDestinationId)
+      : undefined;
+    if (bridgeDestination) {
+      player.position = bridgeDestination.id;
+      title = 'De puente a puente';
+      message = `El puente te lleva directamente hasta ${bridgeDestination.label}.`;
+    } else {
+      coinsDelta = 2;
+      player.coins += coinsDelta;
+      title = 'Atajo';
+      message = 'El atajo premia la decisión con 2 Oros.';
+    }
   }
 
   if (space.type === 'doble') {
@@ -746,17 +760,41 @@ function stampValueForRound(state: GranRondaState): number {
 
 function finishMovement(state: GranRondaState, playerId: PlayerId): void {
   if (!state.movedPlayerIds.includes(playerId)) state.movedPlayerIds.push(playerId);
-  const active = activeGranRondaPlayers(state).sort((left, right) => left.seat - right.seat);
-  if (state.movedPlayerIds.length >= active.length) {
+  const nextPlayer = nextMovementPlayer(state, state.turnSeat);
+  if (!nextPlayer) {
     prepareMiniGame(state);
     state.phase = 'minigameInput';
     state.turnSeat = null;
     return;
   }
 
-  const nextPlayer = active.find((player) => !state.movedPlayerIds.includes(player.playerId));
-  state.turnSeat = nextPlayer?.seat ?? null;
+  state.turnSeat = nextPlayer.seat;
   state.phase = 'movement';
+}
+
+/**
+ * Encuentra la siguiente ficha que puede tirar y consume de forma explícita
+ * los turnos de cárcel. Una persona encarcelada sigue entrando en el minijuego.
+ */
+function nextMovementPlayer(
+  state: GranRondaState,
+  afterSeat: number | null,
+): GranRondaPlayer | null {
+  const active = activeGranRondaPlayers(state).sort((left, right) => left.seat - right.seat);
+  const afterIndex =
+    afterSeat === null ? -1 : active.findIndex((player) => player.seat === afterSeat);
+  const ordered =
+    afterIndex < 0 ? active : [...active.slice(afterIndex + 1), ...active.slice(0, afterIndex + 1)];
+  for (const player of ordered) {
+    if (state.movedPlayerIds.includes(player.playerId)) continue;
+    if (player.skipTurns > 0) {
+      player.skipTurns -= 1;
+      state.movedPlayerIds.push(player.playerId);
+      continue;
+    }
+    return player;
+  }
+  return null;
 }
 
 function revealMiniGame(state: GranRondaState): void {
@@ -782,7 +820,13 @@ function revealMiniGame(state: GranRondaState): void {
     const rank = index + 1;
     const busted = playerState?.busted ?? false;
     const completed = playerState?.finished ?? false;
-    const reward = !completed || busted ? 0 : rank === 1 ? 6 : rank === 2 ? 3 : 1;
+    const reward = miniGameReward(
+      state.miniGame.questionId,
+      rank,
+      ranked.length,
+      completed,
+      busted,
+    );
     scoreDeltas[player.playerId] = reward;
     player.coins += reward;
     results[player.playerId] = {
@@ -799,6 +843,22 @@ function revealMiniGame(state: GranRondaState): void {
     state.status = 'gameEnd';
     state.winnerId = decideWinner(state);
   }
+}
+
+function miniGameReward(
+  gameId: GranRondaMiniGameId,
+  rank: number,
+  playerCount: number,
+  completed: boolean,
+  busted: boolean,
+): number {
+  if (!completed || busted) return 0;
+  if (gameId === 'cinquillo') {
+    if (playerCount <= 1) return 6;
+    if (rank >= playerCount) return 0;
+    return Math.max(1, Math.round((6 * (playerCount - rank)) / (playerCount - 1)));
+  }
+  return rank === 1 ? 6 : rank === 2 ? 3 : 1;
 }
 
 function allMiniPlayersFinished(state: GranRondaState): boolean {
@@ -890,10 +950,16 @@ function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
 
   const partyConfigs = {
     orden: DEFAULT_ORDEN_CONFIG,
-    colores: DEFAULT_COLORES_CONFIG,
-    mayoria: DEFAULT_MAYORIA_CONFIG,
-    escala: { ...DEFAULT_ESCALA_CONFIG, modo: 'online' as const, answerTimeSeconds: 10 as const },
-    matiz: DEFAULT_MATIZ_CONFIG,
+    colores: { ...DEFAULT_COLORES_CONFIG, rounds: 3 as const, pointsToWin: 40 as const },
+    mayoria: { ...DEFAULT_MAYORIA_CONFIG, rounds: 3 as const, pointsToWin: 40 as const },
+    escala: {
+      ...DEFAULT_ESCALA_CONFIG,
+      rounds: 3 as const,
+      pointsToWin: 40 as const,
+      modo: 'online' as const,
+      answerTimeSeconds: 10 as const,
+    },
+    matiz: { ...DEFAULT_MATIZ_CONFIG, rounds: 3 as const },
   } as const;
   if (id in partyConfigs) {
     const partyId = id as keyof typeof partyConfigs;
@@ -905,7 +971,7 @@ function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
 
   if (id === 'preciojusto') {
     return createPrecioJustoState({
-      config: { ...DEFAULT_PRECIO_JUSTO_CONFIG, rounds: 5, answerTimeSeconds: 0 },
+      config: { ...DEFAULT_PRECIO_JUSTO_CONFIG, rounds: 3, answerTimeSeconds: 0 },
       players,
       seed,
       roomCode: state.roomCode,
@@ -913,15 +979,15 @@ function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
   }
 
   const roadmapConfigs = {
-    banderas: { ...DEFAULT_BANDERAS_CONFIG, rounds: 5, answerTimeSeconds: 0 },
-    cifras: { ...DEFAULT_CIFRAS_CONFIG, rounds: 5, answerTimeSeconds: 0 },
+    banderas: { ...DEFAULT_BANDERAS_CONFIG, rounds: 3, answerTimeSeconds: 0 },
+    cifras: { ...DEFAULT_CIFRAS_CONFIG, rounds: 3, answerTimeSeconds: 0 },
     quienloharia: {
       ...DEFAULT_QUIEN_LO_HARIA_CONFIG,
-      rounds: 5,
+      rounds: 3,
       answerTimeSeconds: 0,
       competitive: true,
     },
-    completalafrase: { ...DEFAULT_COMPLETA_LA_FRASE_CONFIG, rounds: 5, answerTimeSeconds: 0 },
+    completalafrase: { ...DEFAULT_COMPLETA_LA_FRASE_CONFIG, rounds: 3, answerTimeSeconds: 0 },
   } as const;
   if (id in roadmapConfigs) {
     const roadmapId = id as keyof typeof roadmapConfigs;
@@ -948,10 +1014,17 @@ function createEmbeddedGame(state: GranRondaState): GranRondaEmbeddedGameState {
 function embeddedGameIsFinished(game: GranRondaEmbeddedGameState): boolean {
   if (game.gameId === 'musical') return game.status === 'gameEnd';
   if (isPartyEmbeddedGame(game)) {
-    return game.phase === 'reveal' && (game.gameId !== 'mayoria' || game.majority?.groups !== null);
+    if (game.gameId === 'orden') return game.status === 'gameEnd';
+    const revealReady =
+      game.phase === 'reveal' && (game.gameId !== 'mayoria' || game.majority?.groups !== null);
+    return game.status === 'gameEnd' || (revealReady && game.round >= 3);
   }
-  if (isRoadmapEmbeddedGame(game)) return game.phase === 'reveal';
-  if (game.gameId === 'preciojusto') return game.phase === 'reveal';
+  if (isRoadmapEmbeddedGame(game)) {
+    return game.status === 'gameEnd' || (game.phase === 'reveal' && game.round >= 3);
+  }
+  if (game.gameId === 'preciojusto') {
+    return game.status === 'gameEnd' || (game.phase === 'reveal' && game.round >= 3);
+  }
   if (game.gameId === 'laronda') return game.status === 'roundEnd' || game.status === 'gameEnd';
   if (game.gameId === 'chinchon') return game.status === 'roundEnd' || game.status === 'gameEnd';
   if (game.gameId === 'pocha') return game.status === 'roundEnd' || game.status === 'gameEnd';
@@ -1239,6 +1312,13 @@ function bump(state: GranRondaState): GranRondaState {
         dice: [...state.movement.dice],
         path: [...state.movement.path],
         routeOptions: [...state.movement.routeOptions],
+        routePaths: Object.fromEntries(
+          Object.entries(state.movement.routePaths).map(([destinationId, path]) => [
+            destinationId,
+            [...path],
+          ]),
+        ),
+        plannedPath: [...state.movement.plannedPath],
       }
     : null;
   const resolution: GranRondaResolutionState | null = state.resolution

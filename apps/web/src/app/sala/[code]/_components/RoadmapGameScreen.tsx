@@ -45,7 +45,13 @@ export function RoadmapGameScreen({ view, onAction }: RoadmapGameScreenProps) {
   return <CompletaLaFraseScreen view={view} onAction={onAction} />;
 }
 
-function BanderasScreen({ view, onAction }: { view: BanderasPlayerView; onAction?: RoadmapActionSender }) {
+function BanderasScreen({
+  view,
+  onAction,
+}: {
+  view: BanderasPlayerView;
+  onAction?: RoadmapActionSender;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const canSubmit = view.me.availableActions.includes('submitFlag');
@@ -129,7 +135,12 @@ function BanderasScreen({ view, onAction }: { view: BanderasPlayerView; onAction
             ) : null}
           </div>
         ) : (
-          <BanderasReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
+          <BanderasReveal
+            view={view}
+            canAdvance={canAdvance}
+            pending={pendingAction}
+            onAction={onAction}
+          />
         )}
         {canFinish ? (
           <Button
@@ -165,6 +176,9 @@ function BanderasReveal({
         {view.flags.options.map((option) => {
           const isCorrect = option.id === correct;
           const isMyWrongAnswer = option.id === myAnswer && !isCorrect;
+          const voters = view.players.filter(
+            (player) => view.flags.answers?.[player.playerId] === option.id,
+          );
           const optionStyle = isCorrect
             ? 'border-equipo-turquesa bg-equipo-turquesa/15 text-hueso ring-2 ring-equipo-turquesa/20'
             : isMyWrongAnswer
@@ -172,15 +186,27 @@ function BanderasReveal({
               : 'border-linea bg-mesa/70 text-humo';
           return (
             <div key={option.id} className={`rounded-2xl border px-3 py-2 text-13 ${optionStyle}`}>
-              <span className="font-semibold">{option.label}</span>
-              {view.flags.answers ? (
-                <span className="ml-2 text-12 text-humo">
-                  {
-                    Object.values(view.flags.answers).filter((answer) => answer === option.id)
-                      .length
-                  }{' '}
-                  votos
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">{option.label}</span>
+                <span className="text-12 text-humo">
+                  {isCorrect ? '✓ Correcta' : `${voters.length} votos`}
                 </span>
+              </div>
+              {view.flags.answers ? (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {voters.length > 0 ? (
+                    voters.map((player) => (
+                      <span
+                        key={player.playerId}
+                        className="rounded-full border border-linea bg-tinta/35 px-2 py-1 text-10 text-hueso"
+                      >
+                        {player.tokenIcon ?? '🎲'} {player.nick}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-10 text-humo">Nadie la eligió</span>
+                  )}
+                </div>
               ) : null}
             </div>
           );
@@ -191,7 +217,13 @@ function BanderasReveal({
   );
 }
 
-function CifrasScreen({ view, onAction }: { view: CifrasPlayerView; onAction?: RoadmapActionSender }) {
+function CifrasScreen({
+  view,
+  onAction,
+}: {
+  view: CifrasPlayerView;
+  onAction?: RoadmapActionSender;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [numberInput, setNumberInput] = useState('');
@@ -312,7 +344,12 @@ function CifrasScreen({ view, onAction }: { view: CifrasPlayerView; onAction?: R
           />
         ) : null}
         {view.phase === 'reveal' ? (
-          <CifrasReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
+          <CifrasReveal
+            view={view}
+            canAdvance={canAdvance}
+            pending={pendingAction}
+            onAction={onAction}
+          />
         ) : null}
         {canFinish ? (
           <Button
@@ -520,7 +557,9 @@ function ChoicePicker({
         ))}
       </div>
       {selectedOptionId ? (
-        <p className="text-center text-13 font-semibold text-equipo-turquesa">✓ Respuesta bloqueada</p>
+        <p className="text-center text-13 font-semibold text-equipo-turquesa">
+          ✓ Respuesta bloqueada
+        </p>
       ) : null}
     </div>
   );
@@ -530,11 +569,17 @@ function OrderDirectionBadge({ direction }: { direction: 'asc' | 'desc' }) {
   const ascending = direction === 'asc';
   return (
     <div className="order-direction mx-auto inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-left">
-      <span className="order-direction__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-20 font-bold" aria-hidden="true">
+      <span
+        className="order-direction__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-20 font-bold"
+        aria-hidden="true"
+      >
         {ascending ? '↑' : '↓'}
       </span>
       <span className="text-12 leading-tight text-humo sm:text-13">
-        de <strong className="font-extrabold text-oro">{ascending ? 'MENOR A MAYOR' : 'MAYOR A MENOR'}</strong>
+        de{' '}
+        <strong className="font-extrabold text-oro">
+          {ascending ? 'MENOR A MAYOR' : 'MAYOR A MENOR'}
+        </strong>
       </span>
     </div>
   );
@@ -556,7 +601,12 @@ function initialOrderFor(items: CifrasPlayerView['cifras']['items'], seed: strin
   return next;
 }
 
-function reorderAround(order: string[], itemId: string, targetId: string, after: boolean): string[] {
+function reorderAround(
+  order: string[],
+  itemId: string,
+  targetId: string,
+  after: boolean,
+): string[] {
   const next = order.filter((id) => id !== itemId);
   const targetIndex = next.indexOf(targetId);
   if (targetIndex < 0) return order;
@@ -615,9 +665,11 @@ function CifrasReveal({
   }
 
   if (view.cifras.kind === 'compare') {
-    const result = view.cifras.choices?.[view.me.playerId] ?? Object.values(view.cifras.choices ?? {})[0];
+    const result =
+      view.cifras.choices?.[view.me.playerId] ?? Object.values(view.cifras.choices ?? {})[0];
     const correctOptionId = result?.correctOptionId;
-    const correctLabel = view.cifras.items.find((item) => item.id === correctOptionId)?.label ?? '—';
+    const correctLabel =
+      view.cifras.items.find((item) => item.id === correctOptionId)?.label ?? '—';
     return (
       <section className="flex flex-col gap-4">
         <div className="rounded-3xl border border-oro/60 bg-oro/10 px-5 py-4 text-center">
@@ -716,7 +768,13 @@ function CifrasReveal({
   );
 }
 
-function QuienLoHariaScreen({ view, onAction }: { view: QuienLoHariaPlayerView; onAction?: RoadmapActionSender }) {
+function QuienLoHariaScreen({
+  view,
+  onAction,
+}: {
+  view: QuienLoHariaPlayerView;
+  onAction?: RoadmapActionSender;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const canSubmit = view.me.availableActions.includes('submitWhoVote');
@@ -763,7 +821,12 @@ function QuienLoHariaScreen({ view, onAction }: { view: QuienLoHariaPlayerView; 
               ))}
           </div>
         ) : (
-          <WhoReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
+          <WhoReveal
+            view={view}
+            canAdvance={canAdvance}
+            pending={pendingAction}
+            onAction={onAction}
+          />
         )}
         {canFinish ? (
           <Button
@@ -817,7 +880,13 @@ function WhoReveal({
   );
 }
 
-function CompletaLaFraseScreen({ view, onAction }: { view: CompletaLaFrasePlayerView; onAction?: RoadmapActionSender }) {
+function CompletaLaFraseScreen({
+  view,
+  onAction,
+}: {
+  view: CompletaLaFrasePlayerView;
+  onAction?: RoadmapActionSender;
+}) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [answer, setAnswer] = useState('');
@@ -869,9 +938,7 @@ function CompletaLaFraseScreen({ view, onAction }: { view: CompletaLaFrasePlayer
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() =>
-                  sendRoadmapAction(onAction, { type: 'useSentenceHint' })
-                }
+                onClick={() => sendRoadmapAction(onAction, { type: 'useSentenceHint' })}
                 loading={pendingAction}
               >
                 Necesito una pista
@@ -884,7 +951,12 @@ function CompletaLaFraseScreen({ view, onAction }: { view: CompletaLaFrasePlayer
             ) : null}
           </form>
         ) : (
-          <SentenceReveal view={view} canAdvance={canAdvance} pending={pendingAction} onAction={onAction} />
+          <SentenceReveal
+            view={view}
+            canAdvance={canAdvance}
+            pending={pendingAction}
+            onAction={onAction}
+          />
         )}
         {canFinish ? (
           <Button
@@ -964,10 +1036,7 @@ function RevealNextAction({
   onAction?: RoadmapActionSender;
 }) {
   return canAdvance ? (
-    <Button
-      onClick={() => sendRoadmapAction(onAction, { type: 'nextRound' })}
-      loading={pending}
-    >
+    <Button onClick={() => sendRoadmapAction(onAction, { type: 'nextRound' })} loading={pending}>
       Siguiente ronda
     </Button>
   ) : (

@@ -99,8 +99,9 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'cinquillo',
     title: 'Cinquillo express',
-    prompt: 'Elige el palo con el que abrirías la mesa.',
-    instructions: 'Una salida rápida, una decisión y una clasificación para toda la mesa.',
+    prompt: 'Vacía tu mano y sigue hasta ordenar a toda la mesa.',
+    instructions:
+      'Una partida rápida completa: se sigue jugando después del primer puesto para decidir toda la clasificación.',
     options: [
       { id: 'oros', label: 'Oros' },
       { id: 'copas', label: 'Copas' },
@@ -122,9 +123,9 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'colores',
     title: 'Colores exprés',
-    prompt: 'Acierta una pregunta de colores y gana Oros.',
+    prompt: 'Acierta tres preguntas de colores y gana Oros.',
     instructions:
-      'Una sola pregunta del juego original. Elige los colores correctos antes que el resto.',
+      'Tres preguntas del juego original. Elige los colores correctos antes que el resto.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -132,8 +133,9 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'preciojusto',
     title: 'Precio justo exprés',
-    prompt: 'Acércate al precio real del producto.',
-    instructions: 'Una estimación del juego original y reparto inmediato según la distancia.',
+    prompt: 'Acércate al precio real de tres productos.',
+    instructions:
+      'Tres estimaciones del juego original y clasificación por la puntuación acumulada.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -141,8 +143,8 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'banderas',
     title: 'Banderas exprés',
-    prompt: 'Sé la primera persona en identificar la bandera.',
-    instructions: 'Una bandera, una respuesta por jugador y clasificación inmediata.',
+    prompt: 'Identifica tres banderas antes que el resto.',
+    instructions: 'Tres banderas, una respuesta por jugador en cada una y clasificación acumulada.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -150,8 +152,8 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'cifras',
     title: 'Cifras exprés',
-    prompt: 'Estima, ordena o compara una cifra.',
-    instructions: 'Una prueba rápida del juego original; gana quien más se acerque o acierte.',
+    prompt: 'Estima, ordena o compara durante tres pruebas.',
+    instructions: 'Tres pruebas rápidas del juego original; gana quien más se acerque o acierte.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -159,8 +161,8 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'quienloharia',
     title: 'Quién lo haría exprés',
-    prompt: 'Vota a la persona que más encaja con la situación.',
-    instructions: 'Una votación competitiva y corta, con el resultado del juego original.',
+    prompt: 'Vota en tres situaciones a quien más encaje.',
+    instructions: 'Tres votaciones competitivas y cortas, mostrando lo que eligió cada persona.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -168,8 +170,8 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'completalafrase',
     title: 'Completa la frase exprés',
-    prompt: 'Completa la frase antes que el resto.',
-    instructions: 'Una respuesta rápida del juego original y reparto de Oros.',
+    prompt: 'Completa tres frases antes que el resto.',
+    instructions: 'Tres respuestas rápidas del juego original y clasificación acumulada.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -187,9 +189,9 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'mayoria',
     title: 'Mayoría exprés',
-    prompt: 'Escribe una respuesta y trata de coincidir con la mayoría.',
+    prompt: 'Coincide con la mayoría en tres preguntas.',
     instructions:
-      'Una sola pregunta del juego original. Las respuestas se agrupan y la mayoría puntúa.',
+      'Tres preguntas del juego original. Las respuestas se agrupan y la mayoría puntúa.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -197,8 +199,8 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'escala',
     title: 'Escala exprés',
-    prompt: 'Da una pista y coloca tu estimación en la escala.',
-    instructions: 'Una sola pista, una estimación y un resultado inmediato.',
+    prompt: 'Da pistas y coloca tres estimaciones en la escala.',
+    instructions: 'Tres escalas cortas con resultado acumulado.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,
@@ -206,8 +208,8 @@ export const GRAN_RONDA_MINIGAMES: readonly GranRondaMiniGameDefinition[] = [
   {
     id: 'matiz',
     title: 'Matiz exprés',
-    prompt: 'Ajusta un color y acércate al objetivo oculto.',
-    instructions: 'Un solo reto visual del juego original y reparto inmediato de Oros.',
+    prompt: 'Ajusta tres colores y acércate a cada objetivo oculto.',
+    instructions: 'Tres retos visuales, comparación con el original y clasificación acumulada.',
     options: [],
     minPlayers: 2,
     maxPlayers: 7,

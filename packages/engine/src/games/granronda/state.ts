@@ -44,6 +44,8 @@ export interface GranRondaPlayer {
   position: string;
   coins: number;
   seals: number;
+  /** Rondas de movimiento que debe saltarse antes de volver a tirar. */
+  skipTurns: number;
   powerups: Record<GranRondaPowerupType, number>;
   /** Alias de marcador para las estadísticas comunes de la sala. */
   score: number;
@@ -97,7 +99,9 @@ export interface GranRondaMovementState {
   path: string[];
   remainingSteps: number;
   routeOptions: string[];
-  forcedNextSpaceId: string | null;
+  routePaths: Record<string, string[]>;
+  /** Pasos todavía no animados del recorrido que ya eligió el jugador. */
+  plannedPath: string[];
 }
 
 export interface GranRondaResolutionState {

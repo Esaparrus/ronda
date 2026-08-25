@@ -172,6 +172,7 @@ const PARTY_MAX_PLAYERS = z.union([
   z.literal(7),
 ]);
 const PARTY_ROUNDS = z.union([
+  z.literal(3),
   z.literal(5),
   z.literal(7),
   z.literal(10),
@@ -306,7 +307,7 @@ const PRICE_MAX_PLAYERS = z.union([
   z.literal(6),
   z.literal(7),
 ]);
-const PRICE_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(20)]);
+const PRICE_ROUNDS = z.union([z.literal(3), z.literal(5), z.literal(10), z.literal(20)]);
 const PRICE_ANSWER_SECONDS = z.union([z.literal(0), z.literal(10), z.literal(20), z.literal(30)]);
 
 export const PRICE_CATEGORIES = [
@@ -344,7 +345,7 @@ const ROADMAP_MAX_PLAYERS = z.union([
   z.literal(6),
   z.literal(7),
 ]);
-const ROADMAP_ROUNDS = z.union([z.literal(5), z.literal(10), z.literal(20)]);
+const ROADMAP_ROUNDS = z.union([z.literal(3), z.literal(5), z.literal(10), z.literal(20)]);
 const ROADMAP_ANSWER_SECONDS = z.union([z.literal(0), z.literal(10), z.literal(20), z.literal(30)]);
 
 /** Ventana de presión que se abre para el resto al bloquear la primera respuesta de Banderas. */

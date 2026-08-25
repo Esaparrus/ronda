@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { GranRondaDie } from './GranRondaDiceOverlay';
 
 export interface GranRondaTurnRollPromptProps {
@@ -16,6 +16,15 @@ export function GranRondaTurnRollPrompt({
   onRoll,
   children,
 }: GranRondaTurnRollPromptProps) {
+  const [stage, setStage] = useState<'announcement' | 'roll'>('announcement');
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setStage('roll'), 900);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const announcing = stage === 'announcement' && !rolling;
+
   return (
     <div
       className="gran-ronda-turn-roll"
@@ -26,27 +35,43 @@ export function GranRondaTurnRollPrompt({
       <div className="gran-ronda-turn-roll__veil" aria-hidden="true" />
       <button
         type="button"
-        autoFocus
-        disabled={disabled}
+        autoFocus={!announcing}
+        disabled={disabled || announcing}
         onClick={onRoll}
         className="gran-ronda-turn-roll__tap-area"
-        aria-label={rolling ? 'Lanzando el dado' : 'Tirar el dado; puedes tocar la pantalla'}
+        aria-label={
+          announcing
+            ? 'Es tu turno'
+            : rolling
+              ? 'Lanzando el dado'
+              : 'Tirar el dado; puedes tocar la pantalla'
+        }
       >
-        <span className="gran-ronda-turn-roll__copy">
-          <span className="eyebrow">Tu turno</span>
-          <span
-            className={`gran-ronda-turn-roll__die ${rolling ? 'gran-ronda-turn-roll__die--rolling' : ''}`}
-            aria-hidden="true"
-          >
-            <GranRondaDie value={null} />
+        {announcing ? (
+          <span className="gran-ronda-turn-roll__copy gran-ronda-turn-roll__copy--announcement">
+            <span className="eyebrow">Prepárate</span>
+            <strong id="gran-ronda-turn-roll-title">Tu turno</strong>
+            <small>Ahora aparecerá el dado</small>
           </span>
-          <strong id="gran-ronda-turn-roll-title">
-            {rolling ? 'Tirando…' : 'Toca para tirar'}
-          </strong>
-          <small>{rolling ? 'Descubriendo tu tirada' : 'Puedes tocar en cualquier parte'}</small>
-        </span>
+        ) : (
+          <span className="gran-ronda-turn-roll__copy">
+            <span className="eyebrow">Lanza el dado</span>
+            <span
+              className={`gran-ronda-turn-roll__die ${rolling ? 'gran-ronda-turn-roll__die--rolling' : ''}`}
+              aria-hidden="true"
+            >
+              <GranRondaDie value={null} />
+            </span>
+            <strong id="gran-ronda-turn-roll-title">
+              {rolling ? 'Tirando…' : 'Toca para tirar'}
+            </strong>
+            <small>{rolling ? 'Descubriendo tu tirada' : 'Puedes tocar en cualquier parte'}</small>
+          </span>
+        )}
       </button>
-      {children ? <div className="gran-ronda-turn-roll__powerups">{children}</div> : null}
+      {!announcing && children ? (
+        <div className="gran-ronda-turn-roll__powerups">{children}</div>
+      ) : null}
     </div>
   );
 }

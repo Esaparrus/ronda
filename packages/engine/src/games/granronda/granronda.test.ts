@@ -12,6 +12,7 @@ import { getClassicPlayerView } from '../classics/views.ts';
 import { getPlayerView as getMusicalPlayerView } from '../musical/views.ts';
 import { colorQuestionById } from '../party/content.ts';
 import { granRondaMiniGameById, granRondaMiniGamesForPlayerCount } from './content.ts';
+import { granRondaDestinationPaths } from './rules.ts';
 
 const players = [
   { playerId: 'p1', nick: 'Ana', seat: 0, isBot: false },
@@ -186,36 +187,45 @@ describe('La Gran Ronda', () => {
     expect(state.movement).toBeNull();
   });
 
-  it('permite retroceder al iniciar la tirada, pero no deshacer pasos en una bifurcación', () => {
+  it('elige la casilla exacta de llegada y nunca ofrece retroceder', () => {
     let state = makeState();
     const player = state.players[0];
     if (!player) throw new Error('falta jugador activo');
-    player.position = 'bifurcacion-azul';
+    player.position = 'plaza-oros';
     state.turnSeat = player.seat;
-
-    state = play({ type: 'rollGranRonda' }, state, player.playerId);
-    expect(state.phase).toBe('routeChoice');
-    expect(state.movement?.routeOptions).toEqual(['senda-dorada', 'camino-riesgo', 'paseo-sol']);
-
-    state = makeState();
-    const movingPlayer = state.players[0];
-    if (!movingPlayer) throw new Error('falta jugador para la bifurcación');
-    movingPlayer.position = 'paseo-sol';
-    state.turnSeat = movingPlayer.seat;
+    const destinations = granRondaDestinationPaths(state.board, player.position, 5);
+    expect(destinations).toHaveLength(2);
+    expect(destinations.every((destination) => destination.path.length === 6)).toBe(true);
+    expect(destinations.every((destination) => !destination.path.slice(1).includes('salida'))).toBe(
+      true,
+    );
+    const routePaths = Object.fromEntries(
+      destinations.map((destination) => [destination.destinationId, destination.path]),
+    );
     state.movement = {
-      playerId: movingPlayer.playerId,
-      roll: 2,
-      dice: [2],
-      path: ['paseo-sol'],
-      remainingSteps: 2,
-      routeOptions: [],
-      forcedNextSpaceId: 'bifurcacion-azul',
+      playerId: player.playerId,
+      roll: 5,
+      dice: [5],
+      path: [player.position],
+      remainingSteps: 5,
+      routeOptions: destinations.map((destination) => destination.destinationId),
+      routePaths,
+      plannedPath: [],
     };
-    state.phase = 'moving';
-    state = play({ type: 'advanceGranRondaMovement' }, state, movingPlayer.playerId);
-    expect(state.phase).toBe('routeChoice');
-    expect(state.movement?.routeOptions).toEqual(['senda-dorada', 'camino-riesgo']);
-    expect(state.movement?.routeOptions).not.toContain('paseo-sol');
+    state.phase = 'routeChoice';
+    const chosen = destinations[1];
+    if (!chosen) throw new Error('falta el segundo destino');
+    state = play(
+      { type: 'chooseGranRondaPath', nextSpaceId: chosen.destinationId },
+      state,
+      player.playerId,
+    );
+    expect(state.phase).toBe('moving');
+    expect(state.movement?.plannedPath).toEqual(chosen.path.slice(1));
+    while (state.phase === 'moving') {
+      state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+    }
+    expect(state.players[0]?.position).toBe(chosen.destinationId);
 
     const actionSpace = state.board.find((space) => space.type === 'doble');
     expect(actionSpace?.id).toBe('sendero-bastos');
@@ -237,7 +247,8 @@ describe('La Gran Ronda', () => {
       path: ['salida'],
       remainingSteps: 2,
       routeOptions: [],
-      forcedNextSpaceId: 'plaza-oros',
+      routePaths: {},
+      plannedPath: ['plaza-oros', 'paseo-azul'],
     };
     state.phase = 'moving';
 
@@ -245,7 +256,7 @@ describe('La Gran Ronda', () => {
 
     expect(state.players[0]?.position).toBe('plaza-oros');
     expect(state.players[0]?.coins).toBe(5);
-    expect(state.phase).toBe('routeChoice');
+    expect(state.phase).toBe('moving');
     expect(state.resolution).toBeNull();
   });
 
@@ -262,7 +273,8 @@ describe('La Gran Ronda', () => {
       path: ['puente-comun'],
       remainingSteps: 2,
       routeOptions: [],
-      forcedNextSpaceId: 'mirador',
+      routePaths: {},
+      plannedPath: ['mirador', 'plaza-espadas'],
     };
     state.phase = 'moving';
 
@@ -293,7 +305,8 @@ describe('La Gran Ronda', () => {
       path: ['senda-bastos'],
       remainingSteps: 1,
       routeOptions: [],
-      forcedNextSpaceId: 'sendero-bastos',
+      routePaths: {},
+      plannedPath: ['sendero-bastos'],
     };
     state.phase = 'moving';
     state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
@@ -311,12 +324,54 @@ describe('La Gran Ronda', () => {
       path: ['curva-bastos'],
       remainingSteps: 1,
       routeOptions: [],
-      forcedNextSpaceId: 'arco-copas',
+      routePaths: {},
+      plannedPath: ['arco-copas'],
     };
     playerAfterDouble.position = 'curva-bastos';
     state = play({ type: 'advanceGranRondaMovement' }, state, playerAfterDouble.playerId);
     expect(state.phase).toBe('resolving');
     expect(state.players[0]?.powerups.rivalPenalty).toBe(1);
+  });
+
+  it('conecta los dos puentes y la cárcel bloquea el siguiente movimiento', () => {
+    let state = makeState();
+    const player = state.players[0];
+    if (!player) throw new Error('falta jugador para probar las casillas especiales');
+    player.position = 'plaza-oros';
+    state.turnSeat = player.seat;
+    state.trapSpaceIds = [];
+    state.movement = {
+      playerId: player.playerId,
+      roll: 1,
+      dice: [1],
+      path: ['plaza-oros'],
+      remainingSteps: 1,
+      routeOptions: [],
+      routePaths: {},
+      plannedPath: ['paseo-azul'],
+    };
+    state.phase = 'moving';
+
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+    expect(state.resolution?.kind).toBe('atajo');
+    expect(state.players[0]?.position).toBe('atajo-fuente');
+
+    state.phase = 'moving';
+    state.resolution = null;
+    state.movement = {
+      playerId: player.playerId,
+      roll: 1,
+      dice: [1],
+      path: ['atajo-fuente'],
+      remainingSteps: 1,
+      routeOptions: [],
+      routePaths: {},
+      plannedPath: ['curva-bastos'],
+    };
+    state = play({ type: 'advanceGranRondaMovement' }, state, player.playerId);
+    expect(state.resolution?.kind).toBe('perdida');
+    expect(state.players[0]?.skipTurns).toBe(1);
+    expect(getPlayerView(state, player.playerId).boardPlayers[0]?.skipTurns).toBe(1);
   });
 
   it('el monstruo roba Oros, muestra el golpe y mueve su trampa a otra casilla', () => {
@@ -334,7 +389,8 @@ describe('La Gran Ronda', () => {
       path: ['salida'],
       remainingSteps: 1,
       routeOptions: [],
-      forcedNextSpaceId: 'plaza-oros',
+      routePaths: {},
+      plannedPath: ['plaza-oros'],
     };
     state.phase = 'moving';
 
@@ -358,6 +414,8 @@ describe('La Gran Ronda', () => {
 
     const rejected = applyAction(state, 'p2', { type: 'nextRound' }, 0);
     expect(rejected.ok).toBe(false);
+    // Conserva el cierre manual únicamente para una prueba sin motor alojado.
+    state.miniGame.embeddedGame = null;
     state = play({ type: 'finishGranRondaMiniGame' }, state, 'p1');
     expect(state.phase).toBe('minigameReveal');
     expect(state.miniGame.scoreDeltas).not.toBeNull();
@@ -435,62 +493,129 @@ describe('La Gran Ronda', () => {
     expect(Object.values(state.miniGame.scoreDeltas ?? {}).some((delta) => delta > 0)).toBe(true);
   });
 
-  it('aloja los juegos sociales exprés y termina tras una sola prueba', () => {
+  it('reparte el oro de Cinquillo por toda la clasificación y deja al último a cero', () => {
+    let state = makeMiniGameState('cinquillo');
+    const embedded = state.miniGame.embeddedGame;
+    if (!embedded || embedded.gameId !== 'cinquillo') {
+      throw new Error('falta el Cinquillo alojado');
+    }
+    const first = embedded.players[0];
+    const second = embedded.players[1];
+    const last = embedded.players[2];
+    if (!first || !second || !last) throw new Error('faltan jugadores de Cinquillo');
+    embedded.tableCards = ['oros-5'];
+    embedded.turnSeat = first.seat;
+    first.hand = ['oros-6'];
+    second.hand = ['oros-7'];
+    last.hand = ['copas-5'];
+    for (const player of embedded.players) {
+      player.score = 0;
+      player.revealed = false;
+    }
+
+    state = playEmbedded(state, first.playerId, { type: 'playCard', cardId: 'oros-6' });
+    expect(state.phase).toBe('minigameInput');
+    state = playEmbedded(state, second.playerId, { type: 'playCard', cardId: 'oros-7' });
+
+    expect(state.phase).toBe('minigameReveal');
+    expect(state.miniGame.results?.[first.playerId]?.rank).toBe(1);
+    expect(state.miniGame.results?.[second.playerId]?.rank).toBe(2);
+    expect(state.miniGame.results?.[last.playerId]?.rank).toBe(3);
+    expect(state.miniGame.results?.[first.playerId]?.reward).toBe(6);
+    expect(state.miniGame.results?.[second.playerId]?.reward).toBe(3);
+    expect(state.miniGame.results?.[last.playerId]?.reward).toBe(0);
+  });
+
+  it('aloja los juegos sociales exprés durante tres rondas completas', () => {
     const socialMiniGames = ['colores', 'mayoria', 'escala', 'matiz'] as const;
 
     for (const gameId of socialMiniGames) {
       let state = makeMiniGameState(gameId);
-      const embedded = state.miniGame.embeddedGame;
-      if (!embedded || embedded.gameId !== gameId) {
-        throw new Error(`falta el juego social alojado: ${gameId}`);
-      }
+      for (let miniRound = 1; miniRound <= 3; miniRound += 1) {
+        const embedded = state.miniGame.embeddedGame;
+        if (!embedded || embedded.gameId !== gameId) {
+          throw new Error(`falta el juego social alojado: ${gameId}`);
+        }
+        expect(embedded.round).toBe(miniRound);
 
-      if (embedded.gameId === 'colores') {
-        const correctColors = colorQuestionById(embedded.colors?.questionId ?? '').correctColors;
-        for (const player of state.players) {
-          state = playEmbedded(state, player.playerId, {
-            type: 'submitColors',
-            colors: correctColors,
+        if (embedded.gameId === 'colores') {
+          const correctColors = colorQuestionById(embedded.colors?.questionId ?? '').correctColors;
+          for (const player of state.players) {
+            state = playEmbedded(state, player.playerId, {
+              type: 'submitColors',
+              colors: correctColors,
+            });
+          }
+        } else if (embedded.gameId === 'mayoria') {
+          for (const player of state.players) {
+            state = playEmbedded(state, player.playerId, {
+              type: 'submitMajority',
+              answer: 'pizza',
+            });
+          }
+          state = playEmbedded(state, 'p1', {
+            type: 'resolveMajority',
+            groups: [state.players.map((player) => player.playerId)],
           });
-        }
-      } else if (embedded.gameId === 'mayoria') {
-        for (const player of state.players) {
-          state = playEmbedded(state, player.playerId, {
-            type: 'submitMajority',
-            answer: 'pizza',
+        } else if (embedded.gameId === 'escala') {
+          const cluePlayerId = embedded.scale?.cluePlayerId;
+          if (!cluePlayerId) throw new Error('falta la guía de Escala');
+          state = playEmbedded(state, cluePlayerId, {
+            type: 'submitScaleClue',
+            clue: 'Una prueba corta',
           });
+          for (const player of state.players) {
+            if (player.playerId === cluePlayerId) continue;
+            state = playEmbedded(state, player.playerId, { type: 'submitScale', value: 50 });
+          }
+        } else {
+          for (const player of state.players) {
+            state = playEmbedded(state, player.playerId, {
+              type: 'submitMatiz',
+              hex: '#808080',
+            });
+          }
         }
-        state = playEmbedded(state, 'p1', {
-          type: 'resolveMajority',
-          groups: [state.players.map((player) => player.playerId)],
-        });
-      } else if (embedded.gameId === 'escala') {
-        const cluePlayerId = embedded.scale?.cluePlayerId;
-        if (!cluePlayerId) throw new Error('falta la guía de Escala');
-        state = playEmbedded(state, cluePlayerId, {
-          type: 'submitScaleClue',
-          clue: 'Una prueba corta',
-        });
-        for (const player of state.players) {
-          if (player.playerId === cluePlayerId) continue;
-          state = playEmbedded(state, player.playerId, { type: 'submitScale', value: 50 });
-        }
-      } else {
-        for (const player of state.players) {
-          state = playEmbedded(state, player.playerId, {
-            type: 'submitMatiz',
-            hex: '#808080',
-          });
+
+        if (miniRound < 3) {
+          expect(state.phase).toBe('minigameInput');
+          state = playEmbedded(state, 'p1', { type: 'nextRound' });
         }
       }
-
       expect(state.phase).toBe('minigameReveal');
       expect(state.miniGame.results).not.toBeNull();
       expect(Object.keys(state.miniGame.scoreDeltas ?? {})).toHaveLength(state.players.length);
     }
   });
 
-  it('devuelve el control al mapa al cerrar cualquiera de los minijuegos alojados', () => {
+  it('mantiene Banderas dentro de La Gran Ronda hasta completar tres preguntas', () => {
+    let state = makeMiniGameState('banderas');
+    for (let miniRound = 1; miniRound <= 3; miniRound += 1) {
+      const embedded = state.miniGame.embeddedGame;
+      if (!embedded || embedded.gameId !== 'banderas') {
+        throw new Error('falta Banderas alojado');
+      }
+      expect(embedded.round).toBe(miniRound);
+      const question = embedded.questions.find(
+        (candidate) => candidate.id === embedded.flags.questionId,
+      );
+      if (!question) throw new Error('falta la pregunta de bandera');
+      for (const player of state.players) {
+        state = playEmbedded(state, player.playerId, {
+          type: 'submitFlag',
+          optionId: question.correctOptionId,
+        });
+      }
+      if (miniRound < 3) {
+        expect(state.phase).toBe('minigameInput');
+        state = playEmbedded(state, 'p1', { type: 'nextRound' });
+      }
+    }
+    expect(state.phase).toBe('minigameReveal');
+    expect(state.miniGame.results).not.toBeNull();
+  });
+
+  it('no permite saltarse desde fuera el final de un minijuego alojado', () => {
     const miniGames = [
       'chinchon',
       'pocha',
@@ -516,12 +641,10 @@ describe('La Gran Ronda', () => {
     for (const gameId of miniGames) {
       const definition = granRondaMiniGameById(gameId);
       const playerCount = Math.min(3, definition.maxPlayers);
-      let state = makeMiniGameState(gameId, playerCount);
+      const state = makeMiniGameState(gameId, playerCount);
       expect(state.miniGame.embeddedGame?.gameId).toBe(gameId);
-      state = play({ type: 'finishGranRondaMiniGame' }, state, 'p1');
-      expect(state.phase, `${gameId} debe revelar resultados`).toBe('minigameReveal');
-      state = play({ type: 'nextRound' }, state, 'p1');
-      expect(state.phase, `${gameId} debe volver al mapa`).toBe('movement');
+      const skipped = applyAction(state, 'p1', { type: 'finishGranRondaMiniGame' }, 0);
+      expect(skipped.ok, `${gameId} no debe cerrarse antes de tiempo`).toBe(false);
     }
   });
 
@@ -541,7 +664,8 @@ describe('La Gran Ronda', () => {
       path: ['plaza-copas'],
       remainingSteps: 0,
       routeOptions: [],
-      forcedNextSpaceId: null,
+      routePaths: {},
+      plannedPath: [],
     };
     state.resolution = {
       kind: 'sello',

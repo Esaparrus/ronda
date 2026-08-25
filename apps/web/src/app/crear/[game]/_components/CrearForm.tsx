@@ -1173,7 +1173,7 @@ function GranRondaVariants({ config, setConfig }: GranRondaVariantsProps) {
       />
       <QuantityStepper
         legend="Rondas"
-        helperText="Cada ronda tiene movimiento y un minijuego de una pregunta."
+        helperText="Cada ronda tiene movimiento y un minijuego. Las pruebas rápidas se juegan a tres preguntas; los juegos de cartas conservan su partida completa."
         value={config.rounds}
         onChange={(value) =>
           setConfig((previous) => ({ ...previous, rounds: value as GranRondaConfig['rounds'] }))

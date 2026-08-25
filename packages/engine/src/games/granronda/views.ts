@@ -67,6 +67,7 @@ function boardPlayers(state: GranRondaState): GranRondaBoardPlayer[] {
     position: player.position,
     coins: player.coins,
     seals: player.seals,
+    skipTurns: player.skipTurns,
     powerups: { ...player.powerups },
     lastRoll: player.lastRoll,
     lastSpaceId: player.lastSpaceId,
@@ -76,10 +77,18 @@ function boardPlayers(state: GranRondaState): GranRondaBoardPlayer[] {
 function movement(state: GranRondaState): GranRondaMovementPublic | null {
   return state.movement
     ? {
-        ...state.movement,
+        playerId: state.movement.playerId,
+        roll: state.movement.roll,
         dice: [...state.movement.dice],
         path: [...state.movement.path],
+        remainingSteps: state.movement.remainingSteps,
         routeOptions: [...state.movement.routeOptions],
+        routePaths: Object.fromEntries(
+          Object.entries(state.movement.routePaths).map(([destinationId, path]) => [
+            destinationId,
+            [...path],
+          ]),
+        ),
       }
     : null;
 }
@@ -269,7 +278,11 @@ function buildMe(state: GranRondaState, playerId: PlayerId): GranRondaPlayerView
     ) {
       availableActions.push('submitGranRondaAnswer');
     }
-    if (state.phase === 'minigameInput' && player.seat === 0) {
+    if (
+      state.phase === 'minigameInput' &&
+      player.seat === 0 &&
+      state.miniGame.embeddedGame === null
+    ) {
       availableActions.push('finishGranRondaMiniGame');
     }
     if (state.phase === 'minigameReveal' && state.status === 'playing' && player.seat === 0) {

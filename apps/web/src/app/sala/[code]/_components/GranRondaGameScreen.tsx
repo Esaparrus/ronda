@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type {
   GameAction,
@@ -12,11 +12,12 @@ import type {
 import { GranRondaBoard } from '@/components/granronda/GranRondaBoard';
 import { GranRondaSpaceIcon } from '@/components/granronda/GranRondaSpaceIcon';
 import { GranRondaTurnRollPrompt } from '@/components/granronda/GranRondaTurnRollPrompt';
-import { Avatar } from '@/components/ui/Avatar';
+import { MatizArtwork } from '@/components/matiz/MatizGame';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
 import { Sheet } from '@/components/ui/Sheet';
 import { useRondaStore } from '@/lib/store';
+import { MATIZ_COLOR_TOKENS } from '@/lib/tokens';
 import { ClassicGameScreen } from './ClassicGameScreen';
 import { GameScreen } from './GameScreen';
 import { MusicalGameScreen } from './MusicalGameScreen';
@@ -249,8 +250,8 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
       {!final && view.phase === 'routeChoice' ? (
         <p className="px-2 text-center text-12 text-humo">
           {can('chooseGranRondaPath')
-            ? 'Toca directamente una de las casillas doradas del mapa para elegir el camino.'
-            : `${currentTurn?.nick ?? 'La persona activa'} está eligiendo una casilla del mapa.`}
+            ? `Toca la casilla exacta en la que quieres caer con tu ${view.movement?.roll ?? 'tirada'}.`
+            : `${currentTurn?.nick ?? 'La persona activa'} está eligiendo su destino final.`}
         </p>
       ) : null}
 
@@ -321,7 +322,9 @@ export function GranRondaGameScreen({ view, onRequestLeave }: GranRondaGameScree
                   className="interactive-surface flex items-center gap-3 px-3 py-2"
                 >
                   <span className="w-5 text-center font-mono text-14 text-humo">{index + 1}</span>
-                  <Avatar name={player.nick} colorIndex={player.colorIndex} size={32} />
+                  <span className="gran-ronda-player-token" role="img" aria-label={player.nick}>
+                    {player.tokenIcon ?? '🎲'}
+                  </span>
                   <span className="min-w-0 flex-1 truncate text-15 text-hueso">{player.nick}</span>
                   {player.playerId === view.winnerId ? <Pill>Ganador</Pill> : null}
                   <span className="font-mono text-13 text-verde">
@@ -405,7 +408,9 @@ function PlayersInfoSheet({
                 }`}
               >
                 <span className="w-5 text-center font-mono text-12 text-humo">{index + 1}</span>
-                <Avatar name={player.nick} colorIndex={player.colorIndex} size={34} />
+                <span className="gran-ronda-player-token" role="img" aria-label={player.nick}>
+                  {player.tokenIcon ?? '🎲'}
+                </span>
                 <span className="min-w-0 flex-1 truncate text-14 font-semibold text-hueso">
                   {player.nick}
                   {player.playerId === view.me.playerId ? ' · tú' : ''}
@@ -414,6 +419,11 @@ function PlayersInfoSheet({
                   {boardPlayer?.seals ?? 0} sellos
                 </span>
                 <span className="font-mono text-12 text-oro">{boardPlayer?.coins ?? 0} oros</span>
+                {(boardPlayer?.skipTurns ?? 0) > 0 ? (
+                  <span className="rounded-full bg-brasa/15 px-2 py-1 text-10 font-semibold text-brasa">
+                    🔒 pierde turno
+                  </span>
+                ) : null}
               </li>
             );
           })}
@@ -474,6 +484,7 @@ function EmbeddedMiniGamePanel({ view }: { view: GranRondaPlayerView }) {
         </div>
         <span className="rounded-full border border-oro/40 bg-oro/10 px-2.5 py-1 font-mono text-10 uppercase tracking-wider text-oro">
           {embeddedGameLabel(embedded.gameId)}
+          {embeddedRoundLabel(embedded)}
         </span>
       </div>
       <div className="gran-ronda-embedded-game__frame">
@@ -523,6 +534,28 @@ function EmbeddedMiniGamePanel({ view }: { view: GranRondaPlayerView }) {
       ) : null}
     </section>
   );
+}
+
+function embeddedRoundLabel(
+  embedded: NonNullable<GranRondaPlayerView['me']['embeddedGame']>,
+): string {
+  if (
+    ![
+      'preciojusto',
+      'banderas',
+      'cifras',
+      'quienloharia',
+      'completalafrase',
+      'colores',
+      'mayoria',
+      'escala',
+      'matiz',
+    ].includes(embedded.gameId)
+  ) {
+    return '';
+  }
+  const configuredRounds = (embedded.config as { rounds?: number }).rounds;
+  return typeof configuredRounds === 'number' ? ` · ${embedded.round}/${configuredRounds}` : '';
 }
 
 function embeddedGameLabel(gameId: string): string {
@@ -696,6 +729,7 @@ function MiniGamePanel({
             <p className="eyebrow text-oro">Resultados de todos</p>
             <h2 className="mt-1 text-22 font-semibold text-hueso">Clasificación del minijuego</h2>
           </div>
+          <MiniGameAnswerReview view={view} />
           <div className="grid gap-1.5 sm:grid-cols-2">
             {rankedPlayers.map((player) => {
               const result = view.miniGame.results?.[player.playerId];
@@ -710,6 +744,9 @@ function MiniGamePanel({
                   }`}
                 >
                   <span className="min-w-0 truncate text-hueso">
+                    <span className="mr-1" aria-hidden="true">
+                      {player.tokenIcon ?? '🎲'}
+                    </span>
                     {result ? `${result.rank}. ` : ''}
                     {player.nick}
                     {result?.outcome === 'bust' ? (
@@ -750,6 +787,71 @@ function MiniGamePanel({
 function PersonalMiniGameResult({ view }: { view: GranRondaPlayerView }) {
   const embedded = view.miniGame.embeddedGame;
   const result = view.miniGame.results?.[view.me.playerId];
+
+  if (embedded?.gameId === 'banderas') {
+    const selectedId = embedded.flags.answers?.[view.me.playerId] ?? null;
+    const selected = embedded.flags.options.find((option) => option.id === selectedId);
+    const correct = embedded.flags.options.find(
+      (option) => option.id === embedded.flags.correctOptionId,
+    );
+    const didHit = selectedId !== null && selectedId === embedded.flags.correctOptionId;
+    return (
+      <div className="grid gap-2 text-left sm:grid-cols-2">
+        <AnswerCallout
+          label="Tu respuesta"
+          value={selected?.label ?? 'Sin respuesta'}
+          state={didHit ? 'correct' : 'wrong'}
+        />
+        <AnswerCallout label="Respuesta correcta" value={correct?.label ?? '—'} state="correct" />
+        {embedded.flags.explanation ? (
+          <p className="sm:col-span-2 px-1 text-13 leading-relaxed text-humo">
+            {embedded.flags.explanation}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (embedded?.gameId === 'matiz') {
+    const answer = embedded.party.answers?.[view.me.playerId] ?? null;
+    const target = embedded.party.targetHex;
+    const accuracy = embedded.party.scoreDeltas?.[view.me.playerId] ?? result?.score ?? 0;
+    return (
+      <div className="flex flex-col gap-3 text-left">
+        <div className="grid grid-cols-2 gap-2">
+          <MatizComparisonCard
+            label="Original"
+            challengeId={embedded.party.challengeId}
+            color={target}
+          />
+          <MatizComparisonCard
+            label="Tu mezcla"
+            challengeId={embedded.party.challengeId}
+            color={answer}
+          />
+        </div>
+        <p className="rounded-2xl border border-oro/35 bg-oro/10 px-3 py-2 text-center text-14 text-hueso">
+          Has conseguido <strong className="font-mono text-oro">{accuracy}% de precisión</strong>.
+        </p>
+      </div>
+    );
+  }
+
+  if (embedded?.gameId === 'colores') {
+    const answer = embedded.party.answers?.[view.me.playerId] ?? [];
+    const correct = embedded.party.correctColors ?? [];
+    const didHit = sameStringSet(answer, correct);
+    return (
+      <div className="grid gap-2 text-left sm:grid-cols-2">
+        <ColorAnswerCard
+          label="Tu combinación"
+          colors={answer}
+          state={didHit ? 'correct' : 'wrong'}
+        />
+        <ColorAnswerCard label="Combinación correcta" colors={correct} state="correct" />
+      </div>
+    );
+  }
 
   if (embedded?.gameId === 'preciojusto') {
     const guess = embedded.price.guesses?.[view.me.playerId];
@@ -798,6 +900,438 @@ function PersonalMiniGameResult({ view }: { view: GranRondaPlayerView }) {
           ? 'Te has pasado y esta vez no sumas premio.'
           : 'Has completado el minijuego.';
   return <p className="text-15 leading-relaxed text-hueso">{outcome}</p>;
+}
+
+function MiniGameAnswerReview({ view }: { view: GranRondaPlayerView }) {
+  const embedded = view.miniGame.embeddedGame;
+  if (!embedded) return null;
+
+  if (embedded.gameId === 'banderas') {
+    return (
+      <AnswerReviewFrame title="Qué respondió cada persona">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {embedded.flags.options.map((option) => {
+            const isCorrect = option.id === embedded.flags.correctOptionId;
+            const voters = view.players.filter(
+              (player) => embedded.flags.answers?.[player.playerId] === option.id,
+            );
+            return (
+              <div
+                key={option.id}
+                className={`rounded-2xl border p-3 ${
+                  isCorrect
+                    ? 'border-verde bg-verde/15'
+                    : voters.length > 0
+                      ? 'border-brasa/70 bg-brasa/10'
+                      : 'border-linea bg-tinta/25'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="text-14 text-hueso">{option.label}</strong>
+                  <span
+                    className={isCorrect ? 'text-11 font-semibold text-verde' : 'text-11 text-humo'}
+                  >
+                    {isCorrect ? '✓ Correcta' : `${voters.length} votos`}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {voters.length > 0 ? (
+                    voters.map((player) => (
+                      <ReviewPlayerChip key={player.playerId} player={player} />
+                    ))
+                  ) : (
+                    <span className="text-11 text-humo">Nadie la eligió</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {embedded.flags.explanation ? (
+          <p className="rounded-xl bg-tinta/35 px-3 py-2 text-12 leading-relaxed text-humo">
+            {embedded.flags.explanation}
+          </p>
+        ) : null}
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'colores') {
+    const correct = embedded.party.correctColors ?? [];
+    return (
+      <AnswerReviewFrame title="Combinaciones de la mesa">
+        <ColorAnswerCard label="Respuesta correcta" colors={correct} state="correct" />
+        <div className="grid gap-2 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const colors = embedded.party.answers?.[player.playerId] ?? [];
+            return (
+              <ColorAnswerCard
+                key={player.playerId}
+                label={`${player.tokenIcon ?? '🎲'} ${player.nick}`}
+                colors={colors}
+                state={sameStringSet(colors, correct) ? 'correct' : 'wrong'}
+              />
+            );
+          })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'matiz') {
+    return (
+      <AnswerReviewFrame title="Original y mezclas de la mesa">
+        <MatizComparisonCard
+          label="Color original"
+          challengeId={embedded.party.challengeId}
+          color={embedded.party.targetHex}
+        />
+        <div className="grid gap-2 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const answer = embedded.party.answers?.[player.playerId] ?? null;
+            const accuracy = embedded.party.scoreDeltas?.[player.playerId] ?? 0;
+            return (
+              <div
+                key={player.playerId}
+                className="rounded-2xl border border-linea bg-tinta/25 p-2"
+              >
+                <MatizArtwork
+                  challengeId={embedded.party.challengeId}
+                  color={answer ?? MATIZ_COLOR_TOKENS.placeholder}
+                  className="!rounded-xl"
+                />
+                <div className="mt-2 flex items-center justify-between gap-2 px-1 text-12">
+                  <span className="min-w-0 truncate text-hueso">
+                    {player.tokenIcon ?? '🎲'} {player.nick}
+                  </span>
+                  <strong className="font-mono text-oro">{accuracy}%</strong>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'mayoria') {
+    return (
+      <AnswerReviewFrame title="Respuestas de la mesa">
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const answer = embedded.party.answers?.[player.playerId] ?? 'Sin respuesta';
+            const isMajority = embedded.party.majorityAnswers?.includes(answer) ?? false;
+            return (
+              <AnswerPlayerRow
+                key={player.playerId}
+                player={player}
+                value={answer}
+                detail={isMajority ? 'Mayoría' : undefined}
+                state={isMajority ? 'correct' : 'neutral'}
+              />
+            );
+          })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'escala') {
+    return (
+      <AnswerReviewFrame title={`Punto exacto: ${embedded.party.target ?? '—'}/100`}>
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {view.players
+            .filter((player) => player.playerId !== embedded.party.cluePlayerId)
+            .map((player) => {
+              const guess = embedded.party.guesses?.[player.playerId];
+              const distance =
+                guess === undefined || embedded.party.target === null
+                  ? null
+                  : Math.abs(guess - embedded.party.target);
+              return (
+                <AnswerPlayerRow
+                  key={player.playerId}
+                  player={player}
+                  value={guess === undefined ? 'Sin respuesta' : `${guess}/100`}
+                  detail={distance === null ? undefined : `a ${distance}`}
+                />
+              );
+            })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'preciojusto') {
+    return (
+      <AnswerReviewFrame
+        title={`Precio real: ${formatEuroCents(embedded.price.referencePriceCents)}`}
+      >
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const guess = embedded.price.guesses?.[player.playerId];
+            return (
+              <AnswerPlayerRow
+                key={player.playerId}
+                player={player}
+                value={formatEuroCents(guess?.priceCents)}
+                detail={
+                  guess?.differenceCents === null || guess?.differenceCents === undefined
+                    ? undefined
+                    : `a ${formatEuroCents(guess.differenceCents)}`
+                }
+              />
+            );
+          })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'quienloharia') {
+    return (
+      <AnswerReviewFrame title="Quién votó a quién">
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const votedId = embedded.who.votes?.[player.playerId];
+            const voted = view.players.find((candidate) => candidate.playerId === votedId);
+            return (
+              <AnswerPlayerRow
+                key={player.playerId}
+                player={player}
+                value={voted ? `${voted.tokenIcon ?? '🎲'} ${voted.nick}` : 'Sin voto'}
+              />
+            );
+          })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'completalafrase') {
+    return (
+      <AnswerReviewFrame title={`Solución: ${embedded.sentence.canonicalAnswer ?? '—'}`}>
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const answer = embedded.sentence.answers?.[player.playerId];
+            return (
+              <AnswerPlayerRow
+                key={player.playerId}
+                player={player}
+                value={answer?.answer ?? 'Sin respuesta'}
+                detail={answer?.correct ? 'Acierto' : 'Fallo'}
+                state={answer?.correct ? 'correct' : 'wrong'}
+              />
+            );
+          })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  if (embedded.gameId === 'cifras') {
+    const itemLabel = (itemId: string) =>
+      embedded.cifras.items.find((item) => item.id === itemId)?.label ?? itemId;
+    return (
+      <AnswerReviewFrame title="Respuestas de la mesa">
+        {embedded.cifras.kind === 'order' && embedded.cifras.orders ? (
+          <p className="rounded-xl border border-verde/40 bg-verde/10 px-3 py-2 text-12 text-hueso">
+            Orden correcto:{' '}
+            <strong>
+              {Object.values(embedded.cifras.orders)[0]?.correctOrder.map(itemLabel).join(' → ') ??
+                '—'}
+            </strong>
+          </p>
+        ) : null}
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {view.players.map((player) => {
+            const estimate = embedded.cifras.estimates?.[player.playerId];
+            const choice = embedded.cifras.choices?.[player.playerId];
+            const order = embedded.cifras.orders?.[player.playerId];
+            const value = estimate
+              ? `${estimate.value ?? 'Sin respuesta'} ${embedded.cifras.unit}`.trim()
+              : choice
+                ? choice.selectedOptionId
+                  ? itemLabel(choice.selectedOptionId)
+                  : 'Sin respuesta'
+                : (order?.order?.map(itemLabel).join(' → ') ?? 'Sin respuesta');
+            const correct =
+              choice?.correct ??
+              (order ? order.correctPositions === embedded.cifras.items.length : undefined);
+            const detail =
+              estimate?.errorPercent !== null && estimate?.errorPercent !== undefined
+                ? `error ${String(estimate.errorPercent).replace('.', ',')}%`
+                : order
+                  ? `${order.correctPositions}/${embedded.cifras.items.length} posiciones`
+                  : choice
+                    ? choice.correct
+                      ? 'Acierto'
+                      : 'Fallo'
+                    : undefined;
+            return (
+              <AnswerPlayerRow
+                key={player.playerId}
+                player={player}
+                value={value}
+                detail={detail}
+                state={correct === undefined ? 'neutral' : correct ? 'correct' : 'wrong'}
+              />
+            );
+          })}
+        </div>
+      </AnswerReviewFrame>
+    );
+  }
+
+  return null;
+}
+
+function AnswerReviewFrame({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-mesa/40 p-3">
+      <p className="text-12 font-semibold uppercase tracking-[0.1em] text-oro">{title}</p>
+      {children}
+    </section>
+  );
+}
+
+function ReviewPlayerChip({ player }: { player: GranRondaPlayerView['players'][number] }) {
+  return (
+    <span className="rounded-full border border-white/10 bg-tinta/35 px-2 py-1 text-11 text-hueso">
+      {player.tokenIcon ?? '🎲'} {player.nick}
+    </span>
+  );
+}
+
+function AnswerPlayerRow({
+  player,
+  value,
+  detail,
+  state = 'neutral',
+}: {
+  player: GranRondaPlayerView['players'][number];
+  value: string;
+  detail?: string;
+  state?: 'correct' | 'wrong' | 'neutral';
+}) {
+  const style =
+    state === 'correct'
+      ? 'border-verde/55 bg-verde/10'
+      : state === 'wrong'
+        ? 'border-brasa/55 bg-brasa/10'
+        : 'border-linea bg-tinta/25';
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${style}`}>
+      <div className="flex items-center justify-between gap-2 text-11">
+        <span className="min-w-0 truncate font-semibold text-hueso">
+          {player.tokenIcon ?? '🎲'} {player.nick}
+        </span>
+        {detail ? <span className="shrink-0 text-humo">{detail}</span> : null}
+      </div>
+      <p className="mt-1 break-words text-13 text-hueso">{value}</p>
+    </div>
+  );
+}
+
+function AnswerCallout({
+  label,
+  value,
+  state,
+}: {
+  label: string;
+  value: string;
+  state: 'correct' | 'wrong';
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-3 py-3 ${
+        state === 'correct' ? 'border-verde bg-verde/15' : 'border-brasa bg-brasa/15'
+      }`}
+    >
+      <span className="text-10 uppercase tracking-wider text-humo">{label}</span>
+      <strong className="mt-1 block text-16 text-hueso">{value}</strong>
+    </div>
+  );
+}
+
+function MatizComparisonCard({
+  label,
+  challengeId,
+  color,
+}: {
+  label: string;
+  challengeId: string;
+  color: string | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-linea bg-tinta/25 p-2">
+      <MatizArtwork
+        challengeId={challengeId}
+        color={color ?? MATIZ_COLOR_TOKENS.placeholder}
+        className="!rounded-xl"
+      />
+      <div className="mt-2 flex items-center justify-between gap-1 px-1">
+        <span className="text-11 font-semibold text-hueso">{label}</span>
+        <span className="font-mono text-10 uppercase text-humo">{color ?? '—'}</span>
+      </div>
+    </div>
+  );
+}
+
+const MINI_COLOR_CLASSES: Record<string, string> = {
+  rojo: 'bg-ficha-rojo',
+  azul: 'bg-ficha-azul',
+  verde: 'bg-ficha-verde',
+  amarillo: 'bg-ficha-amarillo',
+  naranja: 'bg-ficha-naranja',
+  morado: 'bg-ficha-morado',
+  rosa: 'bg-ficha-rosa',
+  blanco: 'bg-ficha-blanco',
+  negro: 'bg-ficha-negro',
+  marrón: 'bg-ficha-marron',
+  gris: 'bg-ficha-gris',
+};
+
+function ColorAnswerCard({
+  label,
+  colors,
+  state,
+}: {
+  label: string;
+  colors: string[];
+  state: 'correct' | 'wrong';
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-3 py-2 ${
+        state === 'correct' ? 'border-verde/60 bg-verde/10' : 'border-brasa/60 bg-brasa/10'
+      }`}
+    >
+      <p className="text-11 font-semibold text-hueso">{label}</p>
+      <div className="mt-2 flex min-h-7 flex-wrap gap-1.5">
+        {colors.length > 0 ? (
+          colors.map((color, index) => (
+            <span
+              key={`${color}-${index}`}
+              className={`grid size-7 place-items-center rounded-full border border-white/50 text-9 font-bold uppercase text-white shadow ${MINI_COLOR_CLASSES[color] ?? 'bg-humo'}`}
+              title={color}
+            >
+              {color.slice(0, 1)}
+            </span>
+          ))
+        ) : (
+          <span className="text-11 text-humo">Sin respuesta</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function sameStringSet(left: string[], right: string[]): boolean {
+  return (
+    left.length === right.length &&
+    [...left].sort().every((value, index) => value === [...right].sort()[index])
+  );
 }
 
 function formatEuroCents(cents: number | null | undefined): string {

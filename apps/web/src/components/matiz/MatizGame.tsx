@@ -236,24 +236,58 @@ export function MatizPlayerRound({
 
 function MatizReveal({ view }: { view: MatizPlayerView }) {
   const { party } = view;
+  const myAnswer = party.answers?.[view.me.playerId] ?? null;
+  const myAccuracy = party.scoreDeltas?.[view.me.playerId] ?? 0;
   return (
     <section className="surface-panel flex w-full max-w-xl flex-col gap-4 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-12 font-semibold uppercase tracking-[0.14em] text-humo">Color original</p>
-          <p className="mt-1 font-mono text-20 font-semibold text-hueso">{party.targetHex}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-verde/45 bg-verde/10 p-2">
+          <MatizArtwork
+            challengeId={party.challengeId}
+            color={party.targetHex ?? COLOR_TOKENS.mesa}
+            className="!rounded-xl"
+          />
+          <div className="mt-2 flex flex-col gap-0.5 px-1">
+            <p className="text-11 font-semibold uppercase tracking-[0.1em] text-humo">Original</p>
+            <p className="font-mono text-12 font-semibold uppercase text-hueso">
+              {party.targetHex}
+            </p>
+          </div>
         </div>
-        <span className="size-12 rounded-2xl border-2 border-white shadow" style={{ backgroundColor: party.targetHex ?? COLOR_TOKENS.mesa }} />
+        <div className="rounded-2xl border border-oro/45 bg-oro/10 p-2">
+          <MatizArtwork
+            challengeId={party.challengeId}
+            color={myAnswer ?? MATIZ_COLOR_TOKENS.placeholder}
+            className="!rounded-xl"
+          />
+          <div className="mt-2 flex flex-col gap-0.5 px-1">
+            <p className="text-11 font-semibold uppercase tracking-[0.1em] text-humo">Tu mezcla</p>
+            <p className="font-mono text-12 font-semibold uppercase text-hueso">
+              {myAnswer ?? 'Sin respuesta'}
+            </p>
+          </div>
+        </div>
       </div>
+      <p className="rounded-2xl border border-oro/35 bg-oro/10 px-3 py-2 text-center text-14 text-hueso">
+        Has conseguido <strong className="font-mono text-oro">{myAccuracy}% de precisión</strong>.
+      </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {view.players.map((player) => {
           const answer = party.answers?.[player.playerId];
           const points = party.scoreDeltas?.[player.playerId] ?? 0;
           return (
-            <div key={player.playerId} className="flex items-center gap-3 rounded-2xl border border-linea bg-tinta/50 px-3 py-2">
-              <span className="size-9 shrink-0 rounded-xl border border-white shadow" style={{ backgroundColor: answer ?? MATIZ_COLOR_TOKENS.placeholder }} />
-              <span className="min-w-0 flex-1 truncate text-14 font-semibold text-hueso">{player.nick}</span>
-              <span className="font-mono text-16 font-semibold text-oro">+{points}</span>
+            <div
+              key={player.playerId}
+              className="flex items-center gap-3 rounded-2xl border border-linea bg-tinta/50 px-3 py-2"
+            >
+              <span
+                className="size-9 shrink-0 rounded-xl border border-white shadow"
+                style={{ backgroundColor: answer ?? MATIZ_COLOR_TOKENS.placeholder }}
+              />
+              <span className="min-w-0 flex-1 truncate text-14 font-semibold text-hueso">
+                {player.nick}
+              </span>
+              <span className="font-mono text-16 font-semibold text-oro">{points}%</span>
             </div>
           );
         })}
@@ -327,20 +361,47 @@ export function MatizSoloGame() {
           <span className="eyebrow">Partida individual</span>
           <h1 className="mt-1 font-display text-32 leading-display text-hueso">Matiz</h1>
         </div>
-        <span className="rounded-full bg-mesa px-3 py-2 font-mono text-13 text-humo shadow-sm">{roundIndex + 1}/{activeChallenges.length} · {score} pts</span>
+        <span className="rounded-full bg-mesa px-3 py-2 font-mono text-13 text-humo shadow-sm">
+          {roundIndex + 1}/{activeChallenges.length} · {score} pts
+        </span>
       </header>
       <section className="surface-panel flex flex-col gap-1 p-4 text-center">
-        <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">{challenge.title}</span>
+        <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">
+          {challenge.title}
+        </span>
         <p className="text-15 text-hueso">{challenge.subtitle}</p>
       </section>
-      <MatizArtwork challengeId={challenge.id} color={color} targetHex={revealed ? challenge.targetHex : null} />
+      {!revealed ? <MatizArtwork challengeId={challenge.id} color={color} /> : null}
       {!revealed ? <MatizPicker value={color} onChange={setColor} /> : null}
       {!revealed ? (
-        <Button onClick={confirm} className="w-full">Aceptar color</Button>
+        <Button onClick={confirm} className="w-full">
+          Aceptar color
+        </Button>
       ) : (
         <section className="surface-panel flex flex-col gap-4 p-4 text-center">
-          <p className="text-14 text-humo">El original era <span className="font-mono font-semibold text-hueso">{challenge.targetHex}</span></p>
-          <p className="font-display text-40 text-oro">+{scores[scores.length - 1] ?? 0} puntos</p>
+          <div className="grid grid-cols-2 gap-2 text-left">
+            <div className="rounded-2xl border border-verde/45 bg-verde/10 p-2">
+              <MatizArtwork
+                challengeId={challenge.id}
+                color={challenge.targetHex}
+                className="!rounded-xl"
+              />
+              <p className="mt-2 px-1 text-11 font-semibold uppercase tracking-wider text-humo">
+                Original
+              </p>
+              <p className="px-1 font-mono text-12 uppercase text-hueso">{challenge.targetHex}</p>
+            </div>
+            <div className="rounded-2xl border border-oro/45 bg-oro/10 p-2">
+              <MatizArtwork challengeId={challenge.id} color={color} className="!rounded-xl" />
+              <p className="mt-2 px-1 text-11 font-semibold uppercase tracking-wider text-humo">
+                Tu mezcla
+              </p>
+              <p className="px-1 font-mono text-12 uppercase text-hueso">{color}</p>
+            </div>
+          </div>
+          <p className="font-display text-34 text-oro">
+            {scores[scores.length - 1] ?? 0}% de precisión
+          </p>
           <Button onClick={next}>Siguiente dibujo</Button>
         </section>
       )}

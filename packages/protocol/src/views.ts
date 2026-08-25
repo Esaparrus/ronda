@@ -937,6 +937,8 @@ export interface GranRondaBoardPlayer {
   position: string;
   coins: number;
   seals: number;
+  /** Turnos de movimiento que todavía debe perder por estar en la cárcel. */
+  skipTurns: number;
   powerups: Record<GranRondaPowerupType, number>;
   lastRoll: number | null;
   lastSpaceId: string | null;
@@ -974,9 +976,13 @@ export interface GranRondaMovementPublic {
   playerId: PlayerId;
   roll: number;
   dice: number[];
+  /** Casillas ya recorridas, incluida la posición de salida de la tirada. */
   path: string[];
   remainingSteps: number;
+  /** Destinos reales en los que puede terminar la tirada. */
   routeOptions: string[];
+  /** Recorrido completo que conduce a cada destino seleccionable. */
+  routePaths: Record<string, string[]>;
 }
 
 export interface GranRondaResolutionPublic {

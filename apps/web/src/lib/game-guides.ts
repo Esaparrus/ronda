@@ -560,15 +560,15 @@ export const GAME_GUIDES = {
     steps: [
       {
         title: 'Tira el dado cuando te toque',
-        body: 'El servidor mueve tu ficha paso a paso. Los premios, pérdidas y eventos se resuelven solo en la casilla donde terminas.',
+        body: 'Primero verás el aviso de tu turno y, después, el dado. Al tirar, el mapa calcula todos los destinos exactos a los que llegas.',
       },
       {
-        title: 'Elige la ruta',
-        body: 'Al iniciar la tirada puedes salir hacia delante o volver por la casilla que queda detrás. Después del primer paso, cada bifurcación solo ofrece sus salidas: no puedes deshacer el recorrido ya elegido.',
+        title: 'Elige dónde vas a caer',
+        body: 'Toca una de las casillas finales iluminadas: verás el recorrido completo antes de elegir y nunca tendrás que contar pasos ni retroceder. Los desvíos cruzan zonas amplias del mapa antes de reunirse.',
       },
       {
-        title: 'Pasa por la tienda',
-        body: 'La tienda se abre aunque todavía te queden pasos. En cada visita puedes comprar una unidad de cada artículo: dado doble, guante ladrón y reto de Oros.',
+        title: 'Aprovecha las casillas especiales',
+        body: 'La tienda se abre aunque todavía te queden pasos. Los puentes te llevan de uno a otro y la cárcel hace que pierdas tu próximo movimiento, aunque sigues jugando el minijuego.',
       },
       {
         title: 'Compra el Sello',

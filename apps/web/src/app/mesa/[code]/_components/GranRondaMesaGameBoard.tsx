@@ -263,7 +263,7 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
               {turnNick ?? 'La persona activa'} elige una casilla iluminada
             </h2>
             <p className="mt-1 text-14 text-humo">
-              Dado: {view.movement?.roll ?? '—'} · El móvil controla la elección.
+              Dado: {view.movement?.roll ?? '—'} · El móvil elige la casilla exacta de llegada.
             </p>
           </div>
         </section>
@@ -323,8 +323,16 @@ export function GranRondaMesaGameBoard({ view }: { view: GranRondaTableView }) {
               key={player.playerId}
               className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${player.playerId === view.turnPlayerId ? 'border-oro/60 bg-oro/10' : 'border-linea bg-mesa'}`}
             >
+              <span className="gran-ronda-player-token" role="img" aria-label={player.nick}>
+                {player.tokenIcon ?? '🎲'}
+              </span>
               <span className="min-w-0 flex-1 truncate text-18 text-hueso">{player.nick}</span>
               {player.playerId === view.winnerId ? <Pill>Ganador</Pill> : null}
+              {(boardPlayer?.skipTurns ?? 0) > 0 ? (
+                <span className="text-15" title="Pierde el próximo turno">
+                  🔒
+                </span>
+              ) : null}
               <span className="font-mono text-18 text-verde">{boardPlayer?.seals ?? 0}✦</span>
               <span className="font-mono text-18 text-oro">{boardPlayer?.coins ?? 0}</span>
             </div>
