@@ -93,7 +93,7 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
         label="Color"
         value={pickerColor.h}
         min={0}
-        max={360}
+        max={359}
         disabled={disabled}
         background={MATIZ_HUE_GRADIENT}
         onChange={(next) => update({ h: next })}
