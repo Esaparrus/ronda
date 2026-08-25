@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GameAction, MatizPlayerView } from '@ronda/protocol';
 import { MATIZ_CHALLENGES } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
@@ -57,10 +57,36 @@ interface MatizPickerProps {
 }
 
 export function MatizPicker({ value, onChange, disabled = false }: MatizPickerProps) {
-  const pickerColor = useMemo(() => hexToPickerColor(value), [value]);
+  const decodedColor = useMemo(() => hexToPickerColor(value), [value]);
+  const [hue, setHue] = useState(decodedColor.h);
+  const lastEmittedValueRef = useRef<string | null>(null);
+  const pickerColor = useMemo(() => ({ ...decodedColor, h: hue }), [decodedColor, hue]);
+
+  useEffect(() => {
+    if (lastEmittedValueRef.current === value) {
+      lastEmittedValueRef.current = null;
+      return;
+    }
+    setHue(decodedColor.h);
+  }, [decodedColor.h, value]);
+
+  function emit(nextColor: PickerColor) {
+    const nextValue = pickerColorToHex(nextColor);
+    lastEmittedValueRef.current = nextValue;
+    onChange(nextValue);
+  }
 
   function update(next: Partial<PickerColor>) {
-    onChange(pickerColorToHex({ ...pickerColor, ...next }));
+    const nextColor = { ...pickerColor, ...next };
+    if (next.h !== undefined) setHue(nextColor.h);
+    emit(nextColor);
+  }
+
+  function updateFromNativeColor(nextValue: string) {
+    const normalizedValue = nextValue.toLowerCase();
+    setHue(hexToPickerColor(normalizedValue).h);
+    lastEmittedValueRef.current = normalizedValue;
+    onChange(normalizedValue);
   }
 
   return (
@@ -77,7 +103,7 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
           type="color"
           value={value}
           disabled={disabled}
-          onChange={(event) => onChange(event.target.value.toLowerCase())}
+          onChange={(event) => updateFromNativeColor(event.target.value)}
           className="sr-only"
         />
         <div className="min-w-0 flex-1">
