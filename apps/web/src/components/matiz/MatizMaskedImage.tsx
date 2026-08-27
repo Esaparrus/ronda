@@ -1,11 +1,15 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
 interface LoadedAsset {
   image: HTMLImageElement;
   mask: HTMLImageElement;
 }
+
+type AssetStatus = 'loading' | 'ready' | 'error';
+type FallbackStatus = 'loading' | 'loaded' | 'error';
 
 export interface MatizMaskedImageProps {
   imageSrc: string;
@@ -24,11 +28,16 @@ export function MatizMaskedImage({ imageSrc, maskSrc, color, alt, className = ''
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const assetRef = useRef<LoadedAsset | null>(null);
   const [assetVersion, setAssetVersion] = useState(0);
+  const [assetStatus, setAssetStatus] = useState<AssetStatus>('loading');
+  const [fallbackStatus, setFallbackStatus] = useState<FallbackStatus>('loading');
 
   useEffect(() => {
     let active = true;
     const image = new window.Image();
     const mask = new window.Image();
+    assetRef.current = null;
+    setAssetStatus('loading');
+    setFallbackStatus('loading');
     image.decoding = 'async';
     mask.decoding = 'async';
 
@@ -37,7 +46,10 @@ export function MatizMaskedImage({ imageSrc, maskSrc, color, alt, className = ''
       assetRef.current = { image, mask };
       setAssetVersion((version) => version + 1);
     }).catch(() => {
-      if (active) assetRef.current = null;
+      if (active) {
+        assetRef.current = null;
+        setAssetStatus('error');
+      }
     });
 
     return () => {
@@ -50,16 +62,49 @@ export function MatizMaskedImage({ imageSrc, maskSrc, color, alt, className = ''
     const asset = assetRef.current;
     if (!canvas || !asset) return;
 
-    drawMaskedImage(canvas, asset.image, asset.mask, color);
+    try {
+      drawMaskedImage(canvas, asset.image, asset.mask, color);
+      setAssetStatus('ready');
+    } catch {
+      setAssetStatus('error');
+    }
   }, [assetVersion, color]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      role="img"
-      aria-label={alt}
-      className={className}
-    />
+    <div className={`relative ${className}`}>
+      <Image
+        src={imageSrc}
+        alt={assetStatus === 'ready' ? '' : alt}
+        fill
+        sizes="100vw"
+        unoptimized
+        onLoad={() => setFallbackStatus('loaded')}
+        onError={() => setFallbackStatus('error')}
+        className={`object-contain p-3 transition-opacity duration-150 ${
+          assetStatus === 'ready' ? 'opacity-0' : 'opacity-100'
+        }`}
+        aria-hidden={assetStatus === 'ready'}
+      />
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label={alt}
+        aria-hidden={assetStatus !== 'ready'}
+        className={`absolute inset-0 h-full w-full object-contain p-3 transition-opacity duration-150 ${
+          assetStatus === 'ready' ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+      {fallbackStatus === 'loading' && assetStatus !== 'ready' ? (
+        <span className="absolute inset-x-3 bottom-3 rounded-full bg-tinta/90 px-3 py-1.5 text-center text-11 font-semibold text-humo">
+          Cargando ilustración…
+        </span>
+      ) : null}
+      {fallbackStatus === 'error' ? (
+        <span className="absolute inset-x-3 bottom-3 rounded-full bg-tinta/95 px-3 py-1.5 text-center text-11 font-semibold text-brasa">
+          No se ha podido cargar la ilustración.
+        </span>
+      ) : null}
+    </div>
   );
 }
 

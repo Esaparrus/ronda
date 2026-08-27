@@ -43,7 +43,7 @@ export function MatizArtwork({
         maskSrc={art.mask}
         color={fill}
         alt="Ilustración del reto de Matiz"
-        className="absolute inset-0 h-full w-full object-contain p-3"
+        className="absolute inset-0 h-full w-full"
       />
     </div>
   );
@@ -154,9 +154,10 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
       <div className="flex items-center gap-3">
         <label
           htmlFor="matiz-native-color"
-          className="size-14 shrink-0 cursor-pointer rounded-2xl border-2 border-white shadow-[0_4px_14px_rgba(0,0,0,.16)]"
+          className="flex size-14 shrink-0 cursor-pointer items-center justify-center rounded-2xl border-2 border-white shadow-[0_4px_14px_rgba(0,0,0,.16)]"
           style={{ backgroundColor: value }}
-          title="Abrir selector de color"
+          title="Elegir color con el móvil"
+          aria-label="Elegir color con el selector del dispositivo"
         />
         <input
           id="matiz-native-color"
@@ -183,16 +184,17 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
           <div>
             <p className="text-13 font-semibold text-hueso">Afina la mezcla</p>
             <p className="mt-1 text-12 leading-relaxed text-humo">
-              Cuadro: saturación y claridad · franja: tono
+              Toca o arrastra el punto · usa la franja para cambiar el tono
             </p>
           </div>
           <span className="shrink-0 font-mono text-12 text-humo">{value}</span>
         </div>
         <div
-          className="matiz-color-field relative mx-auto aspect-square w-full max-w-[320px] rounded-[22px] border-2 border-white shadow-[inset_0_1px_3px_rgba(22,24,29,.18),0_8px_18px_rgba(22,24,29,.12)]"
+          className="matiz-color-field relative mx-auto aspect-square w-full max-w-[280px] rounded-[22px] border-2 border-white shadow-[inset_0_1px_3px_rgba(22,24,29,.18),0_8px_18px_rgba(22,24,29,.12)] sm:max-w-[320px]"
           style={{ background: fieldBackground }}
           role="group"
-          aria-label="Ajuste de saturación y claridad"
+          aria-label="Ajuste de saturación y claridad. Toca o arrastra para elegir el color."
+          aria-describedby="matiz-picker-help"
           tabIndex={disabled ? -1 : 0}
           onKeyDown={handleFieldKeyDown}
           onPointerDown={handleFieldPointerDown}
@@ -201,7 +203,7 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
           onPointerCancel={releaseFieldPointer}
         >
           <span
-            className="pointer-events-none absolute z-10 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-transparent shadow-[0_2px_8px_rgba(22,24,29,.5)]"
+            className="pointer-events-none absolute z-10 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-black/10 shadow-[0_0_0_2px_rgba(22,24,29,.3),0_2px_8px_rgba(22,24,29,.55)]"
             style={{ left: `${pickerColor.s}%`, top: `${100 - pickerColor.v}%` }}
           />
           <span className="pointer-events-none absolute inset-x-3 top-2 text-11 font-semibold text-white drop-shadow-[0_1px_2px_rgba(22,24,29,.7)]">
@@ -215,6 +217,9 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
           <span>Grisáceo</span>
           <span>Intenso</span>
         </div>
+        <p id="matiz-picker-help" className="mx-auto max-w-[320px] text-center text-11 leading-relaxed text-humo">
+          También puedes tocar la muestra de arriba para abrir el selector de color del dispositivo.
+        </p>
       </div>
 
       <SliderRow
