@@ -185,6 +185,41 @@ describe('Musical', () => {
     expect(correct.roundResult?.winnerId).toBe('p1');
   });
 
+  it('permite rendirse desde el principio en modo presencial sin descubrir la respuesta a la mesa', () => {
+    const selected = apply(
+      createState({ ...DEFAULT_MUSICAL_CONFIG, audioMode: 'presencial', mode: 'velocidad' }),
+      'p1',
+      { type: 'musicSelectTrack', track: TRACK },
+    );
+
+    expect(getPlayerView(selected, 'p2').me.availableActions).toContain('musicGiveUp');
+    const gaveUp = applyAt(selected, 'p2', { type: 'musicGiveUp' }, 100);
+
+    expect(gaveUp.phase).toBe('playing');
+    expect(getPlayerView(gaveUp, 'p2').me.revealedAnswer).toEqual({
+      title: TRACK.title,
+      artist: TRACK.artist,
+      year: TRACK.year,
+    });
+    expect(getPlayerView(gaveUp, 'p1').me.revealedAnswer).toBeNull();
+    expect(JSON.stringify(getTableView(gaveUp))).not.toContain(TRACK.title);
+  });
+
+  it('al rendirse un espectador no interrumpe al jugador que responde en velocidad presencial', () => {
+    const selected = apply(
+      createState({ ...DEFAULT_MUSICAL_CONFIG, audioMode: 'presencial', mode: 'velocidad' }),
+      'p1',
+      { type: 'musicSelectTrack', track: TRACK },
+    );
+    const started = apply(selected, 'p1', { type: 'musicStartClip' });
+    const buzzed = apply(started, 'p1', { type: 'musicBuzz' });
+
+    const gaveUp = applyAt(buzzed, 'p2', { type: 'musicGiveUp' }, 100);
+
+    expect(gaveUp.buzzedPlayerId).toBe('p1');
+    expect(getPlayerView(gaveUp, 'p2').me.revealedAnswer?.title).toBe(TRACK.title);
+  });
+
   it('en velocidad bloquea revelar mientras alguien está respondiendo', () => {
     const selected = selectAndStart(createState({ ...DEFAULT_MUSICAL_CONFIG, mode: 'velocidad' }));
     const buzzed = apply(selected, 'p2', { type: 'musicBuzz' });
@@ -311,17 +346,20 @@ describe('Musical', () => {
     expect(finished.roundResult?.winnerId).toBe('p1');
   });
 
-  it('permite revelar en privado al no saberla y espera al resto de dispositivos', () => {
+  it('permite revelar en privado desde el principio y espera al resto de dispositivos', () => {
     const selected = apply(
       createState({ ...DEFAULT_MUSICAL_CONFIG, audioMode: 'online', mode: 'velocidad' }),
       'p1',
       { type: 'musicSelectTrack', track: TRACK },
     );
+    expect(getPlayerView(selected, 'p1').me.availableActions).toContain('musicGiveUp');
+    expect(getPlayerView(selected, 'p1').me.availableActions).toContain('musicStartClip');
     const started = applyAt(selected, 'p1', { type: 'musicStartClip' }, 1_000);
+    expect(getPlayerView(started, 'p1').me.availableActions).toContain('musicGiveUp');
     const resolved = applyAt(started, 'p1', { type: 'musicResolveClip' }, 4_000);
     expect(getPlayerView(resolved, 'p1').me.availableActions).toContain('musicGiveUp');
 
-    const gaveUp = applyAt(resolved, 'p1', { type: 'musicGiveUp' }, 4_100);
+    const gaveUp = applyAt(selected, 'p1', { type: 'musicGiveUp' }, 100);
     expect(gaveUp.phase).toBe('playing');
     expect(getPlayerView(gaveUp, 'p1').me.revealedAnswer).toEqual({
       title: TRACK.title,

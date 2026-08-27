@@ -1599,8 +1599,8 @@ function MusicalVariants({ config, setConfig }: MusicalVariantsProps) {
         </p>
         <p className="text-13 text-humo">
           {config.audioMode === 'presencial'
-            ? 'Solo suena el móvil del administrador. El primero que pulsa puede responder; si falla, queda fuera de esa canción.'
-            : 'Cada jugador escucha la misma canción en su móvil. El tiempo cuenta desde Play hasta Resolver, sin contar la respuesta escrita.'}
+            ? 'Solo suena el móvil del administrador. El primero que pulsa puede responder; si falla, queda fuera de esa canción. Quien no la sepa puede verla desde el principio.'
+            : 'Cada jugador escucha la misma canción en su móvil. El tiempo cuenta desde Play hasta Resolver, sin contar la respuesta escrita; también puedes verla desde el principio si te rindes.'}
         </p>
       </div>
       <SegmentedControl

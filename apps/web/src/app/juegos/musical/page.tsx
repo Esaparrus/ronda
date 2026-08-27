@@ -6,7 +6,7 @@ export default function MusicalPage() {
       slug="musical"
       title="Musical"
       kind="Música y oído"
-      players="1–8 jugadores"
+      players="1 solo · 2–8 en grupo"
       duration="10–25 min"
       summary="Escucha fragmentos de 1 a 30 segundos, reconoce artista y canción, y compite solo o con tus amigos."
       mark="♪"

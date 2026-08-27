@@ -1,5 +1,6 @@
-// Vistas censuradas de Musical. La respuesta completa no aparece hasta que
-// la ronda entra en `reveal`.
+// Vistas censuradas de Musical. La respuesta completa solo aparece a toda la
+// mesa cuando la ronda entra en `reveal`; también puede aparecer de forma
+// privada al jugador que se rinde.
 
 import type {
   MusicalCommonView,
@@ -114,6 +115,13 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
   if (state.status === 'playing' && state.phase === 'playing' && !player.left) {
     const blocked = state.blockedPlayerIds.includes(playerId);
     const hasCorrectGuess = (state.guesses[playerId] ?? []).some((guess) => guess.correct);
+    if (
+      !blocked &&
+      !hasCorrectGuess &&
+      (state.config.audioMode === 'online' || state.config.audioMode === 'presencial')
+    ) {
+      availableActions.push('musicGiveUp');
+    }
     if (state.config.audioMode === 'online') {
       if (!blocked && !hasCorrectGuess) {
         if (player.onlineClipStartedAt === null) {
@@ -122,7 +130,6 @@ function buildMe(state: MusicalState, playerId: PlayerId): MusicalPlayerViewMe {
           availableActions.push('musicResolveClip');
         } else {
           availableActions.push('musicSubmitGuess');
-          availableActions.push('musicGiveUp');
         }
       }
     } else {

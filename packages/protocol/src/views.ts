@@ -717,7 +717,7 @@ export interface MusicalCommonView extends CommonViewBase {
   currentTrack: MusicalTrackPublic | null;
   /** Jugador que ha pulsado primero en el modo velocidad. */
   buzzedPlayerId: PlayerId | null;
-  /** Jugadores que ya han fallado la canción actual. */
+  /** Jugadores que ya han fallado o se han rendido en la canción actual. */
   blockedPlayerIds: PlayerId[];
   guessCounts: Record<PlayerId, number>;
   roundResult: MusicalRoundResult | null;
@@ -733,7 +733,7 @@ export interface MusicalPlayerViewMe {
   onlineClipStartedAt: number | null;
   onlineClipResolvedAt: number | null;
   onlineClipElapsedMs: number | null;
-  /** Respuesta privada tras abandonar una canción en modo por dispositivo. */
+  /** Respuesta privada tras abandonar una canción. */
   revealedAnswer: Pick<MusicalRoundResult, 'title' | 'artist' | 'year'> | null;
 }
 

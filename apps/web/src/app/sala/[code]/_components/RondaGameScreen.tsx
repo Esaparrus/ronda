@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { GameAction, RondaBillMode, RondaCardView, RondaPlayerView, RondaTapaType } from '@ronda/protocol';
-import { RondaCardFan } from '@/components/ronda/RondaCardFan';
+import { RondaCardFan, type RondaCardDragState } from '@/components/ronda/RondaCardFan';
 import { RondaTableOverview } from '@/components/ronda/RondaTableOverview';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
@@ -37,6 +37,11 @@ export function RondaGameScreen({ view, onRequestLeave, onAction, embedded = fal
   const [premiumId, setPremiumId] = useState<string | null>(null);
   const [halfTargetId, setHalfTargetId] = useState<string | null>(null);
   const [discardIds, setDiscardIds] = useState<string[]>([]);
+  const [dragState, setDragState] = useState<RondaCardDragState>({
+    active: false,
+    overTarget: false,
+    cardId: null,
+  });
 
   const selected = view.me.hand.find((card) => card.id === selectedId) ?? null;
   const premium = firstCard(view.me.hand, 'premium');
@@ -80,6 +85,42 @@ export function RondaGameScreen({ view, onRequestLeave, onAction, embedded = fal
     setSelectedId(null);
     setPremiumId(null);
     setTargetType(null);
+  }
+
+  function playDraggedOrderingCard(card: RondaCardView) {
+    if (!myTurn || !legalSet.has(card.id)) return;
+
+    // Cocina cerrada necesita una familia elegida. El arrastre deja la carta
+    // seleccionada para que el jugador pueda escogerla sin jugársela al azar.
+    if (card.kind === 'bloqueo') {
+      selectCard(card);
+      return;
+    }
+
+    send({ type: 'playRondaCard', cardId: card.id });
+    setSelectedId(null);
+    setPremiumId(null);
+    setTargetType(null);
+  }
+
+  function canDropCardToTable(): boolean {
+    if (view.phase === 'ordering') {
+      return myTurn && view.me.availableActions.includes('playRondaCard');
+    }
+    if (view.phase === 'tips') return view.me.availableActions.includes('playRondaTip');
+    return view.phase === 'discard' && view.me.availableActions.includes('confirmRondaDiscards');
+  }
+
+  function handleCardDrop(card: RondaCardView) {
+    if (view.phase === 'ordering') {
+      playDraggedOrderingCard(card);
+    } else if (view.phase === 'tips') {
+      if (view.me.availableActions.includes('playRondaTip')) {
+        send({ type: 'playRondaTip', cardId: card.id });
+      }
+    } else if (view.phase === 'discard') {
+      if (view.me.availableActions.includes('confirmRondaDiscards')) toggleDiscard(card.id);
+    }
   }
 
   function chooseBillMode(mode: RondaBillMode) {
@@ -132,14 +173,28 @@ export function RondaGameScreen({ view, onRequestLeave, onAction, embedded = fal
       </header>
 
       <section className="min-h-0 overflow-hidden rounded-[20px] border border-linea bg-tinta/35 p-2">
-        <RondaTableOverview view={view} />
+        <RondaTableOverview
+          view={view}
+          dropEnabled={canDropCardToTable()}
+          dropActive={dragState.active}
+          dropReady={dragState.overTarget}
+        />
       </section>
 
       <section className="shrink-0 rounded-[20px] border border-linea bg-mesa/95 px-2 pb-1 pt-2 shadow-2xl">
         {view.phase === 'ordering' ? (
           <>
             <div className="flex min-h-7 items-center justify-between gap-2">
-              <p className="text-12 text-humo">{myTurn ? 'Elige una carta legal' : 'Tu mano'}</p>
+              <p className="min-w-0 text-12 text-humo">
+                {myTurn ? (
+                  <>
+                    <span>Elige una carta legal</span>
+                    <span className="ml-1 text-10 text-oro/80">· arrastra al centro para jugar</span>
+                  </>
+                ) : (
+                  'Tu mano'
+                )}
+              </p>
               <div className="flex items-center gap-3">
                 {view.me.availableActions.includes('skipRondaTurn') ? (
                   <button
@@ -212,6 +267,9 @@ export function RondaGameScreen({ view, onRequestLeave, onAction, embedded = fal
               selectedIds={selectedSet}
               disabledIds={disabledSet}
               onCardClick={selectCard}
+              dragEnabled={canDropCardToTable()}
+              onCardDrop={handleCardDrop}
+              onDragStateChange={setDragState}
             />
           </>
         ) : null}
@@ -283,6 +341,9 @@ export function RondaGameScreen({ view, onRequestLeave, onAction, embedded = fal
                 <RondaCardFan
                   cards={serviceCards}
                   onCardClick={(card) => send({ type: 'playRondaTip', cardId: card.id })}
+                  dragEnabled={canDropCardToTable()}
+                  onCardDrop={handleCardDrop}
+                  onDragStateChange={setDragState}
                   emptyLabel="No tienes cartas de servicio"
                 />
               ) : null}
@@ -313,6 +374,9 @@ export function RondaGameScreen({ view, onRequestLeave, onAction, embedded = fal
                 cards={view.me.hand}
                 selectedIds={discardSet}
                 onCardClick={(card) => toggleDiscard(card.id)}
+                dragEnabled={canDropCardToTable()}
+                onCardDrop={handleCardDrop}
+                onDragStateChange={setDragState}
               />
             </div>
           ) : (

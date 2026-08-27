@@ -136,7 +136,13 @@ function startClip(state: MusicalState, playerId: PlayerId, now: number): Musica
     const player = findPlayer(state, playerId);
     if (!player) return err('PLAYER_NOT_IN_ROOM');
     if (player.left) return err('PLAYER_ELIMINATED');
-    if (player.onlineClipStartedAt !== null) return err('INVALID_ACTION');
+    if (
+      state.blockedPlayerIds.includes(playerId) ||
+      (state.guesses[playerId]?.length ?? 0) > 0 ||
+      player.onlineClipStartedAt !== null
+    ) {
+      return err('INVALID_ACTION');
+    }
 
     const next = bump(state);
     const nextPlayer = findPlayer(next, playerId);
@@ -172,7 +178,11 @@ function resolveClip(state: MusicalState, playerId: PlayerId, now: number): Musi
   const player = findPlayer(state, playerId);
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (player.left) return err('PLAYER_ELIMINATED');
-  if (player.onlineClipStartedAt === null || player.onlineClipResolvedAt !== null) {
+  if (
+    state.blockedPlayerIds.includes(playerId) ||
+    player.onlineClipStartedAt === null ||
+    player.onlineClipResolvedAt !== null
+  ) {
     return err('INVALID_ACTION');
   }
 
@@ -186,7 +196,7 @@ function resolveClip(state: MusicalState, playerId: PlayerId, now: number): Musi
 
 function giveUp(state: MusicalState, playerId: PlayerId): MusicalActionResult {
   if (
-    state.config.audioMode !== 'online' ||
+    (state.config.audioMode !== 'online' && state.config.audioMode !== 'presencial') ||
     state.status !== 'playing' ||
     state.phase !== 'playing' ||
     !state.currentTrack
@@ -197,7 +207,6 @@ function giveUp(state: MusicalState, playerId: PlayerId): MusicalActionResult {
   if (!player) return err('PLAYER_NOT_IN_ROOM');
   if (
     player.left ||
-    player.onlineClipResolvedAt === null ||
     state.blockedPlayerIds.includes(playerId) ||
     (state.guesses[playerId]?.length ?? 0) > 0
   ) {
@@ -207,8 +216,15 @@ function giveUp(state: MusicalState, playerId: PlayerId): MusicalActionResult {
   const next = bump(state);
   next.blockedPlayerIds.push(playerId);
   next.gaveUpPlayerIds.push(playerId);
+  if (next.config.audioMode === 'presencial' && next.buzzedPlayerId === playerId) {
+    next.buzzedPlayerId = null;
+  }
   const events: GameEvent[] = [];
-  if (allOnlinePlayersSettled(next)) finishOnlineRound(next, events);
+  if (next.config.audioMode === 'online') {
+    if (allOnlinePlayersSettled(next)) finishOnlineRound(next, events);
+  } else if (allOfflinePlayersSettled(next)) {
+    finishOfflineRound(next, events);
+  }
   return ok({ state: next, events });
 }
 
@@ -411,6 +427,25 @@ function allOnlinePlayersSettled(state: MusicalState): boolean {
         (state.gaveUpPlayerIds ?? []).includes(player.playerId),
     )
   );
+}
+
+function allOfflinePlayersSettled(state: MusicalState): boolean {
+  const players = activePlayers(state);
+  return (
+    players.length > 0 &&
+    players.every((player) => state.blockedPlayerIds.includes(player.playerId))
+  );
+}
+
+function finishOfflineRound(state: MusicalState, events: GameEvent[]): void {
+  state.phase = 'reveal';
+  state.buzzedPlayerId = null;
+  state.roundResult = buildRoundResult(state, null, 0);
+  if (state.round >= state.config.rounds) {
+    state.status = 'gameEnd';
+    state.winnerId = decideWinner(state);
+    if (state.winnerId) events.push({ t: 'gameOver', winnerId: state.winnerId });
+  }
 }
 
 function finishOnlineRound(state: MusicalState, events: GameEvent[]): void {

@@ -238,8 +238,8 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('finishSentence') }),
   // --- Musical -------------------------------------------------------------
   // La URL de preview es pública para que cada móvil pueda reproducir el
-  // fragmento, pero el servidor nunca envía la respuesta fuera de la
-  // revelación de la ronda.
+  // fragmento. La respuesta solo se envía a toda la mesa en la revelación de
+  // la ronda, aunque puede llegar de forma privada a quien se rinde.
   z.object({ type: z.literal('musicSelectTrack'), track: MusicalTrackSchema }),
   z.object({ type: z.literal('musicStartClip') }),
   z.object({ type: z.literal('musicResolveClip') }),

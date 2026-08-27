@@ -369,7 +369,7 @@ export const GAME_GUIDES = {
     steps: [
       {
         title: 'Escucha el primer corte',
-        body: 'Empiezas con 2 segundos. Puedes repetir el fragmento sin gastar una oportunidad.',
+        body: 'Empiezas con 2 segundos. Puedes repetir el fragmento sin gastar una oportunidad o rendirte desde el principio para ver la respuesta en tu móvil.',
       },
       {
         title: 'Escribe tu respuesta',
@@ -387,7 +387,7 @@ export const GAME_GUIDES = {
     victory:
       'Gana quien acumule más puntos tras las canciones configuradas. Los aciertos tempranos valen 5, 4, 3 o 2 puntos.',
     keyRule:
-      'La respuesta permanece oculta hasta acertar o llegar al último fragmento; el servidor decide quién llegó primero.',
+      'Quien no se la sepa puede rendirse desde el principio y ver la canción sin puntos; en grupo la respuesta aparece solo en su pantalla y el resto sigue jugando.',
   },
   matiz: {
     title: 'Matiz',
@@ -585,27 +585,32 @@ export const GAME_GUIDES = {
     kind: 'Cartas y pique',
     mark: '€',
     objective:
-      'Conserva más ahorros que el resto mientras la mesa llena una cuenta común de tapas, vino y extras.',
+      'Llena una cuenta común sin quedarte sin ahorros: sube el precio de las tapas, juega efectos y decide cuándo hacer pagar.',
     steps: [
       {
-        title: 'Añade algo a la cuenta',
-        body: 'En tu turno juega una tapa legal, vino o una carta especial. Las tapas deben igualar o superar el precio anterior de su tipo.',
+        title: 'Juega una carta en tu turno',
+        body: 'Empiezas con 5 cartas. Juega una tapa —cada familia lleva su propio precio y debe igualar o superar el anterior—, vino o una carta especial. Las cartas grises no son legales en ese momento.',
       },
       {
-        title: 'Decide cuándo pedir la cuenta',
-        body: 'Cuando ya se haya jugado al menos una carta por persona —o no puedas jugar— puedes cerrar los pedidos.',
+        title: 'Cierra los pedidos',
+        body: 'Después de que cada persona haya jugado al menos una carta, o si ya no puedes jugar nada, puedes pedir la cuenta. «Sobremesa» también cierra los pedidos de tapas y vino.',
       },
       {
         title: 'Elige cómo pagar',
-        body: 'Quien pide la cuenta puede asumirla, compartirla a medias o repartirla si tiene la carta necesaria.',
+        body: 'Quien pide la cuenta paga por defecto. «Mitad y mitad» permite compartirla con otra persona y «Entre todos» la reparte entre quienes sigan disponibles.',
       },
       {
-        title: 'Responde y prepara otra ronda',
-        body: 'La mesa puede añadir propinas. Después se paga, se descarta y empieza una ronda nueva con una mano mayor.',
+        title: 'Responde a las propinas',
+        body: 'Antes de cobrar, cada persona puede jugar «Servicio de mesa» o pasar. Cada servicio añade a la cuenta el precio de la tapa más barata; «Ahora vuelvo» y «Hoy se celebra» pueden protegerte del cobro.',
+      },
+      {
+        title: 'Descarta y sigue jugando',
+        body: 'Tras el pago, quien pidió la cuenta descarta las cartas que no quiera conservar. Si la ronda avanzó lo suficiente, su mano crece en una carta para la siguiente.',
       },
     ],
     victory:
       'Cuando alguien se queda sin ahorros tras un pago, la partida termina. Gana quien conserve más dinero.',
-    keyRule: 'Pedir la cuenta no significa librarte de ella: por defecto la paga quien la pide.',
+    keyRule:
+      'Pedir la cuenta no significa librarte de ella: por defecto la paga quien la pide. En el móvil puedes tocar una carta y pulsar «Jugar», o arrastrarla al centro de la mesa.',
   },
 } satisfies Record<GameId, GameGuide>;

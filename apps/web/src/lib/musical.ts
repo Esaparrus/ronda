@@ -133,6 +133,8 @@ const REGION_MARKETS: Record<MusicalRegion, readonly string[]> = {
 };
 
 const MAX_COUNTRY_REQUESTS = 12;
+const MUSIC_HISTORY_STORAGE_KEY = 'ronda:musical:recent-track-identities';
+const MUSIC_HISTORY_LIMIT = 150;
 
 export function normalizeMusicRegions(
   regions: readonly MusicalRegion[] | undefined,
@@ -165,10 +167,10 @@ export async function searchMusic(filters: MusicFilters): Promise<MusicTrack[]> 
   const responses = await Promise.allSettled(
     countries.map((country) => searchMusicInCountry(filters, genre.query, country)),
   );
-  const successful = responses.flatMap((response) =>
-    response.status === 'fulfilled' ? response.value : [],
+  const successfulGroups = responses.flatMap((response) =>
+    response.status === 'fulfilled' ? [response.value] : [],
   );
-  if (successful.length === 0) {
+  if (successfulGroups.length === 0) {
     const failed = responses.find((response) => response.status === 'rejected');
     throw new Error(
       failed?.status === 'rejected' && failed.reason instanceof Error
@@ -176,7 +178,7 @@ export async function searchMusic(filters: MusicFilters): Promise<MusicTrack[]> 
         : 'No se pudo buscar música.',
     );
   }
-  return uniqueMusicTracks(successful);
+  return uniqueMusicTracks(interleaveMusicTracks(successfulGroups));
 }
 
 async function searchMusicInCountry(
@@ -213,26 +215,85 @@ export async function pickRandomMusicTracks(
   count: number,
 ): Promise<MusicTrack[]> {
   const candidates = await searchMusic(filters);
+  const recentIdentities = new Set(readRecentMusicIdentities());
+  const freshCandidates = candidates.filter(
+    (track) => !recentIdentities.has(musicTrackIdentity(track)),
+  );
+  const availableCandidates =
+    freshCandidates.length >= count
+      ? freshCandidates
+      : uniqueMusicTracks([...freshCandidates, ...candidates]);
+  // «Éxitos» sigue priorizando los primeros resultados de Apple, pero abre el
+  // abanico para que una partida de 5–10 canciones no salga siempre del mismo
+  // grupo de 20–30 pistas.
   const pool =
-    filters.popularity === 'exitos' ? candidates.slice(0, Math.max(count * 3, 20)) : candidates;
+    filters.popularity === 'exitos'
+      ? availableCandidates.slice(0, Math.min(availableCandidates.length, Math.max(count * 8, 60)))
+      : availableCandidates;
   const selected = shuffleTracks(pool).slice(0, count);
   if (selected.length < count) {
     throw new Error(
       `Apple solo ha devuelto ${selected.length} canciones para esos filtros. Prueba otra época o menos rondas.`,
     );
   }
+  rememberRecentMusicTracks(selected);
   return selected;
 }
 
 function uniqueMusicTracks(tracks: readonly MusicTrack[]): MusicTrack[] {
   const seen = new Set<string>();
   return tracks.filter((track) => {
-    const identity = `${normalizeMusicText(track.artist)}::${normalizeMusicText(track.title)}`;
+    const identity = musicTrackIdentity(track);
     if (seen.has(track.id) || seen.has(identity)) return false;
     seen.add(track.id);
     seen.add(identity);
     return true;
   });
+}
+
+function interleaveMusicTracks(groups: readonly (readonly MusicTrack[])[]): MusicTrack[] {
+  const tracks: MusicTrack[] = [];
+  const maxGroupLength = Math.max(0, ...groups.map((group) => group.length));
+  for (let index = 0; index < maxGroupLength; index += 1) {
+    for (const group of groups) {
+      const track = group[index];
+      if (track) tracks.push(track);
+    }
+  }
+  return tracks;
+}
+
+function musicTrackIdentity(track: Pick<MusicTrack, 'artist' | 'title'>): string {
+  return `${normalizeMusicText(track.artist)}::${normalizeMusicText(track.title)}`;
+}
+
+function readRecentMusicIdentities(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const value = window.localStorage.getItem(MUSIC_HISTORY_STORAGE_KEY);
+    if (!value) return [];
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((item): item is string => typeof item === 'string')
+          .slice(-MUSIC_HISTORY_LIMIT)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberRecentMusicTracks(tracks: readonly MusicTrack[]): void {
+  if (typeof window === 'undefined' || tracks.length === 0) return;
+  try {
+    const history = [...readRecentMusicIdentities(), ...tracks.map(musicTrackIdentity)];
+    window.localStorage.setItem(
+      MUSIC_HISTORY_STORAGE_KEY,
+      JSON.stringify([...new Set(history)].slice(-MUSIC_HISTORY_LIMIT)),
+    );
+  } catch {
+    // El historial es una mejora opcional; una cuota llena no debe impedir jugar.
+  }
 }
 
 export function musicFiltersLabel(filters: MusicFilters): string {

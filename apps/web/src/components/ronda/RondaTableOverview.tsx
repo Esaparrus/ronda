@@ -12,7 +12,11 @@ function nickFor(view: RondaCommonView, playerId: string | null): string {
 
 function RondaCompactOverview({ view }: { view: RondaCommonView }) {
   const playerGridStyle = {
-    gridTemplateColumns: `repeat(${Math.min(4, Math.max(1, view.players.length))}, minmax(0, 1fr))`,
+    // En el móvil cada ficha necesita sitio para avatar, apodo, saldo y
+    // cartas. Dos columnas mantienen esa información dentro de su tarjeta
+    // incluso con ocho jugadores; el panel tiene altura suficiente para las
+    // filas extra.
+    gridTemplateColumns: `repeat(${Math.min(2, Math.max(1, view.players.length))}, minmax(0, 1fr))`,
   } satisfies CSSProperties;
 
   return (
@@ -189,9 +193,31 @@ function RondaLargeOverview({ view }: { view: RondaCommonView }) {
 export function RondaTableOverview({
   view,
   large = false,
+  dropEnabled = false,
+  dropActive = false,
+  dropReady = false,
 }: {
   view: RondaCommonView;
   large?: boolean;
+  dropEnabled?: boolean;
+  dropActive?: boolean;
+  dropReady?: boolean;
 }) {
-  return large ? <RondaLargeOverview view={view} /> : <RondaCompactOverview view={view} />;
+  return (
+    <div
+      data-ronda-drop-target={dropEnabled ? 'table' : undefined}
+      className={`relative h-full min-h-0 rounded-[16px] transition-[box-shadow,transform] duration-150 ${
+        dropActive ? 'ring-2 ring-oro/45' : ''
+      } ${dropReady ? 'scale-[1.005] shadow-[0_0_28px_rgb(0_122_255_/_0.18)]' : ''}`}
+    >
+      {large ? <RondaLargeOverview view={view} /> : <RondaCompactOverview view={view} />}
+      {dropActive ? (
+        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center">
+          <span className="rounded-full border border-oro/60 bg-mesa/90 px-3 py-2 text-12 font-semibold text-oro shadow-lg">
+            {dropReady ? 'Suelta para jugar' : 'Arrastra la carta aquí'}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
 }

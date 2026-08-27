@@ -6,7 +6,7 @@ export default function MatizPage() {
       slug="matiz"
       title="Matiz"
       kind="Percepción de color"
-      players="1–7 jugadores"
+      players="1 solo · 2–7 en grupo"
       duration="5–15 min"
       summary="Completa el color que falta en una ilustración. Ajusta color e intensidad y descubre quién se acerca más al original."
       primaryAction={{

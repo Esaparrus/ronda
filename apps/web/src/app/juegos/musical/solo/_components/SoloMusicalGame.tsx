@@ -93,8 +93,7 @@ export function SoloMusicalGame() {
   const hasSelectedArtist =
     !requiresArtist ||
     (Boolean(guess.artist.trim()) && selectedSuggestions.artist === guess.artist);
-  const hasSelectedTitle =
-    Boolean(guess.title.trim()) && selectedSuggestions.title === guess.title;
+  const hasSelectedTitle = Boolean(guess.title.trim()) && selectedSuggestions.title === guess.title;
   const hasSelectedAnswer = hasSelectedArtist && hasSelectedTitle;
 
   function triggerFeedback(kind: MusicalFeedbackKind) {
@@ -338,8 +337,8 @@ export function SoloMusicalGame() {
           {starting ? 'Preparando canciones…' : 'Empezar partida'}
         </Button>
         <p className="text-center text-12 text-humo">
-          Las previews se cargan desde iTunes. Los títulos y artistas solo aparecen después de
-          corregir.
+          Las previews se cargan desde iTunes. Los títulos y artistas aparecen al corregir o al
+          revelar la respuesta.
         </p>
       </main>
     );
@@ -393,7 +392,9 @@ export function SoloMusicalGame() {
           <div className="min-w-0">
             <span className="text-12 uppercase tracking-wider text-humo">Fragmento actual</span>
             <h1 className="mt-1 text-20 font-semibold text-hueso">
-              {isSpeedMode ? 'Escucha y para cuando quieras' : `Fragmento ${clipIndex + 1}/5 · ${soloClipLabel(clipSeconds)}`}
+              {isSpeedMode
+                ? 'Escucha y para cuando quieras'
+                : `Fragmento ${clipIndex + 1}/5 · ${soloClipLabel(clipSeconds)}`}
             </h1>
             <p className="mt-1 text-14 text-humo">
               {attempts} {attempts === 1 ? 'intento' : 'intentos'} · {pointsForMusicClip(clipIndex)}{' '}
@@ -420,7 +421,7 @@ export function SoloMusicalGame() {
           aria-label="Preview de la canción"
           className="hidden"
         />
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           {isSpeedMode ? (
             <Button
               onClick={clipReady ? playPreview : playing ? stopSpeedAndAnswer : playPreview}
@@ -442,10 +443,13 @@ export function SoloMusicalGame() {
             </Button>
           )}
           {!isSpeedMode && nextClipSeconds !== null ? (
-            <Button variant="ghost" onClick={listenMore}>
+            <Button variant="ghost" onClick={listenMore} className="min-w-0 flex-1 px-3 text-14">
               No me la sé · {soloClipLabel(nextClipSeconds)}
             </Button>
           ) : null}
+          <Button variant="ghost" onClick={revealAnswer} className="min-w-0 flex-1 px-3 text-14">
+            No la sé · ver canción
+          </Button>
         </div>
         <p className="text-12 text-humo">
           Preview proporcionada por iTunes
@@ -529,10 +533,7 @@ export function SoloMusicalGame() {
               />
             </label>
           ) : null}
-          <Button
-            type="submit"
-            disabled={!hasSelectedAnswer}
-          >
+          <Button type="submit" disabled={!hasSelectedAnswer}>
             Corregir
           </Button>
           {!isSpeedMode && clipIndex === SOLO_MUSICAL_CLIP_STEPS.length - 1 ? (

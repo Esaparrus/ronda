@@ -1,5 +1,6 @@
 // Estado del juego Musical. Las previews son públicas para reproducirlas en
-// cada móvil; la respuesta completa de la pista solo sale en la revelación.
+// cada móvil; la respuesta completa solo se expone en la vista de la ronda o
+// de forma privada al jugador que decide rendirse en los modos de grupo.
 
 import type { GameConfig, MusicalConfig, MusicalTrack, PlayerId, RoomCode } from '@ronda/protocol';
 
@@ -53,7 +54,7 @@ export interface MusicalState {
   clipStartedAt: number | null;
   buzzedPlayerId: PlayerId | null;
   blockedPlayerIds: PlayerId[];
-  /** Jugadores que han pedido ver la respuesta en privado en modo online. */
+  /** Jugadores que han pedido ver la respuesta en privado. */
   gaveUpPlayerIds: PlayerId[];
   clipIndex: number;
   guesses: Record<PlayerId, MusicalGuess[]>;

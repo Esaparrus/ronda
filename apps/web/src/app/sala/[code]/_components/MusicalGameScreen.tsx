@@ -92,6 +92,7 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
   const isOnlineMode = view.config.audioMode === 'online';
   const isBlocked = view.blockedPlayerIds.includes(view.me.playerId);
   const isSpeedMode = view.config.mode === 'velocidad';
+  const canGiveUp = view.me.availableActions.includes('musicGiveUp');
   const requiresArtist = view.config.answerMode !== 'title';
   const requiresYear = view.config.answerMode === 'artist_title_year';
   const sharedSpeedClaimed = !isOnlineMode && isSpeedMode && view.buzzedPlayerId !== null;
@@ -511,58 +512,131 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
           {view.phase === 'playing' ? (
             <div className="flex gap-2">
               {sharedSpeedClaimed ? (
-                <p className="flex flex-1 items-center justify-center rounded-2xl border border-oro/40 bg-oro/10 px-4 py-3 text-center text-13 text-oro">
-                  Audio detenido ·{' '}
-                  {view.buzzedPlayerId === view.me.playerId
-                    ? 'tu turno para responder'
-                    : `${buzzedPlayerNick ?? 'Otro jugador'} está respondiendo`}
-                </p>
+                <>
+                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-oro/40 bg-oro/10 px-4 py-3 text-center text-13 text-oro">
+                    Audio detenido ·{' '}
+                    {view.buzzedPlayerId === view.me.playerId
+                      ? 'tu turno para responder'
+                      : `${buzzedPlayerNick ?? 'Otro jugador'} está respondiendo`}
+                  </p>
+                  {canGiveUp ? (
+                    <Button
+                      variant="ghost"
+                      onClick={giveUpAndReveal}
+                      className="min-w-0 flex-1 px-3 text-14"
+                      loading={pendingAction}
+                    >
+                      No la sé · ver canción
+                    </Button>
+                  ) : null}
+                </>
               ) : isOnlineMode ? (
-                view.me.onlineClipStartedAt === null ? (
-                  <Button
-                    onClick={startClipForPlayer}
-                    className="flex-1"
-                    loading={pendingAction || startingClip}
-                    disabled={playing}
-                  >
-                    ▶ Escuchar en tu móvil
-                  </Button>
-                ) : isBlocked ? (
+                isBlocked ? (
                   <p className="flex flex-1 items-center justify-center rounded-2xl border border-brasa/50 bg-brasa/10 px-4 py-3 text-center text-13 text-brasa">
                     {view.me.revealedAnswer
                       ? 'Has revelado la canción: espera al resto'
                       : 'Respuesta incorrecta: estás fuera de esta canción'}
                   </p>
+                ) : view.me.onlineClipStartedAt === null ? (
+                  <>
+                    <Button
+                      onClick={startClipForPlayer}
+                      className="min-w-0 flex-1 px-3 text-14"
+                      loading={pendingAction || startingClip}
+                      disabled={playing}
+                    >
+                      ▶ Escuchar en tu móvil
+                    </Button>
+                    {canGiveUp ? (
+                      <Button
+                        variant="ghost"
+                        onClick={giveUpAndReveal}
+                        className="min-w-0 flex-1 px-3 text-14"
+                        loading={pendingAction}
+                      >
+                        No la sé · ver canción
+                      </Button>
+                    ) : null}
+                  </>
                 ) : view.me.onlineClipResolvedAt === null ? (
-                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-oro/40 bg-oro/10 px-4 py-3 text-center text-13 text-oro">
-                    Audio activo · usa el pulsador grande para resolver
-                  </p>
+                  <>
+                    <p className="flex flex-1 items-center justify-center rounded-2xl border border-oro/40 bg-oro/10 px-4 py-3 text-center text-13 text-oro">
+                      Audio activo · usa el pulsador grande para resolver
+                    </p>
+                    {canGiveUp ? (
+                      <Button
+                        variant="ghost"
+                        onClick={giveUpAndReveal}
+                        className="min-w-0 flex-1 px-3 text-14"
+                        loading={pendingAction}
+                      >
+                        No la sé · ver canción
+                      </Button>
+                    ) : null}
+                  </>
                 ) : view.me.availableActions.includes('musicSubmitGuess') ? (
-                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
-                    Tiempo registrado: {formatElapsed(view.me.onlineClipElapsedMs)}
-                  </p>
+                  <>
+                    <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
+                      Tiempo registrado: {formatElapsed(view.me.onlineClipElapsedMs)}
+                    </p>
+                    {canGiveUp ? (
+                      <Button
+                        variant="ghost"
+                        onClick={giveUpAndReveal}
+                        className="min-w-0 flex-1 px-3 text-14"
+                        loading={pendingAction}
+                      >
+                        No la sé · ver canción
+                      </Button>
+                    ) : null}
+                  </>
                 ) : (
                   <p className="flex flex-1 items-center justify-center rounded-2xl border border-verde/40 bg-verde/10 px-4 py-3 text-center text-13 text-verde">
                     Respuesta enviada · tiempo: {formatElapsed(view.me.onlineClipElapsedMs)}
                   </p>
                 )
               ) : isHost ? (
-                <Button
-                  onClick={view.clipStartedAt === null ? startClipForPlayer : playPreview}
-                  className="flex-1"
-                  loading={view.clipStartedAt === null && (pendingAction || startingClip)}
-                  disabled={playing}
-                >
-                  {view.clipStartedAt === null
-                    ? '▶ Reproducir para todos'
-                    : playing
-                      ? 'Reproduciendo…'
-                      : '▶ Reproducir de nuevo'}
-                </Button>
+                <>
+                  <Button
+                    onClick={view.clipStartedAt === null ? startClipForPlayer : playPreview}
+                    className="min-w-0 flex-1 px-3 text-14"
+                    loading={view.clipStartedAt === null && (pendingAction || startingClip)}
+                    disabled={playing}
+                  >
+                    {view.clipStartedAt === null
+                      ? '▶ Reproducir para todos'
+                      : playing
+                        ? 'Reproduciendo…'
+                        : '▶ Reproducir de nuevo'}
+                  </Button>
+                  {canGiveUp ? (
+                    <Button
+                      variant="ghost"
+                      onClick={giveUpAndReveal}
+                      className="min-w-0 flex-1 px-3 text-14"
+                      loading={pendingAction}
+                    >
+                      No la sé · ver canción
+                    </Button>
+                  ) : null}
+                </>
               ) : (
-                <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
-                  El anfitrión controla la música. Cuando pulse play, se activará vuestro pulsador.
-                </p>
+                <>
+                  <p className="flex flex-1 items-center justify-center rounded-2xl border border-linea bg-tinta/35 px-4 py-3 text-center text-13 text-humo">
+                    El anfitrión controla la música. Cuando pulse play, se activará vuestro
+                    pulsador.
+                  </p>
+                  {canGiveUp ? (
+                    <Button
+                      variant="ghost"
+                      onClick={giveUpAndReveal}
+                      className="min-w-0 flex-1 px-3 text-14"
+                      loading={pendingAction}
+                    >
+                      No la sé · ver canción
+                    </Button>
+                  ) : null}
+                </>
               )}
               {view.me.availableActions.includes('musicNextClip') && !sharedSpeedClaimed ? (
                 <Button
@@ -607,7 +681,7 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
         ) : null}
 
         {view.phase === 'playing' ? (
-          isOnlineMode && view.me.onlineClipStartedAt === null ? (
+          isOnlineMode && !isBlocked && view.me.onlineClipStartedAt === null ? (
             <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
               <span className="text-32 text-oro" aria-hidden="true">
                 ♪
@@ -665,11 +739,26 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
           ) : !isOnlineMode && isBlocked ? (
             <section className="surface-panel flex flex-col items-center gap-2 p-5 text-center">
               <span className="text-32 text-brasa" aria-hidden="true">
-                ✕
+                {view.me.revealedAnswer ? '♪' : '✕'}
               </span>
-              <h2 className="text-20 font-semibold text-hueso">Te has quedado fuera</h2>
+              <h2 className="text-20 font-semibold text-hueso">
+                {view.me.revealedAnswer ? 'Era esta' : 'Te has quedado fuera'}
+              </h2>
+              {view.me.revealedAnswer ? (
+                <div className="rounded-2xl border border-oro/45 bg-oro/10 px-4 py-3">
+                  <strong className="block text-18 text-hueso">
+                    {view.me.revealedAnswer.title}
+                  </strong>
+                  <span className="mt-1 block text-14 text-humo">
+                    {view.me.revealedAnswer.artist}
+                    {view.me.revealedAnswer.year ? ` · ${view.me.revealedAnswer.year}` : ''}
+                  </span>
+                </div>
+              ) : null}
               <p className="text-14 text-humo">
-                Tu respuesta no era correcta. Los demás siguen jugando esta canción.
+                {view.me.revealedAnswer
+                  ? 'Has revelado la canción. Los demás siguen jugando esta canción.'
+                  : 'Tu respuesta no era correcta. Los demás siguen jugando esta canción.'}
               </p>
             </section>
           ) : !isOnlineMode && view.clipStartedAt === null ? (
@@ -770,26 +859,10 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   />
                 </label>
               ) : null}
-              <div
-                className={
-                  isOnlineMode && view.me.availableActions.includes('musicGiveUp')
-                    ? 'grid grid-cols-2 gap-2'
-                    : 'grid'
-                }
-              >
+              <div className="grid">
                 <Button type="submit" disabled={!hasSelectedAnswer} loading={pendingAction}>
                   Corregir
                 </Button>
-                {isOnlineMode && view.me.availableActions.includes('musicGiveUp') ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={pendingAction}
-                    onClick={giveUpAndReveal}
-                  >
-                    No la sé · revelar
-                  </Button>
-                ) : null}
               </div>
             </form>
           )

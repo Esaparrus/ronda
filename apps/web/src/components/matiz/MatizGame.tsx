@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import type { GameAction, MatizPlayerView } from '@ronda/protocol';
 import { MATIZ_CHALLENGES } from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
@@ -18,7 +25,12 @@ export interface MatizArtworkProps {
   className?: string;
 }
 
-export function MatizArtwork({ challengeId, color, targetHex = null, className = '' }: MatizArtworkProps) {
+export function MatizArtwork({
+  challengeId,
+  color,
+  targetHex = null,
+  className = '',
+}: MatizArtworkProps) {
   const art = artworkForChallenge(challengeId);
   const fill = targetHex ?? color;
 
@@ -61,6 +73,15 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
   const [hue, setHue] = useState(decodedColor.h);
   const lastEmittedValueRef = useRef<string | null>(null);
   const pickerColor = useMemo(() => ({ ...decodedColor, h: hue }), [decodedColor, hue]);
+  const fieldBackground = useMemo(
+    () =>
+      [
+        'linear-gradient(to top, black 0%, transparent 100%)',
+        'linear-gradient(to right, white 0%, transparent 100%)',
+        `hsl(${pickerColor.h} 100% 50%)`,
+      ].join(', '),
+    [pickerColor.h],
+  );
 
   useEffect(() => {
     if (lastEmittedValueRef.current === value) {
@@ -89,6 +110,45 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
     onChange(normalizedValue);
   }
 
+  function updateFieldFromPointer(event: PointerEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const saturation = clamp(((event.clientX - bounds.left) / bounds.width) * 100, 0, 100);
+    const brightness = clamp(100 - ((event.clientY - bounds.top) / bounds.height) * 100, 0, 100);
+    update({ s: saturation, v: brightness });
+  }
+
+  function handleFieldPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (disabled) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updateFieldFromPointer(event);
+  }
+
+  function handleFieldPointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (disabled || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    updateFieldFromPointer(event);
+  }
+
+  function releaseFieldPointer(event: PointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleFieldKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 10 : 1;
+    const next: Partial<PickerColor> = {};
+
+    if (event.key === 'ArrowLeft') next.s = pickerColor.s - step;
+    if (event.key === 'ArrowRight') next.s = pickerColor.s + step;
+    if (event.key === 'ArrowDown') next.v = pickerColor.v - step;
+    if (event.key === 'ArrowUp') next.v = pickerColor.v + step;
+
+    if (Object.keys(next).length === 0) return;
+    event.preventDefault();
+    update(next);
+  }
+
   return (
     <section className="surface-panel flex w-full flex-col gap-4 p-4">
       <div className="flex items-center gap-3">
@@ -107,16 +167,58 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
           className="sr-only"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-12 font-semibold uppercase tracking-[0.12em] text-humo">Tu mezcla</p>
+          <p className="whitespace-nowrap text-12 font-semibold uppercase tracking-[0.12em] text-humo">
+            Tu mezcla
+          </p>
           <p className="mt-1 font-mono text-20 font-semibold uppercase text-hueso">{value}</p>
         </div>
-        <span className="rounded-full bg-tinta px-3 py-1 font-mono text-12 text-humo">
-          H {Math.round(pickerColor.h)}° · I {Math.round(pickerColor.s)}%
+        <span className="shrink-0 rounded-full bg-tinta px-3 py-1 font-mono text-11 text-humo">
+          T {Math.round(pickerColor.h)}° · S {Math.round(pickerColor.s)}% · B{' '}
+          {Math.round(pickerColor.v)}%
         </span>
       </div>
 
+      <div className="flex flex-col gap-2">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-13 font-semibold text-hueso">Afina la mezcla</p>
+            <p className="mt-1 text-12 leading-relaxed text-humo">
+              Cuadro: saturación y claridad · franja: tono
+            </p>
+          </div>
+          <span className="shrink-0 font-mono text-12 text-humo">{value}</span>
+        </div>
+        <div
+          className="matiz-color-field relative mx-auto aspect-square w-full max-w-[320px] rounded-[22px] border-2 border-white shadow-[inset_0_1px_3px_rgba(22,24,29,.18),0_8px_18px_rgba(22,24,29,.12)]"
+          style={{ background: fieldBackground }}
+          role="group"
+          aria-label="Ajuste de saturación y claridad"
+          tabIndex={disabled ? -1 : 0}
+          onKeyDown={handleFieldKeyDown}
+          onPointerDown={handleFieldPointerDown}
+          onPointerMove={handleFieldPointerMove}
+          onPointerUp={releaseFieldPointer}
+          onPointerCancel={releaseFieldPointer}
+        >
+          <span
+            className="pointer-events-none absolute z-10 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-transparent shadow-[0_2px_8px_rgba(22,24,29,.5)]"
+            style={{ left: `${pickerColor.s}%`, top: `${100 - pickerColor.v}%` }}
+          />
+          <span className="pointer-events-none absolute inset-x-3 top-2 text-11 font-semibold text-white drop-shadow-[0_1px_2px_rgba(22,24,29,.7)]">
+            Más claro
+          </span>
+          <span className="pointer-events-none absolute inset-x-3 bottom-2 text-11 font-semibold text-white drop-shadow-[0_1px_2px_rgba(22,24,29,.7)]">
+            Más oscuro
+          </span>
+        </div>
+        <div className="mx-auto flex w-full max-w-[320px] justify-between px-1 text-11 text-humo">
+          <span>Grisáceo</span>
+          <span>Intenso</span>
+        </div>
+      </div>
+
       <SliderRow
-        label="Color"
+        label="Tono"
         value={pickerColor.h}
         min={0}
         max={359}
@@ -124,16 +226,6 @@ export function MatizPicker({ value, onChange, disabled = false }: MatizPickerPr
         background={MATIZ_HUE_GRADIENT}
         onChange={(next) => update({ h: next })}
         suffix="°"
-      />
-      <SliderRow
-        label="Intensidad"
-        value={pickerColor.s}
-        min={0}
-        max={100}
-        disabled={disabled}
-        background={`linear-gradient(90deg,hsl(${pickerColor.h} 0% ${MATIZ_FIXED_LIGHTNESS}%),hsl(${pickerColor.h} 100% ${MATIZ_FIXED_LIGHTNESS}%))`}
-        onChange={(next) => update({ s: next })}
-        suffix="%"
       />
     </section>
   );
@@ -173,7 +265,10 @@ function SliderRow({
         style={{ background }}
         aria-label={label}
       />
-      <span className="text-right font-mono text-12">{Math.round(value)}{suffix}</span>
+      <span className="text-right font-mono text-12">
+        {Math.round(value)}
+        {suffix}
+      </span>
     </label>
   );
 }
@@ -192,7 +287,8 @@ export function MatizPlayerRound({
   const { party, me } = view;
   const isHost = view.players.find((player) => player.playerId === me.playerId)?.isHost ?? false;
   const submitted = me.submitted;
-  const dispatch = onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
+  const dispatch =
+    onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
 
   useEffect(() => {
     setColor(MATIZ_COLOR_TOKENS.neutral);
@@ -216,12 +312,23 @@ export function MatizPlayerRound({
       />
       <main className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto px-4 py-5">
         <section className="flex w-full max-w-xl flex-col gap-1 text-center">
-          <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">{party.title}</span>
+          <span className="text-12 font-semibold uppercase tracking-[0.14em] text-oro">
+            {party.title}
+          </span>
           <h1 className="text-20 font-semibold text-hueso">{party.subtitle}</h1>
-          <p className="text-13 text-humo">Ajusta el color y la intensidad. Después, bloquea tu color.</p>
+          <p className="text-13 text-humo">
+            Ajusta el color y la intensidad. Después, bloquea tu color.
+          </p>
         </section>
-        <MatizArtwork challengeId={party.challengeId} color={color} targetHex={party.targetHex} className="max-w-xl" />
-        {party.phase === 'input' ? <MatizPicker value={color} onChange={setColor} disabled={submitted || pendingAction} /> : null}
+        <MatizArtwork
+          challengeId={party.challengeId}
+          color={color}
+          targetHex={party.targetHex}
+          className="max-w-xl"
+        />
+        {party.phase === 'input' ? (
+          <MatizPicker value={color} onChange={setColor} disabled={submitted || pendingAction} />
+        ) : null}
         {party.phase === 'input' && !submitted ? (
           <Button onClick={submit} loading={pendingAction} className="w-full max-w-xl">
             Aceptar este color
@@ -370,10 +477,21 @@ export function MatizSoloGame() {
       <main className="app-page safe-page mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-5 text-center">
         <span className="text-56">🎨</span>
         <span className="eyebrow">Partida individual terminada</span>
-        <h1 className="font-display text-40 leading-display text-hueso">{score}/{activeChallenges.length * 100} puntos</h1>
-        <p className="text-16 leading-relaxed text-humo">Tu media ha sido {Math.round(score / activeChallenges.length)} por reto.</p>
+        <h1 className="font-display text-40 leading-display text-hueso">
+          {score}/{activeChallenges.length * 100} puntos
+        </h1>
+        <p className="text-16 leading-relaxed text-humo">
+          Tu media ha sido {Math.round(score / activeChallenges.length)} por reto.
+        </p>
         <div className="flex flex-wrap justify-center gap-2">
-          {scores.map((points, index) => <span key={index} className="rounded-full bg-oro/10 px-3 py-1 font-mono text-13 text-oro">R{index + 1} · {points}</span>)}
+          {scores.map((points, index) => (
+            <span
+              key={index}
+              className="rounded-full bg-oro/10 px-3 py-1 font-mono text-13 text-oro"
+            >
+              R{index + 1} · {points}
+            </span>
+          ))}
         </div>
         <Button onClick={restart}>Jugar otra vez</Button>
       </main>
@@ -435,45 +553,73 @@ export function MatizSoloGame() {
   );
 }
 
-const MATIZ_FIXED_LIGHTNESS = 58;
-
-interface PickerColor { h: number; s: number }
-interface HslColor { h: number; s: number; l: number }
+interface PickerColor {
+  h: number;
+  s: number;
+  v: number;
+}
+interface HsvColor {
+  h: number;
+  s: number;
+  v: number;
+}
 
 function hexToPickerColor(hex: string): PickerColor {
-  const hsl = hexToHsl(hex);
-  return { h: hsl.h, s: hsl.s };
+  const hsv = hexToHsv(hex);
+  return { h: Math.min(359, Math.round(hsv.h)), s: hsv.s, v: hsv.v };
 }
 
-function pickerColorToHex({ h, s }: PickerColor): string {
-  return hslToHex({ h, s, l: MATIZ_FIXED_LIGHTNESS });
+function pickerColorToHex({ h, s, v }: PickerColor): string {
+  return hsvToHex({ h, s, v });
 }
 
-function hexToHsl(hex: string): HslColor {
+function hexToHsv(hex: string): HsvColor {
   const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
   const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
   const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  const lightness = (max + min) / 2;
-  if (max === min) return { h: 0, s: 0, l: lightness * 100 };
   const delta = max - min;
-  const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
   let hue = 0;
-  if (max === r) hue = ((g - b) / delta + (g < b ? 6 : 0)) / 6;
-  else if (max === g) hue = ((b - r) / delta + 2) / 6;
-  else hue = ((r - g) / delta + 4) / 6;
-  return { h: hue * 360, s: saturation * 100, l: lightness * 100 };
+  if (delta !== 0) {
+    if (max === r) hue = 60 * (((g - b) / delta) % 6);
+    else if (max === g) hue = 60 * ((b - r) / delta + 2);
+    else hue = 60 * ((r - g) / delta + 4);
+  }
+  if (hue < 0) hue += 360;
+  return { h: hue, s: max === 0 ? 0 : (delta / max) * 100, v: max * 100 };
 }
 
-function hslToHex({ h, s, l }: HslColor): string {
-  const saturation = s / 100;
-  const lightness = l / 100;
-  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
-  const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = lightness - chroma / 2;
-  const [r, g, b] = h < 60 ? [chroma, x, 0] : h < 120 ? [x, chroma, 0] : h < 180 ? [0, chroma, x] : h < 240 ? [0, x, chroma] : h < 300 ? [x, 0, chroma] : [chroma, 0, x];
-  return `#${[r, g, b].map((channel) => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('')}`;
+function hsvToHex({ h, s, v }: HsvColor): string {
+  const saturation = clamp(s, 0, 100) / 100;
+  const brightness = clamp(v, 0, 100) / 100;
+  const hue = ((h % 360) + 360) % 360;
+  const chroma = brightness * saturation;
+  const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = brightness - chroma;
+  const [r, g, b] =
+    hue < 60
+      ? [chroma, x, 0]
+      : hue < 120
+        ? [x, chroma, 0]
+        : hue < 180
+          ? [0, chroma, x]
+          : hue < 240
+            ? [0, x, chroma]
+            : hue < 300
+              ? [x, 0, chroma]
+              : [chroma, 0, x];
+  return `#${[r, g, b]
+    .map((channel) =>
+      Math.round((channel + m) * 255)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 export function scoreMatizColor(answer: string, target: string): number {
@@ -484,12 +630,14 @@ export function scoreMatizColor(answer: string, target: string): number {
 }
 
 function hexToLab(hex: string): [number, number, number] {
-  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(1 + offset, 3 + offset), 16) / 255).map((value) => value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4));
+  const channels = [0, 2, 4]
+    .map((offset) => Number.parseInt(hex.slice(1 + offset, 3 + offset), 16) / 255)
+    .map((value) => (value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)));
   const [r = 0, g = 0, b = 0] = channels;
   const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
   const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
   const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
-  const pivot = (value: number) => value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116;
+  const pivot = (value: number) => (value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116);
   const fx = pivot(x);
   const fy = pivot(y);
   const fz = pivot(z);
