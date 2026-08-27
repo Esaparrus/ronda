@@ -3,6 +3,7 @@ import {
   COLOR_ANSWER_SECONDS,
   DEFAULT_COLORES_CONFIG,
   DEFAULT_ESCALA_CONFIG,
+  DEFAULT_MATIZ_CONFIG,
   DEFAULT_ORDEN_CONFIG,
   DEFAULT_PRECIO_JUSTO_CONFIG,
 } from '@ronda/protocol';
@@ -12,6 +13,21 @@ import { RoomManager } from './room-manager.ts';
 const NOW = 1_700_000_000_000;
 
 describe('salas de modos sociales', () => {
+  it('acepta crear una sala de Matiz', () => {
+    const manager = new RoomManager();
+    const created = manager.createRoom({
+      gameId: 'matiz',
+      config: DEFAULT_MATIZ_CONFIG,
+      nick: 'Ana',
+      now: NOW,
+    });
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    expect(manager.getRoomByCode(created.value.roomCode)?.gameId).toBe('matiz');
+  });
+
   it('acepta la primera carta y rechaza la segunda con la versión antigua', () => {
     const manager = new RoomManager();
     const first = manager.createRoom({

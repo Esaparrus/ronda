@@ -26,11 +26,13 @@ export const ordenModule = makePartyModule('orden');
 export const coloresModule = makePartyModule('colores');
 export const mayoriaModule = makePartyModule('mayoria');
 export const escalaModule = makePartyModule('escala');
+export const matizModule = makePartyModule('matiz');
 
 registerGame(ordenModule);
 registerGame(coloresModule);
 registerGame(mayoriaModule);
 registerGame(escalaModule);
+registerGame(matizModule);
 
 export * from './state.ts';
 export * from './reducer.ts';

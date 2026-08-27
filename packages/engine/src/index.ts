@@ -93,6 +93,7 @@ export {
   coloresModule,
   mayoriaModule,
   escalaModule,
+  matizModule,
   createPartyState,
   applyAction as partyApplyAction,
   getPlayerView as partyGetPlayerView,
