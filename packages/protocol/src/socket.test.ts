@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LA_RONDA_CONFIG } from './config.ts';
+import { DEFAULT_LA_RONDA_CONFIG, DEFAULT_MATIZ_CONFIG } from './config.ts';
 import { clientPayloadSchemas } from './socket.ts';
 
 describe('esquemas de socket de La Ronda', () => {
@@ -16,6 +16,26 @@ describe('esquemas de socket de La Ronda', () => {
   it('acepta actualizar la configuración de La Ronda', () => {
     const result = clientPayloadSchemas['room:config'].safeParse({
       patch: { gameId: 'laronda', maxPlayers: 3 },
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('esquemas de socket de Matiz', () => {
+  it('acepta crear una sala de Matiz', () => {
+    const result = clientPayloadSchemas['room:create'].safeParse({
+      gameId: 'matiz',
+      config: DEFAULT_MATIZ_CONFIG,
+      nick: 'Unai',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta actualizar la configuración de Matiz', () => {
+    const result = clientPayloadSchemas['room:config'].safeParse({
+      patch: { gameId: 'matiz', rounds: 7, challengeIds: ['homer-piel'] },
     });
 
     expect(result.success).toBe(true);
