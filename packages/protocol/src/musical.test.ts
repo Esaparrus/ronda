@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { musicalArtistCandidates, musicalArtistMatches } from './musical.ts';
+import { musicalArtistCandidates, musicalArtistMatches, musicalTextMatches } from './musical.ts';
 
 describe('musicalArtistMatches', () => {
   it('acepta cualquiera de los artistas acreditados', () => {
@@ -20,5 +20,20 @@ describe('musicalArtistMatches', () => {
       'artist a',
       'artist b',
     ]);
+  });
+});
+
+describe('musicalTextMatches', () => {
+  it('acepta una palabra reconocible o una parte suficiente del título', () => {
+    expect(musicalTextMatches('Bohemian', 'Bohemian Rhapsody')).toBe(true);
+    expect(musicalTextMatches('Rolling Deep', 'Rolling in the Deep')).toBe(true);
+    expect(musicalTextMatches('rhapsod', 'Bohemian Rhapsody')).toBe(true);
+  });
+
+  it('tolera tildes y pequeños errores, pero no conectores aislados', () => {
+    expect(musicalTextMatches('Beyonce', 'Beyoncé')).toBe(true);
+    expect(musicalTextMatches('Queeen', 'Queen')).toBe(true);
+    expect(musicalTextMatches('the', 'The Beatles')).toBe(false);
+    expect(musicalTextMatches('Otra', 'Bohemian Rhapsody')).toBe(false);
   });
 });

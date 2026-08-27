@@ -10,7 +10,7 @@ import type {
   PlayerId,
   Result,
 } from '@ronda/protocol';
-import { err, musicalArtistMatches, ok } from '@ronda/protocol';
+import { err, musicalArtistMatches, musicalTextMatches, ok } from '@ronda/protocol';
 import {
   activePlayers,
   findPlayer,
@@ -491,7 +491,7 @@ function isCorrectGuess(
   track: MusicalTrack,
   answerMode: MusicalState['config']['answerMode'],
 ): boolean {
-  const titleMatches = normalizedMatch(guess.title, track.title);
+  const titleMatches = musicalTextMatches(guess.title, track.title);
   const artistMatches = answerMode === 'title' || musicalArtistMatches(guess.artist, track.artist);
   const yearMatches =
     answerMode !== 'artist_title_year' || (track.year !== null && guess.year === track.year);
@@ -506,49 +506,6 @@ function isGuessComplete(
   const hasArtist = answerMode === 'title' || Boolean(guess.artist.trim());
   const hasYear = answerMode !== 'artist_title_year' || guess.year !== null;
   return hasTitle && hasArtist && hasYear;
-}
-
-function normalizedMatch(value: string, expected: string): boolean {
-  const a = normalizeText(value);
-  const b = normalizeText(expected);
-  if (!a || !b) return false;
-  return a === b || a.includes(b) || b.includes(a) || isCloseTypo(a, b);
-}
-
-function isCloseTypo(a: string, b: string): boolean {
-  if (a.length < 4 || b.length < 4) return false;
-  const limit = Math.max(a.length, b.length) >= 9 ? 2 : 1;
-  return levenshteinDistance(a, b) <= limit;
-}
-
-function levenshteinDistance(a: string, b: string): number {
-  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let row = 1; row <= a.length; row += 1) {
-    let diagonal = previous[0] ?? 0;
-    previous[0] = row;
-    for (let column = 1; column <= b.length; column += 1) {
-      const above = previous[column] ?? 0;
-      const left = previous[column - 1] ?? 0;
-      previous[column] = Math.min(
-        above + 1,
-        left + 1,
-        diagonal + (a[row - 1] === b[column - 1] ? 0 : 1),
-      );
-      diagonal = above;
-    }
-  }
-  return previous[b.length] ?? 0;
-}
-
-function normalizeText(value: string): string {
-  return value
-    .trim()
-    .toLocaleLowerCase('es-ES')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function decideWinner(state: MusicalState): PlayerId | null {

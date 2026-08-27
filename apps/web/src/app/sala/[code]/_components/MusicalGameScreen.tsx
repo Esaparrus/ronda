@@ -38,10 +38,7 @@ interface GuessForm {
 
 type GuessField = 'artist' | 'title';
 
-type SelectedSuggestions = Record<GuessField, string | null>;
-
 const EMPTY_GUESS: GuessForm = { artist: '', title: '', year: '' };
-const EMPTY_SELECTED_SUGGESTIONS: SelectedSuggestions = { artist: null, title: null };
 
 function resetAudioElement(audio: HTMLAudioElement) {
   audio.pause();
@@ -65,9 +62,6 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
   const pendingAction = useRondaStore((state) => state.pendingAction);
   const lastError = useRondaStore((state) => state.lastError);
   const [guess, setGuess] = useState<GuessForm>(EMPTY_GUESS);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<SelectedSuggestions>(
-    EMPTY_SELECTED_SUGGESTIONS,
-  );
   const [message, setMessage] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [startingClip, setStartingClip] = useState(false);
@@ -99,11 +93,9 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
   const buzzedPlayerNick = view.players.find(
     (player) => player.playerId === view.buzzedPlayerId,
   )?.nick;
-  const hasSelectedArtist =
-    !requiresArtist ||
-    (Boolean(guess.artist.trim()) && selectedSuggestions.artist === guess.artist);
-  const hasSelectedTitle = Boolean(guess.title.trim()) && selectedSuggestions.title === guess.title;
-  const hasSelectedAnswer = hasSelectedArtist && hasSelectedTitle;
+  const hasGuessFields =
+    Boolean(guess.title.trim()) && (!requiresArtist || Boolean(guess.artist.trim()));
+  const canSubmitGuess = hasGuessFields && (!requiresYear || Boolean(guess.year.trim()));
   const filters: MusicFilters = {
     genre: view.config.genre,
     popularity: view.config.popularity,
@@ -192,7 +184,6 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
 
   useEffect(() => {
     setGuess(EMPTY_GUESS);
-    setSelectedSuggestions(EMPTY_SELECTED_SUGGESTIONS);
     setMessage(null);
     setFeedback(null);
     setClipReady(false);
@@ -325,14 +316,6 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
       );
       return;
     }
-    if (!hasSelectedAnswer) {
-      setMessage(
-        requiresArtist
-          ? 'Selecciona un artista y una canción de las sugerencias.'
-          : 'Selecciona una canción de las sugerencias.',
-      );
-      return;
-    }
     const year = guess.year.trim() ? Number(guess.year) : null;
     if (requiresYear && year === null) {
       setMessage('Escribe también el año.');
@@ -354,11 +337,6 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
 
   function updateGuessField(field: GuessField, value: string) {
     setGuess((current) => ({ ...current, [field]: value }));
-    setSelectedSuggestions((current) => ({ ...current, [field]: null }));
-  }
-
-  function updateSelectedSuggestion(field: GuessField, suggestion: string | null) {
-    setSelectedSuggestions((current) => ({ ...current, [field]: suggestion }));
   }
 
   function buzz() {
@@ -818,10 +796,10 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                 <h2 className="text-20 font-semibold text-hueso">¿Cuál es?</h2>
                 <p className="mt-1 text-14 text-humo">
                   {isOnlineMode
-                    ? 'Has parado tu audio. Elige las sugerencias y corrige tu respuesta.'
+                    ? 'Has parado tu audio. Escribe tu respuesta y corrígela.'
                     : isSpeedMode
-                      ? 'Ya tienes el pulsador. Elige las sugerencias y corrige tu respuesta.'
-                      : 'Elige una sugerencia para cada nombre; el primer acierto gana.'}
+                      ? 'Ya tienes el pulsador. Escribe tu respuesta y corrígela.'
+                      : 'Escribe artista y canción; aceptamos coincidencias aproximadas.'}
                 </p>
               </div>
               {requiresArtist ? (
@@ -830,7 +808,6 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                   label="Artista"
                   value={guess.artist}
                   onChange={(artist) => updateGuessField('artist', artist)}
-                  onSelectionChange={(suggestion) => updateSelectedSuggestion('artist', suggestion)}
                   placeholder="Por ejemplo, A…"
                 />
               ) : null}
@@ -839,7 +816,6 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                 label="Canción"
                 value={guess.title}
                 onChange={(title) => updateGuessField('title', title)}
-                onSelectionChange={(suggestion) => updateSelectedSuggestion('title', suggestion)}
                 placeholder="Nombre de la canción"
               />
               {requiresYear ? (
@@ -860,7 +836,7 @@ export function MusicalGameScreen({ view, onAction }: MusicalGameScreenProps) {
                 </label>
               ) : null}
               <div className="grid">
-                <Button type="submit" disabled={!hasSelectedAnswer} loading={pendingAction}>
+                <Button type="submit" disabled={!canSubmitGuess} loading={pendingAction}>
                   Corregir
                 </Button>
               </div>

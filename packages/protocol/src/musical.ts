@@ -10,7 +10,7 @@ export function musicalArtistMatches(value: string, expected: string): boolean {
   if (!normalizedValue) return false;
 
   return musicalArtistCandidates(expected).some((candidate) =>
-    normalizedMusicalMatch(normalizedValue, candidate),
+    musicalTextMatches(normalizedValue, candidate),
   );
 }
 
@@ -38,12 +38,76 @@ function normalizeMusicalText(value: string): string {
     .trim();
 }
 
-function normalizedMusicalMatch(value: string, expected: string): boolean {
-  if (!value || !expected) return false;
+/**
+ * Acepta respuestas escritas a mano con pequeñas diferencias o partes
+ * reconocibles del nombre. Se comparte entre cliente y servidor para que la
+ * comprobación sea idéntica en todos los modos de Musical.
+ */
+export function musicalTextMatches(value: string, expected: string): boolean {
+  const normalizedValue = normalizeMusicalText(value);
+  const normalizedExpected = normalizeMusicalText(expected);
+  if (!normalizedValue || !normalizedExpected) return false;
+  if (normalizedValue === normalizedExpected) return true;
+
+  // Una parte de al menos cuatro letras es suficientemente informativa para
+  // que «bohemian» o «rhapsod» valgan para «Bohemian Rhapsody», pero no «the».
+  if (
+    (normalizedValue.length >= 4 && normalizedExpected.includes(normalizedValue)) ||
+    (normalizedExpected.length >= 4 && normalizedValue.includes(normalizedExpected))
+  ) {
+    return true;
+  }
+
+  // Permite escribir palabras relevantes sin tener que reproducir todos los
+  // conectores del título: «Rolling Deep» para «Rolling in the Deep».
+  const valueWords = relevantMusicalWords(normalizedValue);
+  const expectedWords = relevantMusicalWords(normalizedExpected);
+  if (
+    valueWords.length > 0 &&
+    expectedWords.length > 0 &&
+    valueWords.every((valueWord) =>
+      expectedWords.some((expectedWord) => musicalWordMatches(valueWord, expectedWord)),
+    )
+  ) {
+    return true;
+  }
+
+  return isCloseTypo(normalizedValue, normalizedExpected);
+}
+
+const MUSICAL_CONNECTORS = new Set([
+  'a',
+  'al',
+  'and',
+  'con',
+  'de',
+  'del',
+  'el',
+  'en',
+  'for',
+  'in',
+  'la',
+  'las',
+  'lo',
+  'los',
+  'of',
+  'on',
+  'the',
+  'to',
+  'un',
+  'una',
+  'y',
+]);
+
+function relevantMusicalWords(value: string): string[] {
+  return value.split(' ').filter((word) => !MUSICAL_CONNECTORS.has(word));
+}
+
+function musicalWordMatches(value: string, expected: string): boolean {
   return (
     value === expected ||
-    value.includes(expected) ||
-    expected.includes(value) ||
+    (value.length >= 4 && expected.includes(value)) ||
+    (expected.length >= 4 && value.includes(expected)) ||
     isCloseTypo(value, expected)
   );
 }
