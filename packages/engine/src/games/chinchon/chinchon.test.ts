@@ -231,6 +231,7 @@ describe('4. Cierre', () => {
     expect(r2.ok).toBe(false);
     if (r2.ok) return;
     expect(r2.code).toBe('CANNOT_CLOSE');
+    expect(r2.detail).toBe(String(CFG.closeThreshold));
   });
 
   it('cierre válido → status roundEnd y roundResult con una fila por jugador', () => {

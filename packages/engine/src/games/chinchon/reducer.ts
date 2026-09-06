@@ -26,7 +26,7 @@ import {
   isPlayerTurn,
   nextActiveSeat,
 } from './state.ts';
-import { canCloseWith, isChinchon, solveHand } from './melds.ts';
+import { isChinchon, solveHand } from './melds.ts';
 
 // ---------------------------------------------------------------------------
 // Utilidades de inmutabilidad
@@ -421,7 +421,7 @@ function applyClose(
   if (seat === null) return err('INVALID_ACTION');
   const player = state.players[seat];
   if (!player) return err('INVALID_ACTION');
-  if (player.hand.length !== 8) return err('CANNOT_CLOSE');
+  if (player.hand.length !== 8) return err('MUST_DRAW_FIRST');
   if (!player.hand.includes(cardId)) return err('CARD_NOT_IN_HAND');
   if (player.lockedCardId !== null && cardId === player.lockedCardId) {
     return err('CANNOT_DISCARD_DRAWN_CARD');
@@ -432,8 +432,9 @@ function applyClose(
   const chinchon = isChinchon(remaining);
 
   // ¿Cierre válido? deadwood tras descartar ≤ umbral.
-  const canClose = canCloseWith(player.hand, cardId, state.config);
-  if (!chinchon && !canClose) return err('CANNOT_CLOSE');
+  const closingSolution = solveHand(remaining);
+  const canClose = closingSolution.deadwood <= state.config.closeThreshold;
+  if (!chinchon && !canClose) return err('CANNOT_CLOSE', String(state.config.closeThreshold));
 
   const next = bump(state);
   const np = next.players[seat];

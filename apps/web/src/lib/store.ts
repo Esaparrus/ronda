@@ -9,6 +9,7 @@ import type {
   GameConfig,
   GameEvent,
   GameId,
+  ErrorCode,
   PlayerTokenIcon,
   PlayerId,
   PlayerView,
@@ -27,6 +28,15 @@ import { waitForVersionChange } from './state-sync.ts';
 
 const NEXT_ROUND_QUEUE_TIMEOUT_MS = 5_000;
 let queuedNextRound = false;
+
+function actionErrorMessage(result: { code: ErrorCode; detail?: string }): string {
+  return messageFor(
+    result.code,
+    result.code === 'CANNOT_CLOSE' && result.detail !== undefined
+      ? { n: result.detail }
+      : undefined,
+  );
+}
 
 async function waitForPendingActionToFinish(
   isPending: () => boolean,
@@ -430,11 +440,11 @@ export const useRondaStore = create<RondaState>((set, get) => {
 
           // Una sola repetición con la versión fresca.
           const retry = await attempt();
-          set({ lastError: retry.result.ok ? null : messageFor(retry.result.code) });
+          set({ lastError: retry.result.ok ? null : actionErrorMessage(retry.result) });
           return;
         }
 
-        set({ lastError: messageFor(first.result.code) });
+        set({ lastError: actionErrorMessage(first.result) });
       } catch (error) {
         recordDiagnostic('action:exception', { actionType: action.type });
         const state = get();

@@ -45,6 +45,8 @@ import type { DropTarget } from './CommonArea';
 
 export interface HandProps {
   hand: CardId[];
+  /** Cartas cuyo descarte permite cerrar según la vista del servidor. */
+  closableDiscards: CardId[];
   lockedCardId: CardId | null;
   selected: CardId | null;
   /** Primer toque sobre una carta no seleccionada: la selecciona. */
@@ -104,12 +106,14 @@ function sortCards(cards: CardId[], mode: SortMode): CardId[] {
 
 export function Hand({
   hand,
+  closableDiscards,
   lockedCardId,
   selected,
   onSelect,
   onCommit,
   onDropTargetChange,
 }: HandProps) {
+  const closable = new Set(closableDiscards);
   const [order, setOrder] = useState<CardId[]>(hand);
   const orderRef = useRef<CardId[]>(hand);
   const [containerWidth, setContainerWidth] = useState(360);
@@ -417,6 +421,7 @@ export function Hand({
       >
         {order.map((cardId, i) => {
           const isLocked = cardId === lockedCardId;
+          const canCloseWithCard = closable.has(cardId);
           const isDragging = cardId === draggingCardId;
           return (
             <div
@@ -446,7 +451,9 @@ export function Hand({
                 // tapan la parte de arriba.
                 zIndex: isDragging || cardId === selected ? 10 : undefined,
               }}
-              className="relative flex flex-shrink-0 flex-col items-center gap-1"
+              className={`relative flex flex-shrink-0 flex-col items-center gap-1 ${
+                canCloseWithCard ? 'rounded-[16px] ring-2 ring-oro drop-shadow-lg' : ''
+              }`}
             >
               <div
                 className="[&_svg]:h-full [&_svg]:w-full"
@@ -455,7 +462,11 @@ export function Hand({
                 <PlayingCard cardId={cardId} size="md" selected={cardId === selected} />
               </div>
               <span className="font-mono text-12 text-humo">{pointsFor(cardId)}</span>
-              {isLocked ? <Pill className="text-12">Bloqueada</Pill> : null}
+              {canCloseWithCard ? (
+                <Pill className="border-oro/60 bg-oro/10 text-oro">Cierre</Pill>
+              ) : isLocked ? (
+                <Pill className="text-12">Bloqueada</Pill>
+              ) : null}
             </div>
           );
         })}

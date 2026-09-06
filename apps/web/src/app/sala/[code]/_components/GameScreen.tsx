@@ -14,7 +14,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { CardId, ChinchonPlayerView, GameAction } from '@ronda/protocol';
+import {
+  parseCardId,
+  type CardId,
+  type ChinchonPlayerView,
+  type GameAction,
+} from '@ronda/protocol';
 import { useRondaStore } from '@/lib/store';
 import { CommonArea } from './CommonArea';
 import type { DropTarget } from './CommonArea';
@@ -37,6 +42,25 @@ interface TurnTimerHeaderProps {
   turnNick: string | null;
   deadlineAt: number | null;
   durationSeconds: number;
+}
+
+const CARD_RANK_LABELS: Record<number, string> = {
+  1: 'As',
+  2: '2',
+  3: '3',
+  4: '4',
+  5: '5',
+  6: '6',
+  7: '7',
+  10: 'Sota',
+  11: 'Caballo',
+  12: 'Rey',
+};
+
+function cardLabel(cardId: CardId): string {
+  const parsed = parseCardId(cardId);
+  if (!parsed.ok) return cardId;
+  return `${CARD_RANK_LABELS[parsed.value.rank] ?? parsed.value.rank} de ${parsed.value.suit}`;
 }
 
 /** Aísla el reloj para no repintar mesa, asientos y mano cuatro veces/segundo. */
@@ -110,6 +134,13 @@ export function GameScreen({ view, onAction }: GameScreenProps) {
     dispatch({ type: 'drawDiscard' });
   }
 
+  function requestClose(cardId: CardId) {
+    if (!isMyTurn || view.turnPhase !== 'discard') return;
+    if (!me.closableDiscards.includes(cardId)) return;
+    setSelected(cardId);
+    setPendingCloseCard(cardId);
+  }
+
   // Segundo toque sobre la carta ya seleccionada, o arrastrarla al montón.
   // Si ese descarte permite cerrar, la decisión sigue siendo del jugador:
   // puede cerrar ahora o descartar normalmente para buscar una mano mejor.
@@ -117,7 +148,7 @@ export function GameScreen({ view, onAction }: GameScreenProps) {
     if (!isMyTurn || view.turnPhase !== 'discard') return;
     if (target !== 'discard') return;
     if (me.closableDiscards.includes(cardId)) {
-      setPendingCloseCard(cardId);
+      requestClose(cardId);
       return;
     }
     setSelected(null);
@@ -142,6 +173,8 @@ export function GameScreen({ view, onAction }: GameScreenProps) {
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDeck');
   const canDrawDiscard =
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDiscard');
+  const closableDiscards =
+    isMyTurn && view.turnPhase === 'discard' ? me.closableDiscards : [];
   const visibleDiscardCards =
     view.discardCards ?? (view.discardTop ? [view.discardTop] : []);
 
@@ -205,8 +238,29 @@ export function GameScreen({ view, onAction }: GameScreenProps) {
       ) : null}
 
       <div className="flex shrink-0 flex-col">
+        {closableDiscards.length > 0 ? (
+          <div
+            className="mx-3 mb-1 rounded-2xl border border-oro/50 bg-oro/10 px-3 py-2.5 text-center"
+            role="status"
+          >
+            <p className="text-14 font-semibold text-oro">Puedes cerrar la ronda</p>
+            <p className="mt-0.5 text-12 text-humo">Elige qué carta quieres tirar:</p>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {closableDiscards.map((cardId) => (
+                <Button
+                  key={cardId}
+                  onClick={() => requestClose(cardId)}
+                  className="!min-h-10 px-3 text-12"
+                >
+                  Cerrar con {cardLabel(cardId)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <Hand
           hand={me.hand}
+          closableDiscards={closableDiscards}
           lockedCardId={me.lockedCardId}
           selected={selected}
           onSelect={handleSelect}
