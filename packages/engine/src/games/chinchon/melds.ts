@@ -40,6 +40,15 @@ export interface MeldSolution {
   deadwood: number;
 }
 
+export interface LayoffResult {
+  /** Combinaciones receptoras después de acomodar las cartas posibles. */
+  melds: CardId[][];
+  /** Cartas de `incoming` que se han podido acomodar. */
+  laidOff: CardId[];
+  /** Cartas de `incoming` que siguen siendo puntos sueltos. */
+  leftovers: CardId[];
+}
+
 // ---------------------------------------------------------------------------
 // Indexado de la mano (una sola vez, compartido)
 // ---------------------------------------------------------------------------
@@ -257,7 +266,8 @@ export function solveHand(hand: CardId[]): MeldSolution {
       }
 
       // (b) Forma parte de una combinación que la incluye.
-      const candidates = (lowestBit >= 0 && lowestBit < n ? meldsByLowestBit[lowestBit] : null) ?? [];
+      const candidates =
+        (lowestBit >= 0 && lowestBit < n ? meldsByLowestBit[lowestBit] : null) ?? [];
       for (const mi of candidates) {
         const cm = meldMasks[mi];
         if (cm === undefined) continue;
@@ -326,6 +336,171 @@ export function solveHand(hand: CardId[]): MeldSolution {
 
   const deadwood = memoDead[fullMask] ?? 0;
   return { melds, leftovers, deadwood };
+}
+
+// ---------------------------------------------------------------------------
+// Acomodar cartas al cierre
+// ---------------------------------------------------------------------------
+
+const RUN_POSITIONS = 10;
+
+interface LayoffPlan {
+  melds: CardId[][];
+  laidOff: CardId[];
+  savedPoints: number;
+}
+
+function sameRankMeld(meld: CardId[], cardId: CardId): boolean {
+  const incoming = parseCardId(cardId);
+  if (!incoming.ok || meld.length < 3 || meld.length >= 4) return false;
+  const firstId = meld[0];
+  if (!firstId) return false;
+  const first = parseCardId(firstId);
+  if (!first.ok) return false;
+  if (incoming.value.rank !== first.value.rank) return false;
+  return meld.every((id) => {
+    const parsed = parseCardId(id);
+    return parsed.ok && parsed.value.rank === first.value.rank;
+  });
+}
+
+function runExtension(meld: CardId[], cardId: CardId): boolean {
+  const incoming = parseCardId(cardId);
+  if (!incoming.ok || meld.length < 3 || meld.length >= RUN_POSITIONS) return false;
+
+  const cards = meld.map((id) => parseCardId(id));
+  if (cards.some((parsed) => !parsed.ok)) return false;
+  const parsedCards = cards.map((parsed) => (parsed.ok ? parsed.value : null));
+  if (parsedCards.some((card) => card === null)) return false;
+  const known = parsedCards.filter((card): card is NonNullable<typeof card> => card !== null);
+  if (known.some((card) => card.suit !== incoming.value.suit)) return false;
+
+  const positions = known.map((card) => rankPosition(card.rank)).sort((a, b) => a - b);
+  const first = positions[0];
+  if (first === undefined) return false;
+  for (let i = 1; i < positions.length; i++) {
+    const current = positions[i];
+    const previous = positions[i - 1];
+    if (current === undefined || previous === undefined || current !== previous + 1) {
+      return false;
+    }
+  }
+
+  const position = rankPosition(incoming.value.rank);
+  const last = positions[positions.length - 1];
+  if (last === undefined) return false;
+  return position === first - 1 || position === last + 1;
+}
+
+function canLayOffOn(meld: CardId[], cardId: CardId): boolean {
+  return sameRankMeld(meld, cardId) || runExtension(meld, cardId);
+}
+
+function appendToMeld(meld: CardId[], cardId: CardId): CardId[] {
+  const next = [...meld, cardId];
+  const parsed = next.map((id) => parseCardId(id));
+  const sameSuit =
+    parsed.every((entry) => entry.ok) &&
+    new Set(parsed.filter((entry) => entry.ok).map((entry) => entry.value.suit)).size === 1;
+
+  if (sameSuit) {
+    return next.sort((a, b) => {
+      const parsedA = parseCardId(a);
+      const parsedB = parseCardId(b);
+      if (!parsedA.ok || !parsedB.ok) return a.localeCompare(b);
+      return (
+        rankPosition(parsedA.value.rank) - rankPosition(parsedB.value.rank) || a.localeCompare(b)
+      );
+    });
+  }
+  return next.sort();
+}
+
+function layoffStateKey(remainingMask: number, melds: CardId[][]): string {
+  return `${remainingMask}:${melds.map((meld) => meld.join(',')).join('/')}`;
+}
+
+function layoffTieKey(plan: LayoffPlan): string {
+  return `${[...plan.laidOff].sort().join('|')}::${plan.melds
+    .map((meld) => meld.join(','))
+    .join('/')}`;
+}
+
+function isBetterLayoffPlan(candidate: LayoffPlan, current: LayoffPlan): boolean {
+  if (candidate.savedPoints !== current.savedPoints) {
+    return candidate.savedPoints > current.savedPoints;
+  }
+  if (candidate.laidOff.length !== current.laidOff.length) {
+    return candidate.laidOff.length > current.laidOff.length;
+  }
+  return layoffTieKey(candidate) < layoffTieKey(current);
+}
+
+/**
+ * Acomoda las cartas sobrantes de otros jugadores en las combinaciones de
+ * quien ha cerrado.
+ *
+ * La búsqueda permite encadenar extensiones de escalera (por ejemplo, primero
+ * 2 y después as sobre una escalera que empezaba en 3) y resuelve de forma
+ * determinista los casos en los que una carta puede entrar en más de un juego.
+ * Se optimiza primero el número de puntos que desaparece del tanteo, después
+ * el número de cartas acomodadas y, por último, un desempate estable.
+ */
+export function layOffCards(melds: CardId[][], incoming: CardId[]): LayoffResult {
+  if (incoming.length > 30) {
+    throw new Error(`layOffCards: demasiadas cartas candidatas (n=${incoming.length})`);
+  }
+
+  const initialMelds = melds.map((meld) => [...meld]);
+  const memo = new Map<string, LayoffPlan>();
+
+  function search(remainingMask: number, currentMelds: CardId[][]): LayoffPlan {
+    const key = layoffStateKey(remainingMask, currentMelds);
+    const cached = memo.get(key);
+    if (cached) return cached;
+
+    // No acomodar ninguna de las cartas restantes siempre es una opción legal.
+    let best: LayoffPlan = {
+      melds: currentMelds.map((meld) => [...meld]),
+      laidOff: [],
+      savedPoints: 0,
+    };
+
+    for (let i = 0; i < incoming.length; i++) {
+      if ((remainingMask & (1 << i)) === 0) continue;
+      const cardId = incoming[i];
+      if (!cardId) continue;
+      const parsed = parseCardId(cardId);
+      if (!parsed.ok) continue;
+
+      for (let meldIndex = 0; meldIndex < currentMelds.length; meldIndex++) {
+        const meld = currentMelds[meldIndex];
+        if (!meld || !canLayOffOn(meld, cardId)) continue;
+        const nextMelds = currentMelds.map((candidate, index) =>
+          index === meldIndex ? appendToMeld(candidate, cardId) : [...candidate],
+        );
+        const child = search(remainingMask & ~(1 << i), nextMelds);
+        const candidate: LayoffPlan = {
+          melds: child.melds,
+          laidOff: [cardId, ...child.laidOff],
+          savedPoints: parsed.value.points + child.savedPoints,
+        };
+        if (isBetterLayoffPlan(candidate, best)) best = candidate;
+      }
+    }
+
+    memo.set(key, best);
+    return best;
+  }
+
+  const plan = search((1 << incoming.length) - 1, initialMelds);
+  const laidOff = [...plan.laidOff].sort();
+  const laidOffSet = new Set(laidOff);
+  return {
+    melds: plan.melds.map((meld) => [...meld]),
+    laidOff,
+    leftovers: incoming.filter((cardId) => !laidOffSet.has(cardId)),
+  };
 }
 
 // ---------------------------------------------------------------------------

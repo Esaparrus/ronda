@@ -1,0 +1,648 @@
+# RONDA — Paquetes de tarea (prompts para la IA generadora)
+
+**Cómo se usa cada paquete.** Sesión nueva. Pegas, en este orden:
+1. `03-CONTEXTO-PEGABLE.md` entero.
+2. Las secciones de `01-CONTRATOS.md` que el paquete indica en **Contexto**.
+3. El bloque **PROMPT** del paquete.
+
+Antes de que escriba código, exige: *«Lista los ficheros que vas a crear y espera mi confirmación.»*
+
+---
+
+## P0 · Bootstrap del monorepo
+
+**Contexto:** `00-MASTER.md` §2, §3, §5.
+
+**PROMPT**
+> Crea el esqueleto del monorepo `ronda` con pnpm workspaces. Entregables exactos:
+> - `package.json` raíz con scripts: `dev`, `dev:web`, `dev:server`, `build`, `typecheck`, `lint`, `test`, `sim`, `db:migrate`.
+> - `pnpm-workspace.yaml` con `apps/*` y `packages/*`.
+> - `tsconfig.base.json` con `strict: true`, `noUncheckedIndexedAccess: true`, `moduleResolution: "bundler"`, `target: "ES2022"`, `module: "ESNext"`, y `paths` para `@ronda/protocol` y `@ronda/engine`.
+> - Un `tsconfig.json` por paquete que extienda el base.
+> - `packages/protocol/package.json` y `packages/engine/package.json` (tipo `module`, `main` apuntando a `src/index.ts`, sin build propio: los consume TypeScript directamente).
+> - `apps/server/package.json` y `apps/web/package.json` vacíos de lógica pero con sus dependencias.
+> - ESLint plano (`eslint.config.js`) + Prettier (100 columnas, comillas simples, sin punto y coma final: no, **con** punto y coma).
+> - `vitest.config.ts` en la raíz que recoja `packages/**/*.test.ts` y `apps/server/**/*.test.ts`.
+> - `.env.example` con: `DATABASE_URL`, `PORT`, `CORS_ORIGIN`, `NEXT_PUBLIC_SERVER_URL`, `NODE_ENV`.
+> - `.gitignore`, `README.md` de 20 líneas.
+>
+> **Criterios de aceptación:** `pnpm install && pnpm typecheck && pnpm lint && pnpm test` termina sin errores (los tests pueden ser 0).
+>
+> **NO HAGAS:** no añadas Turborepo, Nx, Docker, CI, Husky, ni ninguna dependencia que no sea la mínima. No escribas lógica de juego.
+
+---
+
+## P1 · `packages/protocol` — contratos compartidos ⚠️ CRÍTICO
+
+**Contexto:** `01-CONTRATOS.md` §1, §2 completo, §5.9 (solo para conocer `GameConfig`).
+
+**PROMPT**
+> Implementa `packages/protocol` **exactamente** como está especificado en el contrato que te he pegado. Ficheros:
+> - `src/brand.ts` — `APP_NAME = 'Ronda'` y textos de marca.
+> - `src/ids.ts` — tipos de identificador y constantes (`ROOM_CODE_ALPHABET`, etc.).
+> - `src/result.ts` — `Result`, `ok`, `err`.
+> - `src/errors.ts` — `ERROR_CODES`, `ErrorCode`, `AppError`.
+> - `src/messages.ts` — mapa `ErrorCode → texto en castellano`, con soporte de interpolación `{n}`.
+> - `src/config.ts` — esquema zod `GameConfigSchema` con **todos** los valores por defecto del contrato, más `DEFAULT_CONFIG`.
+> - `src/cards.ts` — tipos `Suit`, `Card`, `CardId`, y helpers `parseCardId`, `makeCardId`, `cardPoints(card, config)`.
+> - `src/views.ts` — `PublicPlayer`, `CommonView`, `PlayerView`, `TableView`, `RoundResult`.
+> - `src/actions.ts` — `GameAction` y su esquema zod.
+> - `src/events.ts` — `GameEvent`.
+> - `src/socket.ts` — interfaces `ClientToServerEvents` y `ServerToClientEvents` tipadas para Socket.IO, con acks tipados, más un esquema zod por cada payload de entrada.
+> - `src/index.ts` — reexporta todo.
+>
+> Cada tipo debe tener su esquema zod y el tipo debe derivarse del esquema con `z.infer` cuando sea posible, para que no puedan divergir.
+>
+> **Criterios de aceptación:**
+> - Existe un test que valida que `GameConfigSchema.parse({})` devuelve exactamente `DEFAULT_CONFIG`.
+> - Existe un test que valida que cada `ErrorCode` tiene texto en `messages.ts` (recorrer `ERROR_CODES`).
+> - `parseCardId('oros-12')` y `parseCardId('joker-1')` funcionan; `parseCardId('oros-13')` devuelve error.
+> - Cero dependencias salvo `zod`.
+>
+> **NO HAGAS:** no implementes reglas de juego, ni sockets reales, ni acceso a base de datos. No inventes campos que no estén en el contrato. Si crees que falta algo, escríbelo en un comentario `// TODO(unai):` y sigue.
+
+---
+
+## P2 · `packages/engine` — núcleo puro
+
+**Contexto:** `01-CONTRATOS.md` §3, §3.1, §5.1.
+
+**PROMPT**
+> Implementa el núcleo del motor en `packages/engine/src/core/`:
+> - `rng.ts` — `mulberry32`, `hashSeed(seed: string): number`, y `shuffle<T>(items: T[], seed: string, calls: number): { items: T[]; calls: number }`. El RNG **nunca** guarda estado fuera del que se le pasa.
+> - `deck.ts` — `buildDeck(config): Card[]` (48 cartas + comodines según config), `CARDS_BY_ID: Record<CardId, Card>`, `cardPoints`.
+> - `types.ts` — `GameModule<S, A>` tal cual el contrato.
+> - `registry.ts` — `GAMES` (de momento vacío, se rellena en P4).
+> - `freeze.ts` — `deepFreeze` para usar en tests.
+> - `index.ts`.
+>
+> **Criterios de aceptación (tests obligatorios):**
+> - `buildDeck` con `jokers: 2` devuelve 50 cartas, todas con `id` único.
+> - Los puntos son correctos: `oros-9` → 9, `copas-10` → 10, `bastos-12` → 10, `joker-1` → 25.
+> - `shuffle` con la misma semilla y el mismo `calls` devuelve **siempre** el mismo orden; con `calls` distinto, distinto orden.
+> - `shuffle` es una permutación: mismos elementos, distinto orden.
+>
+> **NO HAGAS:** no escribas nada de Chinchón todavía. No uses `Math.random` ni `Date` en ningún sitio.
+
+---
+
+## P3 · Reglas de Chinchón: combinaciones y puntuación ⚠️ CRÍTICO
+
+**Contexto:** `01-CONTRATOS.md` §5 completo (muy especialmente §5.4, §5.5, §5.9, §5.10).
+
+**PROMPT**
+> Implementa el resolver de combinaciones en `packages/engine/src/games/chinchon/melds.ts`, siguiendo **al pie de la letra** el algoritmo del contrato §5.9. No inventes otro algoritmo aunque se te ocurra uno mejor.
+>
+> API exacta:
+> ```ts
+> export interface MeldSolution { melds: CardId[][]; leftovers: CardId[]; deadwood: number }
+> export function enumerateMelds(hand: CardId[], config: GameConfig): number[]   // máscaras
+> export function solveHand(hand: CardId[], config: GameConfig): MeldSolution
+> export function isChinchon(hand: CardId[]): boolean
+> export function canCloseWith(hand: CardId[], discardId: CardId, config: GameConfig): boolean
+> export function closableDiscards(hand: CardId[], config: GameConfig): CardId[]
+> ```
+>
+> **Criterios de aceptación:**
+> - Un fichero `melds.test.ts` con los 7 casos dorados de la tabla del contrato §5.10, escritos uno a uno con sus manos literales y su `deadwood` esperado.
+> - Test de propiedad: 5.000 manos generadas con semilla fija; para cada solución, comprobar que (a) toda combinación es válida, (b) las combinaciones son disjuntas, (c) `melds ∪ leftovers` = la mano exacta, (d) el `deadwood` coincide con la suma de `leftovers`.
+> - Test de rendimiento: 10.000 llamadas a `solveHand` con manos de 8 cartas en menos de 2 segundos.
+> - `isChinchon` devuelve `false` si hay comodín en la escalera.
+> - `canCloseWith` respeta `config.closeThreshold` y devuelve `false` si la carta no está en la mano.
+>
+> **NO HAGAS:** no toques `core/`. No implementes turnos, estado ni reducer todavía. No uses recursión sin memoización.
+
+---
+
+## P4 · Chinchón: estado, reducer y vistas ⚠️ CRÍTICO
+
+**Contexto:** `01-CONTRATOS.md` §2.5, §2.6, §3, §5.2, §5.3, §5.6, §5.7, §5.8.
+
+**PROMPT**
+> Implementa el módulo de juego completo en `packages/engine/src/games/chinchon/`:
+> - `state.ts` — la interfaz `ChinchonState`, JSON-serializable, con: `version`, `status`, `config`, `seed`, `rngCalls`, `round`, `dealerSeat`, `turnSeat`, `turnPhase`, `players[]` (con `playerId`, `nick`, `seat`, `score`, `eliminated`, `left`, `hand: CardId[]`, `lockedCardId`), `deck: CardId[]`, `discard: CardId[]`, `roundResult`, `winnerId`, `rematchVotes`, `processedActionIds: string[]`.
+> - `reducer.ts` — `applyAction(state, playerId, action, now)` que implementa §5.3 y §5.6–§5.8 **exactamente**, devolviendo `Result<{ state, events }>` con estado nuevo (inmutable) y la lista de `GameEvent`.
+> - `views.ts` — `getPlayerView` y `getTableView` produciendo exactamente las formas del contrato §2.5. `getPlayerView` calcula `bestMelds`, `deadwood`, `canClose`, `closableDiscards` y `availableActions` usando el resolver de P3.
+> - `index.ts` — exporta el `GameModule<ChinchonState, GameAction>` y regístralo en `GAMES`.
+>
+> **Criterios de aceptación (tests obligatorios en `chinchon.test.ts`):**
+> 1. Reparto: con 4 jugadores y semilla fija, cada uno tiene 7 cartas, el descarte tiene 1 y el mazo 50−29=21 (con 2 comodines).
+> 2. Turno: `discard` antes de robar → `MUST_DRAW_FIRST`. Robar dos veces → `ALREADY_DREW`. Jugar fuera de turno → `NOT_YOUR_TURN`. Descartar una carta que no tienes → `CARD_NOT_IN_HAND`.
+> 3. `forbidDiscardDrawnCard`: robar del descarte y descartar esa misma carta → `CANNOT_DISCARD_DRAWN_CARD`. En el turno siguiente, sí se puede.
+> 4. Cierre inválido (deadwood > umbral) → `CANNOT_CLOSE`. Cierre válido → `status: 'roundEnd'` y `roundResult` con una fila por jugador.
+> 5. Cierre en seco (deadwood 0) → el que cierra recibe `delta: -10`.
+> 6. Chinchón con `chinchonEndsGame: true` → `status: 'gameEnd'` y `winnerId` es quien lo hizo, aunque vaya perdiendo por 80 puntos.
+> 7. Eliminación: un jugador que supera 100 queda `eliminated`. Cuando queda uno, `status: 'gameEnd'`.
+> 8. Mazo agotado: fuerza el caso y comprueba que se rebaraja el descarte dejando la carta superior y se emite `deckReshuffled`.
+> 9. Rondas: tras `nextRound` de todos, el repartidor rota al siguiente asiento no eliminado y se reparte de nuevo.
+> 10. **Test de estanqueidad:** serializa `getTableView(state)` y `getPlayerView(state, jugadorA)` y comprueba que no aparece ningún `CardId` de la mano del jugador B mientras `status === 'playing'`.
+> 11. **Test de inmutabilidad:** `deepFreeze(state)` y luego `applyAction` no lanza.
+> 12. **Partida completa determinista:** una función `playRandomGame(seed)` con jugadores automáticos que siempre roban del mazo y descartan la carta de más puntos suelta, cerrando cuando pueden. Ejecuta 200 partidas con semillas 1..200; **ninguna** debe quedarse colgada, lanzar excepción, ni terminar sin `winnerId`. Máximo 500 turnos por partida (si se supera, el test falla).
+>
+> **NO HAGAS:** no toques `melds.ts`, `core/` ni `protocol`. No metas nada de red ni de base de datos. No añadas acciones que no estén en el contrato §2.6.
+
+---
+
+## P5 · `apps/server` — esqueleto
+
+**Contexto:** `00-MASTER.md` §3; `01-CONTRATOS.md` §6.
+
+**PROMPT**
+> Crea el esqueleto del servidor en `apps/server/src/`:
+> - `config.ts` — lee y valida el entorno con zod (`DATABASE_URL`, `PORT` por defecto 8787, `CORS_ORIGIN`, `NODE_ENV`). Falla al arrancar si falta algo.
+> - `logger.ts` — logger mínimo propio con niveles y salida JSON en producción, legible en desarrollo. Sin dependencias.
+> - `http.ts` — servidor `node:http` con `GET /health` (devuelve `{ ok: true, uptime, rooms }`) y nada más.
+> - `io.ts` — inicializa Socket.IO sobre ese servidor, con CORS desde `CORS_ORIGIN`, `pingInterval: 10000`, `pingTimeout: 20000`, tipado con `ClientToServerEvents`/`ServerToClientEvents` de `@ronda/protocol`.
+> - `index.ts` — arranque, apagado limpio con `SIGTERM` (cierra sockets, hace snapshot y sale).
+> - `errors.ts` — `AppError` y un envoltorio `handle(fn)` que convierte excepciones en `Result` de error y las registra.
+>
+> **Criterios de aceptación:** `pnpm dev:server` levanta, `curl localhost:8787/health` responde 200. Un test comprueba que `config.ts` falla si falta `DATABASE_URL`.
+>
+> **NO HAGAS:** no implementes salas ni lógica de juego. No uses Express ni Fastify.
+
+---
+
+## P6 · Servidor — gestión de salas en memoria
+
+**Contexto:** `01-CONTRATOS.md` §2.3, §2.4, §6.
+
+**PROMPT**
+> Implementa `apps/server/src/rooms/`:
+> - `codes.ts` — `generateRoomCode(isTaken)` con el alfabeto del contrato y hasta 10 reintentos.
+> - `tokens.ts` — `createToken()` (32 bytes base64url con `node:crypto`) y `hashToken(t)` (sha256 hex).
+> - `nick.ts` — normalización y validación de apodos según §6.
+> - `room.ts` — clase `Room` con: `code`, `gameId`, `config`, `status`, `players: Map<PlayerId, PlayerRuntime>`, `state` (estado del motor o `null`), `screens: Set<socketId>`, `hostPlayerId`, `lastActivityAt`, `processedActions: Map<string, number>`.
+> - `room-manager.ts` — `RoomManager` con `createRoom`, `joinRoom`, `resumeByToken`, `leave`, `kick`, `attachScreen`, `setConfig`, `start`, `applyAction`, `voteRematch`, `getRoomByCode`, `sweep()` (caducidades y traspaso de anfitrión).
+>
+> Reglas duras: toda la validación de permisos vive aquí (anfitrión, jugador en sala, sala empezada…). Toda mutación actualiza `lastActivityAt`. `applyAction` delega en `GAMES[gameId].applyAction` y **jamás** implementa reglas de juego por su cuenta.
+>
+> **Criterios de aceptación (tests con `RoomManager` en memoria, sin sockets ni base de datos):**
+> - Crear sala devuelve código de 4 caracteres del alfabeto permitido.
+> - Unirse con apodo repetido → `NICK_TAKEN`; quinto jugador → `ROOM_FULL`; sala ya empezada → `ROOM_ALREADY_STARTED`.
+> - `room:start` con 1 jugador → `NOT_ENOUGH_PLAYERS`; ejecutado por quien no es anfitrión → `NOT_HOST`.
+> - `resumeByToken` con token válido devuelve el mismo `playerId` y asiento; con token inválido → `INVALID_TOKEN`.
+> - Idempotencia: aplicar dos veces el mismo `clientActionId` deja una sola mutación y devuelve la misma versión.
+> - `expectedVersion` desfasada → `STALE_VERSION`.
+> - Traspaso de anfitrión: simula 45 s desconectado y comprueba que el anfitrión pasa al asiento conectado más bajo.
+> - `sweep()` cierra una sala en lobby con 2 h de inactividad.
+>
+> **NO HAGAS:** no toques persistencia (P7) ni los manejadores de socket (P8). Deja los enganches (`onSnapshot`, `onEvent`) como callbacks inyectados que en los tests son espías.
+
+---
+
+## P7 · Servidor — persistencia y migraciones
+
+**Contexto:** `01-CONTRATOS.md` §4.
+
+**PROMPT**
+> Implementa la persistencia:
+> - `db/migrations/0001_init.sql` con el esquema **exacto** del contrato §4.
+> - `apps/server/src/db/client.ts` — pool de `pg` a partir de `DATABASE_URL`, con `query<T>()` tipado y reintento único ante error de conexión.
+> - `apps/server/src/db/migrate.ts` — script que crea la tabla `_migrations`, aplica en orden los `.sql` no aplicados dentro de una transacción y registra el resultado. Se ejecuta con `pnpm db:migrate`.
+> - `apps/server/src/db/rooms-repo.ts` — `upsertRoom`, `upsertPlayer`, `findPlayerByTokenHash`, `closeRoom`, `loadActiveRooms`.
+> - `apps/server/src/db/matches-repo.ts` — `createMatch`, `saveSnapshot(matchId, version, state)`, `appendEvents`, `finishMatch`.
+> - `apps/server/src/db/playtest-repo.ts` — `track(kind, payload)` que nunca lanza (los fallos se registran y se ignoran).
+> - `apps/server/src/rooms/persistence.ts` — conecta `RoomManager` con los repositorios: snapshot con *debounce* de 400 ms, inmediato en fin de ronda/partida y en entrada/salida de jugador, más `rehydrate()` al arrancar según la política del contrato.
+>
+> **Criterios de aceptación:** los repositorios tienen tests con una base de datos real definida por `TEST_DATABASE_URL` y se saltan (`describe.skip`) si esa variable no existe. `pnpm db:migrate` es idempotente: ejecutarlo dos veces no falla.
+>
+> **NO HAGAS:** no uses ORM ni `supabase-js`. No metas SQL en ningún fichero fuera de `db/`. No guardes ningún dato personal más allá del apodo.
+
+---
+
+## P8 · Servidor — manejadores de socket y difusión
+
+**Contexto:** `01-CONTRATOS.md` §2.3, §2.4, §2.5, §6.
+
+**PROMPT**
+> Implementa `apps/server/src/socket/`:
+> - `handlers.ts` — un manejador por cada evento cliente→servidor del contrato §2.3. Cada uno: valida el payload con el esquema zod de `@ronda/protocol`, aplica el límite de ritmo, llama al `RoomManager`, responde por el ack con `Result`, y dispara la difusión.
+> - `broadcast.ts` — `broadcastRoom(room)`: para cada socket de jugador emite `state:view` con `getPlayerView`, y para cada pantalla emite `state:view` con `getTableView`. Emite `events` con los `GameEvent` de la última acción. **Una sola vez por acción.**
+> - `presence.ts` — marca `connected` en conexión y desconexión, emite `connection`, arranca el temporizador de traspaso de anfitrión, y llama a `sweep()` cada 30 s.
+> - `rate-limit.ts` — 20 mensajes / 10 s por socket, ventana deslizante.
+>
+> Regla crítica de seguridad, además de un test que lo compruebe: **un socket solo recibe `PlayerView` de su propio `playerId`**. La difusión nunca hace un `io.to(room).emit` con datos privados.
+>
+> **Criterios de aceptación (tests de integración con cliente de Socket.IO real contra el servidor en un puerto efímero):**
+> - Dos clientes crean y se unen a una sala; ambos reciben `state:view` con la lista de jugadores correcta.
+> - El cliente A no recibe nunca la mano del cliente B (inspeccionar todos los mensajes recibidos durante una partida entera).
+> - Una pantalla conectada con `screen:attach` recibe `kind: 'table'` y nunca `kind: 'player'`.
+> - Reconectar con el mismo token recupera asiento, mano y turno.
+> - Enviar 30 mensajes en 1 s produce `RATE_LIMITED`.
+>
+> **NO HAGAS:** no metas lógica de reglas aquí. No emitas el estado completo del motor: solo vistas.
+
+---
+
+## P9 · Servidor — simulador con bots ⚠️ ALTO VALOR
+
+**Contexto:** `01-CONTRATOS.md` §2.3, §5.3.
+
+**PROMPT**
+> Implementa `apps/server/src/sim/`:
+> - `bot.ts` — un cliente Socket.IO automático con una política simple: si puede cerrar, cierra; si la carta superior del descarte reduce sus puntos sueltos, la roba; si no, roba del mazo; descarta la carta suelta de más puntos.
+> - `run.ts` — script `pnpm sim -- --games=50 --players=4 --seed=1 --chaos=0.1` que levanta el servidor en memoria, lanza N partidas con bots y reporta: partidas terminadas, turnos medios, duración media, errores por código, y cualquier partida colgada.
+> - `chaos.ts` — con probabilidad `chaos`, un bot se desconecta 2–5 s y vuelve a entrar con su token, o envía una acción con `expectedVersion` desfasada, o repite un `clientActionId`.
+>
+> **Criterios de aceptación:** `pnpm sim -- --games=50 --chaos=0.2` termina el 100 % de las partidas sin errores inesperados (solo se admiten `STALE_VERSION` y `NOT_YOUR_TURN` provocados por el caos) y sin fugas de información privada (el bot verifica en cada `state:view` que no ve manos ajenas). El proceso devuelve código de salida distinto de 0 si algo falla, para poder usarlo como test de humo.
+>
+> **NO HAGAS:** no metas el simulador en el arranque de producción. No hagas que los bots sean buenos jugando: solo tienen que ser legales y rápidos.
+
+---
+
+## P10 · Web — bootstrap, tokens de diseño y PWA
+
+**Contexto:** `01-CONTRATOS.md` §7, §8 completo.
+
+**PROMPT**
+> Monta `apps/web` con Next.js (App Router) y Tailwind v4:
+> - `src/app/layout.tsx` — fuentes con `next/font/google` (Familjen Grotesk 700, IBM Plex Sans 400/600, IBM Plex Mono 500), metadatos, `viewport-fit=cover`, color de tema `#14161F`.
+> - `src/styles/globals.css` — **todos** los tokens de color del contrato §8.1 como variables CSS, la escala tipográfica §8.2, y `@theme` de Tailwind mapeando esos tokens a utilidades (`bg-mesa`, `text-hueso`, `border-linea`, `text-brasa`…).
+> - `public/manifest.webmanifest`, iconos 192/512 y maskable generados como SVG→PNG propios (la marca es la palabra «Ronda» en Familjen Grotesk sobre `--tinta` con una línea `--brasa` debajo).
+> - `public/sw.js` escrito a mano: precache del shell (`/`, `/unirse`, estáticos), `NetworkOnly` para todo lo demás, y registro desde un componente cliente. Sin librerías de PWA.
+> - `src/app/page.tsx` provisional con la portada: nombre, «Crear partida», «Unirse a una partida».
+>
+> **Criterios de aceptación:** Lighthouse PWA instalable en local. Nada de colores escritos a mano fuera de `globals.css`: todo pasa por tokens. Un test de lint prohíbe literales `#rrggbb` en `src/app` y `src/components`.
+>
+> **NO HAGAS:** no instales shadcn, MUI, next-pwa, framer-motion ni ninguna librería de componentes o animación. Las animaciones son CSS.
+
+---
+
+## P11 · Web — sistema de componentes y la baraja SVG
+
+**Contexto:** `01-CONTRATOS.md` §8.3, §8.4, §8.5.
+
+**PROMPT**
+> Crea `apps/web/src/components/ui/` y `components/cards/`:
+> - `Button.tsx` — variantes `primary` (fondo `--brasa`), `ghost`, `danger`. Altura mínima 56 px. Estado `loading` que bloquea.
+> - `Sheet.tsx` — panel inferior deslizante, cierre con gesto y con `Escape`.
+> - `Toast.tsx`, `Banner.tsx` (banda de conexión de 4 px), `Pill.tsx`, `Avatar.tsx` (inicial sobre el color del asiento), `RoomCode.tsx` (código en 4 casillas grandes, monoespaciado).
+> - `components/cards/PlayingCard.tsx` — la carta SVG exactamente como el contrato §8.3, con props `cardId`, `size` (`sm` 48×72, `md` 72×108, `lg` 120×180), `faceDown`, `selected`, `dimmed`, `meldColor`.
+> - `components/cards/suits.tsx` — los cuatro símbolos como `<path>` propios. Geométricos, sin depender de ninguna tipografía.
+> - `components/cards/CardBack.tsx`, `components/cards/Pile.tsx` (montón con rotación determinista derivada del `CardId`).
+> - Una página de escaparate en `src/app/dev/design/page.tsx` que pinte las 50 cartas, todos los tamaños y todos los componentes.
+>
+> **Criterios de aceptación:** las 50 cartas se ven correctamente a tamaño `sm` en una pantalla de 360 px de ancho. Contraste AA. La carta no usa ninguna imagen ni emoji. `PlayingCard` es un componente puro sin estado.
+>
+> **NO HAGAS:** no dibujes personajes ni ilustraciones figurativas de las figuras (10, 11, 12): usa el número y un tratamiento tipográfico. No imites ninguna baraja comercial existente.
+
+---
+
+## P12 · Web — capa de socket, estado y reconexión
+
+**Contexto:** `01-CONTRATOS.md` §2.3, §2.4, §2.5, §6.
+
+**PROMPT**
+> Implementa `apps/web/src/lib/`:
+> - `socket.ts` — cliente Socket.IO único tipado con `@ronda/protocol`, `autoConnect: false`, reconexión exponencial (250 ms → 8 s), y `emitWithAck(event, payload)` que devuelve `Result`.
+> - `token.ts` — guardar/leer/borrar el token en `localStorage` bajo `ronda.token.<CODE>`, más `listSavedRooms()` para la portada.
+> - `store.ts` — store de Zustand con: `view`, `version`, `connection: 'online'|'reconnecting'|'offline'`, `pendingAction`, `lastError`, `events`. Acciones: `createRoom`, `joinRoom`, `resume`, `sendAction`, `leave`.
+> - Comportamiento obligatorio de `sendAction`: genera `clientActionId` con `crypto.randomUUID()`, envía `expectedVersion` = versión actual, bloquea la interfaz mientras esté en vuelo, ante `STALE_VERSION` espera al siguiente `state:view` y reintenta **una sola vez**, y ante cualquier otro error muestra el texto de `messages.ts`.
+> - Al reconectar el socket: si hay token guardado para la sala actual, emite `room:resume` automáticamente.
+> - `useSounds.ts` — sonidos generados con `AudioContext` (sin ficheros de audio): tu turno, carta descartada, fin de ronda. Con interruptor y respeto a `prefers-reduced-motion`.
+> - `useHaptics.ts` — `navigator.vibrate` cuando empieza tu turno, si está disponible.
+>
+> **Criterios de aceptación:** tests con Vitest y un servidor de Socket.IO falso: reintento único ante `STALE_VERSION`; no se envían dos acciones a la vez; el token sobrevive a una recarga simulada; `connection` refleja los tres estados.
+>
+> **NO HAGAS:** no metas lógica de reglas en el cliente. El cliente **nunca** calcula si una jugada es válida: solo pinta `availableActions` y `closableDiscards` que le manda el servidor.
+
+---
+
+## P13 · Web — portada, catálogo, crear y unirse
+
+**Contexto:** `01-CONTRATOS.md` §7, §8.5.
+
+**PROMPT**
+> Implementa las pantallas:
+> - `/` — nombre, dos botones grandes, y si hay salas guardadas, una tarjeta «Volver a la partida A7K9».
+> - `/juegos` — ficha del Chinchón: 2–4 jugadores, 15–30 min, cómo se juega en 5 viñetas, botón «Crear partida».
+> - `/crear` — apodo + configuración de variantes con controles grandes (número de jugadores, comodines, umbral de cierre, puntuación de eliminación, chinchón acaba la partida). Cada opción con una línea de explicación de menos de 10 palabras. Al enviar: `room:create` y navegación a `/sala/[code]`.
+> - `/unirse` — cuatro casillas para el código, teclado en mayúsculas, más apodo. Errores en línea con los textos de `messages.ts`.
+> - `/unirse/[code]` — igual pero con el código bloqueado; solo pide apodo. Es la pantalla que abre el QR.
+> - Aviso legal mínimo bajo el campo de apodo: «Tu apodo se ve en la partida. No guardamos nada más.»
+>
+> **Criterios de aceptación:** todo el flujo funciona contra el servidor real. Navegación con teclado. En un iPhone SE (375×667) no hay desbordes ni recortes.
+>
+> **NO HAGAS:** no pidas email, ni registro, ni permisos. No pongas más de 5 opciones visibles a la vez en `/crear`: el resto va tras un desplegable «Más variantes».
+
+---
+
+## P14 · Web — sala de espera y pantalla de partida ⚠️ CRÍTICO
+
+**Contexto:** `01-CONTRATOS.md` §2.5, §5.3, §8.4, §8.5.
+
+**PROMPT**
+> Implementa `/sala/[code]`, que renderiza según `view.status`:
+>
+> **Lobby.** Código grande en 4 casillas, QR generado en cliente con `qrcode` apuntando a `/unirse/[code]`, botón «Copiar enlace», lista de jugadores con estado de conexión, y para el anfitrión: cambiar variantes, expulsar, y «Empezar» (deshabilitado con menos de 2 jugadores, con la razón escrita debajo).
+>
+> **Partida.** Estructura vertical:
+> - Banda de conexión (4 px) arriba.
+> - Fila de jugadores: avatar, apodo, número de cartas, puntuación. **El hilo de turno** (contrato §8.4) recorre esta fila al cambiar el turno.
+> - Zona común en el centro: mazo (con el número de cartas restantes), montón de descarte con la carta superior visible.
+> - Mano en el tercio inferior: cartas en abanico ligero, desplazamiento horizontal si no caben, toque para seleccionar, arrastrar para reordenar (`sortHand`), y botón «Ordenar» que agrupa por combinación sugerida usando `me.bestMelds`.
+> - Barra de acción inferior: **una sola acción principal**. En fase `draw`: «Robar del mazo» y, si el descarte es útil, un toque sobre el descarte. En fase `discard`: «Descartar» con la carta seleccionada, y «Cerrar» solo si `me.canClose` y la carta seleccionada está en `me.closableDiscards`.
+> - Las combinaciones sugeridas se marcan con un subrayado del color del asiento; las cartas sueltas van atenuadas con su valor en puntos.
+> - Si no es tu turno: la barra de acción muestra «Le toca a {nick}» y las cartas no responden salvo para reordenar.
+> - Si un jugador está desconectado y es su turno: cartel «Esperando a {nick}» con los segundos transcurridos.
+>
+> **Criterios de aceptación:** se puede jugar una partida entera de 4 jugadores desde 4 navegadores. Nunca hay dos botones principales a la vez. Ninguna acción se puede enviar dos veces con doble toque. Con la mano llena (8 cartas), todas se ven sin hacer scroll en 375 px de ancho.
+>
+> **NO HAGAS:** no calcules reglas en el cliente. No muestres las cartas de otros jugadores ni sus puntos durante la partida. No uses librerías de arrastrar y soltar: eventos de puntero a mano.
+
+---
+
+## P15 · Web — pantalla central `/mesa/[code]`
+
+**Contexto:** `01-CONTRATOS.md` §2.5 (`TableView`), §8.4.
+
+**PROMPT**
+> Implementa `/mesa/[code]`: una vista para tele o tablet, horizontal, sin interacción salvo entrar.
+> - Al entrar, pide el código si no viene en la ruta y emite `screen:attach`. Nunca guarda token.
+> - Composición: anillo de asientos alrededor de un centro con el mazo y el descarte. Cada asiento: apodo, color, número de cartas en forma de abanico de dorsos, y puntuación en `IBM Plex Mono` grande.
+> - **El hilo de turno** recorre el anillo entre asientos (elemento firma).
+> - Animaciones: reparto en cascada, lanzamiento de carta al descarte con rotación determinista, y revelado escalonado de combinaciones al final de la ronda.
+> - Esquina superior: código de sala y QR pequeño permanente, para que alguien se una desde la mesa.
+> - Modo «distancia»: tipografía y cartas escaladas con `clamp()` para que se lea desde 3 metros. Nada por debajo de 24 px equivalentes.
+> - Si no hay partida en curso, muestra el código a pantalla completa y la lista de quién ha entrado.
+>
+> **Criterios de aceptación:** un test comprueba que este componente jamás lee `view.me` (no existe en `TableView`). Se ve bien en 1920×1080 y en 1280×720. Sin scroll.
+>
+> **NO HAGAS:** no permitas ninguna acción de juego desde esta pantalla. No muestres nada privado, jamás, ni siquiera «X tiene un chinchón a punto».
+
+---
+
+## P16 · Web — fin de ronda, fin de partida y revancha
+
+**Contexto:** `01-CONTRATOS.md` §2.5 (`RoundResult`), §5.8.
+
+**PROMPT**
+> Implementa las pantallas de resultado dentro de `/sala/[code]` y `/mesa/[code]`:
+> - **Fin de ronda:** tabla con una fila por jugador: combinaciones reveladas (cartas reales, agrupadas), cartas sueltas con sus puntos, puntos de la ronda y total. Quien cerró va marcado. El cierre en seco se resalta con el −10. Botón «Siguiente ronda», que envía `nextRound` y muestra quién falta por confirmar.
+> - **Eliminación:** cuando alguien supera el límite, su fila se marca y aparece un cartel sobrio, sin celebración.
+> - **Fin de partida:** ganador, clasificación final, número de rondas, y dos botones: «Revancha» (envía `rematch:vote` y muestra los votos) y «Salir».
+> - En `/mesa`, la misma información en grande y con el revelado escalonado.
+>
+> **Criterios de aceptación:** los números de la tabla cuadran siempre con `roundResult` del servidor; el cliente no recalcula nada. Con revancha aceptada por todos, se empieza una partida nueva con los mismos asientos y el marcador a cero.
+>
+> **NO HAGAS:** no inventes estadísticas que no vengan del servidor. Nada de confeti.
+
+---
+
+## P17 · Web — reconexión, errores y estados límite
+
+**Contexto:** `01-CONTRATOS.md` §6; `00-MASTER.md` §8.
+
+**PROMPT**
+> Cierra todos los estados límite de la interfaz:
+> - Recarga en medio de la partida → `room:resume` automático y vuelta al mismo sitio, sin pantalla en blanco.
+> - Volver a abrir la app horas después → tarjeta «¿Quieres volver a la partida A7K9?» con la opción de descartarla.
+> - Pérdida de conexión → banda `--brasa`, acciones bloqueadas, cartel «Sin conexión. Reintentando…» y recuperación transparente al volver.
+> - Sala cerrada o caducada → pantalla explicativa con «Crear una partida nueva», y borrado del token guardado.
+> - Anfitrión expulsándote → mensaje claro y vuelta a la portada.
+> - Doble pestaña con el mismo token → la pestaña vieja se marca como inactiva y muestra «Estás jugando en otra pestaña».
+> - Fallo del servidor (5xx o socket caído más de 30 s) → pantalla de error con botón de reintento, nunca un error de React sin capturar. Añade `error.tsx` y `not-found.tsx` en el App Router.
+>
+> **Criterios de aceptación:** una lista de comprobación manual en `apps/web/CHECKLIST-RECONEXION.md` con los 7 casos y cómo probarlos (modo avión, cerrar pestaña, matar el servidor…). Los 7 pasan.
+>
+> **NO HAGAS:** no muestres nunca `INTERNAL` ni trazas técnicas al jugador. Registra y enseña un texto humano.
+
+---
+
+## P18 · Pulido, accesibilidad y telemetría de playtest
+
+**PROMPT**
+> Última capa:
+> - Telemetría: el servidor registra en `playtest_events` los eventos `room_created`, `player_joined`, `game_started`, `round_ended`, `game_ended`, `rematch`, `disconnect`, `reconnect`, `error`, con marcas de tiempo. Añade un script `pnpm report` que imprima las 7 métricas de `00-MASTER.md` §10 a partir de esa tabla.
+> - Accesibilidad: foco visible en todo, `aria-live` para el cambio de turno, objetivos táctiles ≥ 56 px, contraste AA verificado, `prefers-reduced-motion` respetado en las cuatro animaciones.
+> - Rendimiento: sin re-render de toda la mano al cambiar el turno (memoiza `PlayingCard`); presupuesto de JS del cliente < 200 KB comprimido.
+> - Textos: repasa **todos** los textos de la interfaz contra `01-CONTRATOS.md` §8.5.7. Frase corta, verbo activo, sin exclamaciones ni disculpas.
+> - `/reglas`: redacta las reglas del Chinchón con tus propias palabras a partir del contrato §5. Máximo 600 palabras, con ejemplos.
+>
+> **NO HAGAS:** no añadas funciones nuevas. Este paquete no crea pantallas.
+
+---
+
+## P19 · Despliegue
+
+**PROMPT**
+> Deja el proyecto desplegable y documentado en `DEPLOY.md`:
+> - **Base de datos:** proyecto de Supabase (o Neon) solo como Postgres. `DATABASE_URL` con el *pooler*. Ejecutar `pnpm db:migrate`.
+> - **Servidor:** Fly.io con `fly.toml`, una sola máquina, `min_machines_running = 1`, `auto_stop_machines = false` (el estado vive en memoria: la máquina no puede dormirse), health check a `/health`, región `mad`. `Dockerfile` con Node 22 alpine, build de pnpm, usuario no root.
+> - **Web:** Vercel, raíz `apps/web`, variable `NEXT_PUBLIC_SERVER_URL` apuntando al dominio del servidor. `CORS_ORIGIN` en el servidor apuntando al dominio de Vercel.
+> - Comprobación posterior al despliegue: `/health`, crear sala desde dos móviles con datos móviles distintos, y una partida completa.
+>
+> **NO HAGAS:** no configures escalado horizontal ni varias instancias: la arquitectura actual **no** lo soporta (las salas están en memoria de un proceso). Está documentado como límite conocido.
+
+---
+
+## P20 · Protocolo de playtest
+
+**PROMPT**
+> Escribe `PLAYTEST.md`: guion de tres sesiones con grupos reales de 3–4 personas que no hayan visto la app.
+> - Preparación: una tele con `/mesa`, móviles de los participantes, un QR impreso.
+> - Regla del observador: **no ayudar**. Anotar cada vez que alguien pregunta «¿y ahora qué hago?».
+> - Cronometrar: escaneo → dentro de la sala; sala creada → partida empezada; duración de la partida.
+> - Después: 5 preguntas fijas, entre ellas «¿jugarías otra?» y «¿qué has mirado más, el móvil o a la gente?».
+> - Plantilla de recogida de datos y sección de decisiones: qué se cambia antes de la siguiente sesión.
+>
+> **NO HAGAS:** no escribas código en este paquete.
+
+---
+
+## P21 · Contrato de Pocha (segundo juego) ⚠️ SOLO DOCUMENTACIÓN
+
+**Contexto:** `01-CONTRATOS.md` §2, §3 completo (para saber qué se está ampliando), §5 (para el nivel de detalle a igualar), §9 y §10 (nuevos, este mismo paquete).
+
+**PROMPT**
+> Escribe el contrato congelado de las reglas de Pocha en `01-CONTRATOS.md`, con el mismo nivel de detalle que §5 (Chinchón): materiales, estructura de rondas, reparto y triunfo, cantes y regla del enganche, juego de bazas y algoritmo de ganador de baza, puntuación, fin de partida y desempate, manejo de abandono a mitad de ronda, configuración (`PochaConfig`) con sus valores por defecto, y tests dorados con casos numéricos concretos.
+>
+> Además, documenta explícitamente los cambios de contrato que hacen falta para admitir un segundo juego: `GameId` como unión, `GameConfig` como unión discriminada por `gameId` (con `ChinchonConfig`/`PochaConfig` y un posible `CommonGameConfig` compartido), qué entradas nuevas hacen falta en `GameEvent`, `GameAction` y `ERROR_CODES`, y cómo deben funcionar `MAX_PLAYERS`/`MIN_PLAYERS` cuando cada juego tiene su propio rango de jugadores. Revisa también si hay algo más en `§2`-`§3` (tipos de vista, colores de asiento, etc.) que asuma implícitamente que solo existe Chinchón, y decláralo.
+>
+> Cualquier detalle mecánico necesario que no esté explícitamente decidido debe quedar marcado en el propio documento como una decisión de este paquete pendiente de confirmar — nunca inventado en silencio.
+>
+> **Criterios de aceptación:** el contrato de Pocha no contradice ninguna sección congelada de Chinchón que no dependa de ampliarse a propósito (§10.2, §10.6, §10.7 de este mismo paquete son las únicas ampliaciones conscientes). Revisión de consistencia interna antes de dar el paquete por cerrado.
+>
+> **NO HAGAS:** no escribas código de motor, servidor ni interfaz en este paquete. No toques el registro `GAMES` ni ningún fichero de `packages/engine`, `apps/server` o `apps/web`.
+>
+> **Actualización (segunda ronda de P21):** la baraja francesa se descarta por completo (solo baraja española de 40 cartas, sin variante de mazo). El orden de fuerza para ganar bazas pasa a ser configurable (`config.rankOrder`: `'numerico'` por defecto o `'brisca'`), con ambos algoritmos especificados con precisión en §9.6, incluida una tabla de fuerza para cada uno y un caso dorado que los distingue con la misma baza.
+
+---
+
+## Después del MVP (no antes)
+
+En este orden, y solo cuando los 4 hitos de `00-MASTER.md` §7 estén cumplidos:
+
+1. ~~**Segundo juego: Pocha.**~~ **HECHO.** Es el que más pone a prueba la generalidad del motor (apuestas, bazas, rondas de tamaño variable) sin ser tan complejo como el Mus. Al implementarlo se descubre qué hay que sacar a `core/`. **No generalices antes de tenerlo.** Contrato de reglas: `P21` (`01-CONTRATOS.md` §9-§10). Motor: `P22`. Servidor e interfaz entraron juntos, sin número de paquete propio, en el commit «Cablea Pocha (segundo juego) en servidor y web, con modo contra la máquina».
+2. ~~Reacciones rápidas (4 emojis, sin chat libre).~~ **HECHO: `P25`** (`01-CONTRATOS.md` §11.1).
+3. ~~Estadísticas del grupo, guardadas por sala.~~ **HECHO: `P26`** (`01-CONTRATOS.md` §11.2).
+4. ~~Mus (necesita parejas y una capa social muy distinta: es un proyecto en sí mismo).~~ **HECHO.** Contrato de reglas congelado: `P27` (`01-CONTRATOS.md` §12). Motor: `P28`. Servidor e interfaz: `P29`, incluido el marcador por parejas que §12.12 avisaba de que arrastraba a `/sala`, `/mesa` y a las estadísticas de §11.2.
+5. Juego original con roles secretos, que es lo que realmente diferencia la plataforma. **No hay contrato que ejecutar**: es un juego que todavía no existe, y diseñarlo es una decisión de producto de Unai, no de una sesión de implementación.
+6. App nativa con Expo, solo si el playtest demuestra que el juego offline y las notificaciones hacen falta de verdad. **Condicionado a datos de playtest reales** (`00-MASTER.md` §10), que hoy no existen.
+
+---
+
+## P25 · Reacciones rápidas (roadmap «Después del MVP» §2) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §2.3, §2.4 (sobre de red), §8.4 (animaciones), §11.1 (este paquete).
+
+Cuatro emojis de lista cerrada, sin chat libre en ninguna parte. Evento propio `reaction:send` con enfriamiento por jugador y difusión a todos los miembros, incluida la pantalla central. No toca el motor.
+
+**Entregado:** `packages/protocol/src/reactions.ts` (+ esquema y eventos en `socket.ts`), `RoomManager.sendReaction()`, `broadcastReaction()`, barra y overlay en la web (`ReactionBar`, `ReactionOverlay`), keyframe `reaction-float` en `globals.css`. Tests: `packages/protocol/src/reactions.test.ts` y `apps/server/src/rooms/social.test.ts`.
+
+---
+
+## P26 · Estadísticas del grupo por sala (roadmap «Después del MVP» §3) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §4 (persistencia), §11.2 (este paquete).
+
+Partidas, victorias, rondas y mejor/peor puntuación por jugador, acumuladas en la sala y sobreviviendo a las revanchas. Se piden a demanda con `room:stats`; no viajan en cada snapshot.
+
+**Entregado:** `packages/protocol/src/stats.ts`, `Room.recordMatchEnd()` y `Room.getStats()`, hook `onStats`, `db/migrations/0002_room_stats.sql` con `apps/server/src/db/stats-repo.ts`, y `StatsPanel` en el lobby, en el fin de partida de `/sala` y en el de `/mesa`. Tests: `apps/server/src/rooms/social.test.ts`.
+
+---
+
+## P27 · Contrato de Mus (tercer juego) ⚠️ SOLO DOCUMENTACIÓN — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §9-§10 (para ver qué se está ampliando), §12 (este paquete).
+
+Reglas congeladas de Mus con el mismo nivel de detalle que §5 (Chinchón) y §9 (Pocha): materiales y variante de ocho reyes, parejas y asientos, estructura en piedras/amarrakos/juegos, fase de mus y descarte, los cuatro lances con sus tablas de fuerza y de pago, sistema de envites y órdago, recuento, señas, abandono, `MusConfig` y tests dorados.
+
+**Lo que NO hace este paquete:** motor, servidor ni interfaz. §12.12 deja escrito por qué el siguiente paso no es mecánico: Mus es el primer juego **por parejas** y rompe el supuesto «un jugador, una puntuación» que comparten Chinchón y Pocha. Antes de empezar el motor hay que cerrar las decisiones marcadas **[DECISIÓN P27, A CONFIRMAR]**: señas, valor del Tres al sumar juego, valor del punto, asignación de parejas y abandono.
+
+---
+
+## P28 · `packages/engine` — motor de Mus (roadmap «Después del MVP» §4) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §3 (requisitos del motor), §12 completo (reglas), §12.12 (cambios de contrato), §12.13 (tests dorados), §12.14 (lo que este paquete encontró).
+
+**Alcance:** SOLO el motor y el ensanchado de protocolo que necesita. Servidor e interfaz de Mus **no** entran aquí.
+
+**Decisiones cerradas antes de empezar** (las seis que §12 dejaba marcadas como `[DECISIÓN P27, A CONFIRMAR]`):
+
+| # | Decisión | Resultado |
+|---|----------|-----------|
+| 1 | Parejas | Las asigna el anfitrión moviendo asientos; el motor las deriva de `seat % 2`. |
+| 2 | Rondas de mus | Sin límite; si falta mazo se barajan los descartes. |
+| 3 | `ochoReyes` al sumar juego | **No interviene.** Sota, Rey y Caballo cuentan 10 y el resto su número, siempre. La variante solo cambia Grande, Chica y qué cartas hacen pareja. |
+| 4 | Valor del punto | 1 piedra, con `config.puntoVale` para las mesas que lo pagan a 2. |
+| 5 | Señas | **Opción A: sin señas.** El motor no abre ningún canal entre compañeros. |
+| 6 | Abandono | La partida se anula y no cuenta en §11.2; suspenderla es cosa de `apps/server`, como en los otros dos juegos. |
+
+**Entregado en `@ronda/protocol`:** `GameId` += `'mus'`; `MusConfigSchema`/`MusConfig`/`DEFAULT_MUS_CONFIG` en la unión discriminada; 10 acciones nuevas (`mus`, `noMus`, `descartar`, `paso`, `envidar`, `querer`, `noQuerer`, `ordago`, `declararPares`, `declararJuego`); 7 códigos de error nuevos con su texto en `messages.ts`; 11 eventos cosméticos de Mus; y el cambio de fondo de §12.12 — `PublicPlayer.teamIndex` (nullable, ver §12.14.3) y las vistas `MusCommonView`/`MusPlayerView`/`MusTableView` con `teams: MusTeam[]` y `winnerTeamIndex`.
+
+**Entregado en `@ronda/engine`:** `packages/engine/src/games/mus/` — `deck.ts` (reutiliza la baraja de 40 de Pocha), `hand.ts` (fuerza con y sin ocho reyes, grande, chica, pares, juego, punto), `state.ts`, `reducer.ts` (fase de mus, descarte, declaraciones, los cuatro lances con envites y órdago), `recuento.ts` (§12.9 con el corte a 40) y `views.ts`. `musModule` registrado en `GAMES`.
+
+**Tests:** `packages/engine/src/games/mus/mus.test.ts`, 53 casos — los 9 dorados de §12.13 uno a uno, más fase de mus/descarte, declaraciones, envites, parejas y juegos (vaca), determinismo, serializabilidad y censura de vistas.
+
+**Lo que NO hace este paquete:** servidor, interfaz y bots. Los bots quedan explícitamente fuera por §12.11 (envidar y farolear es otro problema), y `bot-driver.ts` los desactiva para `gameId === 'mus'`. Para poder jugar una partida de Mus de principio a fin faltan todavía la clasificación por parejas en `/sala` y `/mesa` (P16) y las estadísticas de §11.2, que siguen contando `wins` por jugador.
+
+---
+
+## P29 · Mus — servidor e interfaz (roadmap «Después del MVP» §4) — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §12 completo, §12.12 (cambios de contrato) y §12.14 (lo que encontró P28). Motor: `P28`.
+
+**Alcance:** cablear Mus de punta a punta. El motor no se ha tocado: todo lo que sigue es capa de sala e interfaz, más el ensanchado de protocolo que hacía falta para llegar a ellas.
+
+**El cambio de fondo — el marcador deja de ser por jugador.** Es lo que §12.12 avisaba de que no era mecánico, y se ha resuelto sin inventar números:
+
+- `Room.recordMatchEnd()` se parte en dos caminos. En Mus la victoria se le apunta a **los dos miembros** de la pareja ganadora, `rounds` son las **manos** (`handNumber`) y `totalScore` son los **juegos (vacas)** que ganó su pareja: es lo único que sigue siendo verdad al mirarlo por jugador, porque una revancha con los asientos cambiados es otra pareja. Documentado en `stats.ts`.
+- `PlayerStrip` (`renderInfo`) y `SeatRing` (`showScore`) dejan de pintar `score` en Mus: ahí va siempre 0 (§12.12) y un 0 bajo cada asiento sería un número inventado.
+- Fin de partida propio en los dos sitios (`MusGameEndScreen`, `MusMesaGameEndScreen`): las pantallas de Chinchón y Pocha ordenan por `score` y coronan a `winnerId`, y en Mus los dos van a 0 y a `null`.
+
+**Parejas: decisión 1 de P28, ya ejecutable.** Nuevo evento `room:swapSeats { aPlayerId, bPlayerId }` (anfitrión, solo en lobby) y `RoomManager.swapSeats()`. El lobby enseña la pareja de cada asiento — el servidor la adelanta con la misma fórmula que usará el motor, `seat % 2` — y el anfitrión forma las parejas tocando a dos jugadores. Vale para los tres juegos: el asiento también fija el orden de turno.
+
+**Abandono (decisión 6 de P28).** Si una sala de Mus se queda sin cuatro, la partida se **anula**: `winnerTeamIndex` a `null`, sin `recordMatchEnd()` y sin contar en §11.2. Darle la victoria a la pareja que quede entera sería inventarse el resultado.
+
+**Sin bots (§12.11).** `room:addBot` se rechaza en salas de Mus con `INVALID_ACTION`, no solo escondiendo el botón: un bot en una mesa de Mus dejaría la partida colgada en su turno para siempre.
+
+**Entregado en `@ronda/protocol`:** `'mus'` en `roomCreateSchema`, `MusConfigSchema.partial()` en el patch de `room:config`, evento y esquema de `room:swapSeats`, y la semántica de Mus documentada en `stats.ts`.
+
+**Entregado en `apps/server`:** `EngineState` += `MusState` (y `ScoredEngineState` para los dos que sí puntúan por jugador), `minPlayersFor('mus') = 4`, `swapSeats()`, el reparto de estadísticas por pareja, la anulación por abandono, la telemetría de `game_ended` con `winnerTeamIndex`, y las vistas de lobby de Mus en `broadcast.ts`.
+
+**Entregado en `apps/web`:** catálogo, ficha (`/juegos/mus`), reglas (`/reglas/mus`) y creación (`/crear/mus`) con las variantes de §12 —sin control de "jugadores", que son 4 fijos—; lobby con parejas e intercambio de asientos; `/sala` con `MusScoreboard` (piedras y amarrakos), `MusHand` (descarte + pares y juego privados), `MusActionBar` (una fila de botones por fase), `MusEnvitePicker`, `MusRoundEndScreen` (el recuento de §12.9, con las filas no contadas atenuadas) y `MusGameEndScreen`; `/mesa` con `MusMesaGameBoard`, `MusMesaScore`, `MusMesaRoundEndScreen` y `MusMesaGameEndScreen`.
+
+**Detalle de interfaz que sí es una decisión:** las declaraciones de pares y juego se pintan como **un solo botón que dice la verdad de tu mano**. §12.6 las describe como declaraciones públicas y el motor rechaza mentir con `FALSE_DECLARATION` (§12.14.2): ofrecer el botón de mentir solo serviría para generar errores.
+
+**Tests:** `apps/server/src/rooms/mus-room.test.ts`, 9 casos — los cuatro jugadores obligatorios, el intercambio de asientos y sus permisos, el rechazo de bots, la victoria repartida a la pareja y la anulación por abandono.
+
+---
+
+## P30 · Baraja española de imágenes en Pocha y Mus — HECHO
+
+**Contexto:** `00-MASTER.md` §1 decisión 4 (que este paquete revoca en parte), `01-CONTRATOS.md` §8.3 (representación de cartas), §8.5 (contraste).
+
+**La decisión, y de quién es.** La baraja SVG propia se sustituye por imágenes de baraja española en Pocha y Mus. Es una decisión de Unai, no un descubrimiento de implementación: la decisión 4 del maestro decía lo contrario y por eso queda anotada allí en vez de tachada aquí.
+
+**Por qué NO en Chinchón.** Las imágenes son los **40 naipes** de la baraja corta (1-7, 10-12 en los cuatro palos), que es exactamente lo que reparten Pocha (§9) y Mus (§12). Chinchón (§5) reparte 48 + 2 comodines: sus ochos, nueves y comodines no tienen imagen. Se probaron las dos cosas y la mezcla se ve — dos estilos de dibujo dentro de la misma mano —, así que Chinchón pide baraja SVG entera. El SVG de `cardArt.tsx` no se retira: sigue siendo la baraja de un juego de los tres.
+
+**Cómo lo decide cada pantalla.** Por contexto de React (`CardArtContext`), no por prop: `SalaClient` y `MesaClient` envuelven su árbol con `cardArtForGame(view.gameId)`, y `PlayingCard` no llega a saber a qué se juega. Encadenar una prop habría tocado `Hand`, `Pile`, `RevealedHand`, `CenterTable` y `SeatRing` sin que ninguno tenga nada que decir al respecto. Sin proveedor el valor es `'auto'` (imagen si la hay), que es lo que quiere el escaparate de `/dev/design`.
+
+**Peso.** Los PNG de origen pesaban 7,5 MB la baraja entera, que se los descarga el móvil de cada jugador. Se sirven en WebP a 320×448 (554 KB los 40): la carta más grande que pinta la app son los 120 px CSS de `size='lg'` y del `clamp()` de `/mesa`, así que 320 px cubre pantallas de hasta 2,6×. Los PNG se quedan en el repositorio como origen, sin usarse.
+
+**Entregado en `apps/web`:** `src/components/cards/cardImages.ts` (ruta de cada naipe, o `null` si no hay), `src/components/cards/CardArtContext.tsx` (proveedor, hook y `cardArtForGame`), el naipe fotográfico dentro del `<svg>` de `PlayingCard` —recortado con `clipPath` al mismo redondeo y con el contorno de tinta repintado encima— y una caché aparte `ronda-cards-v1` en `sw.js`, "caché primero", para que la baraja no se vuelva a descargar en cada partida.
+
+**Detalle que sí es una decisión:** la imagen es 5:7 y el naipe 2:3, y se estrecha un 4,6 % (`preserveAspectRatio="none"`) en vez de recortarse. Recortar se comía el filete de color del borde, que está a 3,6 unidades del canto.
+
+**Sigue pendiente, y es de Unai:** las imágenes son de un tercero y llevan marca de agua. Antes de publicar hay que sustituirlas por arte propio o con licencia — el código no cambia, solo los ficheros de `public/cards/`.
+
+---
+
+## P31 · Una sola baraja de 40 para los tres juegos — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §2.1, §2.7, §3.1, §5.1, §5.4, §5.5, §5.7, §5.9, §5.10 (todas actualizadas por este paquete), §9.1 y §12.1 (que ya describían esta misma baraja). Va encima de `P30`.
+
+**La decisión, y de quién es.** «Que en todos los juegos se juegue solo con las cartas que tenían dibujo»: Unai. Chinchón repartía 48 cartas + 2 comodines y era el único de los tres que lo hacía; ahora reparte los mismos 40 naipes que Pocha y Mus. Es un cambio a un contrato marcado como congelado, así que queda anotado en `01-CONTRATOS.md` §5.1 en vez de reescrito por lo bajo.
+
+**La regla que había que decidir, porque el contrato no la cubría.** Quitar los ochos y los nueves deja un hueco entre el 7 y la sota, y §5.4 definía las escaleras como «cartas consecutivas … en orden 1,2,…,12». Decisión de Unai: **el hueco no corta la escalera**, 6-7-sota es escalera. Se implementa con `rankPosition()` en `@ronda/protocol` (1-7 → 1-7; sota, caballo, rey → 8, 9, 10) y todo lo que cuenta escaleras —enumeración de combinaciones y `isChinchon`— trabaja sobre posiciones, no sobre rangos. La alternativa (escaleras solo dentro de 1-7 o dentro de sota-caballo-rey) dejaba el chinchón en 4 manos posibles de toda la baraja; así son 16.
+
+**El comodín deja de existir como concepto**, no solo de repartirse. `Card` pierde `isJoker` y sus `suit`/`rank` dejan de poder ser nulos; `parseCardId` rechaza `joker-1`, `oros-8` y `copas-9`; `cardPoints(card)` ya no recibe config. Media docena de comprobaciones de nulos por el motor y la web se caen solas. Dejar el tipo diciendo que puede haber comodines cuando ninguna baraja puede producirlos era lo peor de los dos mundos.
+
+**Entregado en `@ronda/protocol`:** `Rank` pasa a `1..7 | 10 | 11 | 12`, nuevos `RANKS` y `rankPosition()`, `Card` sin `isJoker` y con `suit`/`rank` no nulos, `makeCardId`/`parseCardId` sin comodín, `cardPoints(card)` sin config, y fuera de `ChinchonConfigSchema` las variantes `jokers`, `jokerPoints` y `maxJokersPerMeld`.
+
+**Entregado en `@ronda/engine`:** `core/deck.ts` construye una sola baraja (`buildDeck()` sin config, `DECK_SIZE = 40`); `chinchon/melds.ts` enumera escaleras sobre posiciones y pierde toda la rama de comodines, y `solveHand`/`enumerateMelds` dejan de recibir config.
+
+**Entregado en `apps/web`:** fuera los controles de «Comodines» y «Puntos del comodín» de `/crear/chinchon` y del lobby; `pointsFor` sin `jokerPoints`, y con él el hilo de esa prop por `GameScreen`, `RoundEndScreen`, `MesaRoundEndScreen`, `Hand` y `RevealedHand`; textos de `/reglas` reescritos (baraja de 40 y el hueco 7→sota); escaparate de `/dev/design` a 40 cartas.
+
+**Lo que este paquete se lleva por delante de P30, y por qué.** `CardArtContext` y la baraja SVG (`cardArt.tsx`) se borran. Existían porque Chinchón repartía cartas sin imagen; ahora las 40 cartas de los tres juegos tienen imagen y ese código no tenía forma de ejecutarse. `CardBack` se queda: el dorso sigue siendo SVG.
+
+**Tests:** casos dorados de §5.10 rehechos —el 4 pasa a ser la escalera que cruza el hueco, el 6 el tope sota-caballo-rey— más los nuevos de `rankPosition`, los 16 chinchones posibles, el rechazo de ochos/nueves/comodines al parsear y al resolver, y el reparto de 4 jugadores que ahora deja 11 cartas en el mazo en vez de 21.
+
+**Rendimiento del resolver, de propina.** El test de §5.10 («10.000 `solveHand` en menos de 2 s») llevaba tiempo en rojo: 4,1 s antes de este paquete. Medido, el 81 % del tiempo se iba en `enumerateMelds`, que probaba las 4 × 10 × 8 combinaciones de (palo, inicio, longitud) buscando cada carta en un `Map` con clave de texto — unas 3.200 búsquedas con `${suit}-${pos}` por mano. Ahora la mano se resume en una máscara de 10 bits por palo y las escaleras salen recorriendo los tramos de bits seguidos, sin construir ni una cadena y tocando solo lo que el jugador tiene. Con eso el resolver va **11 veces más rápido** (10.000 manos: 7,8 s → 0,68 s en el banco; el test pasa en ~0,8 s). El test de propiedad de 5.000 manos es lo que garantiza que la reescritura no cambió ninguna respuesta.
+
+**Efecto de reglas que conviene tener presente en el playtest:** con 40 cartas y 4 jugadores quedan 11 en el mazo tras el reparto, frente a 21 antes. Se llega mucho antes al rebarajado del descarte de §5.3, y las partidas de 4 son más cortas y más secas.
+
+---
+
+## P32 · La mesa de bar: paleta, mueble y garbanzos — HECHO
+
+**Contexto:** `01-CONTRATOS.md` §8 completo (reescrito por este paquete: §8.1, §8.2, §8.3, §8.4 y el §8.6 nuevo). Va encima de `P31`.
+
+**De dónde sale.** Del proyecto `Ronda mobile app UI design` de claude.ai/design, fichero `Ronda.dc.html`, importado con el MCP de diseño. No es una interpretación de un encargo hablado: es un diseño concreto, con sus medidas y sus hexadecimales, y este paquete lo implementa.
+
+**La decisión, y de quién es.** «Que la mesa se vea así pero en vertical, una mesa de bar de España antigua, y que las fichas sean garbanzos»: Unai. Choca de frente con una línea del §8 que estaba congelada —«nada de verde tapete ni dorado de casino»—, así que queda anotado ahí en vez de reescrito por lo bajo. La lectura que se adopta: lo que se descartaba era el **casino** (neón, dorado metálico, fieltro saturado, mesa ovalada), no el mueble. Una mesa de bar con su tapete no es una mesa de casino.
+
+**Entregado — la piel.** Paleta entera nueva en `globals.css` y su espejo en `lib/tokens.ts`: madera (`--tinta` #241509, `--veta`), superficies (`--mesa` #3B2417), latón (`--oro` #C9982E) y una acción principal más apagada (`--brasa` #8C2F22). El fondo de la página deja de ser un color plano y pasa a ser la veta de la madera, con `background-attachment: fixed` para que no se lea como rayas al hacer scroll. Los seis colores de asiento se rehacen (teja, verde botella, latón, pizarra, berenjena, vino) y **ninguno vuelve a ser `--brasa`**: antes el asiento 0 y el botón de acción eran el mismo rojo. El foco de teclado pasa de brasa a latón porque sobre madera oscura el rojo apagado no se despega. Display: `Domine` en vez de `Familjen Grotesk`.
+
+**Entregado — el mueble.** `BarTable` (tablero de madera 340×262, cuatro tachuelas de latón, tapete verde hundido con filete rojo y un palo español marcado en cada esquina) y `Garbanzos` (fila de legumbre, con huecos vacíos para lo que falta). Cuadrada y no ovalada a propósito, ver §8.6. Los degradados viven en `globals.css` como `.bar-table` / `.bar-felt` / `.bar-stud` / `.garbanzo`, porque la regla de ESLint de P10 prohíbe literales de color en los componentes y no había razón para hacerle una excepción.
+
+**Entregado — las pantallas.** `TableSeat` + `orderAroundMe()` sientan a la gente alrededor de la mesa en vertical: tú abajo en una chapa con la marca «TÚ», los demás arriba en el orden en que te llega el turno. Chinchón (`GameScreen`) y Mus (`MusGameScreen`) se remaquetan enteros sobre eso; `CommonArea` y el texto de lance de Mus pasan a ser el contenido del tapete, y las cartas de mesa bajan de tamaño para caber en él. `TableHeader` recoge lo único que quedaba de la banda de jugadores: de quién es el turno.
+
+**Lo que este paquete se lleva por delante, y por qué.** `PlayerStrip` desaparece de Chinchón y de Mus: con la gente sentada en la mesa, repetía la misma información en otro sitio de la pantalla. Con ella se va el hilo de turno de esas dos pantallas, que era el «elemento firma» del §8.4 — sobrevive en `/mesa` y en Pocha, que son los sitios donde sigue habiendo una banda que recorrer. En Chinchón y Mus el turno pasa a ser un aro de hueso en el avatar.
+
+**Dónde llegan los garbanzos, y qué cuenta cada uno.** Mus es el caso literal (amarrakos, §12.3) y de ahí sale todo: `MusScoreboard` y `MusMesaScore` cambian sus bolitas grises por legumbre — el comentario del fichero ya decía «como se llevan en la mesa» y el dibujo no lo cumplía. Chinchón mide con ellos lo que te acerca a quedarte fuera (octavos de `eliminationScore`). Pocha los pone en `PochaBidRow`: garbanzo = baza ganada, huecos = lo que cantaste.
+
+**Lo que NO se implementa del diseño, y por qué.**
+
+| En `Ronda.dc.html` | Qué se hizo |
+|---|---|
+| Variante «Comodines» en la sala, sección de comodines en la baraja, `pointsFor` con `rank<=9` y comodín a 25 | **Descartado: obsoleto.** El diseño es anterior a P31. La baraja son 40 naipes y el comodín no existe como concepto. |
+| El `RondaCard` SVG que importa (pips, figuras, comodín) | **Descartado: obsoleto.** P31 borró ese dibujo; la cara de la carta es la imagen de `public/cards/`. Del diseño solo sigue vivo el dorso, que ya coincidía. |
+| Pestañas Chinchón / Pocha / Mus sobre la mesa, y pestañas Inicio / Sala / Partida / Baraja | **Descartado: andamiaje.** Sirven para recorrer el diseño en el lienzo sin partida. La sala ya sabe a qué se juega. |
+| Rombos y tréboles (♦ ♣) en las esquinas del tapete | **Cambiado.** Son palos de baraja francesa en una app de baraja española. Van los cuatro palos españoles, uno por esquina. |
+| Asientos alrededor de la mesa en Pocha | **No implementado.** Pocha admite seis jugadores (§10.7) y cinco asientos de 72 px no caben en el borde superior de un móvil. Conserva `PlayerStrip` y `PochaBidRow`; lo que sí gana es el tapete y los garbanzos. |
+
+**Arreglado de paso:** `PILE_SAMPLE` del escaparate `/dev/design` llevaba un `oros-9` desde antes de P31 y se pintaba como dorso roto, porque `PlayingCard` degrada a dorso las cartas que no parsean en vez de lanzar.
+
+**Verificación.** `pnpm typecheck` y `pnpm test` en verde. Comprobado en el navegador sobre el servidor de desarrollo (`/dev/design`, `/`, `/crear/chinchon`): paleta aplicada, `Domine` cargada, mesa a 340×262 exactos con sus degradados, garbanzos con el radio y el degradado del diseño, y cero errores de consola. Las tres pantallas de partida **no** se han podido ver en el navegador: necesitan servidor de sockets y una sala real, así que de ellas responden el compilador y los tests, no una captura.

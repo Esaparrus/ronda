@@ -405,14 +405,16 @@ Una mano de 7 cartas que forma **una única escalera de 7 cartas del mismo palo*
 - Se declara con `close` descartando la octava carta.
 - Si `config.chinchonEndsGame` es `true` (por defecto): la partida entera termina en ese instante y ese jugador gana, sea cual sea el marcador.
 - Si es `false`: la ronda termina y el jugador que hizo chinchón resta 25 puntos; los demás suman sus puntos sueltos.
+- Si el cierre es un chinchón, no se acomodan cartas de los demás jugadores en esa escalera.
 
 ### 5.8 Puntuación al final de la ronda
 1. Para **cada** jugador no eliminado se calcula la mejor combinación posible y sus puntos sueltos.
-2. El que cerró suma sus puntos sueltos (entre 0 y `closeThreshold`). Si son exactamente 0, suma `config.dryCloseBonus` (−10 por defecto) en lugar de 0.
-3. Los demás suman sus puntos sueltos.
-4. Todo jugador cuyo total sea **estrictamente mayor** que `config.eliminationScore` queda eliminado.
-5. Si tras eliminar queda **un solo jugador**, gana la partida. Si quedan 0 (empate por eliminación simultánea), gana quien tenga el total más bajo; si persiste el empate, gana quien cerró; si tampoco, el asiento más bajo.
-6. Si no, se reparte una ronda nueva con el repartidor rotado. Las manos y el descarte se descartan por completo.
+2. En un cierre normal con cartas sueltas del que cierra, los demás jugadores pueden acomodar sus cartas sobrantes en las combinaciones del que ha cerrado. Una carta acomodada deja de contar como punto. No se acomodan cartas sobre un chinchón ni sobre un cierre en seco.
+3. El que cerró suma sus puntos sueltos (entre 0 y `closeThreshold`). Si son exactamente 0, suma `config.dryCloseBonus` (−10 por defecto) en lugar de 0.
+4. Los demás suman los puntos sueltos que conserven después de acomodar.
+5. Todo jugador cuyo total sea **estrictamente mayor** que `config.eliminationScore` queda eliminado.
+6. Si tras eliminar queda **un solo jugador**, gana la partida. Si quedan 0 (empate por eliminación simultánea), gana quien tenga el total más bajo; si persiste el empate, gana quien cerró; si tampoco, el asiento más bajo.
+7. Si no, se reparte una ronda nueva con el repartidor rotado. Las manos y el descarte se descartan por completo.
 
 ### 5.9 Resolver óptimo (algoritmo obligatorio, no improvisar)
 

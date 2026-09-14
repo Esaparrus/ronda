@@ -25,6 +25,10 @@ describe('Matiz hue picker', () => {
     expect(imageSource).toContain('No se ha podido cargar la ilustración.');
   });
 
+  it('does not let the artwork collapse inside the room scroll area', () => {
+    expect(source).toMatch(/aspect-\[800\/620\][^`]*shrink-0/);
+  });
+
   it('explains the direct touch interaction for the color field', () => {
     expect(source).toContain('Toca o arrastra el punto');
     expect(source).toContain('aria-describedby="matiz-picker-help"');

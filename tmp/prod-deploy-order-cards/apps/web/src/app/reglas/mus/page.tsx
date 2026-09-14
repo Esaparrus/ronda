@@ -1,0 +1,94 @@
+// Reglas del Mus. Mismo criterio que /reglas (Chinchón) y /reglas/pocha:
+// texto propio a partir de 01-CONTRATOS.md §12, con ejemplos. Los números de
+// las tablas (3/2/1 piedras, 40 piedras el juego) no cambian por sala; lo que
+// sí es variante -- ocho reyes, juegos de la vaca, cuánto vale el punto -- se
+// nombra como tal al final.
+import Link from 'next/link';
+
+interface Section {
+  title: string;
+  body: string;
+  example?: string;
+}
+
+const SECTIONS: Section[] = [
+  {
+    title: 'La baraja y las parejas',
+    body: 'Baraja española de 40 cartas, sin comodines. Se juega exactamente entre cuatro, en dos parejas fijas: los compañeros se sientan enfrentados, así que los asientos 1 y 3 son una pareja y los asientos 2 y 4 la otra. El marcador es de la pareja, nunca de cada jugador.',
+  },
+  {
+    title: 'Piedras, amarrakos y juegos',
+    body: 'Lo que se gana son piedras. Cinco piedras hacen un amarrako y cuarenta piedras (ocho amarrakos) ganan el juego. Una partida puede ser a un juego o a varios: eso lo elige quien crea la sala.',
+  },
+  {
+    title: 'El mano y el reparto',
+    body: 'El mano habla primero en todo y va rotando un asiento cada mano. Se reparten cuatro cartas a cada uno. Cuando dos manos empatan en cualquier comparación, gana quien esté más cerca del mano.',
+  },
+  {
+    title: 'Mus y descarte',
+    body: 'Empezando por el mano, cada uno dice «mus» o corta. Si los cuatro dicen mus, cada jugador descarta entre una y cuatro cartas, roba otras tantas, y se vuelve a preguntar. En cuanto uno corta, se juega la mano con las cartas que cada uno tenga.',
+    example: 'Tienes 4, 5, 6 y 7: nada que hacer. Dices mus, y si los otros tres también, te deshaces de las cuatro.',
+  },
+  {
+    title: 'Los cuatro lances',
+    body: 'Se juegan siempre en el mismo orden. Grande: gana la mano más alta. Chica: la más baja. Pares: solo juegan quienes tengan al menos una pareja, y hay que declarar en voz alta si se tiene o no. Juego: solo juegan quienes sumen 31 o más, contando Rey, Caballo y Sota como 10 y el resto por su número. Si nadie tiene juego, ese lance se sustituye por el punto, que gana la suma más alta por debajo de 31.',
+    example: 'Rey, Caballo, Sota y As suman 31: el mejor juego que hay. Rey, Rey, Rey y Sota suman 40, y pierde contra ese 31.',
+  },
+  {
+    title: 'Qué vale cada cosa',
+    body: 'En pares: dos parejas o cuatro iguales (duples) valen 3 piedras, tres iguales (medias) 2, y una pareja suelta 1. En juego: el 31 vale 3 piedras y cualquier otro juego 2. Estas piedras se cobran aunque el lance se haya jugado en paso, y las cobra cada jugador de la pareja que las tenga.',
+  },
+  {
+    title: 'Envidar, querer y no querer',
+    body: 'En cada lance puedes pasar, envidar (apostar piedras, mínimo dos) o subir lo que haya apostado la pareja contraria. Ellos responden: si quieren, el lance se resuelve al descubrir las cartas; si no quieren, quien envidó se lleva lo que hubiera acumulado antes del último envite y ese lance no se compara. Si pasan los cuatro, el lance vale una piedra para quien lo gane.',
+    example: 'Envidas 2 en grande y la contraria dice «no quiero»: te llevas 1 piedra en el acto y nadie enseña nada.',
+  },
+  {
+    title: 'El órdago',
+    body: 'En lugar de envidar puedes lanzar un órdago: apuestas el juego entero. Si la contraria no lo quiere, ganas una piedra y la mano continúa. Si lo quiere, se descubren las cartas de los cuatro, se resuelve ese lance ahí mismo y quien lo gane gana el juego completo, esté como esté el marcador.',
+  },
+  {
+    title: 'El recuento',
+    body: 'Al acabar la mano se descubren las cartas y se resuelven los lances en orden, sumando a cada pareja lo envidado y lo que valgan sus pares y su juego. Si una pareja llega a 40 a mitad del recuento, el juego termina ahí: lo que quedaba por contar ya no se cuenta.',
+    example: 'Vais 39 y ganáis la grande en paso: esa piedra os pone en 40 y el recuento se para, aunque tuvierais medias por cobrar.',
+  },
+];
+
+export default function ReglasMusPage() {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-8 px-6 py-10">
+      <header className="flex flex-col gap-2">
+        <h1 className="font-display text-40 leading-display text-hueso">Reglas del Mus</h1>
+        <p className="text-16 text-humo">4 jugadores, por parejas · 30–60 min</p>
+      </header>
+
+      <div className="flex flex-col gap-6">
+        {SECTIONS.map((section) => (
+          <section key={section.title} className="flex flex-col gap-2">
+            <h2 className="text-20 font-semibold text-hueso">{section.title}</h2>
+            <p className="text-16 text-hueso">{section.body}</p>
+            {section.example ? (
+              <p className="rounded-md border border-linea bg-mesa p-3 text-14 text-humo">
+                Ejemplo: {section.example}
+              </p>
+            ) : null}
+          </section>
+        ))}
+      </div>
+
+      <p className="text-14 text-humo">
+        Los ocho reyes (los Treses valen como Rey y los Doses como As), cuántos juegos hacen falta
+        para ganar la partida y si el punto paga una piedra o dos son variantes: quien crea la sala
+        puede cambiarlas antes de empezar. Aquí no se juegan señas: los compañeros no tienen ningún
+        canal para hablar entre ellos.
+      </p>
+
+      <Link
+        href="/crear/mus"
+        className="mt-auto flex min-h-14 items-center justify-center rounded-lg bg-brasa px-6 text-16 font-semibold text-hueso"
+      >
+        Crear partida
+      </Link>
+    </main>
+  );
+}

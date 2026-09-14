@@ -25,4 +25,4 @@ registerGame(chinchonModule);
 export * from './state.ts';
 export * from './reducer.ts';
 export * from './views.ts';
-export { solveHand, isChinchon, canCloseWith, closableDiscards } from './melds.ts';
+export { solveHand, isChinchon, canCloseWith, closableDiscards, layOffCards } from './melds.ts';

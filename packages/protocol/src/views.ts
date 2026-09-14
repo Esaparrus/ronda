@@ -139,8 +139,10 @@ export interface ChinchonTableView extends ChinchonCommonView {
 
 export interface RoundResultRow {
   playerId: PlayerId;
-  melds: CardId[][]; // combinaciones reveladas
-  leftovers: CardId[]; // cartas sueltas reveladas
+  // Las jugadas del que cerró pueden incluir cartas acomodadas por los demás.
+  melds: CardId[][];
+  // Cartas sueltas que siguen puntuando después de acomodar.
+  leftovers: CardId[];
   delta: number; // puntos sumados esta ronda (puede ser negativo)
   total: number; // acumulado tras la ronda
   eliminated: boolean;

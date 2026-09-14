@@ -38,7 +38,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Cerrar la ronda',
-    body: 'Si tras robar te quedan 5 puntos sueltos o menos (ya sin contar la carta que vas a descartar), puedes cerrar: tiras esa carta y la ronda termina ahí mismo, sin que nadie más juegue. Si cierras sin que te sobre ningún punto (0 sueltos), es un cierre en seco: en vez de sumar 0, restas 10.',
+    body: 'Si tras robar te quedan 5 puntos sueltos o menos (ya sin contar la carta que vas a descartar), puedes cerrar: tiras esa carta y la ronda termina ahí mismo. Las cartas sueltas de los demás pueden encajar en tus combinaciones; no cuentan si se encajan. Si cierras en seco, no se puede encajar y restas 10.',
     example:
       'Tienes dos escaleras completas y solo te sobra un 4. Cierras con esa carta: te anotas 4 puntos.',
   },
@@ -48,7 +48,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'Puntuación y eliminación',
-    body: 'Al final de cada ronda, todos suman sus puntos sueltos (quien cerró, los suyos o la resta del cierre en seco). Pasar de 100 puntos totales elimina a un jugador. Cuando solo queda uno en pie, esa persona gana.',
+    body: 'Al final de cada ronda, todos suman sus puntos sueltos después de encajar las cartas posibles en las jugadas de quien cerró. Si hubo chinchón, no se encaja. Pasar de 100 puntos elimina a un jugador; gana la última persona en pie.',
   },
   {
     title: 'Si se acaba el mazo',
@@ -60,7 +60,10 @@ export default function ReglasPage() {
   return (
     <main className="app-page rules-page mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-5">
       <header className="flex flex-col gap-2">
-        <Link href="/juegos/chinchon" className="glass-button mb-3 w-fit px-3.5 text-14 font-semibold">
+        <Link
+          href="/juegos/chinchon"
+          className="glass-button mb-3 w-fit px-3.5 text-14 font-semibold"
+        >
           <Icon name="arrow-left" size={17} /> Chinchón
         </Link>
         <span className="eyebrow">Guía completa</span>

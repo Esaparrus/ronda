@@ -5,6 +5,7 @@ import {
   canCloseWith,
   closableDiscards,
   enumerateMelds,
+  layOffCards,
   type MeldSolution,
 } from './melds.ts';
 import {
@@ -186,15 +187,41 @@ describe('Casos dorados §5.10', () => {
   });
 });
 
+describe('Acomodar cartas al cierre', () => {
+  it('añade una carta sobrante a un grupo del jugador que cierra', () => {
+    const result = layOffCards([['copas-3', 'espadas-3', 'bastos-3']], ['oros-3', 'oros-7']);
+
+    expect(result.melds).toEqual([['bastos-3', 'copas-3', 'espadas-3', 'oros-3']]);
+    expect(result.laidOff).toEqual(['oros-3']);
+    expect(result.leftovers).toEqual(['oros-7']);
+  });
+
+  it('permite encadenar extensiones de una escalera aunque lleguen desordenadas', () => {
+    const result = layOffCards([['oros-3', 'oros-4', 'oros-5']], ['oros-1', 'oros-2']);
+
+    expect(result.melds).toEqual([['oros-1', 'oros-2', 'oros-3', 'oros-4', 'oros-5']]);
+    expect(result.laidOff).toEqual(['oros-1', 'oros-2']);
+    expect(result.leftovers).toEqual([]);
+  });
+
+  it('no amplía un grupo que ya tiene cuatro cartas', () => {
+    const result = layOffCards([['bastos-3', 'copas-3', 'espadas-3', 'oros-3']], ['oros-4']);
+
+    expect(result.melds).toEqual([['bastos-3', 'copas-3', 'espadas-3', 'oros-3']]);
+    expect(result.laidOff).toEqual([]);
+    expect(result.leftovers).toEqual(['oros-4']);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Chinchón (§5.7)
 // ---------------------------------------------------------------------------
 
 describe('isChinchon', () => {
   it('true para escalera de 7 dentro de los números', () => {
-    expect(
-      isChinchon(['oros-1', 'oros-2', 'oros-3', 'oros-4', 'oros-5', 'oros-6', 'oros-7']),
-    ).toBe(true);
+    expect(isChinchon(['oros-1', 'oros-2', 'oros-3', 'oros-4', 'oros-5', 'oros-6', 'oros-7'])).toBe(
+      true,
+    );
   });
   it('true para la escalera de 7 que cruza el hueco 7-sota', () => {
     expect(

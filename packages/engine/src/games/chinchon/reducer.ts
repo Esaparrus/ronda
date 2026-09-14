@@ -8,6 +8,7 @@
 // Turno = 2 pasos (§5.3):
 //   draw (obligatorio) → discard | close (obligatorio) → pasa turno.
 import {
+  parseCardId,
   type CardId,
   type GameAction,
   type GameEvent,
@@ -26,7 +27,7 @@ import {
   isPlayerTurn,
   nextActiveSeat,
 } from './state.ts';
-import { isChinchon, solveHand } from './melds.ts';
+import { isChinchon, layOffCards, solveHand } from './melds.ts';
 
 // ---------------------------------------------------------------------------
 // Utilidades de inmutabilidad
@@ -474,6 +475,72 @@ function advanceTurn(
   return ok({ state: next, events });
 }
 
+interface RoundLayout {
+  melds: CardId[][];
+  leftovers: CardId[];
+}
+
+/** Puntos de las cartas que permanecen sueltas en el recuento. */
+function pointsOf(cardIds: CardId[]): number {
+  return cardIds.reduce((total, cardId) => {
+    const parsed = parseCardId(cardId);
+    return total + (parsed.ok ? parsed.value.points : 0);
+  }, 0);
+}
+
+/**
+ * Resuelve las manos que se enseñan al cerrar y, si procede, acomoda las
+ * cartas sobrantes de los demás en las jugadas de quien ha cerrado.
+ *
+ * El acomodo solo existe para un cierre normal con cartas sueltas del que
+ * cierra. Un chinchón y un cierre en seco no dejan un juego receptor para
+ * esta regla: las cartas de los demás conservan todos sus puntos.
+ */
+function buildClosedRoundLayouts(
+  state: ChinchonState,
+  closerId: PlayerId,
+  chinchon: boolean,
+): Map<PlayerId, RoundLayout> {
+  const layouts = new Map<PlayerId, RoundLayout>();
+
+  for (const player of state.players) {
+    if (player.left) continue;
+    const solution = solveHand(player.hand);
+    layouts.set(player.playerId, {
+      melds: solution.melds.map((meld) => [...meld]),
+      leftovers: [...solution.leftovers],
+    });
+  }
+
+  const closerLayout = layouts.get(closerId);
+  if (
+    chinchon ||
+    !closerLayout ||
+    closerLayout.leftovers.length === 0 ||
+    closerLayout.melds.length === 0
+  ) {
+    return layouts;
+  }
+
+  const incoming = state.players
+    .filter((player) => !player.left && !player.eliminated && player.playerId !== closerId)
+    .flatMap((player) => layouts.get(player.playerId)?.leftovers ?? []);
+  if (incoming.length === 0) return layouts;
+
+  const laidOff = layOffCards(closerLayout.melds, incoming);
+  closerLayout.melds = laidOff.melds;
+  const laidOffSet = new Set(laidOff.laidOff);
+
+  for (const player of state.players) {
+    if (player.left || player.eliminated || player.playerId === closerId) continue;
+    const layout = layouts.get(player.playerId);
+    if (!layout) continue;
+    layout.leftovers = layout.leftovers.filter((cardId) => !laidOffSet.has(cardId));
+  }
+
+  return layouts;
+}
+
 /**
  * Termina la ronda por cierre. §5.8.
  * - Calcula deadwood de cada jugador con solveHand.
@@ -499,7 +566,7 @@ function endRound(
     next.turnSeat = null;
     next.turnPhase = null;
     const deltas = new Map<PlayerId, number>([[closerId, 0]]);
-    const rows = buildRows(next, deltas);
+    const rows = buildRows(next, deltas, buildClosedRoundLayouts(next, closerId, true));
     next.roundResult = {
       closedBy: closerId,
       chinchonBy: closerId,
@@ -509,18 +576,20 @@ function endRound(
     return ok({ state: next, events });
   }
 
+  const layouts = buildClosedRoundLayouts(next, closerId, chinchon);
+
   // Puntuación de todos los activos.
   const scored: { playerId: PlayerId; delta: number; total: number }[] = [];
   for (const p of next.players) {
     if (p.eliminated || p.left) continue;
-    const sol = solveHand(p.hand);
-    let delta = sol.deadwood;
+    const layout = layouts.get(p.playerId);
+    let delta = layout ? pointsOf(layout.leftovers) : solveHand(p.hand).deadwood;
     if (p.playerId === closerId) {
       // El que cierra: si 0 puntos, dryCloseBonus (por defecto -10).
       if (chinchon)
         delta = -25; // chinchón sin endGame: -25 (§5.7)
-      else if (sol.deadwood === 0) delta = next.config.dryCloseBonus;
-      else delta = sol.deadwood;
+      else if (layout?.leftovers.length === 0) delta = next.config.dryCloseBonus;
+      else delta = layout ? pointsOf(layout.leftovers) : solveHand(p.hand).deadwood;
     }
     p.score += delta;
     scored.push({ playerId: p.playerId, delta, total: p.score });
@@ -536,7 +605,7 @@ function endRound(
   }
 
   const deltas = new Map<PlayerId, number>(scored.map((s) => [s.playerId, s.delta]));
-  const rows = buildRows(next, deltas);
+  const rows = buildRows(next, deltas, layouts);
   next.roundResult = {
     closedBy: chinchon ? null : closerId,
     chinchonBy: chinchon ? closerId : null,
@@ -591,7 +660,7 @@ function endRoundNoClose(
   const actives = activePlayers(next);
   if (actives.length <= 1) {
     next.status = 'gameEnd';
-    // Sin closer; gana el de total más bajo (§5.8.5 simplificado).
+    // Sin closer; gana el de total más bajo (§5.8.6 simplificado).
     next.winnerId = decideWinner(next, null, actives);
     next.turnSeat = null;
     next.turnPhase = null;
@@ -608,11 +677,13 @@ function endRoundNoClose(
 function buildRows(
   state: ChinchonState,
   deltas: Map<PlayerId, number>,
+  layouts?: Map<PlayerId, RoundLayout>,
 ): NonNullable<ChinchonState['roundResult']>['rows'] {
   return state.players
     .filter((p) => !p.left)
     .map((p) => {
-      const sol = solveHand(p.hand);
+      const layout = layouts?.get(p.playerId);
+      const sol = layout ?? solveHand(p.hand);
       return {
         playerId: p.playerId,
         melds: sol.melds,
@@ -625,7 +696,7 @@ function buildRows(
 }
 
 /**
- * Decide el ganador. §5.8.5:
+ * Decide el ganador. §5.8.6:
  *   - Si queda 1 activo → ese.
  *   - Si quedan 0 (empate por eliminación simultánea):
  *       total más bajo → quien cerró → asiento más bajo.

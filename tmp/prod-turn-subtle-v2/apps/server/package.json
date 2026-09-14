@@ -1,0 +1,29 @@
+{
+  "name": "@ronda/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "start": "node src/index.ts",
+    "sim": "node src/sim/run.ts",
+    "db:migrate": "node --env-file-if-exists=../../.env.local src/db/migrate-cli.ts",
+    "report": "node src/scripts/report.ts",
+    "incident": "node --env-file-if-exists=../../.env.local src/scripts/incident.ts",
+    "incidents": "node --env-file-if-exists=../../.env.local src/scripts/incidents.ts"
+  },
+  "dependencies": {
+    "@ronda/engine": "workspace:*",
+    "@ronda/protocol": "workspace:*",
+    "pg": "^8.13.1",
+    "socket.io": "^4.8.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "socket.io-client": "^4.8.3"
+  }
+}

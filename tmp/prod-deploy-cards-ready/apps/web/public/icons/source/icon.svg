@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icono "any". Marca: la palabra «Ronda» en Familjen Grotesk sobre
+       tinta con una línea brasa debajo (contrato parte 8, P10). -->
+  <rect width="512" height="512" fill="#14161F"/>
+  <text x="256" y="272" text-anchor="middle" font-family="'Familjen Grotesk','Poppins',sans-serif" font-weight="700" font-size="92" fill="#EDE6D8">Ronda</text>
+  <rect x="176" y="304" width="160" height="7" rx="3.5" fill="#D4462F"/>
+</svg>

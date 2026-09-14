@@ -245,6 +245,162 @@ describe('4. Cierre', () => {
     expect(r.value.state.roundResult).not.toBeNull();
     expect(roundResult(r.value.state).rows.length).toBe(4);
   });
+
+  it('si puede cerrar, también puede descartar y seguir buscando una jugada mejor', () => {
+    const state = newGame('seed-continue');
+    const pid = turnPlayerId(state);
+    const forced = forceTurnHand(state, CLOSE_HAND);
+    const view = getPlayerView(forced, pid);
+
+    expect(view.me.canClose).toBe(true);
+    expect(view.me.closableDiscards).toContain(CLOSE_DISCARD);
+    expect(view.me.availableActions).toEqual(expect.arrayContaining(['discard', 'close']));
+
+    const r = applyAction(forced, pid, { type: 'discard', cardId: CLOSE_DISCARD }, 0);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.state.status).toBe('playing');
+    expect(r.value.state.turnPhase).toBe('draw');
+  });
+});
+
+describe('4b. Acomodar cartas al cerrar', () => {
+  const CLOSER_HAND: CardId[] = [
+    'oros-1',
+    'oros-2',
+    'oros-3',
+    'copas-5',
+    'espadas-5',
+    'bastos-5',
+    'copas-1',
+    'copas-2',
+  ];
+  const CLOSE_WITH_LEFTOVER: CardId = 'copas-2';
+  const OPPONENT_HAND: CardId[] = [
+    'oros-5',
+    'bastos-1',
+    'copas-10',
+    'espadas-11',
+    'bastos-12',
+    'copas-6',
+    'espadas-7',
+  ];
+  const OTHER_HANDS: CardId[][] = [
+    ['oros-6', 'copas-3', 'espadas-4', 'bastos-6', 'oros-10', 'copas-11', 'espadas-12'],
+    ['bastos-2', 'oros-7', 'copas-4', 'espadas-6', 'bastos-10', 'oros-11', 'copas-12'],
+  ];
+
+  function forceClosedRound(state: ChinchonState, config = state.config): ChinchonState {
+    const closerSeat = turnSeat(state);
+    return {
+      ...state,
+      config,
+      players: state.players.map((player, index) => {
+        if (index === closerSeat) return { ...player, hand: [...CLOSER_HAND], lockedCardId: null };
+        if (index === 0) return { ...player, hand: [...OPPONENT_HAND], lockedCardId: null };
+        return {
+          ...player,
+          hand: [...(OTHER_HANDS[index - 1] ?? player.hand)],
+          lockedCardId: null,
+        };
+      }),
+      turnPhase: 'discard',
+    };
+  }
+
+  it('quita del tanteo una carta sobrante que encaja en una jugada del que cierra', () => {
+    const state = newGame('seed-layoff');
+    const pid = turnPlayerId(state);
+    const forced = forceClosedRound(state);
+    const r = applyAction(forced, pid, { type: 'close', cardId: CLOSE_WITH_LEFTOVER }, 0);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const result = roundResult(r.value.state);
+    const closerRow = result.rows.find((row) => row.playerId === pid);
+    const opponentRow = result.rows.find((row) => row.playerId === 'p1');
+    const opponentDeadwood = solveHand(OPPONENT_HAND).deadwood;
+
+    expect(closerRow?.melds.some((meld) => meld.includes('oros-5'))).toBe(true);
+    expect(opponentRow?.leftovers).not.toContain('oros-5');
+    expect(opponentRow?.delta).toBe(opponentDeadwood - 5);
+  });
+
+  it('no acomoda cartas sobre el chinchón del jugador que cierra', () => {
+    const config = { ...CFG, chinchonEndsGame: false };
+    const state = newGame('seed-chinchon-layoff', config);
+    const pid = turnPlayerId(state);
+    const closerSeat = turnSeat(state);
+    const chinchonOpponentHand: CardId[] = [
+      'oros-10',
+      'bastos-1',
+      'copas-10',
+      'espadas-11',
+      'bastos-12',
+      'copas-6',
+      'espadas-7',
+    ];
+    const forced: ChinchonState = {
+      ...state,
+      players: state.players.map((player, index) =>
+        index === closerSeat
+          ? {
+              ...player,
+              hand: [
+                'oros-1',
+                'oros-2',
+                'oros-3',
+                'oros-4',
+                'oros-5',
+                'oros-6',
+                'oros-7',
+                'copas-12',
+              ] as CardId[],
+              lockedCardId: null,
+            }
+          : index === 0
+            ? {
+                ...player,
+                hand: [...chinchonOpponentHand],
+                lockedCardId: null,
+              }
+            : {
+                ...player,
+                hand: [...(OTHER_HANDS[index - 1] ?? player.hand)],
+                lockedCardId: null,
+              },
+      ),
+      turnPhase: 'discard',
+    };
+    const r = applyAction(forced, pid, { type: 'close', cardId: 'copas-12' }, 0);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.state.status).toBe('roundEnd');
+    const result = roundResult(r.value.state);
+    const opponentRow = result.rows.find((row) => row.playerId === 'p1');
+    expect(opponentRow?.leftovers).toContain('oros-10');
+    expect(opponentRow?.delta).toBe(solveHand(chinchonOpponentHand).deadwood);
+  });
+
+  it('no acomoda cartas cuando el cierre es en seco', () => {
+    const state = newGame('seed-dry-layoff');
+    const pid = turnPlayerId(state);
+    const forced = forceTurnHand(state, CLOSE_HAND);
+    const opponentHand = [...OPPONENT_HAND];
+    const withOpponent = {
+      ...forced,
+      players: forced.players.map((player, index) =>
+        index === 0 ? { ...player, hand: opponentHand } : player,
+      ),
+    };
+    const r = applyAction(withOpponent, pid, { type: 'close', cardId: CLOSE_DISCARD }, 0);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const opponentRow = roundResult(r.value.state).rows.find((row) => row.playerId === 'p1');
+    expect(opponentRow?.leftovers).toContain('oros-5');
+  });
 });
 
 // ---------------------------------------------------------------------------

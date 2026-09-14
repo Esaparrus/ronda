@@ -36,7 +36,7 @@ export function MatizArtwork({
 
   return (
     <div
-      className={`relative aspect-[800/620] w-full overflow-hidden rounded-[30px] border border-linea bg-mesa shadow-[0_16px_36px_rgba(34,37,48,0.12)] ${className}`}
+      className={`relative aspect-[800/620] w-full shrink-0 overflow-hidden rounded-[30px] border border-linea bg-mesa shadow-[0_16px_36px_rgba(34,37,48,0.12)] ${className}`}
     >
       <MatizMaskedImage
         imageSrc={art.image}

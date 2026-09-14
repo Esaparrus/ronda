@@ -42,7 +42,7 @@ export const GAME_GUIDES = {
       },
       {
         title: 'Cierra en el momento justo',
-        body: 'Si después de descartar te quedan 5 puntos sueltos o menos, puedes terminar la ronda.',
+        body: 'Si después de descartar te quedan 5 puntos sueltos o menos, puedes terminar la ronda. Los demás pueden encajar cartas en tus jugadas.',
       },
     ],
     victory:

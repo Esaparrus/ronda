@@ -109,7 +109,8 @@ export function GameScreen({ view, onAction }: GameScreenProps) {
   const [pendingCloseCard, setPendingCloseCard] = useState<CardId | null>(null);
 
   const { me } = view;
-  const dispatch = onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
+  const dispatch =
+    onAction ?? ((action: GameAction) => void useRondaStore.getState().sendAction(action));
   const isMyTurn = view.turnPlayerId === me.playerId;
   const turnPlayer = view.turnPlayerId
     ? (view.players.find((p) => p.playerId === view.turnPlayerId) ?? null)
@@ -173,10 +174,8 @@ export function GameScreen({ view, onAction }: GameScreenProps) {
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDeck');
   const canDrawDiscard =
     isMyTurn && view.turnPhase === 'draw' && me.availableActions.includes('drawDiscard');
-  const closableDiscards =
-    isMyTurn && view.turnPhase === 'discard' ? me.closableDiscards : [];
-  const visibleDiscardCards =
-    view.discardCards ?? (view.discardTop ? [view.discardTop] : []);
+  const closableDiscards = isMyTurn && view.turnPhase === 'discard' ? me.closableDiscards : [];
+  const visibleDiscardCards = view.discardCards ?? (view.discardTop ? [view.discardTop] : []);
 
   const { top, me: mySeat } = orderAroundMe(view.players, me.playerId);
 
@@ -277,7 +276,7 @@ export function GameScreen({ view, onAction }: GameScreenProps) {
           </div>
           <Button onClick={() => resolveCloseChoice(true)}>Cerrar la ronda</Button>
           <Button variant="ghost" onClick={() => resolveCloseChoice(false)}>
-            Descartar y seguir
+            Seguir jugando
           </Button>
         </div>
       </Sheet>
